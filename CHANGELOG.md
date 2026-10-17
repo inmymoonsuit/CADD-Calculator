@@ -298,6 +298,11 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- **One product name (ADR-0016, S4).** Every edition is called "CADD Calculator" in its
+  window title, on its welcome screen, and in About, and is told apart by its icon,
+  art, logo, and About text. A branding pack's `name` key is removed: a pack that still
+  names it is refused, with a message saying to delete it, and the app falls back to the
+  generic branding with a warning.
 - The minimum-radius check states its scope: "The inside radius is below the recommended
   minimum for 6061-T6 aluminum in aerospace bending practice (AC 43.13-1B (2024 ed.
   update), Table 4-6, p. 4-17; …)". Where only one source lists the thickness, the note

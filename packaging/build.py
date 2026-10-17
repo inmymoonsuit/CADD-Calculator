@@ -39,6 +39,7 @@ from caddcalc.gui.branding import (
     GENERIC,
     PACK_DIR_NAME,
     PACK_FILE,
+    PRODUCT_NAME,
     Branding,
     BrandingError,
     load_branding,
@@ -186,15 +187,15 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     return out
 
 
-def nuitka_args(branding: Branding, staged_pack: Path | None) -> list[str]:
+def nuitka_args(staged_pack: Path | None) -> list[str]:
     """Return the Nuitka options for an edition, passed through pyside6-deploy's spec."""
     args = [
         "--noinclude-qt-translations",
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
         "--include-package-data=caddcalc",  # the generic icon and the reference tables
         f"--company-name={COMPANY}",
-        f"--product-name={branding.name}",
-        f"--file-description={branding.name}",
+        f"--product-name={PRODUCT_NAME}",
+        f"--file-description={PRODUCT_NAME}",
         f"--file-version={numeric_version(__version__)}",
         f"--product-version={numeric_version(__version__)}",
         f"--copyright=Copyright {COMPANY}. Apache-2.0.",
@@ -203,7 +204,7 @@ def nuitka_args(branding: Branding, staged_pack: Path | None) -> list[str]:
     if sys.platform == "win32":
         args.append("--windows-console-mode=disable")
     if sys.platform == "darwin":
-        args += [f"--macos-app-name={branding.name}", f"--macos-app-version={__version__}"]
+        args += [f"--macos-app-name={PRODUCT_NAME}", f"--macos-app-version={__version__}"]
     if staged_pack is not None:
         args.append(f"--include-data-dir={staged_pack}={PACK_DIR_NAME}")
     return args
@@ -271,7 +272,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         icon=exe_icon(branding, work),
         exec_dir=edition_dir,
         mode=mode,
-        extra=nuitka_args(branding, staged),
+        extra=nuitka_args(staged),
     )
 
     deploy = shutil.which("pyside6-deploy", path=str(Path(sys.executable).parent))
@@ -280,7 +281,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
     command = [deploy, "-c", "pysidedeploy.spec", "--no-install", "--force", "--no-warn"]
     if verbose:
         command.append("--verbose")
-    print(f"Building {branding.name} ({branding.edition}, {mode}) ...", flush=True)
+    print(f"Building {PRODUCT_NAME} ({branding.edition}, {mode}) ...", flush=True)
     log = work / "deploy.log"
     started = time.perf_counter()
     with log.open("w", encoding="utf-8") as fh:
@@ -309,7 +310,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
     files = [p for p in output.rglob("*") if p.is_file()] if output.is_dir() else [output]
     return {
         "edition": branding.edition,
-        "name": branding.name,
+        "name": PRODUCT_NAME,
         "version": __version__,
         "platform": platform_tag(),
         "mode": mode,
@@ -385,8 +386,11 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
             raise BuildError(f"{exe} --smoke-test exited with {result.returncode}")
     report = json.loads((report_dir / "smoke-test.json").read_text(encoding="utf-8"))
     problems = []
-    if report["name"] != branding.name or report["edition"] != branding.edition:
-        problems.append(f"shows {report['name']!r}, expected {branding.name!r}")
+    if report["name"] != PRODUCT_NAME or report["edition"] != branding.edition:
+        problems.append(
+            f"shows {report['name']!r} ({report['edition']}), "
+            f"expected {PRODUCT_NAME!r} ({branding.edition})"
+        )
     if not report["packaged"]:
         problems.append("did not detect that it is packaged")
     if not report["icon_loaded"]:

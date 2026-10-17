@@ -64,7 +64,6 @@ A pack is a folder with a `branding.toml`:
 ```toml
 schema = 1                                    # pack format version (optional)
 edition = "example"                           # slug for folder names: a-z, 0-9, -
-name = "CADD Calculator: Example Edition"     # window title and About heading
 icon = "icon.png"                             # optional; .png (256 px or more) or .ico
 about = "about.html"                          # optional; .html fragment or .txt
 
@@ -74,6 +73,10 @@ art_focus = [0.35, 0.5]                       # the point kept in view when crop
 logo = "logo-vertical.svg"                    # the vertical logo strip; .svg or .png
 ```
 
+* Every edition is called "CADD Calculator": in its window title, on its welcome
+  screen, and in About. An edition is told apart by its icon, art, logo, and About text
+  (ADR-0016, S4). A pack that still names the old `name` key is refused, with a message
+  saying to delete it.
 * Paths are relative to the pack folder and must stay inside it.
 * `icon` sets the window icon, and also the `.exe` icon. A PNG is converted to a
   multi-size `.ico` (Windows) or `.icns` (macOS) at build time.
@@ -88,9 +91,8 @@ logo = "logo-vertical.svg"                    # the vertical logo strip; .svg or
   the pack whose name contains `NOTICE`, `LICENSE`, `LICENCE`, or `COPYING` (such as
   `ART-NOTICE.md` for the pack's art). Source art, drafts, and planning notes in the pack
   folder stay behind.
-* The packaged app finds the pack in a `branding/` folder next to its executable. The
-  window title changes, but the application name used for settings stays
-  "CADD Calculator" in every edition.
+* The packaged app finds the pack in a `branding/` folder next to its executable.
+  Every edition shares one application name, so it shares its settings too.
 * A broken pack at run time gives a warning and the generic branding. The build script
   checks the pack first and stops with the reason, so a broken pack can't ship.
 

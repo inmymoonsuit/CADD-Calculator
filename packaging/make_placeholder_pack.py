@@ -25,7 +25,6 @@ TOML = """\
 # For testing the branded build only. Not for distribution.
 schema = 1
 edition = "placeholder"
-name = "CADD Calculator: Placeholder Edition"
 icon = "icon.png"
 about = "about.html"
 

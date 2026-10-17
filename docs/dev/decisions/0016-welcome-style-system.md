@@ -175,3 +175,12 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   and the project github.com/phoikoi/VT323; the SIL Open Font License 1.1
   (openfontlicense.org); Qt's `QFontDatabase` reference, whose `addApplicationFont`
   returns -1 when a font can't be loaded.
+
+### 2026-10-17: one product name (slice d)
+
+* `gui/branding.py` defines `PRODUCT_NAME`, "CADD Calculator". The window title, the
+  application's display name, the welcome screen, About, the build's product name, and
+  the smoke report all use it. `Branding` no longer has a `name`.
+* A pack with a `name` key is refused, with a message saying to delete it, as `splash`
+  was (ADR-0011, amended). At run time such a pack falls back to the generic branding
+  with a warning; the build stops with the message.

@@ -47,9 +47,7 @@ def test_branding_pack_is_checked_and_handed_to_the_app(
 ) -> None:
     module, calls = launcher
     monkeypatch.delenv(ENV_VAR, raising=False)
-    (tmp_path / "branding.toml").write_text(
-        'edition = "example"\nname = "CADD Calculator: Example Edition"\n', encoding="utf-8"
-    )
+    (tmp_path / "branding.toml").write_text('edition = "example"\n', encoding="utf-8")
     assert module.main(["--branding", str(tmp_path)]) == 0
     assert calls == [[]]
     assert module.os.environ[ENV_VAR] == str(tmp_path.resolve())

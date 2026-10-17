@@ -25,8 +25,8 @@ def test_each_command_carries_its_macos_menu_role() -> None:
 
     from caddcalc.gui.actions import AppActions
 
-    actions = AppActions(Branding(name="Shop & Co"))
-    assert actions.about.text() == "&About Shop && Co"
+    actions = AppActions(Branding(edition="shop"))
+    assert actions.about.text() == "&About CADD Calculator", "the name is fixed (ADR-0016, S4)"
     assert actions.about.menuRole() is QAction.MenuRole.AboutRole
     assert actions.quit.menuRole() is QAction.MenuRole.QuitRole
     assert actions.quit.shortcuts() == QKeySequence.keyBindings(QKeySequence.StandardKey.Quit)

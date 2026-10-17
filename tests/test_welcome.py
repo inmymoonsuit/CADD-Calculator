@@ -38,7 +38,7 @@ def pack(
     assert art.save(str(folder / "welcome-art.png"))
     (folder / "logo.svg").write_text(logo, encoding="utf-8")
     (folder / "branding.toml").write_text(
-        'edition = "test-edition"\nname = "Test Edition"\n'
+        'edition = "test-edition"\n'
         '[welcome]\nart = "welcome-art.png"\nart_focus = [0.25, 0.5]\nlogo = "logo.svg"\n',
         encoding="utf-8",
     )

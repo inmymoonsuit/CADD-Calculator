@@ -52,7 +52,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from caddcalc import __version__
     from caddcalc.gui.actions import AppActions
-    from caddcalc.gui.branding import active_branding
+    from caddcalc.gui.branding import PRODUCT_NAME, active_branding
     from caddcalc.gui.welcome import WelcomeScreen
 
     args, smoke_test, report_dir = _split_smoke_test(list(sys.argv[1:] if argv is None else argv))
@@ -61,10 +61,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     app = QApplication.instance() or QApplication([sys.argv[0], *args])
     if not isinstance(app, QApplication):
         raise TypeError("a non-widget Qt application already exists; the GUI needs QApplication")
-    # The application name stays fixed so settings are shared by every edition;
-    # the display name is what the user sees in window titles.
-    app.setApplicationName("CADD Calculator")
-    app.setApplicationDisplayName(branding.name)
+    # One name in every edition (ADR-0016, S4), so they share their settings, too.
+    app.setApplicationName(PRODUCT_NAME)
+    app.setApplicationDisplayName(PRODUCT_NAME)
     app.setApplicationVersion(__version__)
     app.setOrganizationName("CADD Calculator")
     if branding.icon is not None:
@@ -143,17 +142,19 @@ class _Startup:
         """Report a failed startup, and end the app with status 1."""
         from shiboken6 import isValid
 
+        from caddcalc.gui.branding import PRODUCT_NAME
+
         self.failed = True
         traceback.print_exception(exc, file=sys.stderr)
         self.app.setQuitOnLastWindowClosed(True)
-        message = f"{self.branding.name} couldn't start: building its main window failed."
+        message = f"{PRODUCT_NAME} couldn't start: building its main window failed."
         if self.smoke_test:
             print(f"{message}\n{exc}", file=sys.stderr)
         else:
             from PySide6.QtWidgets import QMessageBox
 
             parent = self.welcome if isValid(self.welcome) else None
-            QMessageBox.critical(parent, self.branding.name, f"{message}\n\n{exc}")
+            QMessageBox.critical(parent, PRODUCT_NAME, f"{message}\n\n{exc}")
             self.app.exit(1)
 
     def main_window(self) -> MainWindow:
@@ -205,7 +206,7 @@ def _write_smoke_report(
     ready_seconds: float,
 ) -> None:
     from caddcalc import __version__
-    from caddcalc.gui.branding import packaged_app_dir
+    from caddcalc.gui.branding import PRODUCT_NAME, packaged_app_dir
 
     app.processEvents()
     if report_dir is None:
@@ -213,7 +214,7 @@ def _write_smoke_report(
     report_dir.mkdir(parents=True, exist_ok=True)
     window.grab().save(str(report_dir / "window.png"))
     report = {
-        "name": branding.name,
+        "name": PRODUCT_NAME,
         "edition": branding.edition,
         "version": __version__,
         "window_title": window.windowTitle(),

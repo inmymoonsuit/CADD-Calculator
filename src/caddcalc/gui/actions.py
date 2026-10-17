@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QApplication, QMenuBar, QMessageBox
 
 from caddcalc import __version__
 from caddcalc.core.formatting import DISCLAIMER
-from caddcalc.gui.branding import GENERIC, Branding
+from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
 
 GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
 """The public build's description in About; a branding pack may replace it."""
@@ -28,7 +28,7 @@ def about_html(branding: Branding) -> str:
     the link to the source code, and the third-party credits are always shown.
     """
     return (
-        f"<h3>{escape(branding.name)} {escape(__version__)}</h3>"
+        f"<h3>{escape(PRODUCT_NAME)} {escape(__version__)}</h3>"
         + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
         + "<p>Licensed under the Apache License, Version 2.0. See LICENSE.md.</p>"
         f"<p>{escape(DISCLAIMER)}</p>"
@@ -54,7 +54,7 @@ class AppActions(QObject):
         """Create the commands for an app shown as ``branding``."""
         super().__init__(parent)
         self.branding = branding
-        self.about = QAction(f"&About {branding.name.replace('&', '&&')}", self)
+        self.about = QAction(f"&About {PRODUCT_NAME}", self)
         self.about.setMenuRole(QAction.MenuRole.AboutRole)
         self.about.triggered.connect(self.show_about)
         self.quit = QAction("E&xit", self)
@@ -82,5 +82,5 @@ class AppActions(QObject):
     def show_about(self) -> None:
         """Show About over the active window: the version, the license, and the terms."""
         QMessageBox.about(
-            QApplication.activeWindow(), f"About {self.branding.name}", about_html(self.branding)
+            QApplication.activeWindow(), f"About {PRODUCT_NAME}", about_html(self.branding)
         )

@@ -5,7 +5,6 @@ with a ``branding.toml`` file and the files it names::
 
     schema = 1                                   # pack format version (optional)
     edition = "example"                          # short slug: build folder names
-    name = "CADD Calculator: Example Edition"    # window title, About heading
     icon = "icon.png"                            # optional window icon (.png or .ico)
     about = "about.html"                         # optional About text (.html or .txt)
 
@@ -13,6 +12,9 @@ with a ``branding.toml`` file and the files it names::
     art = "welcome-art.png"                      # 16:9, supplied at 1920 x 1080
     art_focus = [0.35, 0.5]                      # the point kept in view when cropping
     logo = "logo-vertical.svg"                   # the vertical logo strip (.svg or .png)
+
+Every edition is called ``PRODUCT_NAME``, and is told apart by its icon, art, logo, and
+About text (ADR-0016, S4).
 
 Where the app looks for a pack (first match wins):
 
@@ -43,6 +45,8 @@ from typing import Any
 from caddcalc.core.errors import CaddCalcError
 from caddcalc.gui.welcome_style import style
 
+PRODUCT_NAME = "CADD Calculator"
+"""The name every edition shows: window title, welcome screen, and About (ADR-0016, S4)."""
 ENV_VAR = "CADDCALC_BRANDING"
 PACK_FILE = "branding.toml"
 PACK_DIR_NAME = "branding"
@@ -54,7 +58,7 @@ GENERIC_ICON = ASSETS / "app-icon.png"
 
 ICON_SUFFIXES = frozenset({".png", ".ico"})
 ABOUT_SUFFIXES = frozenset({".html", ".htm", ".txt"})
-_KEYS = frozenset({"schema", "edition", "name", "icon", "about", "welcome"})
+_KEYS = frozenset({"schema", "edition", "icon", "about", "welcome"})
 _WELCOME_KEYS = frozenset({"art", "art_focus", "logo"})
 _EDITION_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 
@@ -65,9 +69,11 @@ class BrandingError(CaddCalcError):
 
 @dataclass(frozen=True)
 class Branding:
-    """What the app shows as its identity. The defaults are the unbranded public build."""
+    """What sets an edition apart. The defaults are the unbranded public build.
 
-    name: str = "CADD Calculator"
+    The name isn't part of it: every edition is ``PRODUCT_NAME``.
+    """
+
     edition: str = "generic"
     icon: Path | None = GENERIC_ICON
     welcome_art: Path | None = None
@@ -112,6 +118,12 @@ def load_branding(pack_dir: Path | str) -> Branding:
             f"{toml_path}: 'splash' was replaced by the [welcome] table (art, art_focus, "
             "logo); see ADR-0015"
         )
+    if "name" in data:
+        raise BrandingError(
+            f"{toml_path}: 'name' was removed: every edition is called {PRODUCT_NAME!r}, "
+            "told apart by its icon, art, logo, and About text; delete the key "
+            "(ADR-0016, S4)"
+        )
     unknown = sorted(set(data) - _KEYS)
     if unknown:
         raise BrandingError(
@@ -122,7 +134,6 @@ def load_branding(pack_dir: Path | str) -> Branding:
     if schema != SCHEMA:
         raise BrandingError(f"{toml_path}: schema {schema!r} is not supported (expected {SCHEMA})")
 
-    name = _required_text(data, "name", toml_path)
     edition = _required_text(data, "edition", toml_path)
     if not _EDITION_RE.fullmatch(edition) or edition == GENERIC.edition:
         raise BrandingError(
@@ -135,7 +146,6 @@ def load_branding(pack_dir: Path | str) -> Branding:
     about_html = _read_about(about) if about is not None else None
     art, focus, logo = _welcome(data.get("welcome", {}), root)
     return Branding(
-        name=name,
         edition=edition,
         icon=icon if icon is not None else GENERIC_ICON,
         welcome_art=art,

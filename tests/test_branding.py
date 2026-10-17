@@ -22,6 +22,7 @@ from caddcalc.gui.branding import (
     GENERIC,
     GENERIC_ICON,
     PACK_DIR_NAME,
+    PRODUCT_NAME,
     BrandingError,
     active_branding,
     find_pack_dir,
@@ -34,7 +35,6 @@ ROOT = Path(__file__).resolve().parent.parent
 PACK_TOML = """\
 schema = 1
 edition = "test-edition"
-name = "CADD Calculator: Test Edition"
 icon = "icon.png"
 about = "about.html"
 
@@ -62,7 +62,7 @@ def make_pack(folder: Path, toml: str = PACK_TOML, *, images: bytes = b"not chec
 
 def test_generic_branding_is_the_unbranded_public_build() -> None:
     assert GENERIC.is_generic
-    assert GENERIC.name == "CADD Calculator"
+    assert PRODUCT_NAME == "CADD Calculator"
     assert GENERIC.edition == "generic"
     assert (GENERIC.welcome_art, GENERIC.welcome_logo) == (None, None)
     assert GENERIC.welcome_focus == (0.5, 0.5)
@@ -95,7 +95,6 @@ def test_load_branding_reads_a_complete_pack(tmp_path: Path) -> None:
     b = load_branding(pack)
     assert not b.is_generic
     assert b.source == pack
-    assert b.name == "CADD Calculator: Test Edition"
     assert b.edition == "test-edition"
     assert b.icon == pack / "icon.png"
     assert b.welcome_art == pack / "welcome-art.png"
@@ -106,7 +105,7 @@ def test_load_branding_reads_a_complete_pack(tmp_path: Path) -> None:
 
 
 def test_optional_files_fall_back_to_generic(tmp_path: Path) -> None:
-    pack = make_pack(tmp_path / "pack", 'edition = "minimal"\nname = "Minimal"\n')
+    pack = make_pack(tmp_path / "pack", 'edition = "minimal"\n')
     b = load_branding(pack)
     assert b.icon == GENERIC_ICON
     assert (b.welcome_art, b.welcome_focus, b.welcome_logo) == (None, (0.5, 0.5), None)
@@ -114,7 +113,7 @@ def test_optional_files_fall_back_to_generic(tmp_path: Path) -> None:
 
 
 def test_plain_text_about_is_escaped_into_paragraphs(tmp_path: Path) -> None:
-    pack = make_pack(tmp_path / "pack", 'edition = "txt"\nname = "T"\nabout = "about.txt"\n')
+    pack = make_pack(tmp_path / "pack", 'edition = "txt"\nabout = "about.txt"\n')
     (pack / "about.txt").write_text("Tom & Jerry <3\n\nSecond paragraph.\n", encoding="utf-8")
     assert load_branding(pack).about_html == (
         "<p>Tom &amp; Jerry &lt;3</p><p>Second paragraph.</p>"
@@ -124,43 +123,44 @@ def test_plain_text_about_is_escaped_into_paragraphs(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("toml", "message"),
     [
-        ('edition = "x"\nname = "X"\nsplsh = "s.png"\n', "unknown key"),
-        ('schema = 2\nedition = "x"\nname = "X"\n', "schema 2"),
-        ('edition = "x"\n', "'name' must be a non-empty string"),
-        ('edition = "x"\nname = "   "\n', "'name' must be a non-empty string"),
-        ('edition = "Example"\nname = "X"\n', "lowercase"),
-        ('edition = "generic"\nname = "X"\n', "not 'generic'"),
-        ('edition = "x"\nname = "X"\nicon = "missing.png"\n', "does not exist"),
-        ('edition = "x"\nname = "X"\nicon = "icon.bmp"\n', "must be one of"),
-        ('edition = "x"\nname = "X"\nicon = "../outside.png"\n', "inside the pack folder"),
-        ('edition = "x"\nname = "X"\nicon = 3\n', "must be a file name"),
+        ('edition = "x"\nsplsh = "s.png"\n', "unknown key"),
+        ('schema = 2\nedition = "x"\n', "schema 2"),
+        ('name = "X"\n', "'name' was removed: every edition is called 'CADD Calculator'"),
+        ('edition = "x"\nname = "   "\n', r"'name' was removed.*ADR-0016, S4"),
+        ('icon = "icon.png"\n', "'edition' must be a non-empty string"),
+        ('edition = "Example"\n', "lowercase"),
+        ('edition = "generic"\n', "not 'generic'"),
+        ('edition = "x"\nicon = "missing.png"\n', "does not exist"),
+        ('edition = "x"\nicon = "icon.bmp"\n', "must be one of"),
+        ('edition = "x"\nicon = "../outside.png"\n', "inside the pack folder"),
+        ('edition = "x"\nicon = 3\n', "must be a file name"),
         ("edition = \n", "branding.toml"),
-        ('edition = "x"\nname = "X"\nsplash = "s.png"\n', r"replaced by the \[welcome\] table"),
-        ('edition = "x"\nname = "X"\nwelcome = "art.png"\n', "must be a table"),
+        ('edition = "x"\nsplash = "s.png"\n', r"replaced by the \[welcome\] table"),
+        ('edition = "x"\nwelcome = "art.png"\n', "must be a table"),
         (
-            'edition = "x"\nname = "X"\n[welcome]\nart_fokus = [0.5, 0.5]\n',
+            'edition = "x"\n[welcome]\nart_fokus = [0.5, 0.5]\n',
             r"unknown \[welcome\] key",
         ),
         (
-            'edition = "x"\nname = "X"\n[welcome]\nart = "welcome-art.gif"\n',
+            'edition = "x"\n[welcome]\nart = "welcome-art.gif"\n',
             "must be one of .jpeg, .jpg, .png",
         ),
-        ('edition = "x"\nname = "X"\n[welcome]\nlogo = "logo.jpg"\n', "must be one of .png, .svg"),
-        ('edition = "x"\nname = "X"\n[welcome]\nart = "missing.png"\n', "does not exist"),
+        ('edition = "x"\n[welcome]\nlogo = "logo.jpg"\n', "must be one of .png, .svg"),
+        ('edition = "x"\n[welcome]\nart = "missing.png"\n', "does not exist"),
         (
-            'edition = "x"\nname = "X"\n[welcome]\nart = "../outside.png"\n',
+            'edition = "x"\n[welcome]\nart = "../outside.png"\n',
             "inside the pack folder",
         ),
         (
-            'edition = "x"\nname = "X"\n[welcome]\nart_focus = [0.5, 1.5]\n',
+            'edition = "x"\n[welcome]\nart_focus = [0.5, 1.5]\n',
             "two numbers from 0 to 1",
         ),
-        ('edition = "x"\nname = "X"\n[welcome]\nart_focus = [0.5]\n', "two numbers from 0 to 1"),
+        ('edition = "x"\n[welcome]\nart_focus = [0.5]\n', "two numbers from 0 to 1"),
         (
-            'edition = "x"\nname = "X"\n[welcome]\nart_focus = [true, 0.5]\n',
+            'edition = "x"\n[welcome]\nart_focus = [true, 0.5]\n',
             "two numbers from 0 to 1",
         ),
-        ('edition = "x"\nname = "X"\n[welcome]\nart_focus = "centre"\n', "two numbers from 0 to 1"),
+        ('edition = "x"\n[welcome]\nart_focus = "centre"\n', "two numbers from 0 to 1"),
     ],
 )
 def test_invalid_packs_are_rejected_with_a_reason(tmp_path: Path, toml: str, message: str) -> None:
@@ -210,8 +210,8 @@ def test_find_pack_dir_prefers_the_environment_variable(tmp_path: Path) -> None:
 
 
 def test_active_branding_falls_back_to_generic_with_a_warning(tmp_path: Path) -> None:
-    pack = make_pack(tmp_path / "pack", 'edition = "x"\n')
-    with pytest.warns(UserWarning, match="Ignoring branding pack"):
+    pack = make_pack(tmp_path / "pack", 'edition = "x"\nname = "An Old Name"\n')
+    with pytest.warns(UserWarning, match="Ignoring branding pack: .*'name' was removed"):
         assert active_branding({ENV_VAR: str(pack)}) is GENERIC
     assert active_branding({}) is GENERIC
     good = make_pack(tmp_path / "good")
@@ -366,9 +366,11 @@ def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path
     app = qt.QApplication.instance()
     b = load_branding(make_pack(tmp_path / "pack"))
     window = MainWindow(branding=b)
-    assert window.windowTitle() == b.name
+    assert window.windowTitle() == PRODUCT_NAME, "one name in every edition (ADR-0016, S4)"
     html = about_html(b)
-    assert b.name in html and "<b>testing</b>" in html and escape(DISCLAIMER) in html
+    assert (
+        f"<h3>{PRODUCT_NAME} " in html and "<b>testing</b>" in html and escape(DISCLAIMER) in html
+    )
     assert GENERIC_ABOUT not in html
     assert GENERIC_ABOUT in about_html(GENERIC)
     assert "Licensed under the Apache License, Version 2.0" in html, "always shown"
@@ -399,7 +401,7 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     finally:
         app.setApplicationDisplayName("")
     report = json.loads((report_dir / "smoke-test.json").read_text(encoding="utf-8"))
-    assert report["name"] == "CADD Calculator: Test Edition"
+    assert report["name"] == PRODUCT_NAME
     assert report["edition"] == "test-edition"
     assert report["window_title"] == report["name"]
     assert report["icon_loaded"] and report["about_custom"]

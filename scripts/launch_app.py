@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"launch_app: {exc}", file=sys.stderr)
             return 2
         os.environ[ENV_VAR] = str(args.branding.resolve())
-        edition = f"branding: {branding.name}"
+        edition = f"edition: {branding.edition}"
 
     print(f"CADD Calculator {__version__}, work in progress ({edition})")
     print(f"Source: {PROJECT_ROOT}")

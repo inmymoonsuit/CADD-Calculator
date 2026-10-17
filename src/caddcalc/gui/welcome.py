@@ -33,7 +33,7 @@ from PySide6.QtWidgets import QApplication, QHBoxLayout, QToolButton, QVBoxLayou
 
 from caddcalc import __version__
 from caddcalc.gui.actions import AppActions
-from caddcalc.gui.branding import GENERIC_ICON, Branding
+from caddcalc.gui.branding import GENERIC_ICON, PRODUCT_NAME, Branding
 from caddcalc.gui.fonts import display_family
 from caddcalc.gui.icons import Scheme, current_scheme, icon, role_color
 from caddcalc.gui.welcome_art import generic_art, generic_logo
@@ -115,7 +115,6 @@ class _LogoRegion(QWidget):
 
     def __init__(self, branding: Branding, parent: QWidget) -> None:
         super().__init__(parent)
-        self._name = branding.name
         self._svg: QSvgRenderer | None = None
         self._image: QImage | None = None
         logo = branding.welcome_logo
@@ -131,7 +130,7 @@ class _LogoRegion(QWidget):
         """Where the logo came from: ``"pack"``, or ``"generic"``."""
         self.scale = 1.0
         """The card's scale, set by the screen, so the padding shrinks with it."""
-        self.setAccessibleName(f"{self._name} logo")
+        self.setAccessibleName(f"{PRODUCT_NAME} logo")
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -154,7 +153,7 @@ class _LogoRegion(QWidget):
                 QSize(round(area.width), round(area.height)),
                 self.devicePixelRatioF(),
                 GENERIC_ICON,
-                self._name,
+                PRODUCT_NAME,
                 role_color("text", scheme),
             )
             p.drawImage(_qrect(area), logo)
@@ -234,7 +233,7 @@ class _ArtSlot(QWidget):
         """Where the art came from: ``"pack"``, or ``"generic"`` when there was none or it
         couldn't be used."""
         tokens = style()
-        self.name_pane = _Pane(branding.name, tokens.name_pane, self)
+        self.name_pane = _Pane(PRODUCT_NAME, tokens.name_pane, self)
         self.version_pane = _Pane(f"Version {__version__}", tokens.version_pane, self)
 
     @override
@@ -280,8 +279,8 @@ class WelcomeScreen(QWidget):
         super().__init__(parent, Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setWindowTitle(branding.name)
-        self.setAccessibleName(f"Welcome to {branding.name}")
+        self.setWindowTitle(PRODUCT_NAME)
+        self.setAccessibleName(f"Welcome to {PRODUCT_NAME}")
         tokens = style()
         self.display_face = display_family()
         """The display face its text uses: the tokens' family, or ``"fallback"``."""
@@ -295,7 +294,7 @@ class WelcomeScreen(QWidget):
         self.top_bar.setFixedHeight(round(tokens.top_bar.height * scale))
         self.about_button = QToolButton(self.top_bar)
         self.about_button.setAutoRaise(True)
-        self.about_button.setToolTip(f"About {branding.name}: version, license, and terms")
+        self.about_button.setToolTip(f"About {PRODUCT_NAME}: version, license, and terms")
         self.about_button.setAccessibleName("About")
         self.about_button.clicked.connect(actions.about.trigger)
         self.app_actions = actions

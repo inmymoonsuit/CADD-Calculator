@@ -75,7 +75,7 @@ from caddcalc.core.formatting import (
 )
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
-from caddcalc.gui.branding import GENERIC, Branding
+from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
 from caddcalc.gui.icons import (
     TABLER_DIR,
     Scheme,
@@ -275,7 +275,7 @@ class MainWindow(QMainWindow):
         user comes back.
         """
 
-        self.setWindowTitle(branding.name)
+        self.setWindowTitle(PRODUCT_NAME)
         self.resize(1100, 720)
         self._build_ui()
         self._build_menu()
