@@ -259,11 +259,11 @@ def test_the_about_button_shows_the_version_and_the_license(
 # --- the restyle (ADR-0016 §3 to §5) -----------------------------------------------------
 
 
-def measured_contrast(welcome: Any, pane: Any) -> float:
-    """The text's contrast over the art as Qt shows it, at the style's percentile.
+def measured(welcome: Any, pane: Any) -> tuple[float, float]:
+    """The text's contrast, and the background's spread, over the art as Qt shows it.
 
     The art is grabbed with the pane hidden, the pane's fill is blended over it by Qt
-    itself, and every pixel under the pane counts.
+    itself, and every pixel under the pane counts, at the style's percentile.
     """
     import math
 
@@ -284,12 +284,15 @@ def measured_contrast(welcome: Any, pane: Any) -> float:
     p.end()
     under = shown.copy(pane.geometry())  # kept alive while its pixels are read
     data = bytes(under.constBits())
+    levels = sorted(rgb_luminance(c) for c in zip(data[0::4], data[1::4], data[2::4], strict=True))
     text = luminance(role_color(text_role, scheme))
-    values = sorted(
-        contrast(text, rgb_luminance(c))
-        for c in zip(data[0::4], data[1::4], data[2::4], strict=True)
-    )
-    return values[max(math.ceil(panes.percentile / 100 * len(values)), 1) - 1]
+
+    def at(share: float) -> float:
+        return levels[max(math.ceil(share / 100 * len(levels)), 1) - 1]
+
+    low, high = at(panes.percentile), at(100 - panes.percentile)
+    reading = min(contrast(text, low), contrast(text, high))  # the extremes read worst
+    return reading, contrast(high, low)
 
 
 @pytest.mark.parametrize(
@@ -322,7 +325,25 @@ def test_the_panes_stay_quiet_and_readable_over_any_art(
         if not art.startswith("saturated"):  # how far those rise depends on the blend
             assert (alpha > floor) == raised, (pane.text, alpha)
         assert alpha >= floor
-        assert measured_contrast(welcome, pane) >= needed, pane.text
+        reading, spread = measured(welcome, pane)
+        assert reading >= needed, pane.text
+        assert spread <= panes.max_background_spread, (pane.text, spread)
+    welcome.close()
+
+
+def test_the_generic_look_is_unchanged_by_the_calm_rule() -> None:
+    """The generic gradient is calm: both panes stay at the floor, white on ink."""
+    import math
+
+    from caddcalc.gui.icons import current_scheme
+
+    panes = style().panes
+    welcome = screen()
+    welcome.show()
+    for pane in (welcome.art.name_pane, welcome.art.version_pane):
+        text_role, fill_role, alpha = pane.fill(current_scheme())
+        assert (text_role, fill_role) == ("welcome_paper", "welcome_ink")
+        assert alpha == math.ceil(panes.fill_opacity_min * 255), pane.text
     welcome.close()
 
 

@@ -187,12 +187,17 @@ uv run python packaging/fetch_fonts.py --commit SHA
   pixel of a smaller pane. For each pair it raises the fill's opacity only as far as
   the text needs to read over 95% of those pixels, each blended under the fill as the
   screen blends it: 3:1 for the name, which is large text, and 4.5:1 for the version
-  (WCAG 2; the loader refuses less). The pair that needs less opacity wins, and the
-  pane's border follows its text. On calm art the panes stay at 15%; on dark art the
-  text turns white; on busy or saturated art the fill rises. The screen blends in 8
-  bits, so each blend is checked a level either side. Measuring every pixel, not two
-  luminance percentiles, matters for saturated art: a pane mostly over pure blue
-  between grey and white would otherwise be held only to its grey and white.
+  (WCAG 2; the loader refuses less). The blended background must also be calm: its
+  luminance at the 95th percentile, plus 0.05, over that at the 5th, plus 0.05, is at
+  most 1.5. Contrast alone doesn't measure texture: over a black-and-white check, the
+  letters could reach 3:1 on a background still alternating strongly, which breaks
+  them up. The pair that needs less opacity wins, and the pane's border follows its
+  text. On calm art, around 1.1, the panes stay at 15%; on dark art the text turns
+  white; on busy or saturated art the fill rises, nearly to opaque over a checker. The
+  screen blends in 8 bits, so each blend is checked a level either side. Measuring
+  every pixel, not two luminance percentiles, matters for saturated art: a pane mostly
+  over pure blue between grey and white would otherwise be held only to its grey and
+  white.
 * **Corners and platforms.** The card is frameless with its own bar on every platform.
   It's drawn in a translucent window, so its rounded corners show the desktop. Where
   the windowing system may not composite (X11, and other platforms but Windows, macOS,
@@ -238,6 +243,7 @@ hex values, so both themes and the palette's contrast tests apply.
 | `panes.border_width` | 1 | The panes' border, in the text's role |
 | `panes.percentile` | 5 | The share of the art under a pane, in percent, that may fall short of the contrast |
 | `panes.min_samples` | 4096 | The least number of art pixels sampled under a pane, on a fixed grid |
+| `panes.max_background_spread` | 1.5 | The most the blended background may vary, as a luminance ratio; at least 1 |
 | `name_pane.anchor` | top_right | The corner the name pane hugs |
 | `name_pane.inset` | 24 | Its distance from that corner's edges (spacing scale) |
 | `name_pane.padding` | 8 × 16 | Around its capitals: vertical × horizontal (spacing scale) |

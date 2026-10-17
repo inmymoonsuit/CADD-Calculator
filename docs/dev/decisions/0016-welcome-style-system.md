@@ -340,3 +340,25 @@ the fixes.
   has its own fill, and the border follows the text) and slice f's `panes.min_contrast`
   (each pane has its own). This one replaces slice e's two-percentile measurement. The
   earlier text stays as the record.
+
+### 2026-10-17: a calm background (slice j)
+
+A re-review confirmed slice i, and found that busy art could meet the contrast and
+still not read. Over a black-and-white checker, the name pane's fill rose only until ink
+reached 3:1 against the darkest blended pixel, and the background under the letters
+still alternated strongly, which broke them up. Per-pixel contrast doesn't measure
+texture. The project decided on a second condition in the same bisection.
+
+* **The rule.** Under a pane, the blended background's spread,
+  `(L95 + 0.05) / (L5 + 0.05)`, must be at most `panes.max_background_spread` (1.5) as
+  well as the text reaching its contrast. L95 and L5 are the luminances of the sampled,
+  blended pixels at `100 - panes.percentile` and `panes.percentile` percent: L95 at the
+  lighter 8-bit rounding and L5 at the darker, so the check is safe.
+* **Bisection still holds.** Blending toward one colour narrows the spread, so the
+  calm, like the contrast, grows with opacity, and the bisection still returns only an
+  opacity it checked. An opaque fill has a spread of 1.
+* **The token.** `panes.max_background_spread` must be at least 1, and a pack can't
+  override it.
+* **The effect.** Calm art, such as the generic gradient or a quiet render, sits around
+  1.1 and stays at 15%. Over a black-and-white checker, the name's fill rises to about
+  83% (alpha 211), with a spread of 1.497.

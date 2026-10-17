@@ -284,7 +284,8 @@ class _Pane(QWidget):
     text on a light fill and light text on a dark one; the fill starts at the minimum
     opacity and rises only as far as its text needs to reach the pane's contrast over all
     but a small share of the art beneath, every sampled pixel blended as the screen
-    blends it. The pair that needs the least wins.
+    blends it, and the background to be calm enough not to break the letters up. The
+    pair that needs the least wins.
 
     The display face is drawn at a whole multiple of its pixel grid, and centred on its
     capitals: the padding is the space around the caps (ADR-0016, amendments). The text
@@ -321,8 +322,7 @@ class _Pane(QWidget):
             if self.art is None:
                 index, alpha = opaque_fill(pairs)
             else:
-                floor, needed = self.panes.fill_opacity_min, self.tokens.min_contrast
-                index, alpha = pane_fill(self.art, pairs, floor, needed, self.panes.percentile)
+                index, alpha = pane_fill(self.art, pairs, self.panes, self.tokens.min_contrast)
             self._fills[scheme] = self.panes.text_roles[index], self.panes.fill_roles[index], alpha
         return self._fills[scheme]
 

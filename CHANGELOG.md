@@ -318,7 +318,9 @@ All notable changes are recorded here. The format follows
   * The panes' contrast is exact: each pane samples at least 4096 pixels of the art
     beneath, blends each under its fill, and holds 95% of them to the pane's
     contrast, which the loader keeps at or above WCAG 2's floor. Saturated art, such
-    as pure blue, is now held to the contrast too.
+    as pure blue, is now held to the contrast too. The background under a pane must
+    also be calm (`panes.max_background_spread`, 1.5), so over busy art, such as a
+    checker, the fill rises until the letters don't break up; calm art stays at 15%.
   * The corner radius is 5 px, and the card's border takes a new role, `card_border`,
     white in the dark theme.
   * Insets, margins, and paddings follow a spacing scale, and the loader refuses

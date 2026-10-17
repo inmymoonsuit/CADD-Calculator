@@ -47,6 +47,7 @@ fill_opacity_min = 0.15
 border_width = 1                   # in the text's role
 percentile = 5                     # of the art under a pane that may fall short
 min_samples = 4096                 # art pixels sampled under a pane, nearest-pixel
+max_background_spread = 1.5        # how much the blended background may vary
 
 [name_pane]
 anchor = "top_right"

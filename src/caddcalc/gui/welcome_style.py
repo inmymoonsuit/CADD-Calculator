@@ -146,6 +146,10 @@ class PaneStyle:
     contrast: the contrast is held at this percentile of the pixels."""
     min_samples: int
     """The least number of art pixels sampled under a pane, on a fixed grid."""
+    max_background_spread: float
+    """The most the background under a pane may vary: its luminance at the high
+    percentile over its luminance at the low one, each plus 0.05, so busy art can't
+    break the letters up even where their contrast holds."""
 
 
 @dataclass(frozen=True)
@@ -386,6 +390,7 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "border_width": _WIDTH,
             "percentile": _number(0, 50),
             "min_samples": _number(1, 1_000_000, whole=True),
+            "max_background_spread": _number(1, 21),
         },
     ),
     "name_pane": (PaneTokens, _PANE),
@@ -693,46 +698,73 @@ def art_contrast(art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, percentil
     return values[max(math.ceil(percentile / 100 * len(values)), 1) - 1]
 
 
+def background_spread(art: Sequence[RGB], fill: RGB, alpha: int, percentile: float) -> float:
+    """Return how much the background under a pane varies, blended under ``fill``.
+
+    It's the ratio of the blended art's luminance at ``100 - percentile`` percent, taken
+    at its lighter rounding, to that at ``percentile`` percent, at its darker rounding,
+    each plus 0.05, as a contrast is. 1 is a flat background.
+    """
+    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
+    darker = sorted(dr[r] + dg[g] + db[b] for r, g, b in art)
+    lighter = sorted(lr[r] + lg[g] + lb[b] for r, g, b in art)
+
+    def rank(share: float) -> int:
+        return max(math.ceil(share / 100 * len(art)), 1) - 1
+
+    return contrast(lighter[rank(100 - percentile)], darker[rank(percentile)])
+
+
+def pane_reads(
+    art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, panes: PaneStyle, needed: float
+) -> bool:
+    """Return whether ``text`` reads on ``fill`` at ``alpha`` over the ``art`` beneath.
+
+    It does when its contrast reaches ``needed`` over all but ``panes.percentile`` percent
+    of the art, every colour blended as the screen blends it, and when the blended
+    background is calm: its spread is at most ``panes.max_background_spread``, so busy
+    art can't break the letters up (ADR-0016, amendments).
+    """
+    allowed = max(math.ceil(panes.percentile / 100 * len(art)), 1) - 1
+    return (
+        short_of(art, text, fill, alpha, needed) <= allowed
+        and background_spread(art, fill, alpha, panes.percentile) <= panes.max_background_spread
+    )
+
+
 def pane_fill(
-    art: Sequence[RGB],
-    pairs: Sequence[Pair],
-    floor_opacity: float,
-    needed: float,
-    percentile: float,
+    art: Sequence[RGB], pairs: Sequence[Pair], panes: PaneStyle, needed: float
 ) -> tuple[int, int]:
     """Choose a pane's text and fill, and the fill's opacity over the art (ADR-0016 §5, S3).
 
     Each pair is a text colour and its own fill: dark text on a light fill, light text on
-    a dark fill. A pair's fill starts at ``floor_opacity`` and rises only as far as the
-    text needs to reach ``needed`` contrast over all but ``percentile`` percent of the art
-    beneath, every art colour blended as the screen blends it (ADR-0016, amendments).
-    Contrast rises with opacity for a fill on the far side of its text, so the least
+    a dark fill. A pair's fill starts at ``panes.fill_opacity_min`` and rises only as far
+    as its text needs to read over the art beneath (``pane_reads``). Both the contrast
+    and the calm rise with opacity, the contrast for a fill on the far side of its text
+    and the calm because blending toward one colour narrows the spread, so the least
     opacity is found by bisection; any opacity returned has been checked. The pair that
     needs the least opacity wins; at the same opacity, the one with more contrast.
 
     Args:
         art: The art's colours under the pane, sampled.
         pairs: Each text colour, with its fill's colour.
-        floor_opacity: The fill's least opacity, from 0 to 1.
+        panes: The panes' style: the floor, the percentile, and the most spread.
         needed: The contrast the text must reach.
-        percentile: The share of the art, in percent, that may fall short.
 
     Returns:
         The index of the pair in ``pairs``, and the fill's alpha, 0 to 255. If no pair
-        reaches the contrast even opaque, the fill is opaque, in the pair that contrasts
-        most.
+        reads even opaque, the fill is opaque, in the pair that contrasts most.
     """
-    allowed = max(math.ceil(percentile / 100 * len(art)), 1) - 1
-    floor = math.ceil(floor_opacity * _LEVELS)
+    floor = math.ceil(panes.fill_opacity_min * _LEVELS)
     candidates = []
     for index, (text, fill) in enumerate(pairs):
 
         def reads(alpha: int, text: RGB = text, fill: RGB = fill) -> bool:
-            return short_of(art, text, fill, alpha, needed) <= allowed
+            return pane_reads(art, text, fill, alpha, panes, needed)
 
         if not reads(_LEVELS):
             continue
-        low, high = floor - 1, _LEVELS  # low is too faint (or below the floor); high reads
+        low, high = floor - 1, _LEVELS  # low doesn't read (or is below the floor); high reads
         if reads(floor):
             high = floor
         else:
@@ -740,7 +772,7 @@ def pane_fill(
             while high - low > 1:
                 middle = (low + high) // 2
                 low, high = (low, middle) if reads(middle) else (middle, high)
-        reached = art_contrast(art, text, fill, high, percentile)
+        reached = art_contrast(art, text, fill, high, panes.percentile)
         candidates.append((high, -reached, index))
     if not candidates:
         return opaque_fill(pairs)

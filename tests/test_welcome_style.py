@@ -20,9 +20,11 @@ from caddcalc.gui.welcome_style import (
     StyleError,
     WelcomeStyle,
     art_contrast,
+    background_spread,
     contrast,
     luminance,
     pane_fill,
+    pane_reads,
     parse_style,
     rgb,
     sample_grid,
@@ -97,6 +99,7 @@ def edited(table: str, key: str, value: Any) -> dict[str, Any]:
         (edited("logo", "border_role", "ink"), "'ink' isn't a palette role in both themes"),
         (edited("name_pane", "anchor", "middle"), "name_pane.anchor must be one of"),
         (edited("panes", "percentile", 60), "panes.percentile must be a number from 0 to 50"),
+        (edited("panes", "max_background_spread", 0.9), "must be a number from 1 to 21"),
         (edited("name_pane", "min_contrast", 2.9), "below WCAG 2's 3:1 for large text"),
         (edited("version_pane", "min_contrast", 3), "below WCAG 2's 4.5:1 for normal text"),
         (edited("logo", "formats", ["PNG"]), "lowercase file suffixes"),
@@ -229,32 +232,63 @@ def test_the_sample_grid_keeps_real_pixels_and_enough_of_them() -> None:
     assert set(samples) <= {BLACK, WHITE}, "nearest pixels: nothing is averaged to grey"
 
 
+CALM = [(225 + 15 * i // 4095, 220 + 12 * i // 4095, 205 + 10 * i // 4095) for i in range(4096)]
+"""Generated calm art: a soft, light gradient, as a quiet render is."""
+
+
 @pytest.mark.parametrize("needed", [3, 4.5], ids=["title", "version"])
 @pytest.mark.parametrize(
     ("art", "pair", "raised"),
     [
-        (mixed(((244, 241, 234), 1.0)), 0, False),  # calm, light art: ink on white, the floor
+        (mixed(((244, 241, 234), 1.0)), 0, False),  # flat, light art: ink on white, the floor
+        (CALM, 0, False),  # calm art: the floor
         (mixed((BLACK, 0.5), ((16, 20, 24), 0.5)), 1, False),  # dark art: white on ink
         (mixed((BLACK, 0.5), (WHITE, 0.5)), None, True),  # busy art: a fill rises
         (mixed((GREY, 0.06), ((0, 0, 255), 0.88), (WHITE, 0.06)), None, True),  # saturated
         (mixed((GREY, 0.06), ((255, 0, 0), 0.88), (WHITE, 0.06)), None, True),
         (mixed((GREY, 0.06), ((0, 255, 0), 0.88), (WHITE, 0.06)), None, True),
     ],
-    ids=["light", "dark", "busy", "blue", "red", "green"],
+    ids=["light", "calm", "dark", "busy", "blue", "red", "green"],
 )
 def test_a_pane_stays_quiet_unless_the_art_would_hide_its_text(
     art: list[RGB], pair: int | None, raised: bool, needed: float
 ) -> None:
     panes = style().panes
     floor = math.ceil(panes.fill_opacity_min * 255)
-    index, alpha = pane_fill(art, PAIRS, panes.fill_opacity_min, needed, panes.percentile)
+    index, alpha = pane_fill(art, PAIRS, panes, needed)
     if pair is not None:
         assert index == pair
     text, fill = PAIRS[index]
     assert (alpha > floor) == raised and alpha >= floor
     assert art_contrast(art, text, fill, alpha, panes.percentile) >= needed
+    assert background_spread(art, fill, alpha, panes.percentile) <= panes.max_background_spread
     if raised:
-        assert art_contrast(art, text, fill, alpha - 1, panes.percentile) < needed, "the least"
+        assert not pane_reads(art, text, fill, alpha - 1, panes, needed), "the least opacity"
+
+
+def test_busy_art_is_calmed_where_contrast_alone_would_stop() -> None:
+    """Over a black-and-white check, contrast alone stops too low; the fill rises to calm.
+
+    Ink reaches 3:1 at a low fill, but the letters would sit on a background still
+    alternating strongly, which breaks them up.
+    """
+    panes, art = style().panes, mixed((BLACK, 0.5), (WHITE, 0.5))
+    contrast_only = 0
+    while art_contrast(art, INK, WHITE, contrast_only, panes.percentile) < 3:
+        contrast_only += 1
+    assert background_spread(art, WHITE, contrast_only, panes.percentile) > 5, "still busy"
+    index, alpha = pane_fill(art, PAIRS, panes, 3)
+    text, fill = PAIRS[index]
+    assert alpha > contrast_only
+    assert background_spread(art, fill, alpha, panes.percentile) <= panes.max_background_spread
+    assert art_contrast(art, text, fill, alpha, panes.percentile) >= 3
+
+
+def test_calm_art_stays_at_the_floor_with_room_to_spare() -> None:
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    assert background_spread(CALM, WHITE, floor, panes.percentile) < 1.2
+    assert pane_fill(CALM, PAIRS, panes, 3) == (0, floor)
 
 
 def test_saturated_art_is_held_to_the_contrast_where_two_percentiles_were_not() -> None:
@@ -263,16 +297,16 @@ def test_saturated_art_is_held_to_the_contrast_where_two_percentiles_were_not() 
     art = mixed((GREY, 0.06), (blue, 0.88), (WHITE, 0.06))
     panes = style().panes
     for needed in (3, 4.5):
-        index, alpha = pane_fill(art, PAIRS, panes.fill_opacity_min, needed, panes.percentile)
+        index, alpha = pane_fill(art, PAIRS, panes, needed)
         text, fill = PAIRS[index]
         assert art_contrast([blue], text, fill, alpha, 0) >= needed
 
 
 def test_the_title_needs_less_fill_than_the_version() -> None:
-    """Large text needs 3:1, other text 4.5:1 (WCAG 2), so busy art lifts it less."""
-    panes, art = style().panes, mixed((BLACK, 0.5), (WHITE, 0.5))
-    _pair, title = pane_fill(art, PAIRS, panes.fill_opacity_min, 3, panes.percentile)
-    _pair, version = pane_fill(art, PAIRS, panes.fill_opacity_min, 4.5, panes.percentile)
+    """Large text needs 3:1, other text 4.5:1 (WCAG 2), so mid-tone art lifts it less."""
+    panes, art = style().panes, mixed(((115, 115, 115), 0.5), ((140, 140, 140), 0.5))
+    _pair, title = pane_fill(art, PAIRS, panes, 3)
+    _pair, version = pane_fill(art, PAIRS, panes, 4.5)
     assert title < version
 
 
@@ -280,7 +314,7 @@ def test_an_unreadable_pair_becomes_opaque_in_the_pair_that_reads_best() -> None
     mid = (119, 119, 119)
     pairs = [(INK, mid), (WHITE, mid)]
     art = mixed((BLACK, 0.5), (WHITE, 0.5))
-    assert pane_fill(art, pairs, 0.15, 4.5, 5) == (1, 255), "white on grey: 4.48"
+    assert pane_fill(art, pairs, style().panes, 4.5) == (1, 255), "white on grey: 4.48"
 
 
 def test_a_pack_may_override_its_whitelist() -> None:
@@ -309,6 +343,7 @@ def test_a_pack_may_override_its_whitelist() -> None:
         ({"typography": {"display_weight": "bold"}}, "not 'typography'"),
         ({"logo": {"min_short_side": 10}}, r"not logo\.min_short_side"),
         ({"panes": {"text_roles": ["welcome_ink", "welcome_ink"]}}, r"not panes\.text_roles"),
+        ({"panes": {"max_background_spread": 3}}, r"not panes\.max_background_spread"),
         ({"logo": 3}, r"logo must be a table, \[welcome\.style\.logo\]"),
         ("panes", r"must be a table, \[welcome\.style\]"),
         ({"panes": {"fill_opacity_min": 1.5}}, "fill_opacity_min must be a number from 0 to 1"),
