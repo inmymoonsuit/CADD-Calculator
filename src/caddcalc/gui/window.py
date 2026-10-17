@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from functools import partial
 from html import escape
 from typing import Any, cast, override
@@ -90,22 +91,36 @@ COURSE_EXAMPLE = "course example"
 """How results name a value set by Load course example."""
 
 
+class EntryOrigin(Enum):
+    """How a calculator field's own value got there; results name all but typed ones."""
+
+    TYPED = "typed"
+    COURSE_EXAMPLE = "course example"
+    FAMILY_COPY = "family copy"
+    """Copied from the family value when the user unticked "Use … value"."""
+
+
 @dataclass(frozen=True)
 class FieldEntry:
-    """A value given to a calculator field, and how it got there.
-
-    ``value`` is text the user typed, or a base value set for them, such as the course
-    example. ``label`` says how a value the user didn't type got there, for results
-    (ADR-0013 §5); it is empty for typed values.
-    """
+    """A calculator field's own value: text the user typed, or a base value set for them."""
 
     value: TypedValue | float
-    label: str = ""
+    origin: EntryOrigin = EntryOrigin.TYPED
 
     @property
     def base_value(self) -> float:
         """The value, in base units."""
         return self.value.value if isinstance(self.value, TypedValue) else self.value
+
+
+@dataclass(frozen=True)
+class _EditStart:
+    """How a calculator field stood when the user began editing it."""
+
+    entry: FieldEntry | None
+    overridden: bool
+    shown: str
+    in_use: float | None
 
 
 class ResultsBrowser(QTextBrowser):
@@ -160,6 +175,10 @@ class MainWindow(QMainWindow):
         It outlives the page, so the text and its explanation are still there when the
         user comes back.
         """
+        self.edit_starts: dict[tuple[str, str], _EditStart] = {}
+        """How each field being edited stood when its edit began, by (calculator id, key)."""
+        self.field_notices: dict[tuple[str, str], str] = {}
+        """One-time notes for calculator fields, shown until the user leaves the page."""
         self.result: Result | None = None
         """The shown calculator's last result, or ``None`` while its inputs have errors."""
         self.inherit_boxes: dict[str, QCheckBox] = {}
@@ -333,6 +352,7 @@ class MainWindow(QMainWindow):
         """Show the calculator with ``calc_id`` and build its input form."""
         calc = self.registry.get(calc_id)
         self._apply_setting_edits()
+        self._leave_calculator()
         self.calculator = calc
         self.domain = None
         self.title.setText(calc.name)
@@ -350,6 +370,7 @@ class MainWindow(QMainWindow):
         """Show the settings page of the domain with ``domain_id``."""
         domain = self.registry.domain(domain_id)
         self._apply_setting_edits()
+        self._leave_calculator()
         self.domain = domain
         self.calculator = None
         self.title.setText(domain.name)
@@ -365,10 +386,12 @@ class MainWindow(QMainWindow):
 
     def _on_method_changed(self, _index: int) -> None:
         if self.calculator is not None:
+            self._finish_field_edits()
             self._rebuild_form()
 
     def _on_units_changed(self, unit: str) -> None:
         self._apply_setting_edits()
+        self._finish_field_edits()
         prefs = DisplayPrefs(length_unit=unit)
         self._name_pending_units(prefs)
         self.prefs = prefs
@@ -380,9 +403,11 @@ class MainWindow(QMainWindow):
     # --- calculator form ------------------------------------------------------------------
     # Each field shows the value the run uses for it. Only the user's own typing creates
     # intent: a unit switch, an inherited value, and a loaded example keep their base value
-    # and are never re-read from the field (ADR-0013 §9). Fields recompute as the user types.
-    # A field inheriting a set family value is read-only: only unticking its box overrides
-    # (decision C), so a stray keystroke can't pin an override.
+    # and are never re-read from the field (ADR-0013 §9). Fields recompute as the user types,
+    # but an edit is judged when it ends (Enter, focus leaving, or leaving the page or
+    # switching units): keystrokes such as "0.1" on the way to "0.156" are provisional, so
+    # retyping the value in use, or ending on unreadable text, records nothing (decision C).
+    # A field inheriting a set family value is read-only; only unticking its box overrides.
 
     def _rebuild_form(self) -> None:
         calc = self.calculator
@@ -400,14 +425,20 @@ class MainWindow(QMainWindow):
         for p in calc.params_for(self.method_key):
             edit = QLineEdit()
             if self._inherits_set_value(calc, p):
-                self.pending_fields.pop((calc.id, p.key), None)  # it can't apply while inheriting
+                dropped = self.pending_fields.pop((calc.id, p.key), None)
+                if dropped is not None:  # it can't apply while the field inherits
+                    self.field_notices[calc.id, p.key] = (
+                        f"Your unapplied text {dropped!r} for {p.label.lower()} was "
+                        f"discarded; it now uses the {domain.name} value."
+                    )
             pending = self.pending_fields.get((calc.id, p.key))
             edit.setText(self._shown_text(calc, p) if pending is None else pending)
             default = p.default_value()
             if default is not None:
-                edit.setPlaceholderText(field_text(default, p.dimension, self.prefs))
+                edit.setPlaceholderText(f"default {field_text(default, p.dimension, self.prefs)}")
             edit.setToolTip(p.help)
             edit.textEdited.connect(partial(self._on_field_edited, p.key))
+            edit.editingFinished.connect(partial(self._finish_field_edit, p.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
             field.addWidget(QLabel(unit_suffix(p.dimension, self.prefs).strip()))
@@ -436,9 +467,9 @@ class MainWindow(QMainWindow):
 
     def _family_value(self, calc: Calculator, p: Param) -> TypedValue | None:
         """The value set for ``p`` in ``calc``'s domain, if any."""
-        return (
-            self.domain_settings.get(self.registry.domain(calc.domain), p.key) if p.shared else None
-        )
+        if not p.shared:
+            return None
+        return self.domain_settings.get(self.registry.domain(calc.domain), p.key)
 
     def _inherits_set_value(self, calc: Calculator, p: Param) -> bool:
         return self._inherits(calc, p) and self._family_value(calc, p) is not None
@@ -478,32 +509,87 @@ class MainWindow(QMainWindow):
         return None
 
     def _on_field_edited(self, key: str, text: str) -> None:
-        """Keep what the user typed as intent, unless it changes nothing.
+        """Apply a keystroke provisionally, so results follow the typing.
 
-        Empty text drops the field's own value. Text that can't be read is kept, explained,
-        and applies nothing. Text whose value is the one already in use records nothing, so
-        a no-op edit can't pin an override (decision C).
+        The first keystroke of an edit records how the field stood, so the edit can be
+        judged, and undone if it changes nothing, when it ends (``_finish_field_edit``).
+        Empty text drops the field's own value; unreadable text is kept and applies nothing.
         """
         calc = self.calculator
         if calc is None:
             return
         p, _edit = self.fields[key]
         own = self.entries.setdefault(calc.id, {})
+        overrides = self.overrides.setdefault(calc.id, set())
+        if (calc.id, key) not in self.edit_starts:
+            pending = self.pending_fields.get((calc.id, key))
+            self.edit_starts[calc.id, key] = _EditStart(
+                entry=own.get(key),
+                overridden=key in overrides,
+                shown=self._shown_text(calc, p) if pending is None else pending,
+                in_use=self._value_in_use(calc, p),
+            )
         if not text.strip():
             self.pending_fields.pop((calc.id, key), None)
             own.pop(key, None)
         elif self._field_problem(p, text) is not None:
             self.pending_fields[calc.id, key] = text
         else:
-            shown = self._shown_text(calc, p)
             self.pending_fields.pop((calc.id, key), None)
             default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
-            typed = TypedValue.parse(text, p.dimension, default_unit)
-            if text.strip() != shown and typed.value != self._value_in_use(calc, p):
-                own[key] = FieldEntry(typed)
-                if p.shared:
-                    self.overrides.setdefault(calc.id, set()).add(key)  # sticky (decision C)
+            own[key] = FieldEntry(TypedValue.parse(text, p.dimension, default_unit))
+            if p.shared:
+                overrides.add(key)
         self.recompute()
+
+    def _finish_field_edit(self, key: str) -> None:
+        """Judge an edit as it ends: keep it, or put the field back as it stood.
+
+        An edit that ends on the text the field showed, or on the value already in use,
+        changes nothing; nor does one that ends on unreadable text, which stays shown with
+        its error. Anything else is kept, and in a shared field overrides for the session.
+        """
+        calc = self.calculator
+        if calc is None or key not in self.fields:
+            return
+        start = self.edit_starts.pop((calc.id, key), None)
+        if start is None:
+            return
+        p, edit = self.fields[key]
+        text = edit.text()
+        if not text.strip():
+            unchanged = self._value_in_use(calc, p) == start.in_use
+        elif self._field_problem(p, text) is not None:
+            unchanged = True
+        else:
+            default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
+            value = TypedValue.parse(text, p.dimension, default_unit).value
+            unchanged = text.strip() == start.shown or value == start.in_use
+        if unchanged:
+            own = self.entries.setdefault(calc.id, {})
+            if start.entry is None:
+                own.pop(key, None)
+            else:
+                own[key] = start.entry
+            overrides = self.overrides.setdefault(calc.id, set())
+            if start.overridden:
+                overrides.add(key)
+            else:
+                overrides.discard(key)
+        self.recompute()
+
+    def _finish_field_edits(self) -> None:
+        """End every edit in the shown calculator's fields, as leaving each field would."""
+        for key in list(self.fields):
+            self._finish_field_edit(key)
+
+    def _leave_calculator(self) -> None:
+        """End the shown calculator's edits, and forget notices it has already shown."""
+        if self.calculator is not None:
+            self._finish_field_edits()
+            calc_id = self.calculator.id
+            for key in [k for k in self.field_notices if k[0] == calc_id]:
+                del self.field_notices[key]
 
     def _on_inherit_toggled(self, key: str, inherit: bool) -> None:
         """Tick to use the family value; untick to override it with an exact copy of it.
@@ -514,6 +600,7 @@ class MainWindow(QMainWindow):
         calc = self.calculator
         if calc is None:
             return
+        self._finish_field_edit(key)
         p, edit = self.fields[key]
         overrides = self.overrides.setdefault(calc.id, set())
         if inherit:
@@ -521,40 +608,62 @@ class MainWindow(QMainWindow):
         else:
             inherited = self._family_value(calc, p)
             if inherited is not None:
-                domain = self.registry.domain(calc.domain)
-                copied = FieldEntry(inherited, f"copied from {domain.settings_label}")
-                self.entries.setdefault(calc.id, {})[key] = copied
+                self.entries.setdefault(calc.id, {})[key] = FieldEntry(
+                    inherited, EntryOrigin.FAMILY_COPY
+                )
             overrides.add(key)
         self.pending_fields.pop((calc.id, key), None)
+        self.field_notices.pop((calc.id, key), None)
         edit.setText(self._shown_text(calc, p))
         self.recompute()
 
     def load_course_example(self) -> None:
-        """Fill every input with the course example as explicit values (decision D).
+        """Fill the course method's inputs with the course example (decision D).
 
         The built-in defaults are the course examples (docs/user/calculators/sheet-metal.md),
-        so each input gets its default, and shared inputs override the family settings. A
-        method that isn't the course's is switched to the course method, so the example
-        gives the lesson's answer.
+        so each input the course method uses gets its default as an explicit value, and
+        shared ones override the family settings. A method that isn't the course's is
+        switched to the course method, so the example gives the lesson's answer. Inputs
+        the course doesn't use, such as K, go back to their defaults.
         """
         calc = self.calculator
         if calc is None:
             return
+        course = next((m for m in calc.methods if m.legacy), None)
+        if course is None:
+            return
+        for key in [k for k in self.edit_starts if k[0] == calc.id]:
+            del self.edit_starts[key]
         if not calc.get_method(self.method_key).legacy:
-            course = next((m for m in calc.methods if m.legacy), None)
-            if course is not None:
-                self.method_box.blockSignals(True)
-                self.method_box.setCurrentIndex(self.method_box.findData(course.key))
-                self.method_box.blockSignals(False)
+            self.method_box.blockSignals(True)
+            self.method_box.setCurrentIndex(self.method_box.findData(course.key))
+            self.method_box.blockSignals(False)
+        lesson = calc.params_for(course.key)
         self.entries[calc.id] = {
-            p.key: FieldEntry(value, COURSE_EXAMPLE)
-            for p in calc.params
+            p.key: FieldEntry(value, EntryOrigin.COURSE_EXAMPLE)
+            for p in lesson
             if (value := p.default_value()) is not None
         }
-        self.overrides[calc.id] = {p.key for p in calc.params if p.shared}
+        self.overrides.setdefault(calc.id, set()).update(p.key for p in lesson if p.shared)
         for key in [k for k in self.pending_fields if k[0] == calc.id]:
             del self.pending_fields[key]
         self._rebuild_form()
+
+    def _entry_label(self, calc: Calculator, p: Param, entry: FieldEntry) -> str:
+        """Return how results name ``entry``'s value; empty for a value the user typed.
+
+        A copy of the family value is credited to the family settings only while it still
+        equals the family value.
+        """
+        if entry.origin is EntryOrigin.COURSE_EXAMPLE:
+            return COURSE_EXAMPLE
+        if entry.origin is EntryOrigin.FAMILY_COPY:
+            settings_label = self.registry.domain(calc.domain).settings_label
+            inherited = self._family_value(calc, p)
+            if inherited is not None and inherited.value == entry.base_value:
+                return f"copied from {settings_label}"
+            return f"copied earlier from {settings_label}"
+        return ""
 
     def _run_arguments(
         self, calc: Calculator
@@ -572,8 +681,8 @@ class MainWindow(QMainWindow):
             entry = own.get(p.key)
             if entry is not None and not self._inherits(calc, p):
                 inputs[p.key] = entry.base_value
-                if entry.label:
-                    labels[p.key] = InputSource(SourceKind.EXPLICIT, entry.label)
+                if label := self._entry_label(calc, p, entry):
+                    labels[p.key] = InputSource(SourceKind.EXPLICIT, label)
         domain = self.registry.domain(calc.domain)
         overridden = self.overrides.get(calc.id, set())
         set_values = self.domain_settings.for_domain(domain).values
@@ -584,7 +693,8 @@ class MainWindow(QMainWindow):
         """Show each field's state, and return why any field's text can't be read.
 
         Shared fields show their box while a family value is set, are read-only while
-        inheriting it, and show a note while overriding it.
+        inheriting it, and show a note while overriding it or after unapplied text in them
+        was discarded.
         """
         domain = self.registry.domain(calc.domain)
         problems = []
@@ -605,7 +715,7 @@ class MainWindow(QMainWindow):
             box.setChecked(self._inherits(calc, p))
             box.blockSignals(False)
             own = self._own_value(calc, p)
-            text = ""
+            text = self.field_notices.get((calc.id, key), "")
             if inherited is not None and not self._inherits(calc, p) and own is not None:
                 text = describe_override(domain.name, inherited.value, own, p.dimension, self.prefs)
             note.setText(text)

@@ -92,15 +92,20 @@ All notable changes are recorded here. The format follows
 - Calculators inherit family settings (ADR-0013 §8, decisions C and D). Once a family
   value is set, each field that shares it shows the value, read-only, with a ticked
   "Use Sheet Metal value" box. Unticking overrides it for the session with an exact
-  copy of the family value, labelled "copied from Sheet Metal settings" until edited.
-  Typing a value already in use records nothing, so no stray edit pins an override.
+  copy of the family value, labelled "copied from Sheet Metal settings" until edited,
+  or "copied earlier from Sheet Metal settings" once the family value changes. Results
+  follow each keystroke, but an edit is judged when it ends (Enter, leaving the field,
+  or leaving the page or switching units): one that ends on the value in use, or on
+  unreadable text, records nothing, so retyping a value never pins an override.
   Only overridden or edited values are passed to `run()` as inputs. A note under an
   overriding field shows both values, recomputed on every render, and the settings
   page shows "Overridden in N" with the calculators' names. Unreadable text stays
-  outlined and explained across page and unit switches and applies nothing; clearing a
-  field returns it to its default. "Load course example" fills every input with the
-  course example, labelled "course example", overrides family values, and selects the
-  course method, for calculators with a legacy method. Results in the GUI list each
+  outlined and explained across page and unit switches and applies nothing, and a note
+  says when it is discarded because the field started inheriting. Clearing a field
+  returns it to its default, shown as "default 0.1046". "Load course example" fills
+  the course method's inputs with the course example, labelled "course example",
+  overrides family values, and selects the course method, for calculators with a
+  legacy method; other inputs go back to their defaults. Results in the GUI list each
   input with its source, as the CLI does.
 - `core.formatting.entry_text()` is the one display rule for typed values (ADR-0013
   §9.3): a field shows the user's own text while it names its unit or its unit is the
