@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import importlib
 import json
+import shutil
 import sys
 from html import escape
 from pathlib import Path
@@ -289,6 +290,20 @@ def test_build_stages_only_the_named_files_and_notices(
 
 
 @pytest.mark.gui
+def test_build_checks_the_display_face_and_its_license_are_bundled(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    vendored = ROOT / "src" / "caddcalc" / "gui" / "assets" / "fonts" / "vt323"
+    assert build_script.missing_fonts(tmp_path) == [
+        "fonts/vt323/OFL.txt",
+        "fonts/vt323/VT323-Regular.ttf",
+    ]
+    shipped = tmp_path / "caddcalc" / "gui" / "assets" / "fonts" / "vt323"
+    shutil.copytree(vendored, shipped)
+    assert build_script.missing_fonts(tmp_path) == []
+
+
+@pytest.mark.gui
 def test_windows_version_resources_get_four_numbers(build_script: ModuleType) -> None:
     assert build_script.numeric_version("0.1.0.dev0") == "0.1.0.0"
     assert build_script.numeric_version("1.2") == "1.2.0.0"
@@ -437,6 +452,7 @@ def test_startup_shows_the_generic_welcome_screen_and_leaves_no_window(
         "generic",
         "generic",
     )
+    assert report["display_font"] == "VT323", "the vendored face loaded (ADR-0016 §2)"
     app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     left = [w for w in app.topLevelWidgets() if isinstance(w, MainWindow | WelcomeScreen)]
     assert left == [], "main() disposes of its windows (KI-019)"

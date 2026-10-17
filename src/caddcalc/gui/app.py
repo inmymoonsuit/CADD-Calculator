@@ -221,6 +221,7 @@ def _write_smoke_report(
         "welcome_shown": welcome.isVisible(),
         "welcome_art": welcome.art_source,
         "welcome_logo": welcome.logo_source,
+        "display_font": welcome.display_face,
         "about_custom": branding.about_html is not None,
         "calculators": len(window.registry),
         "reference_tables": _load_reference_tables(),

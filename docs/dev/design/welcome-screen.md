@@ -88,6 +88,26 @@ logo = "logo-vertical.svg"   # optional; the app icon and name when absent
   art never goes in this repository (ADR-0008, item 4).
 * To try a pack without building, point `CADDCALC_BRANDING` at its folder.
 
+## Typography
+
+The name is set in **VT323**, a pixel face by Peter Hull, drawn bold (ADR-0016, S1).
+It ships unmodified under the SIL Open Font License 1.1, in `gui/assets/fonts/vt323/`
+beside its `OFL.txt`, pinned to one google/fonts commit and hashed in `manifest.toml`.
+The app loads it into Qt when the welcome screen opens (`gui/fonts.py`). VT323 has
+only a regular weight, so its bold is the one Qt synthesizes. If the face can't be
+loaded, the name falls back to the fallback families, with a warning, and the screen
+still starts. The version uses the system's UI font.
+
+To check the vendored files offline, or to move the pin to another commit:
+
+```bash
+uv run python packaging/fetch_fonts.py --check
+```
+
+```bash
+uv run python packaging/fetch_fonts.py --commit SHA
+```
+
 ## On screen
 
 * **Smaller screens.** The card's preferred size is its tokens' (1056 × 572). On a screen

@@ -7,6 +7,12 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- The welcome screen's display face, VT323 by Peter Hull, drawn bold (ADR-0016, S1). It
+  ships unmodified under the SIL Open Font License 1.1 with its `OFL.txt`, pinned to a
+  google/fonts commit and hashed by `packaging/fetch_fonts.py`. It's credited in About
+  and THIRD_PARTY_NOTICES.md. If it can't be loaded, the name uses a fallback face, with a
+  warning. The build checks that the face and its license are bundled, and the smoke
+  report gains `display_font`.
 - Design tokens for the welcome screen (ADR-0016): every size, colour role, and font it
   uses is a token in `gui/assets/welcome_style.toml`, read, typed, and range-checked by
   `gui/welcome_style.py`, which refuses unknown keys and checks each role against the

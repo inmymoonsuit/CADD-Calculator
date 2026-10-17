@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tomllib
 from importlib.metadata import version as dist_version
 from pathlib import Path
 
@@ -42,6 +43,7 @@ from caddcalc.gui.branding import (
     BrandingError,
     load_branding,
 )
+from caddcalc.gui.welcome_style import STYLE_FILE, style
 from icons import ROOT, ensure_qt_app, save_icns, save_ico
 
 BUILDS = ROOT / "builds"
@@ -301,6 +303,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         if sys.platform != "darwin":  # the .app bundle's layout is unchecked (ADR-0009)
             for missing in missing_tables(exe.parent):
                 raise BuildError(f"the reference table {missing} is missing from the build")
+            for missing in missing_fonts(exe.parent):
+                raise BuildError(f"the display face's {missing} is missing from the build")
 
     files = [p for p in output.rglob("*") if p.is_file()] if output.is_dir() else [output]
     return {
@@ -328,6 +332,22 @@ def missing_tables(app_dir: Path) -> list[str]:
         f"{spec.package}/{spec.filename}"
         for spec in REFERENCE_TABLES
         if not (app_dir.joinpath(*spec.package.split(".")) / spec.filename).is_file()
+    ]
+
+
+def missing_fonts(app_dir: Path) -> list[str]:
+    """Return the display face's files that aren't in a standalone build's folder.
+
+    Its manifest lists them: the font, and the license the OFL says ships with it.
+    """
+    assets = STYLE_FILE.parent
+    font_dir = (assets / style().typography.display_file).parent
+    manifest = tomllib.loads((font_dir / "manifest.toml").read_text(encoding="utf-8"))
+    shipped = app_dir / font_dir.relative_to(ROOT / "src")
+    return [
+        f"{font_dir.relative_to(assets).as_posix()}/{name}"
+        for name in manifest["files"]
+        if not (shipped / name).is_file()
     ]
 
 
@@ -380,6 +400,9 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
                 f"the welcome {part} came from {report.get(f'welcome_{part}')!r}, "
                 f"expected {expected!r}"
             )
+    family = style().typography.display_family
+    if report.get("display_font") != family:
+        problems.append(f"the display face is {report.get('display_font')!r}, expected {family!r}")
     if report.get("reference_tables") != len(REFERENCE_TABLES):
         problems.append(
             f"loaded {report.get('reference_tables')} reference tables, "

@@ -133,8 +133,9 @@ License), OpenSSL's libcrypto (Apache-2.0), libffi (MIT), Nuitka's runtime (Apac
 and the Microsoft C++ runtime (redistributable). `packaging/build.py` copies only the
 project's `LICENSE.md`, and the PySide6 wheels carry no LGPL text to copy.
 **Progress (2026-10-17):** `THIRD_PARTY_NOTICES.md` now exists. The build copies it into
-the app folder, and it carries Tabler Icons' full MIT text, a table of the bundled runtime
-components, and the note on replacing the Qt libraries. **Still needed before a public
+the app folder, and it carries Tabler Icons' full MIT text, VT323's full SIL Open Font
+License (ADR-0016), a table of the bundled runtime components, and the note on replacing
+the Qt libraries. **Still needed before a public
 release:** the full license texts for those runtime components (LGPL-3.0 and the GPL-3.0
 it builds on, the PSF license, Apache-2.0, libffi's MIT text, and the MSVC runtime terms).
 

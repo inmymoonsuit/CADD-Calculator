@@ -99,8 +99,10 @@ The loader is `caddcalc.gui.branding`. It doesn't import Qt.
 ## Notices
 
 The build copies `LICENSE.md` and `THIRD_PARTY_NOTICES.md` into the app folder. Third-party
-assets inside the package, such as the Tabler icons and their `LICENSE.txt`, ride along
-with the package data. See KI-016 for what the notices still lack.
+assets inside the package ride along with the package data: the Tabler icons and their
+`LICENSE.txt`, and the welcome screen's display face, VT323, with its `OFL.txt`
+(`gui/assets/fonts/vt323/`, vendored by `packaging/fetch_fonts.py`; ADR-0016 §2). See
+KI-016 for what the notices still lack.
 
 ## What the build does
 
@@ -114,12 +116,15 @@ with the package data. See KI-016 for what the notices still lack.
 4. Renames the `.dist` folder, copies `LICENSE.md` into it, and checks that a generic build
    has no `branding/` folder and a branded build has one, and that every reference table
    in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
-   bundled (`--include-package-data=caddcalc` carries them).
+   bundled (`--include-package-data=caddcalc` carries them), as is every file the display
+   face's `manifest.toml` lists: the font and its license.
 5. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
    run opens the welcome screen and the window, loads every reference table, writes the
    report, and exits. The script checks the reported name, edition, icon, that the
-   welcome screen showed with the pack's art and logo (or the generic ones), the number
-   of reference tables loaded, and that the app knew it was packaged.
+   welcome screen showed with the pack's art and logo (or the generic ones), that it
+   loaded the display face (the report's `display_font` is `VT323`, or `fallback` if it
+   couldn't), the number of reference tables loaded, and that the app knew it was
+   packaged.
 
 `--mode onefile` builds a single self-extracting executable instead. It works, branded too,
 but starts about 0.9 s slower and unpacks to a temp folder on every start, which

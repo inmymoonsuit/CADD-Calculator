@@ -153,3 +153,25 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   pane's `font` and `safe_area`, and `typography.min_font_size`.
 * **Until slice e:** the logo region still sits beside the art, at its new 96 px width,
   and the panes are drawn fully opaque, which meets the contrast rule at any art.
+
+### 2026-10-17: the display face as vendored (slice c)
+
+* **Source.** VT323 comes from google/fonts at commit `2da41909d08a` (`ofl/vt323`),
+  with its `OFL.txt`. It's in `gui/assets/fonts/vt323/`, and `manifest.toml` records
+  the commit, the copyright, and each file's SHA-256. `packaging/fetch_fonts.py` checks
+  the files offline (`--check`) or moves the pin (`--commit`). It refuses a license that
+  isn't the OFL 1.1, a font file that isn't a font, and a file that changed since it was
+  recorded. `.gitattributes` marks `*.ttf` binary, so line-ending conversion can't change
+  the font's hash.
+* **Loading.** `gui/fonts.py` adds the face with `QFontDatabase.addApplicationFont`
+  when the welcome screen opens, and checks that it holds the family the tokens name.
+  Otherwise it warns, and text uses the fallback families. VT323 has only a regular
+  weight, so the bold of S1 is the one Qt synthesizes.
+* **Build and credits.** The build checks that every file the manifest lists is in the
+  app folder. The smoke report gains `display_font`, the family or `fallback`, and the
+  build's smoke test requires the family. THIRD_PARTY_NOTICES.md carries the full OFL,
+  and About credits the face.
+* **Sources:** the font and its license in github.com/google/fonts at the pinned commit,
+  and the project github.com/phoikoi/VT323; the SIL Open Font License 1.1
+  (openfontlicense.org); Qt's `QFontDatabase` reference, whose `addApplicationFont`
+  returns -1 when a font can't be loaded.

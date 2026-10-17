@@ -35,6 +35,8 @@ def about_html(branding: Branding) -> str:
         '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
         "github.com/inmymoonsuit/CADD-Calculator</a></p>"
         '<p>Icons: <a href="https://tabler.io/icons">Tabler Icons</a>, MIT License. '
+        'Display typeface: <a href="https://github.com/phoikoi/VT323">VT323</a> by Peter '
+        "Hull, SIL Open Font License 1.1. "
         "Third-party notices are in THIRD_PARTY_NOTICES.md.</p>"
     )
 

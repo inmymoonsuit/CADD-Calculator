@@ -34,6 +34,7 @@ from PySide6.QtWidgets import QApplication, QHBoxLayout, QToolButton, QVBoxLayou
 from caddcalc import __version__
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC_ICON, Branding
+from caddcalc.gui.fonts import display_family
 from caddcalc.gui.icons import Scheme, current_scheme, icon, role_color
 from caddcalc.gui.welcome_art import generic_art, generic_logo
 from caddcalc.gui.welcome_layout import Rect, Size, contain_fit, cover_crop, fit_scale, pane_rect
@@ -75,7 +76,11 @@ def line_width(width: float, widget: QWidget) -> float:
 
 
 def display_font(pixel_size: float) -> QFont:
-    """Return the display face at ``pixel_size``, at its token weight, with its fallbacks."""
+    """Return the display face at ``pixel_size``, at its token weight, with its fallbacks.
+
+    VT323 has only a regular file, so its bold (S1) is the one Qt synthesizes.
+    """
+    display_family()  # loads the vendored face on first use
     typography = style().typography
     font = QFont()
     font.setFamilies([typography.display_family, *typography.fallback_families])
@@ -278,6 +283,8 @@ class WelcomeScreen(QWidget):
         self.setWindowTitle(branding.name)
         self.setAccessibleName(f"Welcome to {branding.name}")
         tokens = style()
+        self.display_face = display_family()
+        """The display face its text uses: the tokens' family, or ``"fallback"``."""
 
         scale = self._fit_scale()
         window = tokens.window
