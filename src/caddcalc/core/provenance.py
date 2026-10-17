@@ -34,7 +34,7 @@ class InputSource:
     given plainly. A default has none.
     """
     domain: str | None = None
-    """The domain id, when ``kind`` is ``DOMAIN``."""
+    """The domain id, when ``kind`` is ``DOMAIN`` or ``DERIVED``."""
     reference: Reference | None = None
     """The table and version a derived value came from (phase 2)."""
 

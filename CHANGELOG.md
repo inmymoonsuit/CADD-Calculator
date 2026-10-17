@@ -9,11 +9,16 @@ All notable changes are recorded here. The format follows
 ### Added
 - Domain choices and derived values (ADR-0014 §2, phase 2a): a `Domain` can offer
   `choices`, whose `options` come from its `resolver`; option keys such as `"msg:12"` are
-  public. `DomainSettings.set_choice()`, `clear_choice()`, and `choice()` keep the user's
-  selections, and `for_domain()` fills `DomainValues.derived` with the `DerivedValue`s
-  they give. A calculator takes a derived value after a typed or explicit one and before
-  its default, names it as a derived source, and adds the value's note, such as a
-  nominal caution, once whenever the value is used. No domain offers a choice yet.
+  public. A choice can depend on others (`Choice.depends_on`, e.g. a temper on a
+  material), and its options follow their selections. `DomainSettings.set_choice()`,
+  `clear_choice()`, and `choice()` keep the user's selections; changing one clears any
+  dependent selection it no longer offers, keeps the rest, and `cleared_choices()` names
+  the ones cleared. Clear all (`clear_domain()`) returns each choice to its default.
+  `for_domain()` fills `DomainValues.derived` with the `DerivedValue`s the selections
+  give, each naming its table and its domain. A calculator takes a derived value after a
+  typed or explicit one and before its default, names it as a derived source, and adds
+  the value's note, such as a nominal caution, once whenever the value is used, naming
+  the inputs that took it. No domain offers a choice yet.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks it: a known
   schema version, only the content keys its domain module declares, and sources whose

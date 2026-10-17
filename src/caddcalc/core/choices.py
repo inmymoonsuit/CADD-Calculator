@@ -47,7 +47,14 @@ class Choice:
     label: str
     help: str = ""
     default: str | None = None
-    """The option key selected until the user chooses, or ``None`` for no selection."""
+    """The option key selected until the user chooses, or ``None`` for no selection.
+
+    For a dependent choice it applies only where the parents' selections offer it.
+    """
+    depends_on: tuple[str, ...] = ()
+    """Keys of the choices whose selections decide this one's options, e.g. a temper
+    depends on the material. A parent change clears a selection it no longer offers.
+    """
 
 
 @dataclass(frozen=True)
@@ -55,8 +62,9 @@ class DerivedValue:
     """A value a selection gives one domain setting.
 
     Raises:
-        SpecError: The source isn't a derived one, or ``stated`` doesn't equal ``value``.
-            A resolver that builds such a value has a bug.
+        SpecError: The source isn't a derived one, doesn't name its table (a
+            ``reference``), or ``stated`` doesn't equal ``value``. A resolver that builds
+            such a value has a bug.
     """
 
     value: float
@@ -71,15 +79,29 @@ class DerivedValue:
     def __post_init__(self) -> None:
         if self.source.kind is not SourceKind.DERIVED:
             raise SpecError(f"A derived value needs a derived source, not {self.source.kind}")
+        if self.source.reference is None:
+            raise SpecError(
+                f"Derived value {self.source.label!r} must name its table and version (ADR-0014 §1)"
+            )
         if self.stated is not None and self.stated.value != self.value:
             raise SpecError(f"Stated value {self.stated.text!r} doesn't equal {self.value!r}")
 
 
 class ChoiceResolver(Protocol):
-    """Supplies a domain's options and turns selections into derived values."""
+    """Supplies a domain's options and turns selections into derived values.
 
-    def options(self, choice: str) -> Sequence[Option]:
-        """Return the options of ``choice``, in display order."""
+    A result carries a derived value's note only when one of its inputs uses that value,
+    so every ``DerivedValue`` a caution applies to must carry the note itself.
+    """
+
+    def options(self, choice: str, selections: Mapping[str, str]) -> Sequence[Option]:
+        """Return the options of ``choice``, in display order.
+
+        Args:
+            choice: The choice key.
+            selections: The current selections, for a choice whose options depend on
+                others (``Choice.depends_on``).
+        """
 
     def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
         """Return the values ``selections`` give, by setting key.

@@ -71,21 +71,55 @@ class Domain:
             raise UsageError(f"Domain {self.id!r} has no choice {key!r}; its choices are: {known}")
         return found
 
-    def options(self, key: str) -> Sequence[Option]:
-        """Return the options of the choice with ``key``, in display order.
+    def options(
+        self, key: str, selections: Mapping[str, str] = MappingProxyType({})
+    ) -> Sequence[Option]:
+        """Return the options of the choice with ``key``, in display order, checked.
+
+        Args:
+            key: The choice key.
+            selections: The current selections, which a dependent choice's options need.
 
         Raises:
             UsageError: The domain has no such choice.
+            SpecError: The resolver gives a malformed or repeated option key, or an
+                option without a label. Either is a bug in the domain.
         """
         self.choice(key)
-        return () if self.resolver is None else self.resolver.options(key)
+        options = () if self.resolver is None else tuple(self.resolver.options(key, selections))
+        seen: set[str] = set()
+        for option in options:
+            if not OPTION_KEY.fullmatch(option.key) or option.key in seen:
+                raise SpecError(
+                    f"Domain {self.id!r}: option key {option.key!r} of {key!r} is malformed "
+                    "or repeats; option keys look like 'group:item'"
+                )
+            if not option.label.strip():
+                raise SpecError(f"Domain {self.id!r}: option {option.key!r} needs a label")
+            seen.add(option.key)
+        return options
+
+    def ordered_choices(self) -> tuple[Choice, ...]:
+        """Return the choices with each one after the choices it depends on."""
+        ordered: list[Choice] = []
+        for choice in self.choices:
+            self._place(choice, ordered)
+        return tuple(ordered)
+
+    def _place(self, choice: Choice, ordered: list[Choice]) -> None:
+        if choice in ordered:
+            return
+        for parent in choice.depends_on:
+            self._place(self.choice(parent), ordered)
+        ordered.append(choice)
 
     def derived(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
         """Return the values ``selections`` give this domain's settings, checked.
 
         Raises:
-            SpecError: The resolver gives a value for a key that isn't a setting, or one
-                outside its setting's range. Either is a bug in the domain.
+            SpecError: The resolver gives a value for a key that isn't a setting, one
+                outside its setting's range, or one whose source names another domain.
+                Each is a bug in the domain.
         """
         if not selections or self.resolver is None:
             return MappingProxyType({})
@@ -94,6 +128,11 @@ class Domain:
             setting = self.find_setting(key)
             if setting is None:
                 raise SpecError(f"Domain {self.id!r} derives {key!r}, which isn't a setting")
+            if value.source.domain != self.id:
+                raise SpecError(
+                    f"Domain {self.id!r} derives {key!r} with a source naming domain "
+                    f"{value.source.domain!r}; it must name {self.id!r}"
+                )
             try:
                 setting.check(value.value, value.source)
             except InputError as exc:
@@ -153,15 +192,16 @@ class Domain:
                 )
 
     def validate_choices(self) -> None:
-        """Check the choices and their options. Registration calls this after ``validate``.
+        """Check the choices' static parts. Registration calls this after ``validate``.
 
         Choices have their own check because, unlike a setting, a choice may have a
-        default (ADR-0014 §2).
+        default (ADR-0014 §2). Options depend on selections, so they are checked when
+        they are computed (``options``), not here.
 
         Raises:
-            SpecError: A choice key is malformed, repeats, or is also a setting key; there
-                is no resolver; or an option key is malformed or repeats, an option has no
-                label, or a default isn't one of the choice's options.
+            SpecError: There is no resolver; a choice key is malformed, repeats, or is
+                also a setting key; or a choice depends on itself, on a choice the
+                domain doesn't declare, or on a cycle of choices.
         """
         if self.choices and self.resolver is None:
             raise SpecError(f"Domain {self.id!r} has choices but no resolver for them")
@@ -172,21 +212,24 @@ class Domain:
                     f"Domain {self.id!r}: choice key {choice.key!r} is malformed or already used"
                 )
             keys.add(choice.key)
-            option_keys: set[str] = set()
-            for option in self.options(choice.key):
-                if not OPTION_KEY.fullmatch(option.key) or option.key in option_keys:
+        declared = {c.key: c for c in self.choices}
+        for choice in self.choices:
+            for parent in choice.depends_on:
+                if parent not in declared or parent == choice.key:
                     raise SpecError(
-                        f"Domain {self.id!r}: option key {option.key!r} of {choice.key!r} is "
-                        "malformed or repeats; option keys look like 'group:item'"
+                        f"Domain {self.id!r}: choice {choice.key!r} depends on {parent!r}, "
+                        "which isn't another declared choice"
                     )
-                if not option.label.strip():
-                    raise SpecError(f"Domain {self.id!r}: option {option.key!r} needs a label")
-                option_keys.add(option.key)
-            if choice.default is not None and choice.default not in option_keys:
-                raise SpecError(
-                    f"Domain {self.id!r}: default {choice.default!r} of {choice.key!r} is not "
-                    "one of its options"
-                )
+            self._check_no_cycle(choice, declared, ())
+
+    def _check_no_cycle(
+        self, choice: Choice, declared: Mapping[str, Choice], path: tuple[str, ...]
+    ) -> None:
+        if choice.key in path:
+            cycle = " -> ".join((*path, choice.key))
+            raise SpecError(f"Domain {self.id!r}: choices depend on each other: {cycle}")
+        for parent in choice.depends_on:
+            self._check_no_cycle(declared[parent], declared, (*path, choice.key))
 
 
 @dataclass(frozen=True)

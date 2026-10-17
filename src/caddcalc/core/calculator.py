@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, ClassVar
 
 from caddcalc.core import expr
@@ -285,18 +285,19 @@ class Calculator(ABC):
 
         values: dict[str, float] = {}
         sources: dict[str, InputSource] = {}
-        derived_notes: list[Note] = []
+        derived_notes: dict[Note, list[str]] = {}
         for p in self.params_for(m.key):
             value, source = _resolve(p, inputs, settings, labels)
             p.check(value, source)
             values[p.key] = value
             sources[p.key] = source
             note = _derived_note(p, source, settings)
-            if note is not None and note not in derived_notes:
-                derived_notes.append(note)
+            if note is not None:
+                derived_notes.setdefault(note, []).append(p.key)
 
         ctx = Context(self, m, values)
-        ctx.notes.extend(derived_notes)  # one note per derived value used (ADR-0014)
+        # One note per derived note used, naming every input that took it (ADR-0014).
+        ctx.notes.extend(replace(n, subjects=tuple(keys)) for n, keys in derived_notes.items())
         self.compute(ctx)
 
         missing = [o.key for o in self.outputs if o.key not in ctx.outputs]

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 
 from caddcalc.core.domain import Domain, DomainValues
-from caddcalc.core.errors import UsageError
+from caddcalc.core.errors import SpecError, UsageError
 from caddcalc.core.units import TypedValue
 
 
@@ -89,37 +89,71 @@ class DomainSettings:
         return self._with(domain.id, values=remaining)
 
     def choice(self, domain: Domain, key: str) -> str | None:
-        """Return the option chosen for ``key``, its default if none was, or ``None``.
+        """Return the option selected for ``key``, or ``None`` if there is none.
+
+        The selection is the option the user chose, else the choice's default where the
+        selections it depends on offer it.
 
         Raises:
             UsageError: ``domain`` has no choice with that key.
         """
-        default = domain.choice(key).default
-        return self._choices.get(domain.id, {}).get(key, default)
+        domain.choice(key)
+        return _resolve(domain, self._choices.get(domain.id, {}))[0].get(key)
 
     def set_choice(self, domain: Domain, key: str, option: str) -> DomainSettings:
         """Return a copy with ``option`` chosen for the choice ``key``.
 
+        ``option`` must be offered under the current selections. A choice that depends on
+        ``key`` keeps its option where the new selection still offers it and loses it
+        otherwise, so the change is never refused; ``cleared_choices`` names the ones lost.
+
         Raises:
-            UsageError: ``domain`` has no choice with that key, or the choice has no such
-                option.
+            UsageError: ``domain`` has no choice with that key, or the choice offers no
+                such option under the current selections.
         """
-        if option not in {o.key for o in domain.options(key)}:
+        domain.choice(key)
+        _, kept = _resolve(domain, {**self._choices.get(domain.id, {}), key: option})
+        if kept.get(key) != option:
             raise UsageError(f"Choice {key!r} of domain {domain.id!r} has no option {option!r}")
-        return self._with(domain.id, choices={**self._choices.get(domain.id, {}), key: option})
+        return self._with(domain.id, choices=kept)
 
     def clear_choice(self, domain: Domain, key: str) -> DomainSettings:
         """Return a copy with the choice ``key`` back to its default.
+
+        A choice that depends on ``key`` loses its option where the default doesn't offer
+        it, as in ``set_choice``.
 
         Raises:
             UsageError: ``domain`` has no choice with that key.
         """
         domain.choice(key)
         remaining = {k: v for k, v in self._choices.get(domain.id, {}).items() if k != key}
-        return self._with(domain.id, choices=remaining)
+        return self._with(domain.id, choices=_resolve(domain, remaining)[1])
+
+    def cleared_choices(self, domain: Domain, before: DomainSettings) -> tuple[str, ...]:
+        """Return the choices whose option the user chose in ``before`` and this lost.
+
+        Only choices cleared because a selection they depend on changed are named, in
+        dependency order, so a front end can announce them after ``set_choice`` or
+        ``clear_choice``. The choice the user changed is never among them.
+        """
+        old_chosen = before._choices.get(domain.id, {})
+        new_chosen = self._choices.get(domain.id, {})
+        old = _resolve(domain, old_chosen)[0]
+        new = _resolve(domain, new_chosen)[0]
+        return tuple(
+            c.key
+            for c in domain.ordered_choices()
+            if c.key in old_chosen
+            and c.key not in new_chosen
+            and any(old.get(p) != new.get(p) for p in c.depends_on)
+        )
 
     def clear_domain(self, domain: Domain) -> DomainSettings:
-        """Return a copy with every setting and choice of ``domain`` unset."""
+        """Return a copy with ``domain``'s settings unset and its choices at their defaults.
+
+        This is Clear all: each choice goes back to its default, not to no selection.
+        """
         return self._with(domain.id, values={}, choices={})
 
     def for_domain(self, domain: Domain) -> DomainValues:
@@ -127,9 +161,7 @@ class DomainSettings:
         values = domain.values(
             **{key: entry.value for key, entry in self._values.get(domain.id, {}).items()}
         )
-        selections = {
-            c.key: option for c in domain.choices if (option := self.choice(domain, c.key))
-        }
+        selections = _resolve(domain, self._choices.get(domain.id, {}))[0]
         return replace(values, derived=domain.derived(selections))
 
     def _with(
@@ -161,3 +193,31 @@ def _replaced[V](
     if entries:
         updated[domain_id] = dict(entries)
     return updated
+
+
+def _resolve(domain: Domain, chosen: Mapping[str, str]) -> tuple[dict[str, str], dict[str, str]]:
+    """Return the selections in effect, and the chosen options that are still offered.
+
+    Each choice is resolved after the choices it depends on, so its options are computed
+    from their selections. A choice takes the option chosen for it if offered, else its
+    default if offered, else nothing.
+
+    Raises:
+        SpecError: A choice that depends on nothing has a default it doesn't offer, a bug
+            in the domain.
+    """
+    selections: dict[str, str] = {}
+    kept: dict[str, str] = {}
+    for choice in domain.ordered_choices():
+        offered = {o.key for o in domain.options(choice.key, selections)}
+        picked = chosen.get(choice.key)
+        if picked is not None and picked in offered:
+            selections[choice.key] = kept[choice.key] = picked
+        elif choice.default is not None and choice.default in offered:
+            selections[choice.key] = choice.default
+        elif choice.default is not None and not choice.depends_on:
+            raise SpecError(
+                f"Domain {domain.id!r}: the default {choice.default!r} of {choice.key!r} "
+                "isn't one of its options"
+            )
+    return selections, kept

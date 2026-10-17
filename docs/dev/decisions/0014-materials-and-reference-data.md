@@ -466,3 +466,41 @@ These replace the per-table cap and the float input of `nominal()` recorded abov
   refuses a float, because some exact ties, such as US Standard 26 ga at 0.01875 in, sit
   just below the tie as floats. A value with no exact form, such as an AWG diameter, is
   computed as a `Decimal` at a stated working precision.
+
+### 2026-10-17: dependent choices and derived provenance (maintainer, phase 2a)
+
+These replace, in the gauge-choice entry above, the deferral of `depends_on` to phase 2b,
+the resolver's `options(choice)`, and the wording of the derived note's subjects.
+
+* **Derived provenance is required.** A `DerivedValue`'s source must name its table and
+  version (`reference`), and `Domain.derived()` refuses a value whose source names
+  another domain. Neither is filled in silently: a resolver that omits one has a bug,
+  and the check fails as soon as the value is derived.
+* **Dependent choices.** `Choice.depends_on` names the choices whose selections decide
+  its options, as a temper depends on a material. The resolver's
+  `options(choice, selections)` receives them.
+  * Registration checks only the static parts: choice keys, that each parent is another
+    declared choice, and that there is no cycle. Options are checked when they are
+    computed; a malformed or repeated option key, or an option without a label, is a
+    definition error.
+  * Choices resolve in dependency order (`Domain.ordered_choices()`). Each takes the
+    option the user chose if it is offered, else its default if that is offered, else
+    nothing. A dependent choice's default applies only where its parents offer it; an
+    independent choice whose default it doesn't offer is a definition error.
+  * `set_choice()` accepts only an option offered under the current selections. When a
+    selection changes, each dependent selection still offered is kept and the rest are
+    cleared, so a change is never refused. `DomainSettings.cleared_choices()` names the
+    ones cleared, so the GUI can announce them (2a.4).
+* **Clear all restores each choice's default,** not no selection. The gauge has no
+  default.
+* **The derived note names its inputs.** Its subjects are the keys of the parameters
+  that took the derived value, merged into one note when several did. A result carries
+  a note only through a value that is used, so every `DerivedValue` a caution applies
+  to carries the note itself.
+* **Identifiers (Q3).**
+  * Gauge option groups: `msg` (Manufacturers' Standard), `galv` (galvanized), `uss`
+    (US Standard), and `awg`.
+  * Phase 2b normalizes a designation into an option item by lowercasing it and turning
+    `-`, `.`, and spaces into `_`, e.g. `al:6061_t6`, `ss:304_2b`.
+  * A temper stays a separate, dependent choice; an option key never has a second colon.
+

@@ -14,8 +14,8 @@ Conventions for every sheet-metal calculator:
 Select **Sheet Metal** in the calculator list to open its settings page. These are the
 values the sheet-metal calculators share, so you can set them once for the whole
 family. An empty field means the setting is unset, and each calculator uses its own
-default. **Clear all** unsets every one. Settings last until you close the app; nothing
-is saved.
+default. **Clear all** unsets every one, and returns any choice the family offers to its
+default. Settings last until you close the app; nothing is saved.
 
 A value applies when you press Enter or leave the field. As you type, text that can't be
 used is outlined in red and explained. It isn't applied, so the setting keeps the value
