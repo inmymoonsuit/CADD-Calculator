@@ -4,7 +4,8 @@
   recommended on 2026-10-17. This ADR supersedes parts of ADR-0013: decision A's "P
   derived from material" (M3), decision E for K and P (M2), and §11's phase-2 list (see
   Consequences).
-* **Date:** 2026-10-17
+* **Date:** 2026-10-17. Revised 2026-10-17 as built (structured result notes, and
+  `Reference.scope` planned for phase 2); the decisions are unchanged.
 * **Builds on:** ADR-0013 (domains and shared settings; §9 numeric intent, §11 phase 2,
   decisions A and E), ADR-0004 (provenance and verification), ADR-0005 (units, precision,
   and display rounding), ADR-0008 (licensing), ADR-0009 (packaging)

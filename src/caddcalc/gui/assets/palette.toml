@@ -27,6 +27,10 @@ icon = "slate"          # default icon color
 icon_active = "ink"     # selected or emphasized icons
 icon_error = "crimson"
 icon_warning = "ink"    # amber is too faint on white; the icon shape signals it
+text_error = "crimson"  # error messages and headings in results
+text_warning = "ink"    # amber text is too faint on white; the icon and wording signal it
+outline_error = "crimson"  # border of a field whose text can't be used
+outline_note = "ink"    # border of a field a result note concerns; amber is too faint
 
 [dark]
 background = "ink"
@@ -44,3 +48,7 @@ icon = "slate"
 icon_active = "white"
 icon_error = "white"    # crimson is too faint on ink; the icon shape signals it
 icon_warning = "amber"
+text_error = "white"    # crimson is too faint on ink; the icon and wording signal it
+text_warning = "amber"
+outline_error = "white"
+outline_note = "amber"

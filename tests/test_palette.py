@@ -27,6 +27,10 @@ PAIRS = [
     ("icon_active", "background", 3.0),
     ("icon_error", "background", 3.0),
     ("icon_warning", "background", 3.0),
+    ("text_error", "background", 4.5),
+    ("text_warning", "background", 4.5),
+    ("outline_error", "background", 3.0),
+    ("outline_note", "background", 3.0),
 ]
 
 
@@ -59,6 +63,18 @@ def test_role_pairs_are_readable(theme: str, fg: str, bg: str, minimum: float) -
     roles = PALETTE[theme]
     ratio = contrast(COLORS[roles[fg]], COLORS[roles[bg]])
     assert ratio >= minimum, f"{theme}: {fg} on {bg} is {ratio:.2f}:1, needs {minimum}:1"
+
+
+def test_gui_code_takes_every_colour_from_the_palette() -> None:
+    """Hex colours bypass the light and dark themes; only the palette loader reads them."""
+    gui = files("caddcalc.gui")
+    literal = re.compile(r"#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b")
+    offenders = {
+        path.name: literal.findall(path.read_text(encoding="utf-8"))
+        for path in gui.iterdir()
+        if path.name.endswith(".py") and path.name != "icons.py"
+    }
+    assert not {name: found for name, found in offenders.items() if found}
 
 
 def test_known_ratios() -> None:

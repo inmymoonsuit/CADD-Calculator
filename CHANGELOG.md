@@ -125,6 +125,9 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- The GUI's coloured text and field outlines (errors, the Notes heading, fields a note
+  concerns) come from new palette roles, so they follow the light and dark themes; a
+  test keeps hex colours out of the GUI code.
 - `Result.warnings` becomes `Result.notes`, a tuple of `Note`s instead of strings. A
   note has a `NoteKind` (`warning`, `limit_exceeded`, `no_applicable_value`, or
   `infeasible`), its text, its `references`, and its `subjects`, the parameter or output

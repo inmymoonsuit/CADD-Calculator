@@ -83,9 +83,6 @@ DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Tree item data holding a family row's domain id."""
 NO_CALCULATORS = "No calculators loaded"
 """Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
-ERROR_STYLE = "QLineEdit { border: 1px solid #c0392b; }"
-NOTE_STYLE = "QLineEdit { border: 1px solid #b9770e; }"
-"""Outlines a field that a note on the result concerns."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
 """Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
@@ -338,6 +335,7 @@ class MainWindow(QMainWindow):
         clear_cache()
         self._apply_icons()
         self.recompute()
+        self._show_setting_problems()
 
     def _show_about(self) -> None:
         QMessageBox.about(self, f"About {self.branding.name}", about_html(self.branding))
@@ -707,7 +705,7 @@ class MainWindow(QMainWindow):
         for key, (p, edit) in self.fields.items():
             pending = self.pending_fields.get((calc.id, key))
             problem = None if pending is None else self._field_problem(p, pending)
-            edit.setStyleSheet(ERROR_STYLE if problem else "")
+            edit.setStyleSheet(_outline("outline_error") if problem else "")
             if problem:
                 problems.append(problem)
             edit.setReadOnly(self._inherits_set_value(calc, p))
@@ -750,7 +748,7 @@ class MainWindow(QMainWindow):
         for note in self.result.notes:
             for key in note.subjects:
                 if key in self.fields:
-                    self.fields[key][1].setStyleSheet(NOTE_STYLE)
+                    self.fields[key][1].setStyleSheet(_outline("outline_note"))
         self.output.setHtml(result_html(calc, self.result, self.prefs, scheme))
 
     # --- domain settings page -------------------------------------------------------------
@@ -892,7 +890,7 @@ class MainWindow(QMainWindow):
         for key, (setting, edit) in self.setting_fields.items():
             pending = self.pending_settings.get((domain.id, key))
             problem = None if pending is None else self._setting_problem(setting, pending)
-            edit.setStyleSheet(ERROR_STYLE if problem else "")
+            edit.setStyleSheet(_outline("outline_error") if problem else "")
             if problem:
                 problems.append(problem)
         self.domain_note.setText(
@@ -900,6 +898,7 @@ class MainWindow(QMainWindow):
                 domain,
                 has_calculators=bool(self.registry.by_domain().get(domain)),
                 errors=problems,
+                scheme=current_scheme(),
             )
         )
 
@@ -941,10 +940,16 @@ _NOTE_ICONS = {
 """The icon and palette role that mark each kind of note in the results pane."""
 
 
+def _outline(role: str) -> str:
+    """Return a style sheet outlining a field in a palette role's colour for the scheme."""
+    return f"QLineEdit {{ border: 1px solid {role_color(role, current_scheme())}; }}"
+
+
 def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
     items = "".join(f"<li>{escape(e)}</li>" for e in errors)
     return (
-        f"<p style='color:#c0392b'>{_img('alert-circle', 'icon_error', scheme)}"
+        f"<p style='color:{role_color('text_error', scheme)}'>"
+        f"{_img('alert-circle', 'icon_error', scheme)}"
         f"<b>Check the inputs:</b></p><ul>{items}</ul>"
     )
 
@@ -984,7 +989,9 @@ def _setting_about_html(
     )
 
 
-def _domain_note_html(domain: Domain, *, has_calculators: bool, errors: Sequence[str]) -> str:
+def _domain_note_html(
+    domain: Domain, *, has_calculators: bool, errors: Sequence[str], scheme: Scheme = "light"
+) -> str:
     """Return the note under a settings page: no calculators, and any refused values."""
     parts = []
     if not has_calculators:
@@ -995,7 +1002,8 @@ def _domain_note_html(domain: Domain, *, has_calculators: bool, errors: Sequence
     if errors:
         items = "".join(f"<li>{escape(e)}</li>" for e in errors)
         parts.append(
-            "<p style='color:#c0392b'><b>Not applied.</b> Each of these settings keeps its "
+            f"<p style='color:{role_color('text_error', scheme)}'><b>Not applied.</b> Each of "
+            "these settings keeps its "
             f"previous value until its text is fixed:</p><ul>{items}</ul>"
         )
     return "".join(parts)
@@ -1019,7 +1027,8 @@ def result_html(
             for note in result.notes
         )
         parts.append(
-            f"<h3 style='color:#b9770e'>{_img('alert-triangle', 'icon_warning', scheme)}"
+            f"<h3 style='color:{role_color('text_warning', scheme)}'>"
+            f"{_img('alert-triangle', 'icon_warning', scheme)}"
             f"Notes</h3><ul>{warn}</ul>"
         )
     inputs = "".join(

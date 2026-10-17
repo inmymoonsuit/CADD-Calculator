@@ -306,11 +306,14 @@ def test_loading_the_course_example_leaves_other_inputs_as_they_were() -> None:
 
 
 def test_fields_a_note_concerns_are_outlined() -> None:
+    from caddcalc.gui.icons import role_color
+
     window = open_window()
     window.select_calculator(BEND)
     type_into(field(window, "inside_radius"), "0.05", enter=False)  # R < T
+    outline = role_color("outline_note", "light")
     for key in ("inside_radius", "thickness"):
-        assert "#b9770e" in field(window, key).styleSheet(), key
+        assert outline in field(window, key).styleSheet(), key
     assert field(window, "bend_angle").styleSheet() == ""
     type_into(field(window, "inside_radius"), "0.156", enter=False)
     assert field(window, "thickness").styleSheet() == ""

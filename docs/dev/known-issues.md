@@ -46,12 +46,12 @@ input, plus the Handbook's worked example as a `verified` test.
 ### KI-003: Die-opening ratio was hard-coded for mild steel (Medium)
 
 The legacy `FDO = R/0.156` encodes the air-bending rule that the inside radius forms at
-about 15.6% of the V-die opening, which is roughly right for mild cold-rolled steel. Other
-materials differ. **Now:** `P` is an input (default 0.156). **Still missing:** a per-material
-table with cited sources (roadmap). The rule is not in MH29 or EDD5. The review
-session points to The Fabricator's "20 percent rule" articles (Steve Benson): about 15–17%
-for cold-rolled mild steel and 20–22% for 304 stainless. Those articles haven't been
-re-checked here yet.
+about 15.6% of the V-die opening, the course's mild-steel value. Other materials differ.
+**Now:** `P` is an input (default 0.156). **Still missing:** a per-material table with
+cited sources (roadmap). The rule is not in MH29 or EDD5. The review session points to
+The Fabricator's "20 percent rule" articles (Steve Benson). Their terms couldn't be read,
+so their figures aren't reproduced here (ADR-0014 §5.2, M3), and they haven't been
+re-checked.
 
 ### KI-004: The "8 × T" die-opening rule has no citation (Medium)
 
@@ -97,13 +97,14 @@ must be parenthesized ("1/8/1/16" is ambiguous), or the work lines should stay d
 ### KI-013: Where outside dimensions are measured on bends past 90° (High)
 
 `segment_flat_length`, and the OSSB and BD outputs of `bend_allowance`, measure to the
-**virtual sharp** (outside mold line), with setback
-`tan(A/2)·(R + T)`. That matches the 90° course sheets and the press-brake convention
-(The Fabricator; SOLIDWORKS defines BD = 2·OSSB − BA). EDD5 Fig. 19.11b instead dimensions
-a bend past 90° to the **outermost tangent of the outside arc**, which subtracts `R + T`
-at any angle. At 135° the two setbacks are 2.414·(R + T) and 1.0·(R + T). The calculator
+**virtual sharp** (outside mold line), with setback `tan(A/2)·(R + T)`. That matches the
+90° course sheets and the press-brake convention (the SOLIDWORKS help, linked in
+ADR-0013's prior art, defines BD = 2·OSSB − BA). EDD5 Fig. 19.11b instead dimensions a
+bend past 90° to the **outermost tangent of the outside arc**, which subtracts `R + T` at
+any angle. At 135° the two setbacks are 2.414·(R + T) and 1.0·(R + T). The calculator
 warns when A > 90°. **Options:** add an explicit dimension-origin input (virtual sharp /
-outer-arc tangent / inside mold line), with an ADR choosing the default. The choice is the maintainer's.
+outer-arc tangent / inside mold line), with an ADR choosing the default. The choice is
+the maintainer's.
 
 ### KI-014: 180° hems are rejected (Low)
 

@@ -53,6 +53,21 @@ Icons are recolored per theme from the `icon*` roles in `palette.toml`
 
 Where a color can't be used, the icon's shape and the wording carry the meaning.
 
+## Text and outline colors
+
+Colored text and field borders in the GUI also come from roles, so they follow the light
+and dark themes. A test keeps hex colors out of the GUI code except the palette loader
+(`gui/icons.py`).
+
+| Role | Light | Dark | Used for |
+|---|---|---|---|
+| `text_error` | crimson | white (crimson on ink is too faint) | "Check the inputs" and "Not applied" |
+| `text_warning` | ink (amber on white is too faint) | amber | the Notes heading in results |
+| `outline_error` | crimson | white | the border of a field whose text can't be used |
+| `outline_note` | ink (amber on white is too faint) | amber | the border of a field a result note concerns |
+
+Text roles keep at least 4.5:1 against the background, and outline roles at least 3:1.
+
 ## Rules of thumb
 
 * Body text is ink on white (light) or white on ink (dark). Never slate, amber, or crimson
@@ -67,8 +82,7 @@ Where a color can't be used, the icon's shape and the wording carry the meaning.
 
 ## Not done yet
 
-* The GUI doesn't apply the palette yet. Results still use ad-hoc HTML colors in
-  `gui/window.py`. Building the light and dark Qt themes from `palette.toml` is on the
-  roadmap.
+* The GUI takes its icon, text, and outline colors from the palette, but Qt's own widget
+  theme isn't built from `palette.toml` yet; that is on the roadmap.
 * Branding packs can't override the palette. If an edition ever needs its own colors,
   add an optional `palette` entry to the pack format (docs/dev/packaging.md).

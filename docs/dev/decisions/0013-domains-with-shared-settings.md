@@ -41,7 +41,7 @@ fasteners), so it is general rather than sheet-metal specific.
 | SOLIDWORKS 2026 | Base flange / sheet-metal feature: thickness, bend radius, bend-allowance method (K, BA, BD, tables), relief, gauge table | "Use default radius" and "Use gauge table" on flanges and bends; thickness never per feature | Gauge table drives thickness, radii, and K. Custom materials can link K/BA by thickness range (opt-in) |
 | Inventor 2026 | Sheet Metal Defaults → Rule (material, thickness, radius, relief, unfold rule: linear K, bend table, or equation) | Fields default to named rule parameters; typing a value overrides | Material is a field of the rule; no gauge object |
 | Fusion | Sheet-metal rule (thickness, radius, linear K, relief, material label; values can be expressions of thickness) | "Override rules" checkbox per flange, fold, or hem | None; in effect one rule per material and gauge |
-| Onshape | Sheet Metal Model (thickness, radius, K/BA/BD method; K defaults to 0.45) | "Use model bend radius" and "Use model K factor"; per-bend table overrides | None; gauge data kept as variables |
+| Onshape | Sheet Metal Model (thickness, radius, K/BA/BD method; K default documented in Onshape's help) | "Use model bend radius" and "Use model K factor"; per-bend table overrides | None; gauge data kept as variables |
 
 Sources:
 * SOLIDWORKS: [base flange](https://help.solidworks.com/2026/English/SolidWorks/sldworks/r_base_flange_propertymanager.htm),
