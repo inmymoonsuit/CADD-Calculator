@@ -12,10 +12,11 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import re
 import tomllib
 import unicodedata
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 from enum import Enum
@@ -92,6 +93,7 @@ _PUBLICATION_KEYS = frozenset(
     | {"third_party", "cite_only_cap", "terms_url", "terms_checked", "terms_outcome"}
 )
 _SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail"})
+_LEADING_NUMBER = re.compile(r"[0-9]+")
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,17 @@ class TablePublication:
     terms_url: str = ""
     """Where an online publication's terms of use were read (ADR-0014 §5.2)."""
     terms_checked: datetime.date | None = None
+
+    @property
+    def work(self) -> tuple[str, str]:
+        """The title and edition, compared loosely, so one work can't be declared twice.
+
+        The title is casefolded, without spaces or punctuation. An edition that starts
+        with a number is that number, so "29", "29th", and "29th ed." are one edition.
+        """
+        edition = unicodedata.normalize("NFKC", self.edition).strip()
+        number = _LEADING_NUMBER.match(edition)
+        return _loosely(self.title), number.group() if number else _loosely(edition)
 
 
 @dataclass(frozen=True)
@@ -209,6 +222,9 @@ class TableSpec:
     package: str
     filename: str
     content_keys: frozenset[str]
+    values: Callable[[ReferenceTable], Iterable[ReferenceValue]]
+    """Builds the table's values as its domain module does, so tests can hold the cite-only
+    cap across every shipped table, not just within one."""
 
     def load(self) -> ReferenceTable:
         """Load and check the table."""
@@ -296,7 +312,7 @@ def _parse_publications(origin: str, entries: Any) -> dict[str, TablePublication
         publication = _parse_publication(origin, entry)
         if publication.id in publications:
             raise SpecError(f"{origin}: publication {publication.id!r} is declared twice")
-        work = (_loosely(publication.title), _loosely(publication.edition))
+        work = publication.work
         if work in by_work:
             raise SpecError(
                 f"{origin}: publications {by_work[work]!r} and {publication.id!r} have the same "

@@ -605,3 +605,18 @@ These settle the open items of §2 for the four gauge systems.
 * **Correction to the identifiers above.** The example `ss:304_2b` is dropped: 2B is a
   finish, not a temper, and how to model a finish is a phase 2b question.
 
+### 2026-10-17: printed works, editions, and the cap across tables (maintainer, phase 2a)
+
+These refine the publications entry above.
+
+* **A printed public-domain work is named on purpose.** The host-allowlist test treats a
+  public-domain publication with no url as off the list, unless the test names it by
+  table and publication id, with a comment on why it is public domain. None ships.
+* **Editions compare by their leading number.** An edition that starts with a number is
+  that number in the duplicate check, so "29", "29th", and "29th ed." are one edition.
+  Any other edition compares loosely, like the title.
+* **The cap holds across tables.** Each `TableSpec` says how its domain module builds the
+  table's values (`values`). A test counts the values each cite-only work defines across
+  every shipped table, by its loose title and edition, against
+  `MAX_CITE_ONLY_PER_PUBLICATION`.
+

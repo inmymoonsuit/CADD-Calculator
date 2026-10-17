@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime
+from collections import Counter
+from collections.abc import Iterable
 from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 from fractions import Fraction
 from urllib.parse import urlsplit
@@ -231,18 +233,31 @@ since §105 covers federal works only.
 PUBLIC_DOMAIN_MIRRORS = frozenset({"everyspec.com"})
 """Named mirrors: everyspec.com republishes DoD specifications and handbooks, which are
 public domain at their source."""
+PUBLIC_DOMAIN_PRINTED: frozenset[tuple[str, str]] = frozenset()
+"""Public-domain publications with no url, by (table name, publication id).
+
+A printed work, such as a book published before 1930, has no host to check, so it passes
+only when named here on purpose, with a comment on why it is public domain. None ships.
+"""
 
 
-def off_allowlist(reference_table: ReferenceTable) -> list[str]:
-    """Return the url hosts of the table's public-domain publications not on the allowlist."""
-    hosts = []
+def off_allowlist(
+    reference_table: ReferenceTable,
+    printed: frozenset[tuple[str, str]] = PUBLIC_DOMAIN_PRINTED,
+) -> list[str]:
+    """Return the table's public-domain publications not on the allowlist, by host or id."""
+    off = []
     for work in reference_table.publications.values():
-        if work.license is not License.PUBLIC_DOMAIN or not work.url:
+        if work.license is not License.PUBLIC_DOMAIN:
+            continue
+        if not work.url:
+            if (reference_table.name, work.id) not in printed:
+                off.append(f"{work.id} (no url)")
             continue
         host = (urlsplit(work.url).hostname or "").removeprefix("www.")
         if not (host.endswith(PUBLIC_DOMAIN_HOSTS) or host in PUBLIC_DOMAIN_MIRRORS):
-            hosts.append(host or work.url)
-    return hosts
+            off.append(host or work.url)
+    return off
 
 
 def test_every_shipped_public_domain_url_is_on_the_host_allowlist() -> None:
@@ -274,6 +289,75 @@ def test_a_vendor_chart_cant_pass_as_a_government_document() -> None:
         )
     ]
     assert off_allowlist(parse_table(table(*allowed), "test", SAMPLE_KEYS)) == []
+
+
+def test_a_public_domain_publication_without_a_url_must_be_named_on_purpose() -> None:
+    """The reviewer's probe: the vendor chart again, with a basis claimed and no url."""
+    probe = publication(kind='"government_document"', title='"Vendor gauge chart"')
+    unhosted = parse_table(table(probe, source()), "test", SAMPLE_KEYS)
+    assert off_allowlist(unhosted) == ["p (no url)"]
+    assert off_allowlist(unhosted, printed=frozenset({("T", "p")})) == []
+    assert off_allowlist(unhosted, printed=frozenset({("Other table", "p")})) == ["p (no url)"]
+    cited = parse_table(table(publication(**BOOK)), "test", SAMPLE_KEYS)
+    assert off_allowlist(cited) == [], "only public-domain publications are held to it"
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "same"),
+    [
+        ("29th ed.", "29", True),
+        ("29th ed.", "29th", True),
+        ("29th ed.", "29TH Edition", True),
+        ("29th ed.", "30th ed.", False),
+        ("A568/A568M-25a", "a568 a568m 25a", True),
+        ("A568/A568M-25a", "A568/A568M-24", False),
+        ("2024 ed.", "2024", True),
+    ],
+)
+def test_editions_compare_by_their_leading_number(first: str, second: str, same: bool) -> None:
+    pair = table(
+        publication(**{**BOOK, "id": '"a"', "edition": f'"{first}"'}),
+        publication(**{**BOOK, "id": '"b"', "edition": f'"{second}"'}),
+    )
+    if same:
+        with pytest.raises(SpecError, match="same title and edition"):
+            parse_table(pair, "test", SAMPLE_KEYS)
+    else:
+        assert set(parse_table(pair, "test", SAMPLE_KEYS).publications) == {"a", "b"}
+
+
+def cite_only_totals(
+    tables: Iterable[tuple[ReferenceTable, Iterable[ReferenceValue]]],
+) -> Counter[tuple[str, str]]:
+    """Count the values each cite-only work defines, across tables, by its loose identity."""
+    totals: Counter[tuple[str, str]] = Counter()
+    for reference_table, values in tables:
+        for value in values:
+            work = reference_table.sources[value.source].publication
+            if work.license is License.CITE_ONLY_FACT:
+                totals[work.work] += 1
+    return totals
+
+
+def test_no_cite_only_work_exceeds_the_ceiling_across_the_shipped_tables() -> None:
+    totals = cite_only_totals(
+        (t, spec.values(t)) for spec in REFERENCE_TABLES for t in [spec.load()]
+    )
+    assert totals, "the gauge table defines one cite-only value"
+    assert max(totals.values()) <= MAX_CITE_ONLY_PER_PUBLICATION, totals
+
+
+def test_a_work_split_across_tables_is_counted_once() -> None:
+    """Two tables, each citing the 29th edition for one value, define two values from it."""
+    value = ReferenceValue(1.0, "s", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE)
+
+    def handbook(edition: str) -> ReferenceTable:
+        work = publication(**{**BOOK, "edition": f'"{edition}"'}, cite_only_cap="1")
+        return parse_table(table(work, source()), "test", SAMPLE_KEYS)
+
+    totals = cite_only_totals([(handbook("29th ed."), [value]), (handbook("29"), [value])])
+    assert list(totals.values()) == [2]
+    assert max(totals.values()) > MAX_CITE_ONLY_PER_PUBLICATION
 
 
 def test_a_book_split_into_several_entries_stays_under_its_cap() -> None:

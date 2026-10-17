@@ -43,13 +43,6 @@ from caddcalc.core import (
     nominal,
 )
 
-GAUGE_TABLE = TableSpec(
-    "caddcalc.calculators.sheet_metal",
-    "data/gauges.toml",
-    frozenset({"constant", "weights", "system"}),
-)
-"""The gauge table, as ``caddcalc.calculators.REFERENCE_TABLES`` lists it."""
-
 GAUGE = Choice(
     "gauge",
     "Gauge",
@@ -224,6 +217,8 @@ class GaugeSystems:
     systems: tuple[GaugeSystem, ...]
     options: tuple[Option, ...]
     by_key: Mapping[str, tuple[GaugeSystem, Gauge]]
+    values: tuple[ReferenceValue, ...]
+    """Every value the table defines, constants and thicknesses, as checked (ADR-0014 §5)."""
 
     def key(self, system: str, size: str) -> str:
         """Return the option key of ``size`` in ``system``, e.g. ``key("uss", "7/0")``.
@@ -260,7 +255,7 @@ def load_gauges(table: ReferenceTable) -> GaugeSystems:
         for system in systems
         for gauge in system.gauges
     )
-    return GaugeSystems(table, tuple(systems), options, MappingProxyType(by_key))
+    return GaugeSystems(table, tuple(systems), options, MappingProxyType(by_key), tuple(values))
 
 
 def _constants(table: ReferenceTable) -> tuple[dict[str, Decimal], list[ReferenceValue]]:
@@ -465,6 +460,15 @@ def _check_keys(
     missing = sorted(set(required) - set(entry))
     if unknown or missing:
         raise SpecError(f"{where}: unknown keys {unknown}, missing {missing}")
+
+
+GAUGE_TABLE = TableSpec(
+    "caddcalc.calculators.sheet_metal",
+    "data/gauges.toml",
+    frozenset({"constant", "weights", "system"}),
+    lambda table: load_gauges(table).values,
+)
+"""The gauge table, as ``caddcalc.calculators.REFERENCE_TABLES`` lists it."""
 
 
 class GaugeResolver:
