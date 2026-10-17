@@ -204,6 +204,7 @@ def test_to_dict_reports_each_inputs_source() -> None:
             InputSource(SourceKind.DOMAIN, "Sheet Metal settings", domain="sheet_metal"),
             "Sheet Metal settings",
         ),
+        (InputSource(SourceKind.DOMAIN, domain="sheet_metal"), "domain settings"),
         (
             InputSource(
                 SourceKind.DERIVED,

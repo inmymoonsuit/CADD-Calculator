@@ -15,7 +15,6 @@ from caddcalc.core import (
     Context,
     Dimension,
     Domain,
-    DomainValues,
     Method,
     Output,
     Param,
@@ -257,7 +256,7 @@ def test_a_vendor_prefixed_plugin_calculator_can_join_a_builtin_domain() -> None
     assert registry.plugin_errors == []
     sheet_metal = registry.domain("sheet_metal")
     assert "acme.flange_check" in [c.id for c in registry.by_domain()[sheet_metal]]
-    settings = DomainValues("sheet_metal", "Sheet Metal settings", {"thickness": 2.0})
+    settings = sheet_metal.values(thickness=2.0)
     assert registry.get("acme.flange_check").run(settings=settings).outputs["copy"] == 2.0
 
 

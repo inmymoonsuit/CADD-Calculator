@@ -71,7 +71,10 @@ All notable changes are recorded here. The format follows
   (ADR-0013 §7). It is immutable, validates against each domain's settings, and keeps each
   value as a `TypedValue`: the user's text, its exact base-unit parse, and the unit it was
   typed in (§9). `for_domain()` returns the `DomainValues` that `run()` takes. Nothing is
-  saved to disk.
+  saved to disk. `Domain.values(thickness=...)` also builds checked `DomainValues`: an
+  unknown key raises `UsageError` naming the domain's settings, and an out-of-range value
+  raises `OutOfRangeError`. Their label always comes from `Domain.settings_label`, e.g.
+  "Sheet Metal settings". Building `DomainValues` directly checks only that it has a label.
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A

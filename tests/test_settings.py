@@ -10,11 +10,13 @@ from caddcalc.core import (
     Dimension,
     Domain,
     DomainSettings,
+    DomainValues,
     InputError,
+    OutOfRangeError,
     Param,
     SourceKind,
-    SpecError,
     TypedValue,
+    UsageError,
 )
 
 OTHER = Domain(
@@ -54,11 +56,11 @@ def test_setting_text_keeps_intent_and_returns_a_new_model() -> None:
 
 def test_settings_are_validated_against_the_domain() -> None:
     settings = DomainSettings()
-    with pytest.raises(SpecError, match="no setting 'gauge'"):
+    with pytest.raises(UsageError, match="no setting 'gauge'; its settings are: thickness"):
         settings.set_text(SHEET_METAL, "gauge", "12")
-    with pytest.raises(InputError, match="greater than 0"):
+    with pytest.raises(OutOfRangeError, match="greater than 0"):
         settings.set_text(SHEET_METAL, "thickness", "0", "in")
-    with pytest.raises(InputError, match="at most 1"):
+    with pytest.raises(OutOfRangeError, match="at most 1"):
         settings.set_text(SHEET_METAL, "k_factor", "1.2")
     with pytest.raises(InputError, match="Cannot read a value"):
         settings.set_text(SHEET_METAL, "inside_radius", "abc", "in")
@@ -88,6 +90,23 @@ def test_the_values_view_is_read_only() -> None:
     view = settings.values("sheet_metal")
     with pytest.raises(TypeError):
         view["k_factor"] = TypedValue(0.5, "0.5")  # type: ignore[index]
+
+
+def test_domain_values_are_checked_and_labelled_in_one_place() -> None:
+    values = SHEET_METAL.values(thickness=2.0, k_factor=0.44)
+    assert values == DomainValues(
+        "sheet_metal", "Sheet Metal settings", {"thickness": 2.0, "k_factor": 0.44}
+    )
+    assert SHEET_METAL.settings_label == "Sheet Metal settings"
+    with pytest.raises(UsageError, match="no setting 'thicknes'"):
+        SHEET_METAL.values(thicknes=2.0)
+    with pytest.raises(OutOfRangeError, match="at most 1"):
+        SHEET_METAL.values(k_factor=1.5)
+
+
+def test_domain_values_need_a_label() -> None:
+    with pytest.raises(UsageError, match="needs a label"):
+        DomainValues("sheet_metal", " ", {})
 
 
 def test_a_calculator_runs_with_the_session_settings() -> None:

@@ -118,9 +118,8 @@ def describe_source(source: InputSource) -> str:
         return "entered"
     if source.kind is SourceKind.DEFAULT:
         return "default"
-    if source.reference is not None:
-        return f"{source.label}, {source.reference}"
-    return source.label
+    label = source.label or ("domain settings" if source.kind is SourceKind.DOMAIN else "derived")
+    return label if source.reference is None else f"{label}, {source.reference}"
 
 
 def describe_error(error: CaddCalcError, prefs: DisplayPrefs) -> str:

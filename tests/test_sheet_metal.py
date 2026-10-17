@@ -127,7 +127,7 @@ def sheet_metal_settings(**inches: float) -> DomainValues:
     values = {
         key: to_base(value, "in") if key != "k_factor" else value for key, value in inches.items()
     }
-    return DomainValues(SHEET_METAL.id, "Sheet Metal settings", values)
+    return SHEET_METAL.values(**values)
 
 
 def test_sheet_metal_shares_thickness_inside_radius_and_k_factor() -> None:

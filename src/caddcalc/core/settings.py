@@ -11,8 +11,6 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 
 from caddcalc.core.domain import Domain, DomainValues
-from caddcalc.core.errors import SpecError
-from caddcalc.core.spec import Param
 from caddcalc.core.units import TypedValue
 
 
@@ -42,20 +40,21 @@ class DomainSettings:
             default_unit: The unit for text typed without one.
 
         Raises:
-            SpecError: ``domain`` has no setting with that key.
-            InputError: The text isn't a valid value, or it is out of the setting's range.
+            UsageError: ``domain`` has no setting with that key.
+            InputError: The text isn't a valid value.
+            OutOfRangeError: The value is outside the setting's range.
         """
-        setting = _setting(domain, key)
+        setting = domain.setting(key)
         return self.set(domain, key, TypedValue.parse(text, setting.dimension, default_unit))
 
     def set(self, domain: Domain, key: str, entry: TypedValue) -> DomainSettings:
         """Return a copy with ``key`` set to ``entry``.
 
         Raises:
-            SpecError: ``domain`` has no setting with that key.
-            InputError: The value is out of the setting's range.
+            UsageError: ``domain`` has no setting with that key.
+            OutOfRangeError: The value is outside the setting's range.
         """
-        _setting(domain, key).check(entry.value)
+        domain.setting(key).check(entry.value)
         updated = {**self._values.get(domain.id, {}), key: entry}
         return DomainSettings({**self._values, domain.id: updated})
 
@@ -70,12 +69,6 @@ class DomainSettings:
 
     def for_domain(self, domain: Domain) -> DomainValues:
         """Return the values set for ``domain``, as ``Calculator.run`` takes them."""
-        values = {key: entry.value for key, entry in self._values.get(domain.id, {}).items()}
-        return DomainValues(domain.id, f"{domain.name} settings", values)
-
-
-def _setting(domain: Domain, key: str) -> Param:
-    setting = domain.find_setting(key)
-    if setting is None:
-        raise SpecError(f"Domain {domain.id!r} has no setting {key!r}")
-    return setting
+        return domain.values(
+            **{key: entry.value for key, entry in self._values.get(domain.id, {}).items()}
+        )
