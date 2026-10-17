@@ -15,7 +15,8 @@ import sys
 from collections.abc import Sequence
 
 from caddcalc import __version__
-from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result, default_registry
+from caddcalc.calculators import default_registry
+from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result
 from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs, format_value, render_step
 from caddcalc.core.units import Dimension, parse_quantity
 

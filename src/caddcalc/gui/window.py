@@ -25,7 +25,8 @@ from PySide6.QtWidgets import (
 )
 
 from caddcalc import __version__
-from caddcalc.core import CaddCalcError, Calculator, Param, Registry, Result, default_registry
+from caddcalc.calculators import default_registry
+from caddcalc.core import CaddCalcError, Calculator, Param, Registry, Result
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,

@@ -41,5 +41,7 @@ All notable changes are recorded here. The format follows
   pushed and drafts a GitHub release.
 
 ### Changed
+- `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no
+  longer depends on the calculators layer above it (ADR-0003, ADR-0006).
 - The window title and Help > About come from the active branding. About always keeps
   the version, the disclaimer, and the link to the source code.

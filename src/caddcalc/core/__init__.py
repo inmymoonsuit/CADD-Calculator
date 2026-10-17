@@ -12,7 +12,7 @@ from caddcalc.core.errors import (
     SpecError,
     UnknownCalculatorError,
 )
-from caddcalc.core.registry import Registry, default_registry
+from caddcalc.core.registry import Registry
 from caddcalc.core.spec import Method, Output, Param, Reference, Verification
 from caddcalc.core.units import Dimension, parse_quantity
 
@@ -33,6 +33,5 @@ __all__ = [
     "Step",
     "UnknownCalculatorError",
     "Verification",
-    "default_registry",
     "parse_quantity",
 ]

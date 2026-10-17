@@ -13,6 +13,8 @@ forking the app.
 
 * **Built-in calculators** live in `caddcalc.calculators.<domain>`. Each domain package
   exposes a `CALCULATORS` tuple, and `caddcalc.calculators.BUILTIN_CALCULATORS` lists them.
+  `caddcalc.calculators.default_registry()` assembles the built-ins and plugins. Core only
+  provides the `Registry` machinery and never imports the calculators layer.
   The list is explicit, not discovered, so compiled and frozen builds (Nuitka, ADR-0009)
   don't depend on package metadata being bundled.
 * **Third-party calculators** register through the Python entry-point group

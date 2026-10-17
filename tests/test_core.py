@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from caddcalc.calculators import default_registry
 from caddcalc.core import (
     CalculationError,
     Calculator,
@@ -17,7 +18,6 @@ from caddcalc.core import (
     SpecError,
     UnknownCalculatorError,
     Verification,
-    default_registry,
     expr,
     parse_quantity,
 )

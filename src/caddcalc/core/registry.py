@@ -68,14 +68,3 @@ class Registry:
                     self.register(item)
             except Exception as exc:  # a plugin must never crash the host
                 self.plugin_errors.append(PluginError(f"{ep.name} = {ep.value}", str(exc)))
-
-
-def default_registry(*, load_plugins: bool = True) -> Registry:
-    from caddcalc.calculators import BUILTIN_CALCULATORS
-
-    registry = Registry()
-    for calc in BUILTIN_CALCULATORS:
-        registry.register(calc)
-    if load_plugins:
-        registry.load_plugins()
-    return registry

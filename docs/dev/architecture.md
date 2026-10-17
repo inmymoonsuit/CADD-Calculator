@@ -21,14 +21,15 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  expr.py        safe formula evaluator + symbolic/numeric rendering      │
 │  spec.py        Param, Output, Method, Reference, Verification           │
 │  calculator.py  Calculator (base), Context, Step, Result                 │
-│  registry.py    Registry, built-ins + entry-point plugins                │
+│  registry.py    Registry (mechanism); plugins via entry points           │
 │  formatting.py  DisplayPrefs, rounding, fractions, render_step           │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Lifecycle of a calculation
 
-1. A front end gets a calculator from the `Registry` by ID (e.g. `sheet_metal.bend_allowance`).
+1. A front end calls `caddcalc.calculators.default_registry()`, which registers the built-ins
+   and any plugins, and looks up a calculator by ID (e.g. `sheet_metal.bend_allowance`).
 2. It builds a form or argument list from `calc.params_for(method)`.
 3. User text goes through `parse_quantity(text, dimension, default_unit)` and becomes **base units**.
 4. `calc.run(inputs, method)` fills defaults, range-checks each value, and calls `compute(ctx)`.
