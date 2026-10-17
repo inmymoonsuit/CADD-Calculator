@@ -109,10 +109,13 @@ class BendCheck:
         """Warn when the K-factor in use was applied for other materials than this one.
 
         An applied starting value keeps its citation when the material changes, so its
-        source would otherwise read as covering a material it doesn't.
+        source would otherwise read as covering a material it doesn't. A calculator's copy of
+        one keeps the citation too (an explicit source with a reference), and is checked
+        the same way.
         """
         source = ctx.sources.get("k_factor")
-        if source is None or source.kind is not SourceKind.DOMAIN or source.reference is None:
+        applied = source is not None and source.kind in (SourceKind.DOMAIN, SourceKind.EXPLICIT)
+        if source is None or not applied or source.reference is None:
             return
         data = self.materials.materials
         start = next((k for k in data.k_starts if k.source.reference == source.reference), None)

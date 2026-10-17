@@ -237,15 +237,17 @@ _NOTE_HEADINGS = {
 def describe_note(note: Note) -> str:
     """Return a note as one line for users: its kind, its text, and its sources.
 
-    Each source is followed by its scope, when it has one, so a note says how far its
-    source applies, e.g. "(AC 43.13-1B, Table 4-6: aerospace bench practice)". The GUI
-    and the CLI both use this, so a note reads the same in both.
+    Each source is named by its short form (``Reference.short``) and followed by its scope,
+    when it has one, so a note says how far its source applies, e.g. "(AC 43.13-1B,
+    Table 4-6: aerospace bench practice)". The full citations stay in the note's
+    references and in JSON. The GUI and the CLI both use this, so a note reads the same
+    in both.
     """
     heading = _NOTE_HEADINGS[note.kind]
     text = f"{heading}: {note.text}" if heading else note.text
     if not note.references:
         return text
-    cited = "; ".join(f"{r}: {r.scope}" if r.scope else str(r) for r in note.references)
+    cited = "; ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in note.references)
     return f"{text} ({cited})"
 
 

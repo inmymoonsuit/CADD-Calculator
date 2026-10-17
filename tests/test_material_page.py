@@ -61,6 +61,19 @@ def test_an_unticked_copy_of_an_applied_k_keeps_its_citation_and_note() -> None:
     window.close()
 
 
+def test_an_unticked_copy_of_an_applied_k_warns_for_another_material() -> None:
+    """Review 2b.7d: the copy keeps its citation, so the material check sees it too."""
+    window = open_window()
+    apply_faa_k(window)
+    choose(window, "Stainless steel", "ss:304")
+    open_k_factor_bend(window)
+    window.inherit_boxes["k_factor"].setChecked(False)
+    assert window.result.source_of("k_factor").reference is not None
+    warned = [n for n in window.result.notes if n.text.startswith("The K starting value")]
+    assert [n.subjects for n in warned] == [("k_factor",)]
+    window.close()
+
+
 def test_a_calculators_own_k_overrides_an_applied_one() -> None:
     """Review M1: an overriding field's own value runs, with no origin left over."""
     window = open_window()

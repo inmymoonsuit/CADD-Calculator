@@ -36,8 +36,9 @@ class InputSource:
     domain: str | None = None
     """The domain id, when ``kind`` is ``DOMAIN`` or ``DERIVED``."""
     reference: Reference | None = None
-    """The table and version a derived value came from; for a domain value, the citation
-    of a starting value the user applied rather than typed (ADR-0014 M2)."""
+    """The table and version a derived value came from; for a domain value, or an explicit
+    copy of one, the citation of a starting value the user applied rather than typed
+    (ADR-0014 M2)."""
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable form. ``reference`` is ``None`` or its fields."""

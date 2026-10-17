@@ -815,7 +815,10 @@ class MainWindow(QMainWindow):
             if entry is not None and not self._inherits(calc, p):
                 inputs[p.key] = entry.base_value
                 if label := self._entry_label(calc, p, entry):
-                    labels[p.key] = InputSource(SourceKind.EXPLICIT, label)
+                    # A copy of an applied value keeps its citation, so checks see it too.
+                    applied = entry.applied if entry.origin is EntryOrigin.FAMILY_COPY else None
+                    reference = None if applied is None else applied.reference
+                    labels[p.key] = InputSource(SourceKind.EXPLICIT, label, reference=reference)
                 if entry.origin is EntryOrigin.FAMILY_COPY:
                     source = entry.copied_from or entry.applied
                     if source is not None and source.note is not None:

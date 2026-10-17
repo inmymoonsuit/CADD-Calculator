@@ -16,7 +16,15 @@ from caddcalc.calculators.sheet_metal import (
     VDieOpening,
 )
 from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE, load_materials
-from caddcalc.core import DomainSettings, Note, NoteKind, Result, ValueOrigin
+from caddcalc.core import (
+    DomainSettings,
+    InputSource,
+    Note,
+    NoteKind,
+    Result,
+    SourceKind,
+    ValueOrigin,
+)
 from caddcalc.core.formatting import describe_note
 
 IN = 25.4
@@ -107,7 +115,9 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
         ), "its scope, and each source by its short title and locator (review M1, M2)"
         assert limit.text.count("TO 1-1A-9 (2020 Change 3) gives") == 1
         assert "p. 4-14" not in describe_note(limit), "a reviewer's remark is never rendered"
-        assert "Engineering Series for Aircraft Repair" in describe_note(limit), "in full"
+        assert "Engineering Series for Aircraft Repair" not in describe_note(limit), "short"
+        assert "Engineering Series for Aircraft Repair" in limit.references[1].title, "in full"
+        assert len(describe_note(limit)) < 800, "review 2b.7d: about 790 characters"
         assert "The check uses the larger." in limit.text
         assert limit.subjects == ("inside_radius", "thickness")
         assert "aircraft repair practice" in describe_note(limit), "each source's scope"
@@ -246,6 +256,23 @@ def applied_k(material: str, source: str) -> Result:
     )
     inputs = {"thickness": 0.05 * IN, "inside_radius": 0.2 * IN}
     return BendAllowance().run(inputs, "k_factor", settings=settings.for_domain(DOMAIN))
+
+
+def test_a_calculators_copy_of_an_applied_k_is_checked_too() -> None:
+    """A copy keeps its citation as an explicit source's reference, and warns the same way."""
+    table = MATERIAL_TABLE.load()
+    faa = table.sources["faa_neutral_axis"].reference
+    copied = InputSource(SourceKind.EXPLICIT, "copied from Sheet Metal settings", reference=faa)
+    settings = DomainSettings().set_choice(DOMAIN, "material", "ss:304").for_domain(DOMAIN)
+    inputs = {"thickness": 0.05 * IN, "inside_radius": 0.2 * IN, "k_factor": 0.445}
+    result = BendAllowance().run(
+        inputs, "k_factor", settings=settings, explicit_sources={"k_factor": copied}
+    )
+    assert [n.text for n in result.notes if n.text.startswith("The K starting value")] == [
+        "The K starting value from FAA-H-8083-31B was given for 5052-H32 aluminum and "
+        "6061-T6 aluminum, not for 304 stainless, annealed (2B finish); confirm it with a "
+        "test bend."
+    ]
 
 
 def test_an_applied_k_given_for_other_materials_is_warned_about() -> None:

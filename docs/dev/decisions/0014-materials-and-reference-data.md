@@ -1089,3 +1089,14 @@ differ.
 * **The practice note cites the current edition (L4):** TO 1-1A-9, 17 Nov 2016 with
   Change 3, p. 2-80, ¶2.18.1.2c and ¶¶2.19.1–2.19.1.1, as Support & Review read it. The
   2015 edition stays only for the generic annealed stainless row.
+
+### 2026-10-17: short references in notes, and copied K values checked (maintainer, phase 2b.7d)
+
+* **`describe_note` names each source by its short form** (`Reference.short`) with its
+  scope, since a note's text already names its sources inline. The full citations stay in
+  the note's references and in JSON; the CLI's text output has no separate reference list.
+  The 6061-T6 limit line at 0.063 in shrinks from about 1,060 characters to 791.
+* **A calculator's copy of an applied K is checked like the family value.** The copy's
+  explicit source carries the applied value's citation as its `reference`, so the bend
+  check's warning for a K starting value given for other materials (2b.7c, L3) fires for
+  the copy too. `InputSource.reference` may now be set on an explicit source for this.

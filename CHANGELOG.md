@@ -287,6 +287,10 @@ All notable changes are recorded here. The format follows
   warned about; a check sees each input's source (`Context.sources`). An applied K
   starting value given for other materials than the chosen one gets a warning. The
   bending-practice note cites TO 1-1A-9's current edition, p. 2-80.
+- A note's sources read by their short citation and scope, e.g. "(AC 43.13-1B (2024 ed.
+  update), Table 4-6, p. 4-17: …)"; the full citations stay in JSON. A calculator's copy
+  of an applied K starting value keeps its citation, so it is checked against the chosen
+  material like the family value.
 - The family settings page scrolls when its contents outgrow the window.
 - The "inside radius is smaller than the material thickness" warning is now part of the
   bend check: it is dropped wherever a cited minimum applies, and otherwise reads as
