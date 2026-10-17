@@ -1122,3 +1122,22 @@ The maintainer's decisions, and where each is built:
 | D9. Don't report TO's 2020 column error; never source steel from A-31/A-32 | Steel and stainless come from Tables 2-15 and 2-16 only. |
 | D10. Past 90° and hems: no value; up to 90°, the 90° value | `MAX_ANGLE`, and a no-applicable-value note naming the angle. |
 | Flags 1–10 of the 2b plan | Keys `cs:a1008`, `cs:a653`, `cs:a1011`, `al:5052`, `al:6061`, `ss:304`; `Option.default`; calculator-declared result checks on the two bend calculators; one-source coverage noted; Table 2-16's bands; stress in ksi or MPa by the length unit; applied values with their origin; the gauge-and-material warning by source; both stand-ins disclosed. |
+
+### 2026-10-17: the final review's Lows (maintainer, phase 2b.7e)
+
+Support & Review's review of da31e0c..914432d found no High or Medium; §5 passes for the
+materials table, and the gauge table's version 2 is re-verified. Its Lows, as built:
+
+* **A copy of a gauge's thickness keeps the gauge warning (L5).** As for a copied K
+  (2b.7d), the copy's explicit source carries what it was copied from, here the gauge
+  table as its reference, so the gauge-and-material warning fires for the copy, and a
+  thickness the user types still doesn't trigger it.
+* **Choice boxes don't widen the settings page (L6).** A box sized itself to its
+  longest option, such as the US Standard gauge system's, so the page could ask for more
+  width than the window had. Every choice box is now sized to 24 characters, and its open
+  list still shows each option whole.
+* **The limit note names its sources once in its text (L7).** The parenthetical list of
+  sources after the practice is gone: each source is named where it gives its value, and
+  the list of sources with their scope follows the note. The 6061-T6 line at 0.063 in is
+  671 characters.
+* No table data changed.

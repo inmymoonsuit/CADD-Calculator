@@ -86,12 +86,14 @@ class BendCheck:
     ) -> None:
         """Warn when the gauge's system isn't one the material is ordered by (flag 9).
 
-        Only a run whose thickness is derived from the gauge is warned, by its source, not
-        its value: a thickness the user typed doesn't depend on the gauge's system, even
-        when it equals the gauge's.
+        Only a run whose thickness comes from the gauge is warned, by its source, not its
+        value: a thickness the user typed doesn't depend on the gauge's system, even when it
+        equals the gauge's. A calculator's copy of the gauge's thickness keeps the gauge
+        table as its explicit source's reference, and is warned the same way.
         """
         thickness = ctx.sources.get("thickness")
-        if gauge_key is None or thickness is None or thickness.kind is not SourceKind.DERIVED:
+        kinds = (SourceKind.DERIVED, SourceKind.EXPLICIT)
+        if gauge_key is None or thickness is None or thickness.kind not in kinds:
             return
         gauges = self.gauges.gauges
         system, gauge = gauges.by_key[gauge_key]
@@ -203,7 +205,6 @@ def _limit(name: str, covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> s
     it comes from.
     """
     sources = [source for source, _ in covering]
-    cited = "; ".join(s.source.reference.short for s in sources)
     given = []
     for source, value in covering:
         where = f"at {value.column}" if source.listed else f"for sheet {value.column}"
@@ -211,7 +212,7 @@ def _limit(name: str, covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> s
         given.append(f"{_short(source)} gives {value.stated} {where}{label}")
     text = (
         f"The inside radius is below the recommended minimum for {name} in "
-        f"{practices(sources)} ({cited}) at this thickness: {and_list(given)}."
+        f"{practices(sources)} at this thickness: {and_list(given)}."
     )
     if len(covering) > 1:
         text += " The check uses the larger."

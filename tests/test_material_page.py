@@ -74,6 +74,46 @@ def test_an_unticked_copy_of_an_applied_k_warns_for_another_material() -> None:
     window.close()
 
 
+def test_an_unticked_copy_of_a_gauge_thickness_keeps_the_gauge_warning() -> None:
+    """Review L5: the copy keeps the gauge table as its source's reference."""
+    window = open_window()
+    choose(window, "Aluminum", "al:5052")
+    systems, gauges = window.choice_rows["gauge"]
+    systems.setCurrentIndex(systems.findData("Manufacturers' Standard, steel sheet"))
+    gauges.setCurrentIndex(gauges.findText("12 ga"))
+    window.select_calculator(BEND)
+
+    def mismatch() -> list[str]:
+        return [n.text for n in window.result.notes if n.text.startswith("The gauge is")]
+
+    assert len(mismatch()) == 1, "the gauge's own thickness"
+    window.inherit_boxes["thickness"].setChecked(False)
+    assert len(mismatch()) == 1, "the copy, as for a copied K"
+    assert any(n.text.startswith("Nominal thickness") for n in window.result.notes)
+    type_into(window.fields["thickness"][1], "0.125")
+    assert mismatch() == [], "a typed thickness doesn't depend on the gauge"
+    window.close()
+
+
+def test_choice_boxes_dont_widen_the_settings_page() -> None:
+    """Review L6: a box sized to its longest option made the page scroll sideways."""
+    from PySide6.QtWidgets import QComboBox
+
+    window = open_window()
+    choose(window, "Carbon steel", "cs:a1011")
+    systems, _gauges = window.choice_rows["gauge"]
+    systems.setCurrentIndex(
+        systems.findData("US Standard 1893, as commonly used for stainless; practice varies")
+    )
+    boxes = [box for row in window.choice_rows.values() for box in row if box is not None]
+    policy = QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+    assert all(box.sizeAdjustPolicy() == policy for box in boxes)
+    assert len({box.sizeHint().width() for box in boxes}) == 1, "options don't size a box"
+    # 1224 px before, with the offscreen platform's wide fallback glyphs; 619 natively.
+    assert window.domain_page.widget().minimumSizeHint().width() <= 1000
+    window.close()
+
+
 def test_a_calculators_own_k_overrides_an_applied_one() -> None:
     """Review M1: an overriding field's own value runs, with no origin left over."""
     window = open_window()

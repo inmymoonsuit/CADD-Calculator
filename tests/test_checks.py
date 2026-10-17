@@ -109,10 +109,11 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
         ]
         assert limit.text.startswith(
             "The inside radius is below the recommended minimum for 6061-T6 aluminum in "
-            "aerospace bending practice (AC 43.13-1B (2024 ed. update), Table 4-6, p. 4-17; "
-            "TO 1-1A-9 (2020 Change 3), Tables A-31 and A-32, pp. A-45 and A-47) at this "
-            "thickness: "
-        ), "its scope, and each source by its short title and locator (review M1, M2)"
+            "aerospace bending practice at this thickness: AC 43.13-1B (2024 ed. update) "
+            "gives "
+        ), "its scope (review M2), and no parenthetical list of sources (review L7)"
+        shown = describe_note(limit)
+        assert "(AC 43.13-1B (2024 ed. update), Table 4-6, p. 4-17: " in shown, "cited once"
         assert limit.text.count("TO 1-1A-9 (2020 Change 3) gives") == 1
         assert "p. 4-14" not in describe_note(limit), "a reviewer's remark is never rendered"
         assert "Engineering Series for Aircraft Repair" not in describe_note(limit), "short"

@@ -296,6 +296,10 @@ All notable changes are recorded here. The format follows
   update), Table 4-6, p. 4-17: …)"; the full citations stay in JSON. A calculator's copy
   of an applied K starting value keeps its citation, so it is checked against the chosen
   material like the family value.
+- A calculator's copy of a gauge's thickness keeps the gauge warning when the material
+  isn't ordered by that gauge system. The limit note names each source once in its text.
+  Choice boxes are sized to 24 characters, so a long option, such as a gauge system's
+  name, no longer widens the settings page; the open list still shows it whole.
 - The family settings page scrolls when its contents outgrow the window.
 - The "inside radius is smaller than the material thickness" warning is now part of the
   bend check: it is dropped wherever a cited minimum applies, and otherwise reads as

@@ -49,6 +49,7 @@ from caddcalc.core import (
     NoteKind,
     OutOfRangeError,
     Param,
+    Reference,
     Registry,
     Result,
     SourceKind,
@@ -102,6 +103,8 @@ COURSE_EXAMPLE = "course example"
 NO_CHOICE = "None"
 """The first item of a choice with no default: nothing chosen, so values are typed."""
 CHOOSE = "Choose…"
+CHOICE_CHARACTERS = 24
+"""How many characters a choice's box is sized to show before it elides an option."""
 """The first item of a grouped choice's options, until one is chosen in the group."""
 
 
@@ -815,9 +818,12 @@ class MainWindow(QMainWindow):
             if entry is not None and not self._inherits(calc, p):
                 inputs[p.key] = entry.base_value
                 if label := self._entry_label(calc, p, entry):
-                    # A copy of an applied value keeps its citation, so checks see it too.
-                    applied = entry.applied if entry.origin is EntryOrigin.FAMILY_COPY else None
-                    reference = None if applied is None else applied.reference
+                    # A copy of an applied or derived value keeps its citation, or its table,
+                    # so result checks see where it came from too.
+                    reference = None
+                    if entry.origin is EntryOrigin.FAMILY_COPY:
+                        copied = entry.applied or entry.copied_from
+                        reference = None if copied is None else _reference_of(copied)
                     labels[p.key] = InputSource(SourceKind.EXPLICIT, label, reference=reference)
                 if entry.origin is EntryOrigin.FAMILY_COPY:
                     source = entry.copied_from or entry.applied
@@ -981,6 +987,12 @@ class MainWindow(QMainWindow):
             if box is not None:
                 box.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
                 box.installEventFilter(self._wheel_guard)
+                # Sized to a short label, not the longest option, so the page doesn't widen;
+                # the open list still shows each option whole.
+                box.setSizeAdjustPolicy(
+                    QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+                )
+                box.setMinimumContentsLength(CHOICE_CHARACTERS)
         boxes = QHBoxLayout()
         if group_box is not None:
             group_box.setToolTip(choice.help)
@@ -1337,6 +1349,13 @@ def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayP
     except InputError:
         return text
     return text if parsed.explicit_unit else f"{text.strip()} {typed_in.symbol}"
+
+
+def _reference_of(copied: ValueOrigin | DerivedValue) -> Reference | None:
+    """Return what a copy of a family value cites: an applied value's source, or a table."""
+    if isinstance(copied, ValueOrigin):
+        return copied.reference
+    return copied.source.reference
 
 
 def _derived_entry(derived: DerivedValue, dimension: Dimension) -> TypedValue:
