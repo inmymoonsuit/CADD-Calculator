@@ -36,7 +36,7 @@ ART_SUPPLIED = Size(ART_SIZE.width * ART_SCALE, ART_SIZE.height * ART_SCALE)
 LOGO_STRIP = 72
 """The width of the vertical logo strip, left of the art slot."""
 TOP_BAR = 32
-"""The height of the bar across the top: menus, and the X."""
+"""The height of the bar across the top: the About button and the X."""
 WINDOW = Size(LOGO_STRIP + ART_SIZE.width, TOP_BAR + ART_SIZE.height)
 """The whole screen at its preferred size, 1032 × 572. It scales down to fit a small screen."""
 

@@ -198,10 +198,8 @@ class _ArtSlot(QWidget):
         self.name_label = QLabel(branding.name, self)
         self.name_label.setWordWrap(True)
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        version = f"Version {__version__}"
-        if not branding.is_generic:
-            version += f" · {branding.edition}"
-        self.version_label = QLabel(version, self)
+        # The name panel names the edition; the edition's slug is a build-folder id.
+        self.version_label = QLabel(f"Version {__version__}", self)
         self.version_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.apply_theme()
 

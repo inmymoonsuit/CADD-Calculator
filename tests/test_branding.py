@@ -49,7 +49,9 @@ def make_pack(folder: Path, toml: str = PACK_TOML, *, images: bytes = b"not chec
     (folder / "branding.toml").write_text(toml, encoding="utf-8")
     (folder / "icon.png").write_bytes(images)
     (folder / "welcome-art.png").write_bytes(images)
-    (folder / "logo-vertical.svg").write_bytes(images)
+    (folder / "logo-vertical.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="72" height="540"/>', encoding="utf-8"
+    )
     (folder / "about.html").write_text("<p>Made for <b>testing</b>.</p>\n", encoding="utf-8")
     return folder
 
@@ -438,3 +440,87 @@ def test_startup_shows_the_generic_welcome_screen_and_leaves_no_window(
     left = [w for w in app.topLevelWidgets() if isinstance(w, MainWindow | WelcomeScreen)]
     assert left == [], "main() disposes of its windows (KI-019)"
     assert app.quitOnLastWindowClosed(), "restored once the main window shows"
+
+
+@pytest.mark.parametrize(
+    "href",
+    ['xlink:href="../outside.png"', 'href="file:///etc/passwd"', 'xlink:href="other.svg#logo"'],
+)
+def test_an_svg_logo_must_not_refer_to_other_files(tmp_path: Path, href: str) -> None:
+    pack = make_pack(tmp_path / "pack")
+    (pack / "logo-vertical.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        f'<image {href} width="72" height="72"/></svg>',
+        encoding="utf-8",
+    )
+    with pytest.raises(BrandingError, match="must be self-contained"):
+        load_branding(pack)
+
+
+def test_an_svg_logo_may_embed_data_and_refer_within_itself(tmp_path: Path) -> None:
+    pack = make_pack(tmp_path / "pack")
+    (pack / "logo-vertical.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        '<defs><rect id="bar" width="72" height="8"/></defs>'
+        '<image href="data:image/png;base64,iVBORw0KGgo=" width="72" height="72"/>'
+        '<use xlink:href="#bar"/></svg>',
+        encoding="utf-8",
+    )
+    assert load_branding(pack).welcome_logo == pack / "logo-vertical.svg"
+
+
+def test_a_logo_that_isnt_xml_is_refused(tmp_path: Path) -> None:
+    pack = make_pack(tmp_path / "pack")
+    (pack / "logo-vertical.svg").write_text("<svg", encoding="utf-8")
+    with pytest.raises(BrandingError, match="isn't valid SVG"):
+        load_branding(pack)
+
+
+def test_a_folder_named_like_the_art_is_not_a_file(tmp_path: Path) -> None:
+    pack = make_pack(tmp_path / "pack")
+    (pack / "welcome-art.png").unlink()
+    (pack / "welcome-art.png").mkdir()
+    with pytest.raises(BrandingError, match=r"'welcome-art\.png' is not a file"):
+        load_branding(pack)
+
+
+FAILING_STARTUP = """
+import sys
+from PySide6.QtWidgets import QMessageBox
+import caddcalc.gui.window as window
+from caddcalc.gui.app import main
+
+def broken(*args, **kwargs):
+    raise RuntimeError("probe: the main window can't be built")
+
+window.MainWindow.__init__ = broken
+QMessageBox.critical = lambda *args, **kwargs: print("critical shown", file=sys.stderr)
+raise SystemExit(main(sys.argv[1:]))
+"""
+
+
+@pytest.mark.gui
+@pytest.mark.parametrize("args", [[], ["--smoke-test"]], ids=["running", "smoke test"])
+def test_a_failed_startup_ends_the_app_with_status_1(tmp_path: Path, args: list[str]) -> None:
+    """Review M1: run apart, under a timeout, so a regression can't hang the suite."""
+    import os
+    import subprocess
+
+    pytest.importorskip("PySide6.QtWidgets")
+    script = tmp_path / "failing_startup.py"
+    script.write_text(FAILING_STARTUP, encoding="utf-8")
+    env = {**os.environ, "QT_QPA_PLATFORM": os.environ.get("QT_QPA_PLATFORM", "offscreen")}
+    env.pop(ENV_VAR, None)
+    done = subprocess.run(  # noqa: S603  # this interpreter, on a script the test wrote
+        [sys.executable, str(script), *args],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+        check=False,
+    )
+    assert done.returncode == 1, done.stderr
+    assert "probe: the main window can't be built" in done.stderr
+    assert "couldn't start" in done.stderr or "critical shown" in done.stderr
+    if not args:
+        assert "critical shown" in done.stderr, "a running app shows the message"

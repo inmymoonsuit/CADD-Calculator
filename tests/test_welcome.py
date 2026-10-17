@@ -78,7 +78,7 @@ def test_the_generic_screen_shows_live_name_and_version_over_generated_art() -> 
 def test_a_packs_art_and_logo_are_used(tmp_path: Path) -> None:
     welcome = screen(pack(tmp_path / "pack"))
     assert (welcome.art_source, welcome.logo_source) == ("pack", "pack")
-    assert welcome.art.version_label.text() == f"Version {__version__} · test-edition"
+    assert welcome.art.version_label.text() == f"Version {__version__}", "no edition slug"
     welcome.show()
     assert not welcome.grab().toImage().isNull()
     welcome.close()
@@ -104,8 +104,14 @@ def test_art_that_cant_be_used_falls_back_to_the_generic_art(tmp_path: Path, spo
 
 
 def test_an_invalid_logo_falls_back_to_the_icon_and_name(tmp_path: Path) -> None:
+    """The loader refuses malformed XML; this covers XML that Qt still can't render."""
+    from dataclasses import replace
+
+    branding = pack(tmp_path / "pack")
+    assert branding.welcome_logo is not None
+    branding.welcome_logo.write_text("<notsvg/>", encoding="utf-8")
     with pytest.warns(UserWarning, match="invalid SVG"):
-        welcome = screen(pack(tmp_path / "pack", logo="<svg"))
+        welcome = screen(replace(branding))
     assert welcome.logo_source == "generic"
     welcome.close()
 

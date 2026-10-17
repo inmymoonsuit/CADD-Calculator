@@ -217,3 +217,14 @@ This replaces, for the welcome screen, W3 and §5's shared top bar.
 * With no menus in the card, nothing there can reach macOS's global menu bar; About and
   Exit still carry their menu roles in the main window.
 
+### 2026-10-17: review fixes (maintainer)
+
+* **A failed startup ends the app.** If building the main window fails, the app logs the
+  traceback, says so (a message over the welcome screen, or on stderr in smoke mode),
+  and exits with status 1, instead of running on with no window.
+* **SVG logos must be self-contained.** The loader refuses an SVG logo whose `<image>`
+  or `<use>` refers to anything but its own data (`data:`) or its own elements (`#…`):
+  another file would escape the pack folder, and a build wouldn't bundle it.
+* **The version line is just the version.** The name panel already names the edition,
+  and the edition's slug is a build-folder id, so the line reads "Version x.y.z".
+

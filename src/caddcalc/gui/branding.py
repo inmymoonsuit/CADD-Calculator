@@ -33,6 +33,7 @@ import re
 import sys
 import tomllib
 import warnings
+import xml.etree.ElementTree as ElementTree
 from collections.abc import Mapping
 from dataclasses import dataclass
 from html import escape
@@ -214,6 +215,8 @@ def _welcome(table: Any, root: Path) -> tuple[Path | None, tuple[float, float], 
             raise BrandingError(
                 f"{toml_path}: {label} {path.name!r} is larger than {MAX_ART_BYTES // 1_000_000} MB"
             )
+    if logo is not None and logo.suffix.lower() == ".svg":
+        _check_self_contained(logo, toml_path)
     focus = table.get("art_focus", [0.5, 0.5])
     if (
         not isinstance(focus, list)
@@ -225,6 +228,34 @@ def _welcome(table: Any, root: Path) -> tuple[Path | None, tuple[float, float], 
             f"{toml_path}: welcome.art_focus must be two numbers from 0 to 1, e.g. [0.35, 0.5]"
         )
     return art, (float(focus[0]), float(focus[1])), logo
+
+
+_XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+
+
+def _check_self_contained(svg: Path, toml_path: Path) -> None:
+    """Refuse an SVG that refers to other files: they would escape the pack folder.
+
+    An ``<image>`` or ``<use>`` may embed its data (``data:``) or point within the file
+    (``#…``), nothing else (ADR-0015, amendments). The byte budget is checked first, and
+    Python's expat limits entity expansion.
+    """
+    try:
+        root = ElementTree.parse(svg).getroot()  # noqa: S314  # see the docstring
+    except ElementTree.ParseError as exc:
+        raise BrandingError(
+            f"{toml_path}: welcome.logo {svg.name!r} isn't valid SVG: {exc}"
+        ) from exc
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] not in ("image", "use"):
+            continue
+        for key in (_XLINK_HREF, "href"):
+            href = (element.get(key) or "").strip()
+            if href and not href.startswith(("data:", "#")):
+                raise BrandingError(
+                    f"{toml_path}: welcome.logo {svg.name!r} refers to {href!r}; a logo must be "
+                    "self-contained (embed images as data: URIs)"
+                )
 
 
 def _pack_file(
@@ -250,6 +281,8 @@ def _pack_file(
         raise BrandingError(
             f"{toml_path}: {label} {value!r} must be one of {', '.join(sorted(suffixes))}"
         )
+    if path.exists() and not path.is_file():
+        raise BrandingError(f"{toml_path}: {label} {value!r} is not a file")
     if not path.is_file():
         raise BrandingError(f"{toml_path}: {label} file {value!r} does not exist")
     return path

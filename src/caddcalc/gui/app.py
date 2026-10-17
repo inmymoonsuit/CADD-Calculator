@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+import traceback
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -73,15 +74,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     # window is built after it (ADR-0015 §1, amendments).
     actions = AppActions(branding, app)
     welcome = WelcomeScreen(branding, actions)
-    startup = _Startup(app, branding, actions, welcome)
+    startup = _Startup(app, branding, actions, welcome, smoke_test=smoke_test)
     welcome.show()
     app.processEvents()
 
     if smoke_test:
         startup.build_main_window()
-        ready = time.perf_counter() - started
-        _write_smoke_report(report_dir, app, startup.main_window(), branding, welcome, ready)
-        status = 0
+        if startup.failed:
+            status = 1
+        else:
+            ready = time.perf_counter() - started
+            _write_smoke_report(report_dir, app, startup.main_window(), branding, welcome, ready)
+            status = 0
     else:
         QTimer.singleShot(0, startup.build_main_window)
         status = int(app.exec())
@@ -93,17 +97,27 @@ class _Startup:
     """Builds the main window once the welcome screen has painted (ADR-0015 §1).
 
     Until the main window shows, the welcome screen is the app's only window, so closing
-    it early mustn't end the app.
+    it early mustn't end the app. If building the main window fails, the app says so and
+    ends with status 1, rather than running on with no window.
     """
 
     def __init__(
-        self, app: QApplication, branding: Branding, actions: AppActions, welcome: WelcomeScreen
+        self,
+        app: QApplication,
+        branding: Branding,
+        actions: AppActions,
+        welcome: WelcomeScreen,
+        *,
+        smoke_test: bool = False,
     ) -> None:
         self.app = app
         self.branding = branding
         self.actions = actions
         self.welcome = welcome
+        self.smoke_test = smoke_test
         self.window: MainWindow | None = None
+        self.failed = False
+        """Whether building the main window failed."""
         app.setQuitOnLastWindowClosed(False)
 
     def build_main_window(self) -> None:
@@ -112,12 +126,35 @@ class _Startup:
 
         from caddcalc.gui.window import MainWindow
 
-        self.window = MainWindow(branding=self.branding, actions=self.actions)
+        try:
+            self.window = MainWindow(branding=self.branding, actions=self.actions)
+        # An isolation boundary: a packaged app has no console, so an error here would
+        # otherwise leave a process with no window once the welcome screen closes.
+        except Exception as exc:  # noqa: BLE001
+            self._fail(exc)
+            return
         self.window.show()
         if isValid(self.welcome) and self.welcome.isVisible():
             self.welcome.raise_()
             self.welcome.activateWindow()
         self.app.setQuitOnLastWindowClosed(True)
+
+    def _fail(self, exc: Exception) -> None:
+        """Report a failed startup, and end the app with status 1."""
+        from shiboken6 import isValid
+
+        self.failed = True
+        traceback.print_exception(exc, file=sys.stderr)
+        self.app.setQuitOnLastWindowClosed(True)
+        message = f"{self.branding.name} couldn't start: building its main window failed."
+        if self.smoke_test:
+            print(f"{message}\n{exc}", file=sys.stderr)
+        else:
+            from PySide6.QtWidgets import QMessageBox
+
+            parent = self.welcome if isValid(self.welcome) else None
+            QMessageBox.critical(parent, self.branding.name, f"{message}\n\n{exc}")
+            self.app.exit(1)
 
     def main_window(self) -> MainWindow:
         """Return the main window, once built."""

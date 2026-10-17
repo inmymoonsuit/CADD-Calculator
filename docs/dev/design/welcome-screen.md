@@ -64,7 +64,9 @@ uv run python packaging/make_welcome_template.py builds/welcome-template.png
 ## The logo
 
 The logo strip is 72 px wide and 540 px tall. An **SVG** is preferred, since it scales to
-any display; a PNG works too, at 144 × 1080 px for 2×. The logo is drawn upright, fitted
+any display; a PNG works too, at 144 × 1080 px for 2×. An SVG must be
+**self-contained**: an `<image>` or `<use>` may embed its data (`data:`) or point within
+the file (`#…`), never to another file, which a build wouldn't bundle. The logo is drawn upright, fitted
 inside the strip, centred, and never stretched. The same 8 MB budget applies. Without a
 logo, the strip shows the app icon and the name set vertically.
 

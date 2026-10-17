@@ -163,6 +163,9 @@ by hand before a release on each platform:
   window.
 * **Frameless windows everywhere:** check whether the system draws a shadow and rounded
   corners, and that the ⓘ, the X, Esc, and dragging work.
+* **Keyboard focus:** Tab to the ⓘ and the X on each platform's real style and check
+  that a focus ring shows; they are flat (auto-raise) buttons, which some styles draw
+  without one.
 * **Displays:** check 100%, 150%, and 200% scaling, and a small screen (e.g. 1366 × 768 at
   150%), where the card should shrink to fit.
 

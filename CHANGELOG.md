@@ -209,6 +209,9 @@ All notable changes are recorded here. The format follows
 
 ### Changed
 - About names the license (Apache-2.0), and opens over whichever window is active.
+- If the main window can't be built, the app says so and exits with status 1 instead of
+  running on with no window. A pack's SVG logo must be self-contained, and the welcome
+  screen's version line shows just the version.
 - The main window gains a File menu with Exit, beside Help > About. Both come from
   `caddcalc.gui.actions.AppActions`, the app's shared commands, which carry Qt's menu
   roles so macOS puts About and Quit in the application menu (ADR-0015 §5).
