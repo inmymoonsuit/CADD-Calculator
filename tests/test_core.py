@@ -154,8 +154,17 @@ def test_registry_rejects_duplicates_and_bad_specs() -> None:
     class BadId(_Demo):
         id = "NoDomain"
 
-    with pytest.raises(SpecError, match=r"domain\.name"):
+    with pytest.raises(SpecError, match="at least two parts"):
         demo_registry().register(BadId)
+
+
+@pytest.mark.parametrize("symbol", ["sqrt", "pi", "in", "2X", "T-1"])
+def test_parameter_symbols_must_be_usable_in_formulas(symbol: str) -> None:
+    class BadSymbol(_Demo):
+        params = (Param("length", symbol, "Length", L, default="1 in"),)
+
+    with pytest.raises(SpecError, match="not usable in formulas"):
+        demo_registry().register(BadSymbol)
 
 
 def test_registry_suggests_close_ids() -> None:

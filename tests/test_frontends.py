@@ -56,6 +56,8 @@ def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
     assert "must be greater than 0" in capsys.readouterr().err
     assert main(["run", "sheet_metal.bend_allowance", "Q=1"]) == 2
     assert main(["run", "no.such_calc"]) == 2
+    last = capsys.readouterr().err.splitlines()[-1]
+    assert last.startswith("error: No calculator 'no.such_calc'."), "printed without quotes"
 
 
 @pytest.mark.gui

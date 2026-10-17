@@ -2,27 +2,30 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, override
 
 import pytest
 
 from caddcalc.calculators import BUILTIN_CALCULATORS, BUILTIN_DOMAINS, default_registry
+from caddcalc.calculators.sheet_metal.common import THICKNESS
 from caddcalc.core import (
     Calculator,
     Context,
     Dimension,
     Domain,
+    DomainValues,
     Method,
     Output,
     Param,
     Registry,
     SpecError,
+    UnknownCalculatorError,
     UnknownDomainError,
     Verification,
 )
-from caddcalc.core import registry as registry_module
+from caddcalc.core.registry import DOMAIN_ENTRY_POINT_GROUP, ENTRY_POINT_GROUP
 
 L = Dimension.LENGTH
 ACME = Domain("acme", "Acme Tools", "A plugin domain for tests.")
@@ -59,6 +62,12 @@ class _AcmeWidget(Calculator):
             Domain("meth", "Meth", "x", settings=(Param("t", "T", "T", L, methods=("a",)),)),
             "methods",
         ),
+        (Domain("fn", "Fn", "x", settings=(Param("t", "sqrt", "T", L),)), "not usable"),
+        (Domain("kw", "Kw", "x", settings=(Param("t", "in", "T", L),)), "not usable"),
+        (
+            Domain("sym", "Sym", "x", settings=(Param("t", "T", "T", L), Param("u", "T", "U", L))),
+            "duplicate setting symbol",
+        ),
     ],
 )
 def test_domain_definitions_are_validated(domain: Domain, message: str) -> None:
@@ -86,6 +95,27 @@ def test_a_calculator_naming_an_unknown_domain_fails_with_a_hint() -> None:
 def test_domain_lookup_suggests_close_ids() -> None:
     with pytest.raises(UnknownDomainError, match="sheet_metal"):
         default_registry(load_plugins=False).domain("sheet_metl")
+
+
+def test_domain_hints_also_match_display_names() -> None:
+    class Vague(_AcmeWidget):
+        domain = "Metal"
+
+    registry = default_registry(load_plugins=False)
+    with pytest.raises(SpecError, match=r"Did you mean: sheet_metal\?"):
+        registry.register(Vague)
+    with pytest.raises(UnknownDomainError, match=r"Did you mean: sheet_metal\?"):
+        registry.domain("Sheet Metal")
+
+
+def test_lookup_errors_print_their_message_without_quotes() -> None:
+    with pytest.raises(UnknownDomainError) as domain_error:
+        Registry().domain("nope")
+    assert str(domain_error.value) == "No domain 'nope'."
+    with pytest.raises(UnknownCalculatorError) as calc_error:
+        Registry().get("no.such")
+    assert str(calc_error.value) == "No calculator 'no.such'."
+    assert isinstance(calc_error.value, KeyError)
 
 
 def test_calculators_are_grouped_by_domain_and_sorted_by_name() -> None:
@@ -122,55 +152,113 @@ class _FakeEntryPoint:
         return self.target
 
 
-def _fake_entry_points(groups: dict[str, list[_FakeEntryPoint]]) -> Callable[..., Any]:
-    def entry_points(*, group: str) -> list[_FakeEntryPoint]:
-        return groups.get(group, [])
+def _with_plugins(
+    domains: Sequence[_FakeEntryPoint] = (), calculators: Sequence[_FakeEntryPoint] = ()
+) -> Registry:
+    """The default registry, with these entry points as the installed plugins."""
+    groups = {DOMAIN_ENTRY_POINT_GROUP: domains, ENTRY_POINT_GROUP: calculators}
 
-    return entry_points
+    def entry_points(*, group: str) -> Sequence[_FakeEntryPoint]:
+        return groups.get(group, ())
+
+    return default_registry(entry_points=entry_points)
 
 
-def test_plugin_domains_load_before_plugin_calculators(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        registry_module,
-        "entry_points",
-        _fake_entry_points(
-            {
-                "caddcalc.calculators": [_FakeEntryPoint("widget", "acme:Widget", _AcmeWidget)],
-                "caddcalc.domains": [_FakeEntryPoint("acme", "acme:DOMAIN", ACME)],
-            }
-        ),
+def test_plugin_domains_load_before_plugin_calculators() -> None:
+    registry = _with_plugins(
+        domains=[_FakeEntryPoint("acme", "acme:DOMAIN", ACME)],
+        calculators=[_FakeEntryPoint("widget", "acme:Widget", _AcmeWidget)],
     )
-    registry = default_registry()
     assert registry.plugin_errors == []
     assert registry.domain("acme") is ACME
     assert registry.get("acme.widget").domain == "acme"
 
 
-def test_broken_plugins_are_recorded_and_never_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_broken_plugins_are_recorded_and_never_crash() -> None:
     class Orphan(_AcmeWidget):
         id = "orphan.widget"
         domain = "orphan"
 
-    monkeypatch.setattr(
-        registry_module,
-        "entry_points",
-        _fake_entry_points(
-            {
-                "caddcalc.domains": [
-                    _FakeEntryPoint("broken", "broken:DOMAIN", ImportError("no module")),
-                    _FakeEntryPoint("wrong", "wrong:DOMAIN", ["not a domain"]),
-                ],
-                "caddcalc.calculators": [_FakeEntryPoint("orphan", "orphan:Widget", Orphan)],
-            }
-        ),
+    registry = _with_plugins(
+        domains=[
+            _FakeEntryPoint("broken", "broken:DOMAIN", ImportError("no module")),
+            _FakeEntryPoint("wrong", "wrong:DOMAIN", 42),
+        ],
+        calculators=[_FakeEntryPoint("orphan", "orphan:Widget", Orphan)],
     )
-    registry = default_registry()
-    messages = [e.message for e in registry.plugin_errors]
-    assert len(messages) == 3
-    assert "no module" in messages[0]
-    assert "not a Domain" in messages[1]
-    assert "unknown domain 'orphan'" in messages[2]
+    errors = [(e.source, e.message) for e in registry.plugin_errors]
+    assert [source for source, _ in errors] == [
+        "broken = broken:DOMAIN",
+        "wrong = wrong:DOMAIN",
+        "orphan = orphan:Widget",
+    ]
+    assert "no module" in errors[0][1]
+    assert "not iterable" in errors[1][1]
+    assert "unknown domain 'orphan'" in errors[2][1]
     assert len(registry) == len(BUILTIN_CALCULATORS)
+
+
+def test_one_bad_item_does_not_drop_the_rest_of_a_plugin() -> None:
+    extra = Domain("acme_extra", "Acme Extra", "A second plugin domain.")
+
+    class Lost(_AcmeWidget):
+        id = "acme.lost"
+        domain = "nowhere"
+
+    class Gadget(_AcmeWidget):
+        id = "acme.gadget"
+        name = "Gadget"
+
+    registry = _with_plugins(
+        domains=[_FakeEntryPoint("pack", "acme:DOMAINS", [ACME, "junk", extra])],
+        calculators=[_FakeEntryPoint("pack", "acme:CALCULATORS", [_AcmeWidget, Lost, Gadget])],
+    )
+    errors = {e.source: e.message for e in registry.plugin_errors}
+    assert set(errors) == {"pack[1] = acme:DOMAINS", "pack[1] = acme:CALCULATORS"}
+    assert "'junk' is not a Domain" in errors["pack[1] = acme:DOMAINS"]
+    assert "unknown domain 'nowhere'" in errors["pack[1] = acme:CALCULATORS"]
+    assert registry.domain("acme_extra") is extra
+    assert [c.id for c in registry.by_domain()[ACME]] == ["acme.gadget", "acme.widget"]
+
+
+def test_a_plugin_cannot_redefine_a_builtin_domain() -> None:
+    impostor = Domain("sheet_metal", "Sheet Metal", "Not the built-in one.")
+    registry = _with_plugins(domains=[_FakeEntryPoint("impostor", "x:DOMAIN", impostor)])
+    assert [e.message for e in registry.plugin_errors] == [
+        "a plugin can't redefine built-in domain 'sheet_metal'"
+    ]
+    assert registry.domain("sheet_metal") is BUILTIN_DOMAINS[0]
+
+    twice = _with_plugins(
+        domains=[_FakeEntryPoint("a", "a:DOMAIN", ACME), _FakeEntryPoint("b", "b:DOMAIN", ACME)]
+    )
+    assert [(e.source, e.message) for e in twice.plugin_errors] == [
+        ("b = b:DOMAIN", "Domain id 'acme' is registered twice")
+    ]
+
+
+def test_a_vendor_prefixed_plugin_calculator_can_join_a_builtin_domain() -> None:
+    class FlangeCheck(Calculator):
+        id = "acme.flange_check"
+        name = "Flange Check"
+        domain = "sheet_metal"
+        summary = "Copies the material thickness."
+        params = (THICKNESS,)
+        outputs = (Output("copy", "Y", "Copy", L),)
+        methods = (Method("only", "Only", "Y = T", Verification.UNVERIFIED),)
+
+        @override
+        def compute(self, ctx: Context) -> None:
+            ctx.calc("Y", "T", label="Copy", dimension=L, output="copy")
+
+    registry = _with_plugins(
+        calculators=[_FakeEntryPoint("flange", "acme:FlangeCheck", FlangeCheck)]
+    )
+    assert registry.plugin_errors == []
+    sheet_metal = registry.domain("sheet_metal")
+    assert "acme.flange_check" in [c.id for c in registry.by_domain()[sheet_metal]]
+    settings = DomainValues("sheet_metal", "Sheet Metal settings", {"thickness": 2.0})
+    assert registry.get("acme.flange_check").run(settings=settings).outputs["copy"] == 2.0
 
 
 # --- shared parameters --------------------------------------------------------------------

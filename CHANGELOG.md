@@ -47,7 +47,11 @@ All notable changes are recorded here. The format follows
 - Domains (ADR-0013): `caddcalc.core.Domain` declares a calculator family, and
   `Registry.register_domain()`, `domain()`, and `domains()` manage them. Plugins add
   domains through the `caddcalc.domains` entry-point group; every domain is registered
-  before any calculator. `caddcalc list --json` reports `domain` and `domain_name`.
+  before any calculator. A plugin can't redefine a built-in domain, and a plugin
+  calculator with its own ID prefix may join any domain. A bad item in a plugin's list
+  is recorded as `name[index]` and the rest still load. `Registry(entry_points=...)` and
+  `default_registry(entry_points=...)` take the plugin source, so tests can pass a fake.
+  `caddcalc list --json` reports `domain` and `domain_name`.
 - Shared parameters and input provenance (ADR-0013): a `Param(shared=True)` inherits
   the domain setting with its key, checked at registration. `Calculator.run()` takes
   `settings=DomainValues(...)` and picks each input as explicit, then domain setting,
@@ -68,8 +72,13 @@ All notable changes are recorded here. The format follows
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A
-  calculator naming an unknown domain fails registration with a "did you mean" hint,
-  and `Registry.by_domain()` is keyed by `Domain`.
+  calculator naming an unknown domain fails registration with a "did you mean" hint
+  that matches domain IDs and names, and `Registry.by_domain()` is keyed by `Domain`.
+- `UnknownCalculatorError` and `UnknownDomainError` print their message without the
+  quotes `KeyError` adds, so the CLI shows `error: No calculator 'x'.`
+- Parameter and domain-setting symbols must be usable in formulas: an identifier that
+  isn't a Python keyword or an evaluator function or constant. Domain setting symbols
+  must also be unique.
 - A unit of the wrong kind now reads "'3 deg' measures angle, but length is expected".
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no
   longer depends on the calculators layer above it (ADR-0003, ADR-0006).

@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from caddcalc.core import expr
 from caddcalc.core.errors import SpecError
 from caddcalc.core.spec import Param, Reference
 
@@ -36,8 +37,9 @@ class Domain:
         """Check the definition. Registration calls this so plugin mistakes fail early.
 
         Raises:
-            SpecError: The ID is malformed, the name is empty, a setting key repeats, or a
-                setting has a default or is limited to particular methods.
+            SpecError: The ID is malformed, the name is empty, a setting key or symbol
+                repeats, a symbol isn't usable in formulas, or a setting has a default or
+                is limited to particular methods.
         """
         if not _DOMAIN_ID.fullmatch(self.id):
             raise SpecError(
@@ -45,11 +47,20 @@ class Domain:
             )
         if not self.name.strip():
             raise SpecError(f"Domain {self.id!r} needs a name")
-        seen: set[str] = set()
+        keys: set[str] = set()
+        symbols: set[str] = set()
         for setting in self.settings:
-            if setting.key in seen:
+            if setting.key in keys:
                 raise SpecError(f"Domain {self.id!r}: duplicate setting {setting.key!r}")
-            seen.add(setting.key)
+            keys.add(setting.key)
+            if not expr.is_usable_symbol(setting.symbol):
+                raise SpecError(
+                    f"Domain {self.id!r}: setting symbol {setting.symbol!r} is not usable "
+                    "in formulas"
+                )
+            if setting.symbol in symbols:
+                raise SpecError(f"Domain {self.id!r}: duplicate setting symbol {setting.symbol!r}")
+            symbols.add(setting.symbol)
             if setting.default is not None:
                 raise SpecError(
                     f"Domain {self.id!r}: setting {setting.key!r} must not have a default; "

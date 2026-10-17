@@ -193,7 +193,11 @@ class Calculator(ABC):
     """
 
     id: ClassVar[str]
-    """Unique, dotted, lowercase ``<domain>.<name>``, e.g. ``sheet_metal.bend_allowance``."""
+    """Unique, lowercase, and dotted, with at least two parts.
+
+    Built-ins use ``<domain>.<name>``, e.g. ``sheet_metal.bend_allowance``. A plugin may use
+    its own prefix in any domain, e.g. ``acme.flange_check`` (ADR-0013).
+    """
     name: ClassVar[str]
     domain: ClassVar[str]
     """Id of the ``Domain`` the calculator belongs to, e.g. ``"sheet_metal"`` (ADR-0013)."""
@@ -314,7 +318,10 @@ class Calculator(ABC):
             if not hasattr(cls, attr):
                 raise SpecError(f"{cls.__name__} is missing class attribute {attr!r}")
         if not _ID.fullmatch(cls.id):
-            raise SpecError(f"Calculator id {cls.id!r} must look like 'domain.name' (lowercase)")
+            raise SpecError(
+                f"Calculator id {cls.id!r} must be lowercase and dotted, with at least two "
+                "parts, like 'sheet_metal.bend_allowance'"
+            )
         if not cls.methods:
             raise SpecError(f"{cls.id} declares no methods")
         if not cls.outputs:
@@ -325,11 +332,7 @@ class Calculator(ABC):
         _unique(cls.id, "parameter symbol", [p.symbol for p in cls.params])
         _unique(cls.id, "output key", [o.key for o in cls.outputs])
         for p in cls.params:
-            if (
-                not p.symbol.isidentifier()
-                or p.symbol in expr.FUNCTIONS
-                or p.symbol in expr.CONSTANTS
-            ):
+            if not expr.is_usable_symbol(p.symbol):
                 raise SpecError(
                     f"{cls.id}: parameter symbol {p.symbol!r} is not usable in formulas"
                 )

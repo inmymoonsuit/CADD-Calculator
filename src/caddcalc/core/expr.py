@@ -13,6 +13,7 @@ Angles are in degrees, so the trig helpers take and return degrees.
 from __future__ import annotations
 
 import ast
+import keyword
 import math
 import operator
 import re
@@ -159,6 +160,20 @@ def _depth(tree: ast.Expression) -> int:
             if isinstance(child, ast.expr)
         )
     return deepest
+
+
+def is_usable_symbol(name: str) -> bool:
+    """Return whether ``name`` can stand for a value in formulas.
+
+    It must be an identifier that isn't a Python keyword or the name of a function or
+    constant the evaluator provides.
+    """
+    return (
+        name.isidentifier()
+        and not keyword.iskeyword(name)
+        and name not in FUNCTIONS
+        and name not in CONSTANTS
+    )
 
 
 def names(expression: str) -> set[str]:

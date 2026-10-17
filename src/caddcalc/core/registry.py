@@ -1,16 +1,17 @@
 """Finding calculators and their domains (ADR-0006, ADR-0013).
 
-Built-ins are listed explicitly; plugins use entry points. Every domain is registered
-before any calculator, so a calculator can always find the domain it names.
+Built-ins are listed explicitly; plugins use entry points. A calculator's domain must
+already be registered when the calculator is, so ``default_registry()`` registers every
+domain, built-in and plugin, before any calculator.
 """
 
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
-from importlib.metadata import entry_points
-from typing import Any
+from importlib import metadata
+from typing import Any, Protocol
 
 from caddcalc.core.calculator import Calculator
 from caddcalc.core.domain import Domain
@@ -20,11 +21,34 @@ ENTRY_POINT_GROUP = "caddcalc.calculators"
 DOMAIN_ENTRY_POINT_GROUP = "caddcalc.domains"
 
 
+class PluginEntryPoint(Protocol):
+    """The parts of an installed package's entry point that the registry uses."""
+
+    @property
+    def name(self) -> str:
+        """The entry point's name."""
+
+    @property
+    def value(self) -> str:
+        """The object reference, e.g. ``"acme.tools:CALCULATORS"``."""
+
+    def load(self) -> Any:
+        """Import and return the object the entry point names."""
+
+
+class EntryPointSource(Protocol):
+    """Lists entry points by group, as ``importlib.metadata.entry_points`` does."""
+
+    def __call__(self, *, group: str) -> Iterable[PluginEntryPoint]:
+        """Return the entry points in ``group``."""
+
+
 @dataclass
 class PluginError:
     """A plugin that failed to load, and the reason."""
 
     source: str
+    """The entry point, as ``name = value``. An item of an iterable adds its index: ``name[1]``."""
     message: str
 
 
@@ -39,6 +63,11 @@ class Registry:
     _items: dict[str, Calculator] = field(default_factory=dict)
     _domains: dict[str, Domain] = field(default_factory=dict)
     plugin_errors: list[PluginError] = field(default_factory=list)
+    entry_points: EntryPointSource = field(
+        default=metadata.entry_points, kw_only=True, repr=False, compare=False
+    )
+    """Where the ``load_plugin_*`` methods find installed plugins."""
+    _plugin_domain_ids: set[str] = field(default_factory=set, init=False, repr=False)
 
     def register_domain(self, domain: Domain) -> Domain:
         """Check a domain's definition and add it.
@@ -70,7 +99,7 @@ class Registry:
         instance = calculator() if isinstance(calculator, type) else calculator
         type(instance).validate_spec()
         if instance.domain not in self._domains:
-            hint = _did_you_mean(instance.domain, self._domains)
+            hint = self._domain_hint(instance.domain)
             raise SpecError(
                 f"{instance.id}: unknown domain {instance.domain!r}.{hint} Register the domain "
                 f"first; plugins provide domains through the {DOMAIN_ENTRY_POINT_GROUP!r} "
@@ -91,19 +120,20 @@ class Registry:
         try:
             return self._items[calculator_id]
         except KeyError:
-            hint = _did_you_mean(calculator_id, self._items)
+            hint = _did_you_mean(calculator_id, {i: i for i in self._items})
             raise UnknownCalculatorError(f"No calculator {calculator_id!r}.{hint}") from None
 
     def domain(self, domain_id: str) -> Domain:
         """Return the domain with ``domain_id``.
 
         Raises:
-            UnknownDomainError: No domain has that ID; the message suggests close ones.
+            UnknownDomainError: No domain has that ID; the message suggests domains whose
+                ID or name is close.
         """
         try:
             return self._domains[domain_id]
         except KeyError:
-            hint = _did_you_mean(domain_id, self._domains)
+            hint = self._domain_hint(domain_id)
             raise UnknownDomainError(f"No domain {domain_id!r}.{hint}") from None
 
     def domains(self) -> list[Domain]:
@@ -133,37 +163,62 @@ class Registry:
     def load_plugin_domains(self) -> None:
         """Register domains that installed packages advertise.
 
-        Each entry point may name a ``Domain`` or an iterable of them. A broken plugin is
-        recorded in ``plugin_errors`` and never stops the app from starting.
+        Each entry point may name a ``Domain`` or an iterable of them. A plugin can't
+        redefine a domain registered directly, such as a built-in. A broken plugin, or a
+        broken item in its iterable, is recorded in ``plugin_errors`` and never stops the
+        app from starting.
         """
-        self._load_group(DOMAIN_ENTRY_POINT_GROUP, self._register_plugin_domains)
+        self._load_group(DOMAIN_ENTRY_POINT_GROUP, Domain, self._register_plugin_domain)
 
     def load_plugin_calculators(self) -> None:
         """Register calculators that installed packages advertise.
 
         Each entry point may name a ``Calculator`` subclass or an iterable of them. A broken
-        plugin is recorded in ``plugin_errors`` and never stops the app from starting.
+        plugin, or a broken item in its iterable, is recorded in ``plugin_errors`` and never
+        stops the app from starting.
         """
-        self._load_group(ENTRY_POINT_GROUP, self._register_plugin_calculators)
+        self._load_group(ENTRY_POINT_GROUP, type, self._register_plugin_calculator)
 
-    def _register_plugin_domains(self, loaded: Any) -> None:
-        items = [loaded] if isinstance(loaded, Domain) else list(loaded)
-        for item in items:
-            if not isinstance(item, Domain):
-                raise SpecError(f"{item!r} is not a Domain")
-            self.register_domain(item)
+    def _register_plugin_domain(self, item: object) -> None:
+        if not isinstance(item, Domain):
+            raise SpecError(f"{item!r} is not a Domain")
+        if item.id in self._domains and item.id not in self._plugin_domain_ids:
+            raise SpecError(f"a plugin can't redefine built-in domain {item.id!r}")
+        self.register_domain(item)
+        self._plugin_domain_ids.add(item.id)
 
-    def _register_plugin_calculators(self, loaded: Any) -> None:
-        items: Iterable[type[Calculator]] = [loaded] if isinstance(loaded, type) else list(loaded)
-        for item in items:
-            self.register(item)
+    def _register_plugin_calculator(self, item: object) -> None:
+        if not (isinstance(item, type) and issubclass(item, Calculator)):
+            raise SpecError(f"{item!r} is not a Calculator subclass")
+        self.register(item)
 
-    def _load_group(self, group: str, register: Callable[[Any], None]) -> None:
-        for ep in entry_points(group=group):
+    def _load_group(self, group: str, single: type, register: Callable[[object], None]) -> None:
+        """Register what each entry point in ``group`` names, one item at a time.
+
+        An entry point names one item, an instance of ``single``, or an iterable of items.
+        """
+        for ep in self.entry_points(group=group):
+            source = f"{ep.name} = {ep.value}"
             try:
-                register(ep.load())
+                loaded = ep.load()
+                if isinstance(loaded, single):
+                    items = [(source, loaded)]
+                else:
+                    items = [(f"{ep.name}[{i}] = {ep.value}", x) for i, x in enumerate(loaded)]
             except Exception as exc:  # noqa: BLE001 (isolation boundary: a plugin must never crash the app)
-                self.plugin_errors.append(PluginError(f"{ep.name} = {ep.value}", str(exc)))
+                self.plugin_errors.append(PluginError(source, str(exc)))
+                continue
+            for item_source, item in items:
+                try:
+                    register(item)
+                except Exception as exc:  # noqa: BLE001 (isolation boundary: one bad item must not drop the rest)
+                    self.plugin_errors.append(PluginError(item_source, str(exc)))
+
+    def _domain_hint(self, wanted: str) -> str:
+        """Suggest domains whose ID or display name is close to ``wanted``."""
+        spellings = {d.id: d.id for d in self._domains.values()}
+        spellings.update({d.name.lower(): d.id for d in self._domains.values()})
+        return _did_you_mean(wanted.lower(), spellings)
 
 
 def _check_shared_params(calculator: Calculator, domain: Domain) -> None:
@@ -184,6 +239,13 @@ def _check_shared_params(calculator: Calculator, domain: Domain) -> None:
             )
 
 
-def _did_you_mean(name: str, known: Iterable[str]) -> str:
+def _did_you_mean(name: str, known: Mapping[str, str]) -> str:
+    """Return a hint naming up to three IDs close to ``name``, or an empty string.
+
+    Args:
+        name: What was asked for.
+        known: Each spelling to compare ``name`` with, mapped to the ID it suggests.
+    """
     close = difflib.get_close_matches(name, list(known), n=3)
-    return f" Did you mean: {', '.join(close)}?" if close else ""
+    ids = dict.fromkeys(known[c] for c in close)
+    return f" Did you mean: {', '.join(ids)}?" if ids else ""
