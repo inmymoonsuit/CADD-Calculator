@@ -49,8 +49,9 @@ when bent.
 
 **Thickness (T)**: the sheet thickness. Gauge numbers map to thicknesses through tables
 that depend on the material **and the gauge system**. For example, 12 ga is 0.1046 in in
-Manufacturers' Standard Gauge for steel sheet, but other tables list 0.1093 in. Always name
-the system.
+Manufacturers' Standard Gauge for steel sheet, 0.109375 in in US Standard 1893 (some tables
+print 0.1093), and 0.0808 in in AWG. Always name the system; the Sheet Metal page's gauge
+picker makes you choose one.
 
 **Truncated cone (frustum)**: a cone with its tip cut off parallel to the base. Its flat
 pattern is an annular sector.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from functools import partial
 from html import escape
@@ -36,12 +36,15 @@ from caddcalc.calculators import default_registry
 from caddcalc.core import (
     CaddCalcError,
     Calculator,
+    Choice,
+    DerivedValue,
     Domain,
     DomainSettings,
     DomainValues,
     InputError,
     InputSource,
     Method,
+    Note,
     NoteKind,
     OutOfRangeError,
     Param,
@@ -65,7 +68,7 @@ from caddcalc.core.formatting import (
     render_step,
     unit_suffix,
 )
-from caddcalc.core.units import Dimension, parse_quantity_detailed
+from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.branding import GENERIC, Branding
 from caddcalc.gui.icons import (
     TABLER_DIR,
@@ -90,6 +93,10 @@ ICON_PX = 32
 
 COURSE_EXAMPLE = "course example"
 """How results name a value set by Load course example."""
+NO_CHOICE = "None"
+"""The first item of a choice with no default: nothing chosen, so values are typed."""
+CHOOSE = "Choose…"
+"""The first item of a grouped choice's options, until one is chosen in the group."""
 
 
 class EntryOrigin(Enum):
@@ -107,6 +114,8 @@ class FieldEntry:
 
     value: TypedValue | float
     origin: EntryOrigin = EntryOrigin.TYPED
+    copied_from: DerivedValue | None = None
+    """The derived value a family copy was made from; its note stays with the copy."""
 
     @property
     def base_value(self) -> float:
@@ -187,6 +196,13 @@ class MainWindow(QMainWindow):
         self.domain_settings = DomainSettings()
         """The domain settings the user has set; kept for the life of the window (§7)."""
         self.setting_fields: dict[str, tuple[Param, QLineEdit]] = {}
+        self.setting_abouts: dict[str, QLabel] = {}
+        self.choice_rows: dict[str, tuple[QComboBox | None, QComboBox]] = {}
+        """Each choice's group box (``None`` when its options have no groups) and option box."""
+        self.choice_groups: dict[tuple[str, str], str] = {}
+        """The group picked for a choice with no option chosen yet, by (domain id, key)."""
+        self.domain_notices: list[str] = []
+        """Choices the last change cleared, announced on the settings page until the next."""
         self.pending_settings: dict[tuple[str, str], str] = {}
         """Text typed in a settings field but not applied, by (domain id, setting key).
 
@@ -273,7 +289,9 @@ class MainWindow(QMainWindow):
         self.settings_box = QGroupBox("Family settings")
         self.settings_form = QFormLayout(self.settings_box)
         self.clear_settings_button = QPushButton("Clear all")
-        self.clear_settings_button.setToolTip("Unset every setting of this family.")
+        self.clear_settings_button.setToolTip(
+            "Unset every setting of this family, and return each choice to its default."
+        )
         self.clear_settings_button.clicked.connect(self._clear_domain_settings)
         self.domain_note = QLabel()
         self.domain_note.setWordWrap(True)
@@ -426,7 +444,7 @@ class MainWindow(QMainWindow):
         self.example_button.setVisible(any(m.legacy for m in calc.methods))
         for p in calc.params_for(self.method_key):
             edit = QLineEdit()
-            if self._inherits_set_value(calc, p):
+            if self._inherits_family_value(calc, p):
                 dropped = self.pending_fields.pop((calc.id, p.key), None)
                 if dropped is not None:  # it can't apply while the field inherits
                     self.field_notices[calc.id, p.key] = (
@@ -468,12 +486,28 @@ class MainWindow(QMainWindow):
         return p.shared and p.key not in self.overrides.get(calc.id, set())
 
     def _family_value(self, calc: Calculator, p: Param) -> TypedValue | None:
-        """The value set for ``p`` in ``calc``'s domain, if any."""
+        """The value ``p`` takes from ``calc``'s domain, if any: the set one, else a derived one.
+
+        A derived value shows and inherits exactly like a set one (ADR-0014, review M3).
+        """
         if not p.shared:
             return None
-        return self.domain_settings.get(self.registry.domain(calc.domain), p.key)
+        set_value = self.domain_settings.get(self.registry.domain(calc.domain), p.key)
+        if set_value is not None:
+            return set_value
+        derived = self._derived_value(calc, p)
+        return None if derived is None else _derived_entry(derived, p.dimension)
 
-    def _inherits_set_value(self, calc: Calculator, p: Param) -> bool:
+    def _derived_value(self, calc: Calculator, p: Param) -> DerivedValue | None:
+        """The value ``p`` takes from its domain's choices, when no value is set for it."""
+        if not p.shared:
+            return None
+        domain = self.registry.domain(calc.domain)
+        if self.domain_settings.get(domain, p.key) is not None:
+            return None
+        return self.domain_settings.for_domain(domain).derived.get(p.key)
+
+    def _inherits_family_value(self, calc: Calculator, p: Param) -> bool:
         return self._inherits(calc, p) and self._family_value(calc, p) is not None
 
     def _own_value(self, calc: Calculator, p: Param) -> float | None:
@@ -612,7 +646,7 @@ class MainWindow(QMainWindow):
             inherited = self._family_value(calc, p)
             if inherited is not None:
                 self.entries.setdefault(calc.id, {})[key] = FieldEntry(
-                    inherited, EntryOrigin.FAMILY_COPY
+                    inherited, EntryOrigin.FAMILY_COPY, self._derived_value(calc, p)
                 )
             overrides.add(key)
         self.pending_fields.pop((calc.id, key), None)
@@ -656,42 +690,59 @@ class MainWindow(QMainWindow):
     def _entry_label(self, calc: Calculator, p: Param, entry: FieldEntry) -> str:
         """Return how results name ``entry``'s value; empty for a value the user typed.
 
-        A copy of the family value is credited to the family settings only while it still
-        equals the family value.
+        A copy of the family value is credited to where it came from, the family settings
+        or a derived value such as a gauge's, only while that still gives the same value.
         """
         if entry.origin is EntryOrigin.COURSE_EXAMPLE:
             return COURSE_EXAMPLE
         if entry.origin is EntryOrigin.FAMILY_COPY:
-            settings_label = self.registry.domain(calc.domain).settings_label
-            inherited = self._family_value(calc, p)
-            if inherited is not None and inherited.value == entry.base_value:
-                return f"copied from {settings_label}"
-            return f"copied earlier from {settings_label}"
+            domain = self.registry.domain(calc.domain)
+            if entry.copied_from is not None:
+                name = describe_source(entry.copied_from.source)
+                derived = self._derived_value(calc, p)
+                same = derived is not None and (derived.source, derived.value) == (
+                    entry.copied_from.source,
+                    entry.base_value,
+                )
+            else:
+                name = domain.settings_label
+                inherited = self.domain_settings.get(domain, p.key)
+                same = inherited is not None and inherited.value == entry.base_value
+            return f"copied from {name}" if same else f"copied earlier from {name}"
         return ""
 
     def _run_arguments(
         self, calc: Calculator
-    ) -> tuple[dict[str, float], dict[str, InputSource], DomainValues]:
-        """Return the explicit inputs, their labels, and the domain settings for ``calc``.
+    ) -> tuple[dict[str, float], dict[str, InputSource], dict[str, Note], DomainValues]:
+        """Return the explicit inputs, their labels and notes, and the settings for ``calc``.
 
-        An inheriting field passes nothing, so the run takes the family value or else the
-        default. An overriding field passes its own value, or nothing for its default, and
-        its key is left out of the settings so the family value can't take its place.
+        An inheriting field passes nothing, so the run takes the family value, set or
+        derived, or else the default. An overriding field passes its own value, or nothing
+        for its default, and its key is left out of the settings, set and derived alike, so
+        the family value can't take its place. A copy of a derived value carries its note.
         """
         own = self.entries.get(calc.id, {})
         inputs: dict[str, float] = {}
         labels: dict[str, InputSource] = {}
+        notes: dict[str, Note] = {}
         for p in calc.params_for(self.method_key):
             entry = own.get(p.key)
             if entry is not None and not self._inherits(calc, p):
                 inputs[p.key] = entry.base_value
                 if label := self._entry_label(calc, p, entry):
                     labels[p.key] = InputSource(SourceKind.EXPLICIT, label)
+                copied = entry.copied_from
+                if entry.origin is EntryOrigin.FAMILY_COPY and copied and copied.note:
+                    notes[p.key] = copied.note
         domain = self.registry.domain(calc.domain)
         overridden = self.overrides.get(calc.id, set())
-        set_values = self.domain_settings.for_domain(domain).values
-        settings = domain.values(**{k: v for k, v in set_values.items() if k not in overridden})
-        return inputs, labels, settings
+        family = self.domain_settings.for_domain(domain)
+        settings = replace(
+            family,
+            values={k: v for k, v in family.values.items() if k not in overridden},
+            derived={k: v for k, v in family.derived.items() if k not in overridden},
+        )
+        return inputs, labels, notes, settings
 
     def _refresh_fields(self, calc: Calculator) -> list[str]:
         """Show each field's state, and return why any field's text can't be read.
@@ -708,7 +759,7 @@ class MainWindow(QMainWindow):
             edit.setStyleSheet(_outline("outline_error") if problem else "")
             if problem:
                 problems.append(problem)
-            edit.setReadOnly(self._inherits_set_value(calc, p))
+            edit.setReadOnly(self._inherits_family_value(calc, p))
             box = self.inherit_boxes.get(key)
             note = self.override_notes.get(key)
             if box is None or note is None:
@@ -738,9 +789,13 @@ class MainWindow(QMainWindow):
             self.output.setHtml(_error_html(problems, scheme))
             return
         try:
-            inputs, labels, settings = self._run_arguments(calc)
+            inputs, labels, notes, settings = self._run_arguments(calc)
             self.result = calc.run(
-                inputs, method=self.method_key, settings=settings, explicit_sources=labels
+                inputs,
+                method=self.method_key,
+                settings=settings,
+                explicit_sources=labels,
+                explicit_notes=notes,
             )
         except CaddCalcError as exc:
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
@@ -757,15 +812,27 @@ class MainWindow(QMainWindow):
     # values that calculators the user can't see from here will use.
 
     def _rebuild_domain_form(self) -> None:
-        """Build one field per setting of ``self.domain``: unapplied text, or the set value."""
+        """Build a row per choice and per setting of ``self.domain``.
+
+        A setting's field holds unapplied text or the set value. What the choices derive
+        for it shows as its placeholder and under it (``_refresh_domain_details``).
+        """
         domain = self.domain
         if domain is None:
             return
         for _setting, old in self.setting_fields.values():
             old.blockSignals(True)  # removing a focused field mustn't apply it mid-rebuild
+        for boxes in self.choice_rows.values():
+            for box in boxes:
+                if box is not None:
+                    box.blockSignals(True)
         while self.settings_form.rowCount():
             self.settings_form.removeRow(0)
         self.setting_fields.clear()
+        self.setting_abouts.clear()
+        self.choice_rows.clear()
+        for choice in domain.choices:
+            self._add_choice_row(domain, choice)
         for setting in domain.settings:
             edit = QLineEdit()
             edit.setPlaceholderText("not set")
@@ -781,17 +848,7 @@ class MainWindow(QMainWindow):
             field = QHBoxLayout()
             field.addWidget(edit, 1)
             field.addWidget(QLabel(unit_suffix(setting.dimension, self.prefs).strip()))
-            about = QLabel(
-                _setting_about_html(
-                    setting,
-                    self.registry.setting_uses(domain.id, setting.key),
-                    overridden_in=[
-                        calc.name
-                        for calc, _methods in self.registry.setting_uses(domain.id, setting.key)
-                        if setting.key in self.overrides.get(calc.id, set())
-                    ],
-                )
-            )
+            about = QLabel()
             about.setTextFormat(Qt.TextFormat.RichText)
             about.setWordWrap(True)
             row = QVBoxLayout()
@@ -799,9 +856,158 @@ class MainWindow(QMainWindow):
             row.addWidget(about)
             self.settings_form.addRow(f"{setting.label} ({setting.symbol})", row)
             self.setting_fields[setting.key] = (setting, edit)
-        self.settings_box.setVisible(bool(domain.settings))
-        self.clear_settings_button.setEnabled(bool(domain.settings))
+            self.setting_abouts[setting.key] = about
+        for choice in domain.choices:
+            self._fill_choice(domain, choice)
+        self.settings_box.setVisible(bool(domain.settings or domain.choices))
+        self.clear_settings_button.setEnabled(bool(domain.settings or domain.choices))
+        self._refresh_domain_details()
         self._show_setting_problems()
+
+    def _add_choice_row(self, domain: Domain, choice: Choice) -> None:
+        """Add a choice's row: a group box when its options are grouped, and an option box."""
+        grouped = any(o.group for o in domain.options(choice.key, self._selections(domain)))
+        group_box = QComboBox() if grouped else None
+        option_box = QComboBox()
+        boxes = QHBoxLayout()
+        if group_box is not None:
+            group_box.setToolTip(choice.help)
+            group_box.currentIndexChanged.connect(
+                partial(self._on_choice_group_changed, choice.key)
+            )
+            boxes.addWidget(group_box, 2)
+        option_box.setToolTip(choice.help)
+        option_box.currentIndexChanged.connect(partial(self._on_choice_option_changed, choice.key))
+        boxes.addWidget(option_box, 1)
+        about = QLabel(f"<small>{escape(choice.help)}</small>")
+        about.setTextFormat(Qt.TextFormat.RichText)
+        about.setWordWrap(True)
+        row = QVBoxLayout()
+        row.addLayout(boxes)
+        row.addWidget(about)
+        self.settings_form.addRow(choice.label, row)
+        self.choice_rows[choice.key] = (group_box, option_box)
+
+    def _selections(self, domain: Domain) -> dict[str, str]:
+        """Return the option selected for each of ``domain``'s choices that has one."""
+        return {
+            c.key: option
+            for c in domain.choices
+            if (option := self.domain_settings.choice(domain, c.key)) is not None
+        }
+
+    def _fill_choice(self, domain: Domain, choice: Choice, *, groups: bool = True) -> None:
+        """Show a choice's options under the current selections, and select its own.
+
+        Args:
+            domain: The domain the choice belongs to.
+            choice: The choice.
+            groups: Refill the group box too. Its own change handler passes False.
+        """
+        group_box, option_box = self.choice_rows[choice.key]
+        options = domain.options(choice.key, self._selections(domain))
+        current = self.domain_settings.choice(domain, choice.key)
+        chosen = next((o for o in options if o.key == current), None)
+        shown = list(options)
+        for box in (group_box, option_box):
+            if box is not None:
+                box.blockSignals(True)
+        if group_box is not None:
+            names = list(dict.fromkeys(o.group for o in options))
+            group = chosen.group if chosen else self.choice_groups.get((domain.id, choice.key))
+            if groups:
+                group_box.clear()
+                if choice.default is None:
+                    group_box.addItem(NO_CHOICE, None)
+                for name in names:
+                    group_box.addItem(name, name)
+                group_box.setCurrentIndex(max(group_box.findData(group), 0))
+            group = group_box.currentData()
+            shown = [o for o in options if o.group == group] if group else []
+        option_box.clear()
+        option_box.addItem(CHOOSE if group_box is not None else NO_CHOICE, None)
+        for option in shown:
+            option_box.addItem(option.label, option.key)
+        option_box.setCurrentIndex(max(option_box.findData(current), 0) if chosen else 0)
+        option_box.setEnabled(bool(shown))
+        for box in (group_box, option_box):
+            if box is not None:
+                box.blockSignals(False)
+
+    def _on_choice_group_changed(self, key: str, _index: int) -> None:
+        """Show the picked group's options and reset the choice's option, e.g. the gauge."""
+        domain = self.domain
+        if domain is None:
+            return
+        group_box, _option_box = self.choice_rows[key]
+        group = None if group_box is None else group_box.currentData()
+        if group:
+            self.choice_groups[domain.id, key] = group
+        else:
+            self.choice_groups.pop((domain.id, key), None)
+        self._change_choice(domain, key, None)
+
+    def _on_choice_option_changed(self, key: str, _index: int) -> None:
+        domain = self.domain
+        if domain is not None:
+            self._change_choice(domain, key, self.choice_rows[key][1].currentData())
+
+    def _change_choice(self, domain: Domain, key: str, option: str | None) -> None:
+        """Choose ``option`` for the choice ``key``, or clear it, and show what follows.
+
+        Choices that depended on it and lost their option are announced (ADR-0014).
+        """
+        before = self.domain_settings
+        if option is None:
+            self.domain_settings = before.clear_choice(domain, key)
+        else:
+            self.domain_settings = before.set_choice(domain, key, option)
+        self.domain_notices = [
+            f"{domain.choice(cleared.key).label} "
+            + ("reset to its default." if cleared.outcome == "default" else "cleared.")
+            for cleared in self.domain_settings.cleared_choices(domain, before)
+        ]
+        for choice in domain.choices:
+            if choice.key != key:
+                self._fill_choice(domain, choice)
+            elif option is None:
+                self._fill_choice(domain, choice, groups=False)
+        self._refresh_domain_details()
+        self._show_setting_problems()
+
+    def _refresh_domain_details(self) -> None:
+        """Show what the choices derive for each setting, and who uses it.
+
+        A derived value shows as the field's placeholder, and under the field with its
+        source, its caution, and its work. A value typed in the field overrides it by
+        precedence; clearing the field restores it.
+        """
+        domain = self.domain
+        if domain is None:
+            return
+        family = self.domain_settings.for_domain(domain)
+        for key, (setting, edit) in self.setting_fields.items():
+            derived = family.derived.get(key)
+            if derived is None:
+                edit.setPlaceholderText("not set")
+            else:
+                shown = entry_text(_derived_entry(derived, setting.dimension), self.prefs)
+                edit.setPlaceholderText(f"{shown} ({derived.source.label})")
+            uses = self.registry.setting_uses(domain.id, key)
+            self.setting_abouts[key].setText(
+                _setting_about_html(
+                    setting,
+                    uses,
+                    overridden_in=[
+                        calc.name
+                        for calc, _methods in uses
+                        if key in self.overrides.get(calc.id, set())
+                    ],
+                    derived=_derived_html(
+                        setting, derived, overridden=key in family.values, prefs=self.prefs
+                    ),
+                )
+            )
 
     def _setting_problem(self, setting: Param, text: str) -> str | None:
         """Return why ``text`` can't be applied to ``setting``, or ``None`` if it can."""
@@ -844,6 +1050,7 @@ class MainWindow(QMainWindow):
             self.domain_settings = updated
             self.pending_settings.pop((domain.id, key), None)
             edit.setModified(False)
+            self._refresh_domain_details()
         else:
             self.pending_settings[domain.id, key] = text
         self._show_setting_problems()
@@ -874,11 +1081,15 @@ class MainWindow(QMainWindow):
             )
 
     def _clear_domain_settings(self) -> None:
+        """Unset every setting of the shown family, and return each choice to its default."""
         domain = self.domain
         if domain is not None:
             self.domain_settings = self.domain_settings.clear_domain(domain)
             for key in [k for k in self.pending_settings if k[0] == domain.id]:
                 del self.pending_settings[key]
+            for key in [k for k in self.choice_groups if k[0] == domain.id]:
+                del self.choice_groups[key]
+            self.domain_notices = []
             self._rebuild_domain_form()
 
     def _show_setting_problems(self) -> None:
@@ -898,6 +1109,7 @@ class MainWindow(QMainWindow):
                 domain,
                 has_calculators=bool(self.registry.by_domain().get(domain)),
                 errors=problems,
+                notices=self.domain_notices,
                 scheme=current_scheme(),
             )
         )
@@ -969,13 +1181,44 @@ def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayP
     return text if parsed.explicit_unit else f"{text.strip()} {typed_in.symbol}"
 
 
+def _derived_entry(derived: DerivedValue, dimension: Dimension) -> TypedValue:
+    """Return a derived value as an entry: as its source states it, else in base units."""
+    if derived.stated is not None:
+        return derived.stated
+    return TypedValue.parse(base_text(derived.value, dimension), dimension)
+
+
+def _derived_html(
+    setting: Param, derived: DerivedValue | None, *, overridden: bool, prefs: DisplayPrefs
+) -> str:
+    """Return what a choice derives for a setting: the value, its source, caution, and work."""
+    if derived is None:
+        return ""
+    value = escape(entry_text(_derived_entry(derived, setting.dimension), prefs))
+    source = escape(describe_source(derived.source))
+    if overridden:
+        lines = [f"<b>Overrides</b> {value} from {source}. Clear the field to use that value."]
+    else:
+        lines = [f"<b>From {source}:</b> {value}"]
+    if derived.note is not None:
+        lines.append(escape(describe_note(derived.note)))
+    if derived.work is not None:
+        symbolic, numeric, shown = render_step(derived.work, None, prefs)
+        work = " = ".join(x for x in (f"{setting.symbol}", symbolic, numeric, shown) if x)
+        if derived.work.note:
+            work += f" ({derived.work.note})"
+        lines.append(f"Work: {escape(work)}")
+    return "<br>".join(lines)
+
+
 def _setting_about_html(
     setting: Param,
     uses: Sequence[tuple[Calculator, Sequence[Method]]],
     *,
     overridden_in: Sequence[str],
+    derived: str = "",
 ) -> str:
-    """Return a setting's help, the calculators that use it, and those overriding it."""
+    """Return a setting's help, what a choice derives for it, and who uses or overrides it."""
     lines = describe_setting_uses(uses)
     used = "".join(f"<br>&nbsp;&nbsp;• {escape(line)}" for line in lines)
     overridden = (
@@ -983,17 +1226,23 @@ def _setting_about_html(
         if overridden_in
         else ""
     )
+    derived_text = f"<br>{derived}" if derived else ""
     return (
-        f"<small>{escape(setting.help)}<br><b>Used by:</b>{used or ' no loaded calculator'}"
-        f"{overridden}</small>"
+        f"<small>{escape(setting.help)}{derived_text}"
+        f"<br><b>Used by:</b>{used or ' no loaded calculator'}{overridden}</small>"
     )
 
 
 def _domain_note_html(
-    domain: Domain, *, has_calculators: bool, errors: Sequence[str], scheme: Scheme = "light"
+    domain: Domain,
+    *,
+    has_calculators: bool,
+    errors: Sequence[str],
+    notices: Sequence[str] = (),
+    scheme: Scheme = "light",
 ) -> str:
-    """Return the note under a settings page: no calculators, and any refused values."""
-    parts = []
+    """Return the note under a settings page: cleared choices, no calculators, refusals."""
+    parts = [f"<p>{escape(notice)}</p>" for notice in notices]
     if not has_calculators:
         parts.append(
             f"<p><b>{NO_CALCULATORS}.</b> No calculator uses the {escape(domain.name)} "
@@ -1045,6 +1294,8 @@ def result_html(
         if numeric:
             lines.append(f"= {numeric}")
         lines.append(f"= {value}")
+        if step.expression is not None and step.note:
+            lines.append(f"({step.note})")
         work.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;".join(escape(x) for x in lines))
     parts.append("<h3>Work</h3><p style='font-family: monospace'>" + "<br><br>".join(work) + "</p>")
     refs = "".join(f"<li>{escape(str(r))}</li>" for r in method.references)

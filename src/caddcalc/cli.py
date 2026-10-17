@@ -210,6 +210,8 @@ def format_result(
             if numeric:
                 lines.append(f"  {pad[:-2]}= {numeric}")
             lines.append(f"  {pad[:-2]}= {value}")
+            if step.expression is not None and step.note:
+                lines.append(f"  {pad}({step.note})")
     lines += ["", "Results"]
     for o in calc.outputs:
         value = format_value(result.outputs[o.key], o.dimension, prefs)

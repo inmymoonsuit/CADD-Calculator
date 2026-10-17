@@ -29,8 +29,13 @@ All notable changes are recorded here. The format follows
   it carry a nominal-thickness caution pointing to the system's tolerance standard. The
   definitions ship as a cited, versioned table, `data/gauges.toml`; every thickness is
   computed from them exactly, and a result that uses one shows its work ahead of the
-  calculator's (`DerivedValue.work`). No gauge is selected by default, and the Sheet
-  Metal page doesn't offer the choice yet.
+  calculator's (`DerivedValue.work`). No gauge is selected by default.
+- The Sheet Metal page's gauge picker: a system, then a number; changing the system
+  clears the number. The derived thickness shows as the field's placeholder, with its
+  source, caution, and work under it, and a typed thickness takes precedence. On
+  calculator pages a gauge's thickness inherits, reads only, and copies like a set
+  value; a copy is named after the gauge and keeps the caution. Work shows each derived
+  step's note, such as the value before rounding, in the app and the CLI.
 - A path for reporting a wrong or rights-encumbered reference value: a section in
   CONTRIBUTING.md and the *Reference value* issue template, linked from the README and
   the sheet-metal user guide (ADR-0014 §5.7).

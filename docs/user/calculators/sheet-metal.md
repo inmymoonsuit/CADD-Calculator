@@ -32,8 +32,9 @@ methods that use it follow the colon.
 | Inside bend radius (R) | Bend allowance & deduction; Flat length of a formed segment; V-die opening (air bending): Inside-radius percentage rule |
 | K-factor (K) | Bend allowance & deduction: K-factor (neutral axis); Flat length of a formed segment: K-factor (neutral axis) |
 
-* **Thickness:** enter the decimal thickness. Gauge numbers mean different thicknesses in
-  different gauge systems (see *Thickness* in the [glossary](../glossary.md)).
+* **Thickness:** enter the decimal thickness, or choose a gauge (below). Gauge numbers
+  mean different thicknesses in different gauge systems (see *Thickness* in the
+  [glossary](../glossary.md)).
 * **K-factor:** cited starting values are about 0.35 to 0.45 (FAA, Machinery's Handbook,
   and the textbook's 0.4), approaching 0.5 for large R/T. Use your shop's test-bend value
   for production.
@@ -42,16 +43,52 @@ methods that use it follow the colon.
 
 The settings page shows the same list under each field.
 
+### Choosing a gauge
+
+The **Gauge** row picks a gauge system, then a gauge number in it. No gauge is chosen
+until you pick one, so by default you type the decimal thickness.
+
+| System | Gauges | Stated to |
+|---|---|---|
+| Manufacturers' Standard (steel sheet) | 3 to 38 | 4 decimal places |
+| Galvanized | 8 to 34 | 4 decimal places |
+| US Standard 1893, as commonly used for stainless; practice varies | 7/0 to 38 | the statute's exact decimals |
+| AWG (Brown & Sharpe) | 4/0 to 40 | 4 decimal places, 5 below 0.0100 in |
+
+* **Name the system, always.** 12 ga is 0.1046 in in Manufacturers' Standard, 0.1084 in
+  galvanized, 0.109375 in in US Standard, and 0.0808 in in AWG. A gauge number alone
+  can't be chosen, and changing the system clears the number.
+* **The thickness follows the gauge.** Choosing 12 ga Manufacturers' Standard makes the
+  thickness 0.1046 in for every calculator that shares it. The field shows it in grey,
+  and under it the page shows where it comes from, a caution, and the work, e.g.
+  T = (w + c) / 16 / B = (70 + 0) / 16 / 41.82 = 0.1046 in, which is 0.1046150167… in
+  before rounding to the system's published 4 decimal places.
+* **A thickness you type takes precedence.** Typing a thickness in the field overrides
+  the gauge; clearing the field returns to the gauge's value.
+* **The caution.** A gauge thickness is nominal: mills roll to a tolerance. Every result
+  that uses one carries a note such as "Nominal thickness; mill tolerances apply (see
+  ASTM A568/A568M, 2025, rev. a). Check the material's specification or measure before
+  cutting." Each system points to its own tolerance standard.
+* Each value comes from a cited definition: the 1893 gauge statute (15 U.S.C. §206),
+  NBS Circular 391, and one fact from *Machinery's Handbook*. Results name the table,
+  "Gauge systems, version 1". To report a value that looks wrong, see
+  [Reporting a wrong value](#reporting-a-wrong-value).
+
 ### Using a family value in a calculator
 
 * Once a Sheet Metal value is set, each calculator field that shares it shows the value
   and a ticked **Use Sheet Metal value** box. The field is read-only while the box is
   ticked, and the result lists the value as *Sheet Metal settings*.
+* A gauge's thickness works the same way. The result lists it by its gauge, e.g.
+  *12 ga, Manufacturers' Standard (nominal), Gauge systems, version 1*, carries the
+  caution, and shows the gauge's work before the calculator's own.
 * To give one calculator its own value, **untick the box**. The field keeps an exact
   copy of the family value, so nothing changes until you edit it; the result lists it
   as *copied from Sheet Metal settings*, and as *entered* once you type a new value.
   The override lasts for the session, even if the family value changes later; the
-  copy is then listed as *copied earlier from Sheet Metal settings*.
+  copy is then listed as *copied earlier from Sheet Metal settings*. A copy of a gauge's
+  thickness is listed as *copied from 12 ga, Manufacturers' Standard (nominal), …*, and
+  keeps the caution until you type a new value.
 * While a field overrides a set value, a note under it shows both values, e.g.
   "Sheet Metal value is 0.2500 in; this calculator uses 0.1046 in." Tick the box to
   use the family value again. The settings page shows how many calculators override

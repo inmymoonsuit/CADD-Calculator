@@ -680,3 +680,19 @@ These settle release-checklist item 7 and refine the gauge-table entries above.
   input, or one that already has subjects, is refused. This is how the calculator page
   keeps the caution on a copy of a gauge thickness (review item M3).
 
+### 2026-10-17: the gauge picker (maintainer, phase 2a)
+
+* **The settings page.** A choice whose options have groups shows two boxes, the group
+  (the system) and the option (the number); changing the group clears the option. A
+  choice without a default starts at "None", so thickness is typed. A setting's derived
+  value shows as its placeholder, and under it with its source, caution, and work; a
+  typed value overrides it by precedence, and clearing restores it. Choices a change
+  cleared are announced, with what each fell back to.
+* **Calculator pages (review M3).** A derived value is a family value: it shows,
+  inherits read-only, and copies on untick exactly like a set one. The copy is named
+  "copied from" the derived value's source and carries its note into results
+  (`run(explicit_notes=...)`), until the user types a new value. The run gets the
+  family's set and derived values minus the keys the calculator overrides.
+* **Work notes.** The app and the CLI show a step's note under formula steps too, so a
+  derived value's "before rounding" line appears with its work.
+

@@ -20,7 +20,8 @@ THICKNESS_SETTING = Param(
     min_inclusive=False,
     help=(
         "Sheet thickness for every sheet-metal calculator that uses it. Enter the decimal "
-        "thickness. Gauge numbers mean different thicknesses in different gauge systems."
+        "thickness, or choose a gauge; a thickness entered here takes precedence over the "
+        "gauge. Gauge numbers mean different thicknesses in different gauge systems."
     ),
 )
 INSIDE_RADIUS_SETTING = Param(

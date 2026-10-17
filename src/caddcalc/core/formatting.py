@@ -9,7 +9,7 @@ from fractions import Fraction
 
 from caddcalc.core import expr
 from caddcalc.core.calculator import Calculator, Result
-from caddcalc.core.errors import CaddCalcError
+from caddcalc.core.errors import CaddCalcError, UsageError
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError
@@ -133,11 +133,17 @@ def to_fraction(value: float, denominator: int = 64) -> str:
     return f"{sign}{whole}-{part}" if whole else f"{sign}{part}"
 
 
-def render_step(step: Step, result: Result, prefs: DisplayPrefs) -> tuple[str, str | None, str]:
+def render_step(
+    step: Step, result: Result | None, prefs: DisplayPrefs
+) -> tuple[str, str | None, str]:
     """Return (symbolic, substituted, value) text for one step of the work.
 
     Substitution shows each symbol in display units, which is only meaningful for formulas
     that are dimensionally homogeneous. All built-in formulas are (see known-issues KI-005).
+    A step with its own ``substitution``, such as a derived value's work, needs no result.
+
+    Raises:
+        UsageError: ``result`` is ``None`` for a step that substitutes the run's values.
     """
     value_text = format_value(step.value, step.dimension, prefs)
     if step.expression is None:
@@ -145,6 +151,8 @@ def render_step(step: Step, result: Result, prefs: DisplayPrefs) -> tuple[str, s
     symbolic = expr.render_symbolic(step.expression)
     if step.substitution is not None:
         return (symbolic, expr.render_numeric(step.expression, step.substitution), value_text)
+    if result is None:
+        raise UsageError("render_step() needs the result to show this step's values")
     values: dict[str, str] = {}
     for name in expr.names(step.expression):
         v, dim = result.symbols[name]

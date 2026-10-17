@@ -172,7 +172,7 @@ def test_the_family_settings_doc_lists_who_uses_each_setting() -> None:
     """The user guide's table is written by hand; this keeps it from drifting."""
     doc = Path(__file__).parents[1] / "docs" / "user" / "calculators" / "sheet-metal.md"
     section = doc.read_text(encoding="utf-8").split("## Family settings", 1)[1]
-    section = section.split("\n## ", 1)[0]
+    section = section.split("\n## ", 1)[0].split("\n### ", 1)[0]  # the settings table only
     rows = {}
     for line in section.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
