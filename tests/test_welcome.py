@@ -26,6 +26,10 @@ LOGO_SVG = (
 )
 
 
+SQUARE_LOGO_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+    '<rect width="100" height="100" fill="#202020"/></svg>'
+)
 WIDE_LOGO_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100" viewBox="0 0 400 100">'
     '<rect width="400" height="100" fill="#202020"/></svg>'
@@ -259,18 +263,18 @@ def measured_contrast(welcome: Any, pane: Any) -> float:
     from caddcalc.gui.welcome_style import contrast, luminance, rgb_luminance
 
     panes, scheme = style().panes, current_scheme()
-    role, alpha = pane.fill(scheme)
+    text_role, fill_role, alpha = pane.fill(scheme)
     pane.hide()
     shown = welcome.art.grab().toImage().convertToFormat(QImage.Format.Format_RGBX8888)
     pane.show()
-    fill = QColor(role_color(panes.fill_role, scheme))
+    fill = QColor(role_color(fill_role, scheme))
     fill.setAlpha(alpha)
     p = QPainter(shown)
     p.fillRect(pane.geometry(), fill)
     p.end()
     data = bytes(shown.copy(pane.geometry()).constBits())
     levels = sorted(rgb_luminance(c) for c in zip(data[0::4], data[1::4], data[2::4], strict=True))
-    text = luminance(role_color(role, scheme))
+    text = luminance(role_color(text_role, scheme))
     return min(
         contrast(text, levels[max(math.ceil(q / 100 * len(levels)), 1) - 1])
         for q in panes.percentiles
@@ -289,16 +293,21 @@ def test_the_panes_stay_quiet_and_readable_over_any_art(
     floor = math.ceil(panes.fill_opacity_min * 255)
     welcome = screen(pack(tmp_path / "pack", art=art))
     welcome.show()
-    for pane in (welcome.art.name_pane, welcome.art.version_pane):
-        _role, alpha = pane.fill(current_scheme())
+    for pane, needed in ((welcome.art.name_pane, 3), (welcome.art.version_pane, 4.5)):
+        assert pane.tokens.min_contrast == needed, "large text 3:1, the version 4.5:1"
+        text_role, fill_role, alpha = pane.fill(current_scheme())
+        dark_text = text_role == panes.text_roles[0]
+        assert fill_role == panes.fill_roles[0 if dark_text else 1], "each text has its fill"
         assert (alpha > floor) == raised, (pane.text, alpha)
         assert alpha >= floor
-        assert measured_contrast(welcome, pane) >= panes.min_contrast, pane.text
+        assert measured_contrast(welcome, pane) >= needed, pane.text
     welcome.close()
 
 
-@pytest.mark.parametrize(("logo", "tall"), [(LOGO_SVG, True), (WIDE_LOGO_SVG, False)])
-def test_the_logo_box_floats_over_the_arts_left_edge(tmp_path: Path, logo: str, tall: bool) -> None:
+@pytest.mark.parametrize(
+    ("logo", "shape"), [(LOGO_SVG, "tall"), (SQUARE_LOGO_SVG, "square"), (WIDE_LOGO_SVG, "wide")]
+)
+def test_the_logo_box_floats_over_the_arts_left_edge(tmp_path: Path, logo: str, shape: str) -> None:
     from caddcalc.gui.welcome_layout import scaled
 
     tokens = style()
@@ -306,17 +315,19 @@ def test_the_logo_box_floats_over_the_arts_left_edge(tmp_path: Path, logo: str, 
     welcome.show()  # placed once it has its size
     scale = welcome.art.width() / tokens.art.slot.width  # the card fits its screen
     box, area = welcome.logo.geometry(), scaled(tokens.logo_area, scale)
-    least = tokens.logo.min_size.width * scale, tokens.logo.min_size.height * scale
+    least = tokens.logo.min_short_side * scale
     assert welcome.logo.parentWidget() is welcome.art, "over the art, not beside it"
     assert box.left() >= round(area.x) and box.right() < round(area.x + area.width)
     assert box.top() >= round(area.y) and box.bottom() < round(area.y + area.height)
-    assert box.width() >= round(least[0]) and box.height() >= round(least[1])
+    assert min(box.width(), box.height()) >= round(least)
     centre = area.y + area.height / 2
     assert abs(box.top() + box.height() / 2 - centre) <= 1, "centred vertically"
-    if tall:
+    if shape == "tall":
         assert box.height() > area.height * 0.9, "a tall logo gets a tall box"
+    elif shape == "square":
+        assert box.width() == box.height(), "a square mark keeps its shape"
     else:
-        assert box.height() == round(least[1]), "a wordmark gets the least height"
+        assert box.height() == round(least), "a wordmark gets the least short side"
     welcome.close()
 
 
@@ -329,19 +340,119 @@ def test_the_card_has_rounded_corners_a_border_and_a_separator() -> None:
     welcome = screen()
     assert welcome.rounded, "the offscreen platform composites"
     assert welcome.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-    assert welcome.border.radius == pytest.approx(
-        tokens.card.corner_radius * welcome.height(), abs=0.01
-    )
+    scale = welcome.width() / tokens.window.width
+    assert welcome.radius == pytest.approx(tokens.card.corner_radius * scale, abs=0.01)
     welcome.show()
     image = welcome.grab().toImage()
     line = role_color(tokens.card.border_role, scheme)
     middle = welcome.width() // 2
-    assert image.pixelColor(0, 0).alpha() == 0, "the corner is cut away"
     assert image.pixelColor(middle, 0).name().upper() == line
     assert image.pixelColor(middle, welcome.height() - 1).name().upper() == line
     separator = role_color(tokens.top_bar.separator_role, scheme)
     assert image.pixelColor(middle, welcome.top_bar.height() - 1).name().upper() == separator
     welcome.close()
+
+
+def test_nothing_shows_outside_the_cards_rounded_outline(tmp_path: Path) -> None:
+    """The top bar and busy art are clipped to the one outline; the corners stay clear."""
+    welcome = screen(pack(tmp_path / "pack", art="busy"))
+    welcome.show()
+    image = welcome.grab().toImage()
+    right, bottom = welcome.width() - 1, welcome.height() - 1
+    for x, y in ((0, 0), (right, 0), (0, bottom), (right, bottom)):
+        assert image.pixelColor(x, y).alpha() == 0, (x, y)
+    welcome.close()
+
+
+@pytest.mark.parametrize("ratio", [1, 1.25, 1.5, 2])
+def test_lines_are_whole_device_pixels_on_the_pixel_grid(ratio: float) -> None:
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QColor, QImage, QPainter
+
+    from caddcalc.gui.welcome import stroke
+    from caddcalc.gui.welcome_layout import device_line
+
+    width, height = 50, 30
+    image = QImage(
+        round(width * ratio), round(height * ratio), QImage.Format.Format_ARGB32_Premultiplied
+    )
+    image.setDevicePixelRatio(ratio)
+    image.fill(Qt.GlobalColor.transparent)
+    p = QPainter(image)
+    stroke(p, QRectF(0, 0, width, height), QColor("#21251F"), 1)
+    p.end()
+    device = device_line(1, ratio)
+    alphas = {
+        image.pixelColor(x, y).alpha() for x in range(image.width()) for y in range(image.height())
+    }
+    assert alphas == {0, 255}, "no part-covered pixels: crisp"
+    middle = image.height() // 2
+    assert [image.pixelColor(x, middle).alpha() for x in range(device + 1)] == [255] * device + [0]
+
+
+def test_the_title_is_centred_on_its_capitals(tmp_path: Path) -> None:
+    """The padding is the space around the caps: "CADD" sits mid-pane (ADR-0016, amendments)."""
+    from PySide6.QtGui import QFontMetricsF
+
+    welcome = screen(pack(tmp_path / "pack", art="light"))
+    welcome.show()
+    pane = welcome.art.name_pane
+    image = pane.grab().toImage()
+    caps = QFontMetricsF(pane.text_font).horizontalAdvance("CADD") / pane.devicePixelRatioF()
+    left = (pane.width() - QFontMetricsF(pane.text_font).horizontalAdvance(pane.text)) / 2
+    rows = [
+        y
+        for y in range(1, pane.height() - 1)  # inside the border
+        for x in range(round(left), round(left + caps))
+        if image.pixelColor(x, y).lightness() < 128  # ink text on a light pane
+    ]
+    top, bottom = min(rows), pane.height() - 1 - max(rows)
+    assert abs(top - bottom) <= 1, (top, bottom)
+    band = style().typography.display_cap_height * pane.text_font.pixelSize()
+    assert max(rows) - min(rows) + 1 == pytest.approx(band, abs=1), "the caps fill the band"
+    welcome.close()
+
+
+def test_the_title_is_regular_by_default_on_its_pixel_grid() -> None:
+    from PySide6.QtGui import QFont
+
+    from caddcalc.gui.welcome_layout import display_pixels
+
+    tokens = style()
+    welcome = screen()
+    welcome.show()
+    pane = welcome.art.name_pane
+    assert tokens.typography.display_weight == "regular"
+    assert pane.text_font.weight() == QFont.Weight.Normal
+    scale = welcome.art.width() / tokens.art.slot.width
+    grid = display_pixels(50, scale, pane.devicePixelRatioF(), 25)
+    assert pane.text_font.pixelSize() == 25 * grid, "a whole multiple of the 25-pixel em"
+    welcome.close()
+
+
+def test_a_bold_title_sizes_its_pane_from_the_bold_run() -> None:
+    """Bold widens each platform's run differently, so the pane measures the bold font."""
+    from dataclasses import replace
+
+    from PySide6.QtGui import QFont, QFontMetricsF
+    from PySide6.QtWidgets import QWidget
+
+    from caddcalc.gui.welcome import _Pane
+    from caddcalc.gui.welcome_layout import Size
+
+    tokens = style()
+    bold = replace(tokens, typography=replace(tokens.typography, display_weight="bold"))
+    parent = QWidget()
+    widths = {}
+    for name, style_ in (("regular", tokens), ("bold", bold)):
+        pane = _Pane("CADD Calculator", style_, style_.name_pane, parent)
+        pane.place(Size(960, 540), 1.0)
+        run = QFontMetricsF(pane.text_font).horizontalAdvance(pane.text)
+        assert pane.width() >= run / pane.devicePixelRatioF() + 2 * style_.name_pane.padding[1]
+        widths[name] = (pane.width(), pane.text_font.weight())
+    assert widths["bold"][1] == QFont.Weight.Bold and widths["regular"][1] == QFont.Weight.Normal
+    assert widths["bold"][0] >= widths["regular"][0]
+    parent.deleteLater()
 
 
 def test_without_a_compositor_the_card_is_square(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -360,7 +471,7 @@ def test_without_a_compositor_the_card_is_square(monkeypatch: pytest.MonkeyPatch
         assert module.can_round_corners() is rounded, platform
     monkeypatch.setattr(QGuiApplication, "platformName", staticmethod(lambda: "xcb"))
     welcome = screen()
-    assert not welcome.rounded and welcome.border.radius == 0
+    assert not welcome.rounded and welcome.radius == 0
     assert not welcome.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
     welcome.show()
     assert welcome.grab().toImage().pixelColor(0, 0).alpha() == 255, "square, opaque"
@@ -376,13 +487,13 @@ def test_a_packs_style_overrides_reach_the_screen(tmp_path: Path) -> None:
     assert branding.source is not None
     toml = branding.source / "branding.toml"
     overrides = (
-        "[welcome.style.logo]\nmargin_left = 30\n[welcome.style.panes]\nfill_opacity_min = 0.4\n"
+        "[welcome.style.logo]\nmargin_left = 32\n[welcome.style.panes]\nfill_opacity_min = 0.4\n"
     )
     toml.write_text(toml.read_text(encoding="utf-8") + overrides, encoding="utf-8")
     welcome = screen(load_branding(branding.source))
     welcome.show()
     scale = welcome.art.width() / style().art.slot.width
-    assert welcome.logo.x() >= round(30 * scale), "the pack's margin"
-    _role, alpha = welcome.art.name_pane.fill(current_scheme())
+    assert welcome.logo.x() >= round(32 * scale), "the pack's margin"
+    _text, _fill, alpha = welcome.art.name_pane.fill(current_scheme())
     assert alpha == math.ceil(0.4 * 255), "calm art: the pack's floor, not the shipped one"
     welcome.close()

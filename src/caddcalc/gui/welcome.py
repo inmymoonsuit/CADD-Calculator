@@ -7,15 +7,20 @@ the main window (ADR-0015, amendments). The art and the logo come from the pack,
 generated (``welcome_art``). Every size, colour role, and font comes from the design
 tokens (``welcome_style``), placed by ``welcome_layout``; a test keeps literals out of
 here.
+
+Lines are whole device pixels on device-pixel centres, and only the card's rounded
+outline is antialiased, so the card stays crisp at 125% and 150% scaling (ADR-0016,
+amendments).
 """
 
 from __future__ import annotations
 
+import math
 import warnings
 from pathlib import Path
 from typing import override
 
-from PySide6.QtCore import QEvent, QRectF, QSize, Qt
+from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -45,6 +50,8 @@ from caddcalc.gui.welcome_layout import (
     Size,
     contain_fit,
     cover_crop,
+    device_line,
+    display_pixels,
     fit_scale,
     logo_box,
     pane_rect,
@@ -52,13 +59,13 @@ from caddcalc.gui.welcome_layout import (
 )
 from caddcalc.gui.welcome_style import (
     RGB,
-    PaneStyle,
     PaneTokens,
+    TypographyTokens,
     WelcomeStyle,
     opaque_fill,
     pane_fill,
+    pane_pairs,
     percentile_colors,
-    rgb,
     style,
 )
 
@@ -96,29 +103,29 @@ def read_image(path: Path | None, what: str) -> QImage | None:
     return image
 
 
-def line_width(width: float, widget: QWidget) -> float:
-    """Return a line's width in logical pixels: ``width``, but never under one device pixel."""
-    return max(width, 1 / widget.devicePixelRatioF()) if width else width
+def display_font(pixels: int, typography: TypographyTokens | None = None) -> QFont:
+    """Return the display face, ``pixels`` pixels to the em, with its fallbacks.
 
-
-def display_font(pixel_size: float) -> QFont:
-    """Return the display face at ``pixel_size``, at its token weight, with its fallbacks.
-
-    VT323 has only a regular file, so its bold (S1) is the one Qt synthesizes.
+    It's antialiased and unhinted, so a pixel face stays on its grid. Its weight is the
+    token's: regular, or Qt's bold, which each platform's text engine draws differently
+    (ADR-0016, amendments).
     """
     display_family()  # loads the vendored face on first use
-    typography = style().typography
+    typography = style().typography if typography is None else typography
     font = QFont()
     font.setFamilies([typography.display_family, *typography.fallback_families])
-    font.setWeight(QFont.Weight(typography.display_weight))
-    font.setPixelSize(max(round(typography.min_font_size), round(pixel_size)))
+    font.setPixelSize(pixels)
+    font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+    font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+    bold = typography.display_weight == "bold"
+    font.setWeight(QFont.Weight.Bold if bold else QFont.Weight.Normal)
     return font
 
 
-def body_font(pixel_size: float) -> QFont:
-    """Return the system's UI font at ``pixel_size``."""
+def body_font(pixels: int) -> QFont:
+    """Return the system's UI font, ``pixels`` pixels to the em."""
     font = QFont(QApplication.font())
-    font.setPixelSize(max(round(style().typography.min_font_size), round(pixel_size)))
+    font.setPixelSize(pixels)
     return font
 
 
@@ -135,19 +142,50 @@ def can_round_corners() -> bool:
     )
 
 
-def _outline(rect: QRectF, radius: float) -> QPainterPath:
-    path = QPainterPath()
-    path.addRoundedRect(rect, radius, radius)
-    return path
+def on_device_pixels(p: QPainter, rect: QRectF, inset: float = 0) -> QRectF:
+    """Return ``rect`` with its edges on whole device pixels, then ``inset`` device pixels in.
+
+    The result is in the painter's own coordinates, so whatever is drawn on it lands on
+    the display's pixel grid at any scaling.
+    """
+    to_device = p.deviceTransform()
+    device = to_device.mapRect(rect)
+    edges = QRectF(
+        QPointF(round(device.left()), round(device.top())),
+        QPointF(round(device.right()), round(device.bottom())),
+    )
+    to_logical, _invertible = to_device.inverted()
+    return to_logical.mapRect(edges.adjusted(inset, inset, -inset, -inset))
 
 
-def _stroke(p: QPainter, rect: QRectF, color: QColor, width: float, radius: float = 0) -> None:
-    """Draw a line ``width`` wide just inside ``rect``, with corners of ``radius``."""
-    half = width / 2
-    p.setPen(QPen(color, width))
+def stroke(p: QPainter, rect: QRectF, color: QColor, width: float) -> None:
+    """Draw a line ``width`` logical pixels wide just inside ``rect``, crisply.
+
+    The line is a whole number of device pixels, at least one, centred on device-pixel
+    centres, so it stays sharp at 125% and 150% scaling.
+    """
+    ratio = p.deviceTransform().m11()
+    device = device_line(width, ratio)
+    if not device:
+        return
+    p.setPen(QPen(color, device / ratio))
     p.setBrush(Qt.BrushStyle.NoBrush)
-    inner = max(radius - half, 0)
-    p.drawRoundedRect(rect.adjusted(half, half, -half, -half), inner, inner)
+    p.drawRect(on_device_pixels(p, rect, device / 2))
+
+
+def card_outline(p: QPainter, rect: QRectF, radius: float, border: float) -> QPainterPath:
+    """Return the card's one rounded outline, along its border's centre line.
+
+    The card clips its top bar and its art to this path, and strokes its border along it
+    last, so the border covers the clip's edge and nothing shows outside the corners
+    (ADR-0016, amendments). ``rect`` is the card, in the painter's coordinates.
+    """
+    ratio = p.deviceTransform().m11()
+    half = device_line(border, ratio) / 2
+    path = QPainterPath()
+    inner = max(radius - half / ratio, 0)
+    path.addRoundedRect(on_device_pixels(p, rect, half), inner, inner)
+    return path
 
 
 def _qrect(rect: Rect) -> QRectF:
@@ -171,8 +209,8 @@ class _TopBar(QWidget):
 class _LogoBox(QWidget):
     """The logo's box, floating over the art's left edge: a fill, the logo, and a border.
 
-    The box takes the logo's shape, as large as the logo area allows, centred, and never
-    smaller than its minimum (ADR-0016 §3). The logo is contained in its padding.
+    The box takes the logo's shape, as large as the logo area allows, centred, with a
+    least short side (ADR-0016 §3). The logo is contained in its padding.
     """
 
     def __init__(self, branding: Branding, parent: QWidget) -> None:
@@ -208,25 +246,25 @@ class _LogoBox(QWidget):
 
     def place(self, scale: float) -> None:
         """Size the box around the logo, inside the logo area, at the card's ``scale``."""
-        tokens = self.tokens
+        logo = self.tokens.logo
         self.scale = scale
-        minimum = Size(tokens.logo.min_size.width * scale, tokens.logo.min_size.height * scale)
-        area = scaled(tokens.logo_area, scale)
-        box = logo_box(self.logo_size, area, tokens.logo.padding * scale, minimum)
+        area = scaled(self.tokens.logo_area, scale)
+        box = logo_box(self.logo_size, area, logo.padding * scale, logo.min_short_side * scale)
         self.setGeometry(round(box.x), round(box.y), round(box.width), round(box.height))
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
         tokens, scheme = self.tokens.logo, current_scheme()
         p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         p.fillRect(self.rect(), QColor(role_color(tokens.fill_role, scheme)))
         inner = tokens.padding * self.scale
         area = Rect(inner, inner, self.width() - 2 * inner, self.height() - 2 * inner)
         size = self.logo_size
         if self._svg is not None and size is not None:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)  # the logo's own shapes
             self._svg.render(p, _qrect(contain_fit(size, area)))
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         elif self._image is not None and size is not None:
             p.drawImage(_qrect(contain_fit(size, area)), self._image)
         else:
@@ -238,66 +276,90 @@ class _LogoBox(QWidget):
                 role_color("text", scheme),
             )
             p.drawImage(_qrect(area), logo)
-        width = line_width(tokens.border_width * self.scale, self)
-        if width:
-            _stroke(p, QRectF(self.rect()), QColor(role_color(tokens.border_role, scheme)), width)
+        border = QColor(role_color(tokens.border_role, scheme))
+        stroke(p, QRectF(self.rect()), border, tokens.border_width * self.scale)
         p.end()
 
 
 class _Pane(QWidget):
     """A quiet pane over the art: text in a translucent fill and a thin border (ADR-0016 §5).
 
-    It hugs its text and sits at its anchor corner. Its fill starts at the minimum opacity
-    and rises only as far as the text needs to read against the art beneath, measured at
-    the art's luminance percentiles; the text takes the role that needs the least.
+    It hugs its text and sits at its anchor corner. Each text role has its own fill, dark
+    text on a light fill and light text on a dark one; the fill starts at the minimum
+    opacity and rises only as far as its text needs to reach the pane's contrast against
+    the art beneath, measured at the art's luminance percentiles. The pair that needs the
+    least wins.
+
+    The display face is drawn at a whole multiple of its pixel grid, and centred on its
+    capitals: the padding is the space around the caps (ADR-0016, amendments). The text
+    is drawn in device pixels, so its size and baseline land on the display's grid, and
+    the display face as its outline; the text stays the pane's accessible name.
     """
 
-    def __init__(self, text: str, panes: PaneStyle, tokens: PaneTokens, parent: QWidget) -> None:
+    def __init__(self, text: str, tokens: WelcomeStyle, pane: PaneTokens, parent: QWidget) -> None:
         super().__init__(parent)
-        self.panes = panes
+        self.panes = tokens.panes
         """The style the panes share."""
-        self.tokens = tokens
-        """Where this pane sits, and its text."""
+        self.typography = tokens.typography
+        self.tokens = pane
+        """Where this pane sits, its text, and its contrast."""
         self.text = text
         self.scale = 1.0
         self.art: tuple[RGB, RGB] | None = None
         """The art's colours under the pane, at its luminance percentiles, once measured."""
-        self._fills: dict[Scheme, tuple[str, int]] = {}
+        self.text_font = QFont()
+        """The font its text is drawn in, at its size in device pixels."""
+        self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
+        self._outline = QPainterPath()  # the display face's text, drawn as its outline
+        self._ratio = 1.0
+        self._fills: dict[Scheme, tuple[str, str, int]] = {}
         self.setAccessibleName(text)
 
-    def fill(self, scheme: Scheme) -> tuple[str, int]:
-        """Return the text's role and the fill's alpha, 0 to 255, over the art beneath.
+    def fill(self, scheme: Scheme) -> tuple[str, str, int]:
+        """Return the text's role, its fill's role, and the fill's alpha, 0 to 255.
 
         Until the art is measured, the fill is opaque.
         """
         if scheme not in self._fills:
-            panes = self.panes
-            fill = rgb(role_color(panes.fill_role, scheme))
-            texts = [rgb(role_color(role, scheme)) for role in panes.text_roles]
+            pairs = pane_pairs(self.panes, scheme)
             if self.art is None:
-                index, alpha = opaque_fill(fill, texts)
+                index, alpha = opaque_fill(pairs)
             else:
-                index, alpha = pane_fill(self.art, fill, texts, panes)
-            self._fills[scheme] = panes.text_roles[index], alpha
+                floor, needed = self.panes.fill_opacity_min, self.tokens.min_contrast
+                index, alpha = pane_fill(self.art, pairs, floor, needed)
+            self._fills[scheme] = self.panes.text_roles[index], self.panes.fill_roles[index], alpha
         return self._fills[scheme]
 
-    def font_at(self, scale: float) -> QFont:
-        """Return the pane's font at the card's ``scale``."""
-        size = self.tokens.font_size * scale
-        return display_font(size) if self.tokens.font == "display" else body_font(size)
+    def font_at(self, scale: float, ratio: float) -> QFont:
+        """Return the pane's font, sized in device pixels, at the card's ``scale``."""
+        typography = self.typography
+        if self.tokens.font == "display":
+            grid = display_pixels(self.tokens.font_size, scale, ratio, typography.display_em_pixels)
+            return display_font(grid * typography.display_em_pixels, typography)
+        size = max(typography.min_font_size, self.tokens.font_size * scale)
+        return body_font(round(size * ratio))
 
     def place(self, slot: Size, scale: float) -> None:
         """Size the pane around its text and put it at its anchor corner of ``slot``."""
-        self.scale = scale
-        self.setFont(self.font_at(scale))
-        metrics = QFontMetricsF(self.font())
+        ratio = self.devicePixelRatioF()
+        font = self.font_at(scale, ratio)
+        metrics = QFontMetricsF(font)  # the font as drawn, bold included
+        width = metrics.horizontalAdvance(self.text)
+        self._outline = QPainterPath()
+        if self.tokens.font == "display":
+            self._outline.addText(QPointF(0, 0), font, self.text)
+            width = max(width, self._outline.boundingRect().right())
+            band = self.typography.display_cap_height * font.pixelSize()
+            run = (width, band, band)  # centred on the capitals
+        else:
+            run = (width, metrics.height(), metrics.ascent())  # centred on the line
         vertical, horizontal = (side * scale for side in self.tokens.padding)
         size = Size(
-            metrics.horizontalAdvance(self.text) + 2 * horizontal,
-            metrics.height() + 2 * vertical,
+            math.ceil(width / ratio + 2 * horizontal), math.ceil(run[1] / ratio + 2 * vertical)
         )
         rect = pane_rect(self.tokens.anchor, self.tokens.inset * scale, size, slot)
-        self.setGeometry(round(rect.x), round(rect.y), round(rect.width), round(rect.height))
+        self.setGeometry(round(rect.x), round(rect.y), int(size.width), int(size.height))
+        self.scale, self._ratio, self._run, self.text_font = scale, ratio, run, font
 
     def measure(self, art: QImage) -> None:
         """Measure the art under the pane, from ``art`` as the slot shows it."""
@@ -308,19 +370,30 @@ class _Pane(QWidget):
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
-        panes, scheme = self.panes, current_scheme()
-        role, alpha = self.fill(scheme)
-        text = QColor(role_color(role, scheme))
-        fill = QColor(role_color(panes.fill_role, scheme))
+        scheme = current_scheme()
+        text_role, fill_role, alpha = self.fill(scheme)
+        text = QColor(role_color(text_role, scheme))
+        fill = QColor(role_color(fill_role, scheme))
         fill.setAlpha(alpha)
         p = QPainter(self)
         p.fillRect(self.rect(), fill)
-        width = line_width(panes.border_width * self.scale, self)
-        if width:
-            _stroke(p, QRectF(self.rect()), text, width)  # the border follows the text
-        p.setPen(text)
-        p.setFont(self.font())
-        p.drawText(QRectF(self.rect()), Qt.AlignmentFlag.AlignCenter, self.text)
+        stroke(p, QRectF(self.rect()), text, self.panes.border_width * self.scale)  # follows text
+        width, band, baseline = self._run
+        p.scale(1 / self._ratio, 1 / self._ratio)  # device pixels from here on
+        origin = p.deviceTransform()
+        x = (self.width() * self._ratio - width) / 2
+        y = (self.height() * self._ratio - band) / 2 + baseline
+        at = QPointF(round(origin.dx() + x) - origin.dx(), round(origin.dy() + y) - origin.dy())
+        if self._outline.isEmpty():
+            p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
+            p.setFont(self.text_font)
+            p.setPen(text)
+            p.drawText(at, self.text)
+        else:
+            # The display face is filled as its outline: grey antialiasing and no hinting
+            # on every platform, where some text engines would add a colour fringe.
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.fillPath(self._outline.translated(at), text)
         p.end()
 
 
@@ -340,10 +413,14 @@ class _ArtSlot(QWidget):
         couldn't be used."""
         tokens = branding.welcome_tokens
         self.slot = tokens.art.slot
+        self.radius = 0.0
+        """The card's corner radius, which rounds the art's lower corners."""
+        self.border = 0.0
+        """The card's border width, whose centre line the art is clipped to."""
         self.logo = _LogoBox(branding, self)
-        self.name_pane = _Pane(PRODUCT_NAME, tokens.panes, tokens.name_pane, self)
+        self.name_pane = _Pane(PRODUCT_NAME, tokens, tokens.name_pane, self)
         version = f"Version {__version__}"
-        self.version_pane = _Pane(version, tokens.panes, tokens.version_pane, self)
+        self.version_pane = _Pane(version, tokens, tokens.version_pane, self)
 
     def shown_art(self) -> QImage:
         """Return the art as the slot shows it, one image pixel per logical pixel."""
@@ -368,8 +445,8 @@ class _ArtSlot(QWidget):
         crop = cover_crop(Size(width, height), Size(target.width(), target.height()), self._focus)
         p.drawImage(target, image, QRectF(crop.x * r, crop.y * r, crop.width * r, crop.height * r))
 
-    @override
-    def resizeEvent(self, event: QResizeEvent) -> None:
+    def _place(self) -> None:
+        """Place the logo box and the panes, and measure the art under the panes."""
         scale = self.width() / self.slot.width
         slot = Size(self.width(), self.height())
         self._generic = None
@@ -378,21 +455,36 @@ class _ArtSlot(QWidget):
         for pane in (self.name_pane, self.version_pane):
             pane.place(slot, scale)
             pane.measure(art)
+
+    @override
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        self._place()
         super().resizeEvent(event)
+
+    @override
+    def changeEvent(self, event: QEvent) -> None:
+        if event.type() == QEvent.Type.DevicePixelRatioChange:
+            self._place()  # the text snaps to the new display's grid
+        super().changeEvent(event)
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
+        card = self.parentWidget()
+        if card is not None:
+            outline = QRectF(card.rect()).translated(-self.x(), -self.y())
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setClipPath(card_outline(p, outline, self.radius, self.border))
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         self._draw(p)
         p.end()
 
 
 class _Border(QWidget):
-    """The card's frame, over everything else: its rounded corners, border, and separator.
+    """The card's frame, over everything else: the separator, then the rounded border.
 
-    It takes no mouse events, so the top bar and buttons beneath it work. Outside the
-    rounded outline it clears what the card and the art drew, so the corners show the
-    desktop through the translucent window (ADR-0016 §4).
+    It takes no mouse events, so the top bar and buttons beneath it work. The border is
+    stroked last, along the outline the card and the art are clipped to (ADR-0016 §4).
     """
 
     def __init__(self, tokens: WelcomeStyle, parent: QWidget) -> None:
@@ -409,26 +501,23 @@ class _Border(QWidget):
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
         tokens, scheme = self.tokens, current_scheme()
-        rect = QRectF(self.rect())
         p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        if self.radius:
-            outside = QPainterPath()
-            outside.addRect(rect)
-            p.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
-            p.fillPath(outside.subtracted(_outline(rect, self.radius)), QColor())
-            p.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-        border = line_width(tokens.card.border_width * self.scale, self)
-        separator = line_width(tokens.top_bar.separator_width * self.scale, self)
+        ratio = p.deviceTransform().m11()
+        border = tokens.card.border_width * self.scale
+        edge = device_line(border, ratio) / ratio
+        separator = device_line(tokens.top_bar.separator_width * self.scale, ratio) / ratio
         if separator:
-            bottom = self.bar_height
+            bar = on_device_pixels(p, QRectF(0, 0, self.width(), self.bar_height))
             p.fillRect(
-                QRectF(border, bottom - separator, rect.width() - 2 * border, separator),
+                QRectF(
+                    bar.left() + edge, bar.bottom() - separator, bar.width() - 2 * edge, separator
+                ),
                 QColor(role_color(tokens.top_bar.separator_role, scheme)),
             )
-        if border:
-            color = QColor(role_color(tokens.card.border_role, scheme))
-            _stroke(p, rect, color, border, self.radius)
+        if edge:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)  # the one antialiased path
+            outline = card_outline(p, QRectF(self.rect()), self.radius, border)
+            p.strokePath(outline, QPen(QColor(role_color(tokens.card.border_role, scheme)), edge))
         p.end()
 
 
@@ -463,8 +552,10 @@ class WelcomeScreen(QWidget):
 
         self.top_bar = _TopBar(self)
         self.top_bar.setFixedHeight(round(tokens.top_bar.height * scale))
+        button = round(tokens.top_bar.button_size * scale)
         self.about_button = QToolButton(self.top_bar)
         self.about_button.setAutoRaise(True)
+        self.about_button.setFixedSize(button, button)
         self.about_button.setToolTip(f"About {PRODUCT_NAME}: version, license, and terms")
         self.about_button.setAccessibleName("About")
         self.about_button.clicked.connect(actions.about.trigger)
@@ -472,6 +563,7 @@ class WelcomeScreen(QWidget):
         """The commands its About button triggers; kept, so they live as long as it does."""
         self.close_button = QToolButton(self.top_bar)
         self.close_button.setAutoRaise(True)
+        self.close_button.setFixedSize(button, button)
         self.close_button.setToolTip("Close (Esc)")
         self.close_button.setAccessibleName("Close")
         self.close_button.clicked.connect(self.close)
@@ -492,10 +584,14 @@ class WelcomeScreen(QWidget):
         column.addWidget(self.top_bar)
         column.addWidget(self.art)
 
+        self.radius = tokens.card.corner_radius * scale if self.rounded else 0
+        """The outer corners' radius: the token's, shrunk with the card; 0 when square."""
+        self.border_width = tokens.card.border_width * scale
+        self.art.radius, self.art.border = self.radius, self.border_width
         self.border = _Border(tokens, self)
         self.border.scale = scale
+        self.border.radius = self.radius
         self.border.bar_height = self.top_bar.height()
-        self.border.radius = tokens.card.corner_radius * self.height() if self.rounded else 0
         self.border.setGeometry(self.rect())
         self.border.raise_()
 
@@ -532,7 +628,9 @@ class WelcomeScreen(QWidget):
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
-        p.fillRect(self.rect(), QColor(role_color("background", current_scheme())))
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        outline = card_outline(p, QRectF(self.rect()), self.radius, self.border_width)
+        p.fillPath(outline, QColor(role_color("background", current_scheme())))
         p.end()
 
     @override

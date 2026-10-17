@@ -9,6 +9,8 @@ from caddcalc.gui.welcome_layout import (
     Size,
     contain_fit,
     cover_crop,
+    device_line,
+    display_pixels,
     fit_scale,
     logo_box,
     pane_rect,
@@ -71,16 +73,16 @@ AREA = Rect(16, 16, 80, 508)
     ("logo", "box"),
     [
         (Size(72, 540), Rect(16, 22, 80, 496)),  # a tall banner: as tall as it can be
-        (Size(100, 100), Rect(16, 190, 80, 160)),  # a square mark: the least height
-        (Size(400, 100), Rect(16, 190, 80, 160)),  # a wordmark: the least height, centred
-        (Size(10, 540), Rect(32, 16, 48, 508)),  # a sliver: the least width, centred
+        (Size(100, 100), Rect(16, 230, 80, 80)),  # a square mark: a square box
+        (Size(400, 100), Rect(16, 246, 80, 48)),  # a wordmark: the least short side
+        (Size(10, 540), Rect(32, 16, 48, 508)),  # a sliver: the least short side
         (None, AREA),  # the generic logo fills the whole area
     ],
 )
 def test_the_logo_box_takes_the_logos_shape_within_its_minimums(
     logo: Size | None, box: Rect
 ) -> None:
-    assert logo_box(logo, AREA, 8, Size(48, 160)) == pytest.approx(box)
+    assert logo_box(logo, AREA, 8, 48) == pytest.approx(box)
 
 
 def test_the_logo_area_is_the_logo_region_less_its_margins() -> None:
@@ -101,3 +103,17 @@ def test_the_logo_area_is_the_logo_region_less_its_margins() -> None:
 def test_a_pane_sits_inset_from_its_anchor_corner(anchor: str, corner: tuple[int, int]) -> None:
     rect = pane_rect(anchor, 6, Size(60, 20), SLOT)
     assert (rect.x, rect.y, rect.width, rect.height) == (*corner, 60, 20)
+
+
+@pytest.mark.parametrize(("ratio", "grid"), [(1, 2), (1.25, 2), (1.5, 3), (2, 4)])
+def test_the_display_face_snaps_to_its_pixel_grid(ratio: float, grid: int) -> None:
+    """50 px of a 25-pixel em: 2 device pixels per design pixel at 100%, 4 at 200%."""
+    assert display_pixels(50, 1, ratio, 25) == grid
+    assert display_pixels(50, 0.1, 1, 25) == 1, "never smaller than its own grid"
+
+
+@pytest.mark.parametrize(("ratio", "device"), [(1, 1), (1.25, 1), (1.5, 2), (2, 2), (3, 3)])
+def test_a_line_is_whole_device_pixels(ratio: float, device: int) -> None:
+    assert device_line(1, ratio) == device
+    assert device_line(0.4, 1) == 1, "never under one device pixel"
+    assert device_line(0, ratio) == 0, "no line"

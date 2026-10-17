@@ -14,6 +14,7 @@ import pytest
 
 from caddcalc.gui.welcome_style import (
     RGB,
+    SPACING,
     STYLE_FILE,
     Size,
     StyleError,
@@ -47,6 +48,8 @@ def test_the_shipped_tokens_load_and_add_up() -> None:
         tokens.art.slot.width, tokens.top_bar.height + tokens.art.slot.height
     ), "the art spans the card; the logo box floats over it (S2)"
     assert tokens.panes.text_roles == ("welcome_ink", "welcome_paper")
+    assert tokens.panes.fill_roles == ("welcome_paper", "welcome_ink"), "dark on light"
+    assert (tokens.name_pane.min_contrast, tokens.version_pane.min_contrast) == (3, 4.5)
 
 
 @pytest.mark.parametrize("pane", ["name_pane", "version_pane"])
@@ -62,8 +65,7 @@ def test_the_logo_box_fits_its_region_beside_the_panes() -> None:
     tokens = style()
     region, area = tokens.logo_region, tokens.logo_area
     assert (region.x, region.y, region.height) == (0, 0, tokens.art.slot.height)
-    assert area.width >= tokens.logo.min_size.width
-    assert area.height >= tokens.logo.min_size.height
+    assert min(area.width, area.height) >= tokens.logo.min_short_side
     for pane in (tokens.name_pane, tokens.version_pane):
         assert tokens.safe_area(pane).x >= region.x + region.width, "no overlap"
 
@@ -80,7 +82,14 @@ def edited(table: str, key: str, value: Any) -> dict[str, Any]:
         (edited("card", "shadow", 4), r"\[card\] has unknown \['shadow'\]"),
         ({**shipped(), "theme": {}}, "unknown table"),
         ({**shipped(), "schema": 2}, "schema must be 1"),
-        (edited("card", "corner_radius", 0.5), "card.corner_radius must be a number from 0"),
+        (edited("card", "corner_radius", 40), "card.corner_radius must be a number from 0"),
+        (edited("logo", "padding", 5), r"logo\.padding must be on the spacing scale, 2, 4"),
+        (edited("name_pane", "inset", 20), r"name_pane\.inset must be on the spacing scale"),
+        (edited("version_pane", "padding", [2, 3]), "on the spacing scale.*not 3"),
+        (edited("typography", "display_weight", "heavy"), "must be one of bold, regular"),
+        (edited("typography", "display_weight", 700), "must be one of bold, regular"),
+        (edited("version_pane", "inset", 4), "version_pane.inset 4 is less than the card's"),
+        (edited("logo", "region_width", 60), "less than its box's least short side, 48"),
         (edited("top_bar", "height", "32"), "top_bar.height must be a number"),
         (edited("art", "max_px", 4096.5), "art.max_px must be a whole number"),
         (edited("panes", "fill_opacity_min", True), "fill_opacity_min must be a number"),
@@ -153,6 +162,12 @@ def test_the_spec_quotes_the_sizes_and_safe_areas_they_give() -> None:
     assert missing == [], missing
 
 
+def test_the_spec_quotes_the_spacing_scale() -> None:
+    scale = ", ".join(str(step) for step in SPACING)
+    spec = " ".join(SPEC.read_text(encoding="utf-8").split())
+    assert f"**{scale}** px" in spec
+
+
 def test_every_token_table_has_its_typed_class() -> None:
     """Each table is typed in the loader, so the file and the classes can't drift."""
     assert {f.name for f in fields(WelcomeStyle)} == set(shipped()) - {"schema"}
@@ -184,8 +199,10 @@ def test_contrast_follows_wcag() -> None:
     assert contrast(luminance("#777777"), luminance("#777777")) == 1
 
 
-INK, PAPER, WHITE = rgb("#21251F"), rgb("#FFFFFF"), rgb("#FFFFFF")
+INK, WHITE = rgb("#21251F"), rgb("#FFFFFF")
 BLACK: RGB = (0, 0, 0)
+PAIRS = [(INK, WHITE), (WHITE, INK)]
+"""Ink text on a white fill, white text on an ink fill: the shipped pairs."""
 
 
 def test_percentiles_are_taken_by_nearest_rank() -> None:
@@ -196,31 +213,42 @@ def test_percentiles_are_taken_by_nearest_rank() -> None:
         percentile_colors(b"", (5, 95))
 
 
+@pytest.mark.parametrize("needed", [3, 4.5], ids=["title", "version"])
 @pytest.mark.parametrize(
-    ("art", "text", "raised"),
+    ("art", "pair", "raised"),
     [
-        ([(244, 241, 234), WHITE], INK, False),  # calm, light art: ink at the floor
-        ([BLACK, (16, 20, 24)], PAPER, False),  # dark art: white at the floor
-        ([BLACK, WHITE], INK, True),  # busy art: the fill rises until ink reads
+        ([(244, 241, 234), WHITE], 0, False),  # calm, light art: ink on white, at the floor
+        ([BLACK, (16, 20, 24)], 1, False),  # dark art: white on ink, at the floor
+        ([BLACK, WHITE], None, True),  # busy art: a fill rises until its text reads
     ],
 )
 def test_a_pane_stays_quiet_unless_the_art_would_hide_its_text(
-    art: list[RGB], text: RGB, raised: bool
+    art: list[RGB], pair: int | None, raised: bool, needed: float
 ) -> None:
-    panes = style().panes
-    floor = math.ceil(panes.fill_opacity_min * 255)
-    index, alpha = pane_fill(art, WHITE, [INK, PAPER], panes)
-    assert [INK, PAPER][index] == text
+    floor_opacity = style().panes.fill_opacity_min
+    floor = math.ceil(floor_opacity * 255)
+    index, alpha = pane_fill(art, PAIRS, floor_opacity, needed)
+    if pair is not None:
+        assert index == pair
+    text, fill = PAIRS[index]
     assert (alpha > floor) == raised and alpha >= floor
-    assert worst_contrast(text, WHITE, alpha, art) >= panes.min_contrast
+    assert worst_contrast(text, fill, alpha, art) >= needed
     if raised:
-        assert worst_contrast(text, WHITE, alpha - 1, art) < panes.min_contrast, "the least"
+        assert worst_contrast(text, fill, alpha - 1, art) < needed, "the least opacity"
 
 
-def test_an_unreadable_fill_becomes_opaque_under_the_text_that_reads() -> None:
-    panes = style().panes
+def test_the_title_needs_less_fill_than_the_version() -> None:
+    """Large text needs 3:1, other text 4.5:1 (WCAG 2), so busy art lifts it less."""
+    floor_opacity = style().panes.fill_opacity_min
+    _pair, title = pane_fill([BLACK, WHITE], PAIRS, floor_opacity, 3)
+    _pair, version = pane_fill([BLACK, WHITE], PAIRS, floor_opacity, 4.5)
+    assert title < version
+
+
+def test_an_unreadable_pair_becomes_opaque_in_the_pair_that_reads_best() -> None:
     mid = (119, 119, 119)
-    assert pane_fill([BLACK, WHITE], mid, [INK, PAPER], panes) == (1, 255), "white: 4.48"
+    pairs = [(INK, mid), (WHITE, mid)]
+    assert pane_fill([BLACK, WHITE], pairs, 0.15, 4.5) == (1, 255), "white on grey: 4.48"
 
 
 def test_a_pack_may_override_its_whitelist() -> None:
@@ -228,7 +256,7 @@ def test_a_pack_may_override_its_whitelist() -> None:
         style(),
         {
             "logo": {"fill_role": "welcome_paper", "margin_left": 24, "padding": 6},
-            "panes": {"fill_opacity_min": 0.3},
+            "panes": {"fill_opacity_min": 0.3, "fill_roles": ["welcome_scrim", "welcome_ink"]},
         },
         "pack",
     )
@@ -238,6 +266,7 @@ def test_a_pack_may_override_its_whitelist() -> None:
         6,
     )
     assert tokens.panes.fill_opacity_min == 0.3
+    assert tokens.panes.fill_roles == ("welcome_scrim", "welcome_ink")
     assert tokens.logo_area.x == 24 and tokens.card == style().card, "the rest is shipped"
 
 
@@ -245,26 +274,21 @@ def test_a_pack_may_override_its_whitelist() -> None:
     ("overrides", "message"),
     [
         ({"card": {"corner_radius": 0}}, "may override only .*, not 'card'"),
-        ({"typography": {"display_family": "Arial"}}, "not 'typography'"),
-        ({"logo": {"min_size": [10, 10]}}, r"not logo\.min_size"),
-        ({"panes": {"min_contrast": 1}}, r"not panes\.min_contrast"),
+        ({"typography": {"display_weight": "bold"}}, "not 'typography'"),
+        ({"logo": {"min_short_side": 10}}, r"not logo\.min_short_side"),
+        ({"panes": {"text_roles": ["welcome_ink", "welcome_ink"]}}, r"not panes\.text_roles"),
         ({"logo": 3}, r"logo must be a table, \[welcome\.style\.logo\]"),
         ("panes", r"must be a table, \[welcome\.style\]"),
         ({"panes": {"fill_opacity_min": 1.5}}, "fill_opacity_min must be a number from 0 to 1"),
         ({"logo": {"fill_role": "fuchsia"}}, "'fuchsia' isn't a palette role"),
-        ({"logo": {"margin_left": 60}}, "the logo's margins leave 36 × 508 px"),
+        ({"logo": {"margin_left": 60}}, "margin_left must be on the spacing scale"),
         ({"logo": {"padding": 24}}, "logo.padding 24 leaves no room"),
-        ({"panes": {"fill_role": "welcome_line"}}, "neither welcome_ink nor welcome_paper"),
+        (
+            {"panes": {"fill_roles": ["welcome_line", "welcome_line"]}},
+            r"no pane text reaches 4\.5:1 on its own fill",
+        ),
     ],
 )
 def test_a_pack_may_not_override_anything_else(overrides: Any, message: str) -> None:
     with pytest.raises(StyleError, match=message):
         with_overrides(style(), overrides, "pack")
-
-
-def test_the_shipped_tokens_fit_together() -> None:
-    """The same whole-style checks hold the shipped file to what it lets packs do."""
-    data = shipped()
-    data["logo"] = {**data["logo"], "min_size": [100, 160]}
-    with pytest.raises(StyleError, match="less than its box's least size"):
-        parse_style(data)

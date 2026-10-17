@@ -68,8 +68,12 @@ and dark themes. A test keeps hex colors out of the GUI code except the palette 
 | `outline_limit` | crimson | white | the border of a field a limit-exceeded note concerns |
 | `outline_no_value` | slate | slate | the dashed border of a field no reference value could check |
 | `text_limit` | crimson | white | a limit-exceeded note in results, with its icon and heading |
-| `welcome_scrim` | white | ink | the welcome screen's name panel and version line, opaque over the art |
-| `on_welcome_scrim` | ink | white | their text (4.5:1 or more, tested) |
+| `welcome_scrim` | white | ink | a fill that follows the theme, which a branding pack may choose for the welcome screen's logo box |
+| `on_welcome_scrim` | ink | white | text on it (4.5:1 or more, tested) |
+| `card_border` | ink | white | the welcome card's outer border (3:1 or more against the background, tested) |
+| `welcome_line` | ink | slate (ink vanishes on the ink top bar) | the welcome card's top-bar separator and logo box border |
+| `welcome_ink` | ink | ink | welcome pane text, and the fill under the light text; the art is the same in both themes |
+| `welcome_paper` | white | white | welcome pane text, the fill under the dark text, and the logo box's fill |
 
 Text roles keep at least 4.5:1 against the background, and outline roles at least 3:1.
 

@@ -225,3 +225,58 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   opaque pane fill in both themes, so the contrast guarantee can always be met.
 * `Branding.welcome_tokens` gives the screen its edition's tokens, and the welcome
   screen reads the logo box's, the panes', and the frame's tokens from it.
+
+### 2026-10-17: design refinements (slice g)
+
+A design review of the built screen proposed refinements M1–M9 and L1–L3, all within
+S1–S5. VT323's figures below were measured from the font file: 1000 units to the em,
+capitals 560 units tall, and every advance a whole number of 40-unit design pixels.
+
+* **Weight (M1, overridden by the maintainer).** The review proposed drawing bold as a
+  one-design-pixel overstrike. The maintainer declined it: "I think the 2-times-shifted
+  font is a mistake. Let's just either accept that bold looks different on different
+  systems, or we can do without bold." So `typography.display_weight` takes one of two
+  values:
+  * `regular`, the default, replacing slice c's synthetic bold. It keeps the face on its
+    grid and looks the same everywhere.
+  * `bold`, Qt's bold, which each platform's text engine draws and widens differently.
+
+  The pane sizes itself from the metrics of the font it draws, bold included.
+* **The grid (M2).** `display_em_pixels` is 25, and the name's size snaps to
+  `25n` device pixels, `n = max(1, round(size × scale × ratio ÷ 25))`, so 50 px at 100%
+  and 125%, 75 at 150%, and 100 at 200%. `name_pane.font_size` is 50. The face is
+  unhinted and antialiased, and is drawn as its outline. Qt's DirectWrite engine kept
+  its colour (ClearType) fringe even when asked for grey antialiasing, and an outline
+  is grey and unhinted on every platform. The text stays the pane's accessible name.
+* **Crisp lines (M3).** Every line is `max(1, round(width × ratio))` device pixels, on
+  device-pixel centres: the card's border, the separator, the logo box's border, and
+  the panes' borders.
+* **One outline (M4).** The card's rounded outline is one path, along the border's
+  centre line. The card's background and the art are clipped to it, and the border is
+  stroked along it last, so the stroke covers the clip's edge and leaves no seam. Only
+  that path is antialiased. This replaces clearing the corners.
+* **Paired fills (M5).** Each pane text role has its own fill: `panes.fill_roles` puts
+  white under the ink text and ink under the white text. Only the paired fill's opacity
+  rises. The thresholds are per pane: `name_pane.min_contrast` is 3 (large text, WCAG 2)
+  and `version_pane.min_contrast` is 4.5. In the pack whitelist (S5),
+  `panes.fill_role` becomes `panes.fill_roles`.
+* **The logo box (M6).** `logo.min_short_side`, 48, replaces `logo.min_size`. A box
+  whose short side is under it grows, keeping its shape, up to the logo area's edges.
+* **The cap band (M8).** The name is centred on its capitals,
+  `typography.display_cap_height` 0.56, and its padding, 8 × 16, is the space around
+  them. The version, in the system's UI font, stays centred on its line.
+* **Corners (L1, L2).** `card.corner_radius` is 5 px, scaled with the card, not a
+  fraction of its height. The loader requires each corner-anchored pane's inset to be at
+  least the radius plus the card's border.
+* **The card's border (L3).** It takes the new role `card_border`: ink in the light
+  theme, white in the dark, so the card stays outlined on a dark desktop. The palette's
+  contrast tests cover it.
+* **Spacing scale.** Insets, margins, and paddings must be 2, 4, 6, 8, 12, 16, 24, or
+  32; the loader refuses any other value, in the token file and in a pack. Sizes, such
+  as the 96 px logo region and the 24 px top-bar buttons (`top_bar.button_size`), are
+  free. `version_pane.padding` is now 2 × 4.
+* **The logo box's fill.** `logo.fill_role` is `welcome_paper`, white in both themes, by
+  the project's decision: logos are almost always drawn for white, and the original
+  had a white box. A pack may still choose another role.
+* M7 (the 960 × 572 card and the left safe area) and M9 (refusing `name`) were already
+  built, in slices e and d.

@@ -17,7 +17,7 @@ with a ``branding.toml`` file and the files it names::
     fill_role = "welcome_paper"                  # also margin_left, margin_top,
                                                  #   margin_bottom, padding
     [welcome.style.panes]
-    fill_opacity_min = 0.25                      # also fill_role
+    fill_opacity_min = 0.25                      # also fill_roles
 
 Every edition is called ``PRODUCT_NAME``, and is told apart by its icon, art, logo, and
 About text (ADR-0016, S4).

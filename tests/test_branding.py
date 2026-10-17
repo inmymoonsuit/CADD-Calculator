@@ -184,8 +184,8 @@ def test_plain_text_about_is_escaped_into_paragraphs(tmp_path: Path) -> None:
         ),
         ('edition = "x"\n[welcome]\nstyle = 3\n', r"must be a table, \[welcome\.style\]"),
         (
-            'edition = "x"\n[welcome.style.panes]\nfill_role = "welcome_line"\n',
-            "neither welcome_ink nor welcome_paper",
+            'edition = "x"\n[welcome.style.panes]\nfill_roles = ["welcome_line", "welcome_line"]\n',
+            "no pane text reaches",
         ),
     ],
 )

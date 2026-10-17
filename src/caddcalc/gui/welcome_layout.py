@@ -15,6 +15,8 @@ __all__ = [
     "Size",
     "contain_fit",
     "cover_crop",
+    "device_line",
+    "display_pixels",
     "fit_scale",
     "logo_box",
     "pane_rect",
@@ -55,28 +57,57 @@ def contain_fit(source: Size, area: Rect) -> Rect:
     )
 
 
-def logo_box(source: Size | None, area: Rect, padding: float, minimum: Size) -> Rect:
+def logo_box(source: Size | None, area: Rect, padding: float, min_short_side: float) -> Rect:
     """Return the logo's box: the logo's shape plus its padding, as large as ``area`` allows.
 
-    The box is centred in ``area`` and never smaller than ``minimum``, so a tall banner, a
-    square mark, and a wide wordmark all fit (ADR-0016 §3). A wide logo makes a short box,
-    which ``minimum`` keeps from becoming a sliver; the logo is then contained in it.
+    The box is centred in ``area``, so a tall banner, a square mark, and a wide wordmark
+    all fit (ADR-0016 §3). A box whose short side is under ``min_short_side`` grows,
+    keeping its shape, until it reaches it or meets ``area``'s edges, so a wide logo never
+    becomes a sliver; the logo stays contained, whole, in the box's padding.
 
     Args:
         source: The logo's size, or ``None`` for a logo that fills whatever box it's given.
         area: Where the box may sit.
         padding: The space inside the box, around the logo.
-        minimum: The box's least width and height; ``area`` caps it.
+        min_short_side: The box's least short side.
     """
     inner = Rect(
         area.x + padding, area.y + padding, area.width - 2 * padding, area.height - 2 * padding
     )
     fitted = inner if source is None else contain_fit(source, inner)
-    width = min(max(fitted.width + 2 * padding, minimum.width), area.width)
-    height = min(max(fitted.height + 2 * padding, minimum.height), area.height)
+    width, height = fitted.width + 2 * padding, fitted.height + 2 * padding
+    grow = max(1.0, min_short_side / min(width, height))
+    width, height = min(width * grow, area.width), min(height * grow, area.height)
     return Rect(
         area.x + (area.width - width) / 2, area.y + (area.height - height) / 2, width, height
     )
+
+
+def display_pixels(size: float, scale: float, ratio: float, em_pixels: int) -> int:
+    """Return how many device pixels draw one of a pixel face's design pixels.
+
+    A pixel face, such as VT323, is drawn crisply only at whole multiples of its design
+    grid, so its size snaps to the nearest one: ``n`` device pixels per design pixel, at
+    least 1, for an em of ``em_pixels * n`` device pixels (ADR-0016, amendments).
+    Halves round to even, as Python's ``round`` does: 62.5 device pixels at 125% is 2.
+
+    Args:
+        size: The wanted size, in logical pixels.
+        scale: The card's scale on a small screen.
+        ratio: The display's device pixels per logical pixel.
+        em_pixels: The face's design pixels per em.
+    """
+    return max(1, round(size * scale * ratio / em_pixels))
+
+
+def device_line(width: float, ratio: float) -> int:
+    """Return a line's width in whole device pixels: at least 1, or 0 for no line.
+
+    Args:
+        width: The line's width, in logical pixels.
+        ratio: The display's device pixels per logical pixel.
+    """
+    return max(1, round(width * ratio)) if width else 0
 
 
 def scaled(rect: Rect, scale: float) -> Rect:

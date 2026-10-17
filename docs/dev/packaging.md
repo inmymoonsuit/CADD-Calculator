@@ -76,7 +76,7 @@ logo = "logo-vertical.svg"                    # the logo, in its box; .svg or .p
 fill_role = "welcome_paper"                   # also margin_left, margin_top,
                                               #   margin_bottom, padding
 [welcome.style.panes]
-fill_opacity_min = 0.25                       # also fill_role
+fill_opacity_min = 0.25                       # also fill_roles
 ```
 
 * Every edition is called "CADD Calculator": in its window title, on its welcome
@@ -95,7 +95,7 @@ fill_opacity_min = 0.25                       # also fill_role
   names the old `splash` key is refused, with a message naming `[welcome]`.
 * `[welcome.style.logo]` and `[welcome.style.panes]` may override a short whitelist of
   the welcome screen's design tokens: the logo box's fill role, margins, and padding,
-  and the panes' fill role and least opacity. Anything else is refused. The art
+  and the panes' fill roles and least opacity. Anything else is refused. The art
   specification lists them and the checks.
 * The build copies only `branding.toml`, the files it names, and any file at the top of
   the pack whose name contains `NOTICE`, `LICENSE`, `LICENCE`, or `COPYING` (such as

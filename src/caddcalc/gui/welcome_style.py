@@ -49,6 +49,10 @@ class Rect(NamedTuple):
 
 
 SCHEMES = ("light", "dark")
+SPACING = (2, 4, 6, 8, 12, 16, 24, 32)
+"""The spacing scale: every inset, margin, and padding is one of these (ADR-0016,
+amendments). Sizes, such as the logo region's width, are free."""
+WEIGHTS = frozenset({"regular", "bold"})
 ANCHORS = frozenset({"top_left", "top_right", "bottom_left", "bottom_right"})
 FONTS = frozenset({"display", "body"})
 
@@ -80,8 +84,7 @@ class CardTokens:
     """The card's frame."""
 
     corner_radius: float
-    """The outer corners' radius as a fraction of the card's height, so they keep their
-    proportion when the card shrinks to fit a small screen."""
+    """The outer corners' radius; it shrinks with the card on a small screen."""
     border_width: float
     border_role: str
 
@@ -93,6 +96,8 @@ class TopBarTokens:
     height: float
     padding: float
     """The space beside its buttons."""
+    button_size: float
+    """The About button's and the X's width and height."""
     separator_width: float
     separator_role: str
 
@@ -108,8 +113,8 @@ class LogoTokens:
     margin_bottom: float
     padding: float
     """The space inside the box, around the logo."""
-    min_size: Size
-    """The box's least width and height."""
+    min_short_side: float
+    """The box's least short side; the box keeps the logo's shape up to it."""
     border_width: float
     border_role: str
     fill_role: str
@@ -119,15 +124,15 @@ class LogoTokens:
 class PaneStyle:
     """The style the name and version panes share: quiet, and readable (ADR-0016 §5)."""
 
-    fill_role: str
+    text_roles: tuple[str, str]
+    """The two text roles to choose between: dark, then light."""
+    fill_roles: tuple[str, str]
+    """Each text role's own fill: a light fill under the dark text, a dark fill under
+    the light text. The pair that needs the least opacity wins."""
     fill_opacity_min: float
     """The fill's least opacity; it rises only as far as the text's contrast needs."""
     border_width: float
     """The border's width; it takes the text's role."""
-    text_roles: tuple[str, str]
-    """The two text roles to choose between, dark and light; the one that reads wins."""
-    min_contrast: float
-    """The least contrast ratio of the text against the fill over the art."""
     percentiles: tuple[float, float]
     """The art's luminance under a pane is measured at these two percentiles."""
 
@@ -145,6 +150,10 @@ class PaneTokens:
     font: str
     """``"display"`` for the display face, ``"body"`` for the system's UI font."""
     font_size: float
+    """Its text's pixel size; the display face's snaps to its pixel grid."""
+    min_contrast: float
+    """The least contrast of its text against its fill over the art: 3:1 for large text,
+    4.5:1 otherwise (WCAG 2)."""
     safe_area: Size
     """The area at its corner that art keeps clear of detail."""
 
@@ -156,8 +165,13 @@ class TypographyTokens:
     display_family: str
     display_file: str
     """The vendored font file, relative to the assets folder."""
-    display_weight: int
-    """The weight it's drawn at, from 100 to 900; 700 is bold."""
+    display_weight: str
+    """``"regular"``, which keeps the face on its pixel grid, or ``"bold"``, Qt's bold,
+    which each platform's text engine draws differently."""
+    display_em_pixels: int
+    """The face's design pixels per em; its size snaps to whole multiples of these."""
+    display_cap_height: float
+    """Its capitals' height as a fraction of the em, for centring on the cap band."""
     fallback_families: tuple[str, ...]
     """Families tried, in order, when the display face can't be loaded."""
     min_font_size: float
@@ -282,8 +296,21 @@ def _role(where: str, value: Any) -> str:
 
 def _roles(where: str, value: Any) -> tuple[str, str]:
     if not isinstance(value, list) or len(value) != 2:
-        raise StyleError(f"{where} must be two palette roles, dark text then light")
+        raise StyleError(f"{where} must be two palette roles")
     return _role(where, value[0]), _role(where, value[1])
+
+
+def _spacing(where: str, value: Any) -> float:
+    if isinstance(value, bool) or value not in SPACING:
+        scale = ", ".join(str(step) for step in SPACING)
+        raise StyleError(f"{where} must be on the spacing scale, {scale}; not {value!r}")
+    return float(value)
+
+
+def _spacing_pair(where: str, value: Any) -> tuple[float, float]:
+    if not isinstance(value, list) or len(value) != 2:
+        raise StyleError(f"{where} must be two numbers, e.g. [8, 16]")
+    return _spacing(where, value[0]), _spacing(where, value[1])
 
 
 def _percentiles(where: str, value: Any) -> tuple[float, float]:
@@ -297,10 +324,11 @@ _WIDTH = _number(0, 8)
 _LENGTH = _number(0, 1024)
 _PANE: dict[str, Check] = {
     "anchor": _choice(ANCHORS),
-    "inset": _LENGTH,
-    "padding": _pair(0, 64),
+    "inset": _spacing,
+    "padding": _spacing_pair,
     "font": _choice(FONTS),
     "font_size": _number(1, 256),
+    "min_contrast": _number(1, 21),
     "safe_area": _size(0, 4096),
 }
 _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
@@ -317,13 +345,14 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
     ),
     "card": (
         CardTokens,
-        {"corner_radius": _number(0, 0.1), "border_width": _WIDTH, "border_role": _role},
+        {"corner_radius": _number(0, 32), "border_width": _WIDTH, "border_role": _role},
     ),
     "top_bar": (
         TopBarTokens,
         {
             "height": _number(1, 256),
-            "padding": _LENGTH,
+            "padding": _spacing,
+            "button_size": _number(1, 256),
             "separator_width": _WIDTH,
             "separator_role": _role,
         },
@@ -333,11 +362,11 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
         {
             "formats": _formats,
             "region_width": _number(1, 1024),
-            "margin_left": _LENGTH,
-            "margin_top": _LENGTH,
-            "margin_bottom": _LENGTH,
-            "padding": _LENGTH,
-            "min_size": _size(1, 1024),
+            "margin_left": _spacing,
+            "margin_top": _spacing,
+            "margin_bottom": _spacing,
+            "padding": _spacing,
+            "min_short_side": _number(1, 1024),
             "border_width": _WIDTH,
             "border_role": _role,
             "fill_role": _role,
@@ -346,11 +375,10 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
     "panes": (
         PaneStyle,
         {
-            "fill_role": _role,
+            "text_roles": _roles,
+            "fill_roles": _roles,
             "fill_opacity_min": _number(0, 1),
             "border_width": _WIDTH,
-            "text_roles": _roles,
-            "min_contrast": _number(1, 21),
             "percentiles": _percentiles,
         },
     ),
@@ -361,7 +389,9 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
         {
             "display_family": _text,
             "display_file": _text,
-            "display_weight": _number(100, 900, whole=True),
+            "display_weight": _choice(WEIGHTS),
+            "display_em_pixels": _number(1, 1000, whole=True),
+            "display_cap_height": _number(0.01, 1),
             "fallback_families": _texts,
             "min_font_size": _number(1, 64),
         },
@@ -399,7 +429,7 @@ def parse_style(data: Mapping[str, Any], origin: str = STYLE_FILE.name) -> Welco
 
 PACK_OVERRIDES: Mapping[str, frozenset[str]] = {
     "logo": frozenset({"fill_role", "margin_left", "margin_top", "margin_bottom", "padding"}),
-    "panes": frozenset({"fill_role", "fill_opacity_min"}),
+    "panes": frozenset({"fill_roles", "fill_opacity_min"}),
 }
 """The tokens a branding pack may override in ``[welcome.style]`` (ADR-0016 §7, S5).
 
@@ -445,34 +475,51 @@ def with_overrides(base: WelcomeStyle, overrides: Any, origin: str) -> WelcomeSt
 def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
     """Check what no single token can: that the tokens fit together.
 
-    The logo area must hold the logo box's least size with room for the logo inside its
-    padding, and some text role must read on an opaque pane fill in both themes, so the
-    contrast guarantee can always be met (ADR-0016 §5).
+    The logo area must hold the logo box's least short side, with room for the logo
+    inside its padding. A pane anchored at a corner must clear the card's rounded corner
+    and its border. And some pane text must reach each pane's contrast on its opaque
+    fill in both themes, so the contrast guarantee can always be met (ADR-0016 §5).
     """
     area, logo = tokens.logo_area, tokens.logo
-    if area.width < logo.min_size.width or area.height < logo.min_size.height:
+    if min(area.width, area.height) < logo.min_short_side:
         raise StyleError(
             f"{origin}: the logo's margins leave {area.width:g} × {area.height:g} px, less "
-            f"than its box's least size, {logo.min_size.width:g} × {logo.min_size.height:g}"
+            f"than its box's least short side, {logo.min_short_side:g}"
         )
-    if 2 * logo.padding >= min(logo.min_size):
+    if 2 * logo.padding >= logo.min_short_side:
         raise StyleError(
             f"{origin}: logo.padding {logo.padding:g} leaves no room for the logo in a box "
-            f"of {logo.min_size.width:g} × {logo.min_size.height:g}"
+            f"{logo.min_short_side:g} px across"
         )
-    panes = tokens.panes
-    for scheme in SCHEMES:
-        fill = rgb(_role_color(panes.fill_role, scheme))
-        texts = [rgb(_role_color(role, scheme)) for role in panes.text_roles]
-        index, _alpha = opaque_fill(fill, texts)
-        best = contrast(rgb_luminance(texts[index]), rgb_luminance(fill))
-        if best < panes.min_contrast:
+    corner = tokens.card.corner_radius + tokens.card.border_width
+    for name in ("name_pane", "version_pane"):
+        inset = getattr(tokens, name).inset
+        if inset < corner:
             raise StyleError(
-                f"{origin}: neither {' nor '.join(panes.text_roles)} reaches "
-                f"{panes.min_contrast:g}:1 on panes.fill_role {panes.fill_role!r} in the "
-                f"{scheme} theme ({best:.2f}:1)"
+                f"{origin}: {name}.inset {inset:g} is less than the card's corner radius "
+                f"plus its border, {corner:g}"
+            )
+    panes = tokens.panes
+    needed = max(tokens.name_pane.min_contrast, tokens.version_pane.min_contrast)
+    for scheme in SCHEMES:
+        pairs = pane_pairs(panes, scheme)
+        index, _alpha = opaque_fill(pairs)
+        best = contrast(rgb_luminance(pairs[index][0]), rgb_luminance(pairs[index][1]))
+        if best < needed:
+            raise StyleError(
+                f"{origin}: no pane text reaches {needed:g}:1 on its own fill, "
+                f"panes.fill_roles {list(panes.fill_roles)}, in the {scheme} theme "
+                f"({best:.2f}:1)"
             )
     return tokens
+
+
+def pane_pairs(panes: PaneStyle, scheme: str) -> list[Pair]:
+    """Return each pane text colour with its own fill's colour, in ``scheme``."""
+    return [
+        (rgb(_role_color(text, scheme)), rgb(_role_color(fill, scheme)))
+        for text, fill in zip(panes.text_roles, panes.fill_roles, strict=True)
+    ]
 
 
 def load_style(path: Path = STYLE_FILE) -> WelcomeStyle:
@@ -511,6 +558,8 @@ def _role_color(role: str, scheme: str) -> str:
 
 RGB = tuple[int, int, int]
 """A colour's red, green, and blue, each from 0 to 255, as sRGB stores them."""
+Pair = tuple[RGB, RGB]
+"""A pane's text colour, and its fill's colour."""
 _LEVELS = 255
 _LINEAR = tuple(
     c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
@@ -586,46 +635,48 @@ def worst_contrast(text: RGB, fill: RGB, alpha: int, art: Sequence[RGB]) -> floa
 
 
 def pane_fill(
-    art: Sequence[RGB], fill: RGB, texts: Sequence[RGB], panes: PaneStyle
+    art: Sequence[RGB], pairs: Sequence[Pair], floor_opacity: float, min_contrast: float
 ) -> tuple[int, int]:
-    """Choose a pane's text colour and its fill's opacity over the art (ADR-0016 §5, S3).
+    """Choose a pane's text and fill, and the fill's opacity over the art (ADR-0016 §5, S3).
 
-    The fill starts at ``panes.fill_opacity_min`` and rises only as far as the text
-    needs to reach ``panes.min_contrast`` against the fill over each of the ``art``
-    colours, the art's luminance percentiles under the pane. The text colour that
-    needs the least opacity wins; at the same opacity, the one with more contrast.
+    Each pair is a text colour and its own fill: dark text on a light fill, light text on
+    a dark fill. A pair's fill starts at ``floor_opacity`` and rises only as far as its
+    text needs to reach ``min_contrast`` against the fill over each of the ``art``
+    colours, the art's luminance percentiles under the pane. The pair that needs the
+    least opacity wins; at the same opacity, the one with more contrast.
 
     Args:
         art: The art's colours under the pane, at its luminance percentiles.
-        fill: The fill's colour.
-        texts: The colours the text may take.
-        panes: The panes' style.
+        pairs: Each text colour, with its fill's colour.
+        floor_opacity: The fill's least opacity, from 0 to 1.
+        min_contrast: The contrast the text must reach.
 
     Returns:
-        The index of the text colour in ``texts``, and the fill's alpha, 0 to 255. If
-        no text colour reaches the contrast, the fill is opaque, under the text colour
-        that contrasts most with it.
+        The index of the pair in ``pairs``, and the fill's alpha, 0 to 255. If no pair
+        reaches the contrast, the fill is opaque, in the pair that contrasts most.
     """
-    floor = math.ceil(panes.fill_opacity_min * _LEVELS)
+    floor = math.ceil(floor_opacity * _LEVELS)
     best: tuple[int, float, int] | None = None
-    for index, text in enumerate(texts):
+    for index, (text, fill) in enumerate(pairs):
         for alpha in range(floor, _LEVELS + 1):
             worst = worst_contrast(text, fill, alpha, art)
-            if worst >= panes.min_contrast:
+            if worst >= min_contrast:
                 if best is None or (alpha, -worst) < (best[0], -best[1]):
                     best = (alpha, worst, index)
                 break
     if best is not None:
         return best[2], best[0]
-    return opaque_fill(fill, texts)
+    return opaque_fill(pairs)
 
 
-def opaque_fill(fill: RGB, texts: Sequence[RGB]) -> tuple[int, int]:
-    """Return the text colour that contrasts most with ``fill``, and an opaque alpha.
+def opaque_fill(pairs: Sequence[Pair]) -> tuple[int, int]:
+    """Return the pair whose text contrasts most with its fill, and an opaque alpha.
 
     Returns:
-        The index of the text colour in ``texts``, and 255.
+        The index of the pair in ``pairs``, and 255.
     """
-    fill_luminance = rgb_luminance(fill)
-    index = max(range(len(texts)), key=lambda i: contrast(rgb_luminance(texts[i]), fill_luminance))
+    index = max(
+        range(len(pairs)),
+        key=lambda i: contrast(rgb_luminance(pairs[i][0]), rgb_luminance(pairs[i][1])),
+    )
     return index, _LEVELS

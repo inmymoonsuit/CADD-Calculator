@@ -302,6 +302,20 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- **Welcome screen refinements (ADR-0016, amendments).**
+  * The name is VT323 at 50 px, snapped to the face's pixel grid at every display
+    scale, drawn regular, and centred on its capitals. `typography.display_weight`
+    may be set to `bold`, Qt's bold, which differs by platform.
+  * Lines are whole device pixels on the pixel grid, so they stay crisp at 125% and
+    150%. The card is clipped to one rounded outline, its border stroked along it.
+  * Each pane text has its own fill, white under ink and ink under white. The name
+    needs 3:1 contrast (large text) and the version 4.5:1.
+  * The logo box keeps a least short side of 48 px instead of a least size, and its
+    fill is white in both themes.
+  * The corner radius is 5 px, and the card's border takes a new role, `card_border`,
+    white in the dark theme.
+  * Insets, margins, and paddings follow a spacing scale, and the loader refuses
+    values off it. A pack's pane override is now `panes.fill_roles`.
 - **The welcome screen's restyle (ADR-0016).**
   * The art spans the card, now 960 × 572.
   * The logo sits in a bordered box floating over the art's left edge. The box takes

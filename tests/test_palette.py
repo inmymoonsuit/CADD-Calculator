@@ -36,6 +36,7 @@ PAIRS = [
     ("text_limit", "background", 4.5),
     ("on_welcome_scrim", "welcome_scrim", 4.5),
     ("welcome_line", "background", 3.0),
+    ("card_border", "background", 3.0),
     ("welcome_ink", "welcome_paper", 4.5),
 ]
 

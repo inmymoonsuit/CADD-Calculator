@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import re
+import struct
 import tomllib
 from collections.abc import Iterator
 from pathlib import Path
@@ -37,11 +38,40 @@ def test_the_fetch_scripts_offline_check_passes(monkeypatch: pytest.MonkeyPatch)
     assert fetch_fonts.main(["--check"]) == 0
 
 
-def test_the_tokens_name_the_vendored_face_drawn_bold() -> None:
+def test_the_tokens_name_the_vendored_face_drawn_regular() -> None:
     typography = style().typography
     assert (ASSETS / typography.display_file).parent == FONT_DIR
     assert typography.display_family == MANIFEST["name"]
-    assert typography.display_weight == 700, "S1: VT323, drawn bold"
+    assert typography.display_weight == "regular", "the maintainer's call (ADR-0016)"
+
+
+def _table(font: bytes, tag: bytes) -> int:
+    """Return the offset of a TrueType table, from the font's table directory."""
+    (count,) = struct.unpack(">H", font[4:6])
+    for entry in range(count):
+        name, _checksum, offset, _length = struct.unpack(
+            ">4sIII", font[12 + 16 * entry : 28 + 16 * entry]
+        )
+        if name == tag:
+            return int(offset)
+    raise AssertionError(f"no {tag!r} table")
+
+
+def test_the_grid_tokens_match_the_font_file() -> None:
+    """25 design pixels to the em and capitals 0.56 em tall, read from VT323 itself."""
+    typography = style().typography
+    font = (ASSETS / typography.display_file).read_bytes()
+    head, os2, hhea, hmtx = (_table(font, t) for t in (b"head", b"OS/2", b"hhea", b"hmtx"))
+    (units,) = struct.unpack(">H", font[head + 18 : head + 20])
+    (cap,) = struct.unpack(">h", font[os2 + 88 : os2 + 90])
+    assert cap / units == typography.display_cap_height
+    pixel = units // typography.display_em_pixels
+    assert pixel * typography.display_em_pixels == units
+    (metrics,) = struct.unpack(">H", font[hhea + 34 : hhea + 36])
+    advances = [
+        struct.unpack(">H", font[hmtx + 4 * i : hmtx + 4 * i + 2])[0] for i in range(metrics)
+    ]
+    assert all(advance % pixel == 0 for advance in advances), "every glyph is whole pixels"
 
 
 def test_notices_credit_the_pinned_face_with_its_license() -> None:
@@ -80,8 +110,8 @@ def test_the_display_face_loads_into_qt(fresh_fonts: Any) -> None:
 
     assert fresh_fonts.display_family() == "VT323"
     assert "VT323" in QFontDatabase.families()
-    info = QFontInfo(display_font(44))
-    assert (info.family(), info.bold()) == ("VT323", True)
+    info = QFontInfo(display_font(50))
+    assert (info.family(), info.bold()) == ("VT323", False)
 
 
 @pytest.mark.gui
