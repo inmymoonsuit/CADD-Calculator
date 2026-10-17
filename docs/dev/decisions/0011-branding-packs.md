@@ -6,6 +6,10 @@
 * **Amended:** 2026-10-17 by [ADR-0015](0015-welcome-screen.md), which replaces the
   `splash` key with a `[welcome]` table (`art`, `art_focus`, `logo`) and the splash
   screen with a welcome screen.
+* **Amended:** 2026-10-17 by [ADR-0016](0016-welcome-style-system.md) (S4): the product
+  name is fixed as "CADD Calculator" in every edition, so the pack's `name` key is
+  removed, and a pack that still has one is refused with a message saying so, as
+  `splash` was. A branded build is identified by its art, its logo, and its About text.
 * **Deciders:** the maintainer set the branding policy (ADR-0008 item 4); this ADR
   proposes the mechanism
 

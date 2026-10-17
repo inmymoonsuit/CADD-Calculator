@@ -23,8 +23,9 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0008](0008-licensing-and-third-party-assets.md) | Licensing, and keeping third-party assets out of the repo | Accepted (Apache-2.0) |
 | [0009](0009-packaging-and-distribution.md) | Packaging and distribution | Accepted (pyside6-deploy + Nuitka); installers, macOS/Linux, signing still proposed |
 | [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted |
-| [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed**; its `splash` key is replaced by 0015 |
+| [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed**; its `splash` key is replaced by 0015, and its `name` key is removed by 0016 |
 | [0012](0012-engineering-standards-enforced-by-tooling.md) | Write down the engineering standards, and enforce them with tooling | Accepted |
 | [0013](0013-domains-with-shared-settings.md) | Domains with shared settings that their calculators inherit | Accepted (phase 1 built); superseded in part by 0014 |
 | [0014](0014-materials-and-reference-data.md) | Materials and reference data for sheet metal (ADR-0013 phase 2) | Accepted (phases 2a and 2b built; 2b's release sign-offs pending) |
 | [0015](0015-welcome-screen.md) | A welcome screen composed from branding-pack parts | Accepted (built) |
+| [0016](0016-welcome-style-system.md) | A style system for the welcome screen | Accepted (not built) |
