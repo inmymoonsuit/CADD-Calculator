@@ -75,7 +75,6 @@ is computed by us from public-domain data, unless it is marked as a cited fact.
 * **Computed values:** 12 ga = 0.109375 in, 14 ga = 0.078125 in, 16 ga = 0.0625 in.
 * **Vendor listings disagree with this column at some gauges,** for example 14 ga. We
   don't reproduce vendor figures.
-* **To verify:** ASTM A480 reportedly discourages gauge numbers for stainless.
 * **Rounding differs between tables.** MH29 Table 13 (printed p. 1352) lists 12 ga as
   0.1093.
 
@@ -258,8 +257,7 @@ project therefore ships only an original compilation that needs no defense, as A
 * FAA-H-8083-31B Fig 4-124: confirm the alloy-to-column mapping visually.
 * TO 1-1A-9 Tables 2-35 and A-16: read the stainless values manually.
 * MIL-HDBK-5J Table 2.7.1.0(b): confirm 304's coverage and its values.
-* ASTM A924 (coated-sheet tolerances, referenced from A653) and B209 → ANSI H35.2
-  (aluminum tolerances): confirm before citing.
-* ASTM A480: confirm its position on gauge numbers.
+* ASTM B209 → ANSI H35.2 (aluminum tolerances): confirmed from referenced-document
+  listings only; read ASTM's own B209 page.
 * The Fabricator's terms of use: read them before anything from the series is
   considered (ADR-0014 §5.2, M3).

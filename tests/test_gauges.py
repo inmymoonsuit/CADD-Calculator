@@ -1,0 +1,177 @@
+"""Gauge systems: the table, the thicknesses it defines, and the gauge choice (ADR-0014 §2).
+
+Spot checks are isolated published values: Manufacturers' Standard and galvanized from
+Machinery's Handbook, 29th ed., Table 2, printed p. 2608; US Standard from 15 U.S.C. §206;
+AWG from NBS Circular 391, Table 13. None is a reproduced table.
+"""
+
+from __future__ import annotations
+
+from decimal import Decimal
+from fractions import Fraction
+from importlib import resources
+
+import pytest
+
+from caddcalc.calculators.sheet_metal import DOMAIN, BendAllowance
+from caddcalc.calculators.sheet_metal.gauges import (
+    CAUTION,
+    GAUGE_TABLE,
+    GaugeSystem,
+    designation,
+    load_gauges,
+)
+from caddcalc.core import (
+    DomainSettings,
+    NoteKind,
+    SourceKind,
+    SpecError,
+    UsageError,
+    expr,
+    parse_table,
+)
+from caddcalc.core.formatting import describe_note, describe_source
+
+GAUGES = load_gauges(GAUGE_TABLE.load())
+SYSTEMS = {system.id: system for system in GAUGES.systems}
+TEXT = resources.files(GAUGE_TABLE.package).joinpath(GAUGE_TABLE.filename).read_text("utf-8")
+
+
+@pytest.mark.parametrize(
+    ("key", "stated"),
+    [
+        ("msg:3", "0.2391 in"),
+        ("msg:10", "0.1345 in"),
+        ("msg:12", "0.1046 in"),
+        ("msg:20", "0.0359 in"),
+        ("msg:38", "0.0060 in"),
+        ("galv:8", "0.1681 in"),
+        ("galv:12", "0.1084 in"),
+        ("galv:16", "0.0635 in"),
+        ("galv:20", "0.0396 in"),
+        ("galv:30", "0.0157 in"),
+        ("uss:10", "0.140625 in"),
+        ("uss:12", "0.109375 in"),
+        ("uss:14", "0.078125 in"),
+        ("uss:16", "0.0625 in"),
+        ("uss:26", "0.01875 in"),
+        ("awg:0000", "0.4600 in"),
+        ("awg:0", "0.3249 in"),
+        ("awg:20", "0.0320 in"),
+        ("awg:30", "0.0100 in"),
+        ("awg:31", "0.00893 in"),
+        ("awg:40", "0.00314 in"),
+    ],
+)
+def test_a_gauge_states_its_published_thickness(key: str, stated: str) -> None:
+    assert GAUGES.by_key[key][1].stated.text == stated
+
+
+def test_each_system_covers_its_range_in_order() -> None:
+    ranges = {s.id: (s.gauges[0].key, s.gauges[-1].key, len(s.gauges)) for s in GAUGES.systems}
+    assert ranges == {
+        "msg": ("msg:3", "msg:38", 36),
+        "galv": ("galv:8", "galv:34", 27),
+        "uss": ("uss:0000000", "uss:38", 45),
+        "awg": ("awg:0000", "awg:40", 44),
+    }
+    assert [o.key for o in DOMAIN.options("gauge")] == list(GAUGES.by_key)
+
+
+@pytest.mark.parametrize("system", GAUGES.systems, ids=lambda s: s.id)
+def test_each_formula_as_shown_agrees_with_its_exact_evaluation(system: GaugeSystem) -> None:
+    """The expression users see, evaluated in floats, states every gauge the same way."""
+    for gauge in system.gauges:
+        symbols = {name: float(value) for name, value in gauge.symbols.items()}
+        shown = expr.evaluate(system.formula.expression, symbols)
+        assert abs(shown - float(gauge.exact)) <= 1e-12 * float(gauge.exact), gauge.key
+        assert system.precision.state(Decimal(repr(shown))) == gauge.stated, gauge.key
+
+
+def test_us_standard_keeps_the_statutes_exact_decimals() -> None:
+    """26 ga is exactly 0.01875 in, a tie at four decimals that a float would miss."""
+    gauge = GAUGES.by_key["uss:26"][1]
+    assert gauge.exact == Fraction(3, 160)
+    assert GAUGES.by_key["uss:37"][1].stated.text == "0.006640625 in"
+
+
+def test_galvanized_32_ships_as_computed() -> None:
+    assert GAUGES.by_key["galv:32"][1].exact == Fraction(9, 16) / Fraction("41.82")
+
+
+def test_multi_zero_sizes_read_and_parse_as_mh29_writes_them() -> None:
+    assert GAUGES.key("uss", "7/0") == "uss:0000000"
+    assert GAUGES.key("awg", "4/0") == GAUGES.key("awg", "0000") == "awg:0000"
+    assert GAUGES.key("msg", " 12 ") == "msg:12"
+    labels = [GAUGES.by_key[k][1].label for k in ("uss:0000000", "uss:0", "awg:0000", "msg:12")]
+    assert labels == ["7/0 ga", "0 ga", "4/0 AWG", "12 ga"]
+    with pytest.raises(UsageError, match="has no gauge '2'"):
+        GAUGES.key("msg", "2")
+    with pytest.raises(UsageError, match="isn't a gauge size"):
+        designation("12 ga")
+
+
+def test_each_system_cites_its_tolerance_standard() -> None:
+    cited = {s.id: [r.title for r in s.note.references[1:]] for s in GAUGES.systems}
+    assert cited == {
+        "msg": ["ASTM A568/A568M"],
+        "galv": ["ASTM A924/A924M"],
+        "uss": ["ASTM A480/A480M"],
+        "awg": ["ASTM B209/B209M", "ANSI H35.2, Dimensional Tolerances for Aluminum Mill Products"],
+    }
+    assert (
+        SYSTEMS["uss"].group == "US Standard 1893, as commonly used for stainless (practice varies)"
+    )
+
+
+def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
+    settings = DomainSettings().set_choice(DOMAIN, "gauge", "msg:12")
+    derived = settings.for_domain(DOMAIN).derived["thickness"]
+    assert derived.stated is not None and derived.stated.text == "0.1046 in"
+    assert describe_source(derived.source) == (
+        "12 ga, Manufacturers' Standard (nominal), Gauge systems, version 1"
+    )
+
+    gauged = BendAllowance().run(settings=settings.for_domain(DOMAIN))
+    assert gauged.outputs == BendAllowance().run().outputs, "12 ga is the course default"
+    assert gauged.source_of("thickness").kind is SourceKind.DERIVED
+    (note,) = gauged.notes
+    assert (note.kind, note.text, note.subjects) == (NoteKind.WARNING, CAUTION, ("thickness",))
+    assert describe_note(note) == (
+        f"{CAUTION} (Gauge systems, version 1; ASTM A568/A568M, A568/A568M-25a, "
+        "scope: thickness tolerances for uncoated carbon steel sheet)"
+    )
+
+
+def test_a_typed_thickness_beats_the_gauge_and_drops_the_caution() -> None:
+    settings = DomainSettings().set_choice(DOMAIN, "gauge", "uss:12")
+    typed = settings.set_text(DOMAIN, "thickness", "0.125", "in")
+    result = BendAllowance().run(settings=typed.for_domain(DOMAIN))
+    assert result.source_of("thickness").kind is SourceKind.DOMAIN
+    assert result.notes == ()
+
+
+def test_the_handbook_defines_only_the_steel_basis() -> None:
+    """The cite-only cap: Machinery's Handbook defines one value, the 41.82 basis."""
+    over = TEXT.replace('defined_by = "galvanized_rule"', 'defined_by = "steel_basis"')
+    with pytest.raises(SpecError, match="'machinerys_handbook' defines 28 values; its cap is 1"):
+        load_gauges(parse_table(over, "test", GAUGE_TABLE.content_keys))
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ('value = "41.82"', "value = 41.82", "as exact text"),
+        ('formula = "awg"', 'formula = "wire"', "no formula 'wire'"),
+        ('last = "38"\nprecision = { decimals', 'last = "39"\nprecision = { decimals', "39"),
+        ('size_label = "AWG"', 'size_lable = "AWG"', "unknown keys"),
+        ('constants = { B = "wrought_iron_basis" }', "constants = {}", "takes"),
+        ('tolerances = ["stainless_tolerances"]', 'tolerances = ["vendor"]', "'vendor'"),
+        ('rounding = "half_up", below', 'rounding = "ceiling", below', "rounding must be"),
+        ('first = "0000"', 'first = "4/0"', "isn't a gauge size"),
+    ],
+)
+def test_malformed_gauge_content_is_refused(old: str, new: str, message: str) -> None:
+    assert TEXT.count(old) == 1, old
+    with pytest.raises(SpecError, match=message):
+        load_gauges(parse_table(TEXT.replace(old, new), "test", GAUGE_TABLE.content_keys))

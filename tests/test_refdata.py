@@ -35,7 +35,9 @@ from caddcalc.core.refdata import MAX_CITE_ONLY_PER_PUBLICATION
 ACCESSED = datetime.date(2026, 10, 17)
 SAMPLE_KEYS = {"system"}
 
-TABLE_DIGESTS: dict[tuple[str, int], str] = {}
+TABLE_DIGESTS: dict[tuple[str, int], str] = {
+    ("Gauge systems", 1): "3a1926899de32bbd247b1b7ca53e90998ca12eb275050e61b5057189faf70b48",
+}
 """The content hash of every shipped table, by (name, version). Changing a table's data
 without bumping its version fails ``test_every_shipped_table_is_pinned_to_its_version``."""
 

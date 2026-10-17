@@ -19,7 +19,16 @@ All notable changes are recorded here. The format follows
   give, each naming its table and its domain. A calculator takes a derived value after a
   typed or explicit one and before its default, names it as a derived source, and adds
   the value's note, such as a nominal caution, once whenever the value is used, naming
-  the inputs that took it; only `run()` names them. No domain offers a choice yet.
+  the inputs that took it; only `run()` names them.
+- Gauge systems for sheet metal (ADR-0014 §2, phase 2a): the Sheet Metal domain offers a
+  `gauge` choice whose options name the system and the size, e.g. `"msg:12"` for 12 ga
+  Manufacturers' Standard, `"galv:"`, `"uss:"`, and `"awg:"` for galvanized, US Standard
+  1893 (as commonly used for stainless), and AWG. Choosing one derives the thickness at
+  the system's published precision, e.g. 0.1046 in for `"msg:12"`, and results that use
+  it carry a nominal-thickness caution citing the system's tolerance standard. The
+  definitions ship as a cited, versioned table, `data/gauges.toml`; every thickness is
+  computed from them exactly. No gauge is selected by default, and the Sheet Metal page
+  doesn't offer the choice yet.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks it: a known
   schema version, only the content keys its domain module declares, each publication

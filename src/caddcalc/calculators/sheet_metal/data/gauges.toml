@@ -1,0 +1,216 @@
+# Gauge systems for sheet metal (ADR-0014 §2).
+#
+# Each system is stored as its definition, never as a copied thickness table: the
+# statute's weights, the cited constants, and each system's range and published
+# precision. caddcalc.calculators.sheet_metal.gauges holds the formulas and computes every
+# thickness exactly. Changing the data needs a version bump; the tests pin its digest.
+
+[table]
+schema = 1
+name = "Gauge systems"
+version = 1
+
+[[publication]]
+id = "us_code"
+kind = "statute"
+title = "United States Code, Title 15"
+edition = "2024 ed."
+url = "https://www.govinfo.gov/link/uscode/15/206?type=usc&year=mostrecent&link-type=html"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Government"
+
+[[publication]]
+id = "nbs_circular_391"
+kind = "government_document"
+title = "Standard Thicknesses, Weights, and Tolerances of Sheet Metal (Customary Practice)"
+edition = "Circular of the Bureau of Standards No. 391, 1931"
+url = "https://nvlpubs.nist.gov/nistpubs/Legacy/circ/nbscircular391.pdf"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Bureau of Standards"
+
+[[publication]]
+id = "machinerys_handbook"
+kind = "book"
+title = "Machinery's Handbook"
+edition = "29th ed., Industrial Press, 2012"
+license = "cite_only_fact"
+cite_only_cap = 1
+
+# The tolerance standards are cited by designation only; none of their values ship.
+
+[[publication]]
+id = "astm_a568"
+kind = "standard"
+title = "ASTM A568/A568M"
+edition = "A568/A568M-25a"
+url = "https://store.astm.org/a0568_a0568m-25a.html"
+license = "cite_only_fact"
+
+[[publication]]
+id = "astm_a924"
+kind = "standard"
+title = "ASTM A924/A924M"
+edition = "A924/A924M-26"
+url = "https://store.astm.org/a0924_a0924m-26.html"
+license = "cite_only_fact"
+
+[[publication]]
+id = "astm_a480"
+kind = "standard"
+title = "ASTM A480/A480M"
+edition = "A480/A480M-25b"
+license = "cite_only_fact"
+
+[[publication]]
+id = "astm_b209"
+kind = "standard"
+title = "ASTM B209/B209M"
+edition = "B209/B209M-21a"
+license = "cite_only_fact"
+
+[[publication]]
+id = "ansi_h35_2"
+kind = "standard"
+title = "ANSI H35.2, Dimensional Tolerances for Aluminum Mill Products"
+edition = "H35.2-2017"
+license = "cite_only_fact"
+
+[[source]]
+id = "statute_weights"
+publication = "us_code"
+locator = "§206, table, weight per square foot in ounces avoirdupois"
+detail = "Act of Mar. 3, 1893, ch. 221, §1, 27 Stat. 746"
+accessed = 2026-10-17
+scope = "the statutory gauge for sheet and plate iron and steel; thicknesses approximate"
+
+[[source]]
+id = "wrought_iron_basis"
+publication = "nbs_circular_391"
+locator = "§II, printed p. 4"
+accessed = 2026-10-17
+scope = "the wrought-iron basis of the US Standard thickness column"
+
+[[source]]
+id = "galvanized_rule"
+publication = "nbs_circular_391"
+locator = "§II.2, printed pp. 10–11, and Table 7"
+accessed = 2026-10-17
+scope = "galvanized sheet gage: a weight gauge for the coated sheet, by custom"
+
+[[source]]
+id = "awg_definition"
+publication = "nbs_circular_391"
+locator = "§IV.1, printed pp. 14–15, and Table 13"
+accessed = 2026-10-17
+scope = "American wire gage, for copper, aluminum, and other nonferrous alloys"
+
+[[source]]
+id = "steel_basis"
+publication = "machinerys_handbook"
+locator = "Sheet-Metal Gages, Table 2, printed p. 2608"
+accessed = 2026-10-17
+scope = "approximate decimals of an inch"
+
+[[source]]
+id = "uncoated_steel_tolerances"
+publication = "astm_a568"
+locator = "scope"
+accessed = 2026-10-17
+scope = "thickness tolerances for uncoated carbon steel sheet"
+
+[[source]]
+id = "coated_steel_tolerances"
+publication = "astm_a924"
+locator = "scope"
+accessed = 2026-10-17
+scope = "thickness tolerances for hot-dip coated steel sheet, such as A653 galvanized"
+
+[[source]]
+id = "stainless_tolerances"
+publication = "astm_a480"
+locator = "scope"
+accessed = 2026-10-17
+scope = "thickness tolerances for flat-rolled stainless sheet"
+
+[[source]]
+id = "aluminum_sheet"
+publication = "astm_b209"
+locator = "referenced documents"
+accessed = 2026-10-17
+scope = "aluminum sheet and plate, with dimensional tolerances per ANSI H35.2"
+
+[[source]]
+id = "aluminum_tolerances"
+publication = "ansi_h35_2"
+locator = "title"
+accessed = 2026-10-17
+scope = "thickness tolerances for aluminum sheet"
+
+# The definition's constants. Each value is exact text, read as a Fraction or a Decimal.
+
+[constant]
+steel_basis = { value = "41.82", unit = "lb/ft² per in", source = "steel_basis", trust = "handbook_rule" }
+wrought_iron_basis = { value = "40", unit = "lb/ft² per in", source = "wrought_iron_basis", trust = "spec_guidance" }
+galvanized_coating = { value = "2.5", unit = "oz/ft²", source = "galvanized_rule", trust = "spec_guidance" }
+awg_0000 = { value = "0.46", unit = "in", source = "awg_definition", trust = "spec_guidance" }
+awg_36 = { value = "0.005", unit = "in", source = "awg_definition", trust = "spec_guidance" }
+
+# 15 U.S.C. §206, as enacted: weight per square foot in ounces avoirdupois, by gauge.
+
+[weights]
+source = "statute_weights"
+oz_per_sq_ft = { "0000000" = "320", "000000" = "300", "00000" = "280", "0000" = "260", "000" = "240", "00" = "220", "0" = "200", "1" = "180", "2" = "170", "3" = "160", "4" = "150", "5" = "140", "6" = "130", "7" = "120", "8" = "110", "9" = "100", "10" = "90", "11" = "80", "12" = "70", "13" = "60", "14" = "50", "15" = "45", "16" = "40", "17" = "36", "18" = "32", "19" = "28", "20" = "24", "21" = "22", "22" = "20", "23" = "18", "24" = "16", "25" = "14", "26" = "12", "27" = "11", "28" = "10", "29" = "9", "30" = "8", "31" = "7", "32" = "6.5", "33" = "6", "34" = "5.5", "35" = "5", "36" = "4.5", "37" = "4.25", "38" = "4" }
+
+[[system]]
+id = "msg"
+name = "Manufacturers' Standard"
+size_label = "ga"
+formula = "weight"
+constants = { B = "steel_basis" }
+first = "3"
+last = "38"
+precision = { decimals = 4, rounding = "half_up", source = "steel_basis" }
+defined_by = "statute_weights"
+checked_against = ["steel_basis"]
+tolerances = ["uncoated_steel_tolerances"]
+
+# 32 ga ships as computed, not as MH29 Table 2 lists it (ADR-0014, amendments).
+[[system]]
+id = "galv"
+name = "Galvanized"
+size_label = "ga"
+formula = "weight"
+constants = { B = "steel_basis", c = "galvanized_coating" }
+first = "8"
+last = "34"
+precision = { decimals = 4, rounding = "half_up", source = "steel_basis" }
+defined_by = "galvanized_rule"
+checked_against = ["steel_basis"]
+tolerances = ["coated_steel_tolerances"]
+
+[[system]]
+id = "uss"
+name = "US Standard 1893"
+scope = "as commonly used for stainless (practice varies)"
+size_label = "ga"
+formula = "weight"
+constants = { B = "wrought_iron_basis" }
+first = "0000000"
+last = "38"
+precision = { exact = true, source = "statute_weights" }
+defined_by = "statute_weights"
+checked_against = []
+tolerances = ["stainless_tolerances"]
+
+[[system]]
+id = "awg"
+name = "AWG (Brown & Sharpe)"
+size_label = "AWG"
+formula = "awg"
+constants = { d0000 = "awg_0000", d36 = "awg_36" }
+first = "0000"
+last = "40"
+precision = { decimals = 4, rounding = "half_up", below = "0.0100", decimals_below = 5, source = "awg_definition" }
+defined_by = "awg_definition"
+checked_against = []
+tolerances = ["aluminum_sheet", "aluminum_tolerances"]

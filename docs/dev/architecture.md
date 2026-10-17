@@ -13,6 +13,7 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 ┌────────────── caddcalc.calculators.<domain>  (stdlib only) ──────────────┐
 │  sheet_metal: BendAllowance, FormedSegmentFlatLength, VDieOpening,       │
 │               TruncatedConeLayout                                        │
+│               gauge choice: gauges.py and data/gauges.toml (ADR-0014)    │
 │  (future)   tolerancing, fasteners, structural, geometry, ...            │
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼

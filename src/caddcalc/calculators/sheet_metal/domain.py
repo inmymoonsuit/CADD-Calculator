@@ -1,11 +1,15 @@
-"""The sheet-metal domain and the settings its calculators share (ADR-0013).
+"""The sheet-metal domain, the settings its calculators share, and its gauge choice.
 
-Each setting declares the shared quantity: its key, symbol, label, dimension, and range.
-The calculators' parameters in ``common.py`` are built from these settings, adding their
-own defaults, help, and method scoping, so a shared key can't drift from its setting.
+Each setting declares the shared quantity: its key, symbol, label, dimension, and range
+(ADR-0013). The calculators' parameters in ``common.py`` are built from these settings,
+adding their own defaults, help, and method scoping, so a shared key can't drift from its
+setting. The gauge choice derives the thickness (ADR-0014 §2; ``gauges.py``).
 """
 
+from caddcalc.calculators.sheet_metal.gauges import GAUGE, GaugeResolver
 from caddcalc.core import Dimension, Domain, Param
+
+DOMAIN_ID = "sheet_metal"
 
 THICKNESS_SETTING = Param(
     "thickness",
@@ -43,8 +47,10 @@ K_FACTOR_SETTING = Param(
 )
 
 DOMAIN = Domain(
-    id="sheet_metal",
+    id=DOMAIN_ID,
     name="Sheet Metal",
     summary="Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts.",
     settings=(THICKNESS_SETTING, INSIDE_RADIUS_SETTING, K_FACTOR_SETTING),
+    choices=(GAUGE,),
+    resolver=GaugeResolver(DOMAIN_ID, THICKNESS_SETTING.key),
 )

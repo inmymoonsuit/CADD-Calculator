@@ -561,3 +561,47 @@ These refine the dependent-choices entry above.
   the one it was chosen under, e.g. an O temper chosen under one alloy, kept when the
   material falls back to a default alloy that also offers O.
 
+### 2026-10-17: the gauge table as built (maintainer, phase 2a)
+
+These settle the open items of §2 for the four gauge systems.
+
+* **The data.** `caddcalc/calculators/sheet_metal/data/gauges.toml` ("Gauge systems",
+  version 1) holds each system's definition, never a copied thickness table: the
+  statute's weight column, the cited constants, and each system's range, published
+  precision, and tolerance citation. The formulas live in `sheet_metal/gauges.py`, which
+  evaluates every thickness exactly (a `Fraction`, or a `Decimal` at 40 digits for AWG)
+  and states it with `nominal()`.
+* **Its sources.**
+  * 15 U.S.C. §206, the weights, read in the official GPO text (2024 edition) at
+    govinfo.gov. uscode.house.gov returned server errors when this was checked, so the
+    url is GPO's; both are official, and the private mirror isn't used.
+  * NBS Circular 391: the 40 lb/ft² per inch wrought-iron basis, the galvanized
+    coating rule, and the AWG definition.
+  * Machinery's Handbook, 29th ed.: the 41.82 lb/ft² per inch steel basis, its one
+    cite-only value.
+* **Ranges and precision.** Manufacturers' Standard 3–38 and galvanized 8–34, both at 4
+  decimals rounded half up; US Standard 0000000–38 at the statute's exact decimals; AWG
+  0000–40 at 4 decimals rounded half up, and 5 below 0.0100 in.
+* **Galvanized 32 ga ships as computed.** The definition gives 0.013450… in, 0.0135 at
+  4 decimals; Machinery's Handbook Table 2 lists 0.0134, though every other gauge it
+  lists matches. 32 ga isn't a spot check.
+* **Tolerance citations, by designation only.** A568 for Manufacturers' Standard; A924
+  for galvanized, to which A653 conforms; A480 for US Standard; B209 with ANSI H35.2 for
+  AWG, as aluminum sheet. The B209 → H35.2 link is confirmed from referenced-document
+  listings, not from ASTM's own page.
+* **Withdrawn from §2:** "A480 reportedly discourages gauge numbers". It wasn't
+  confirmed; restore it only if someone reads it in a legitimately obtained copy.
+* **The caution.** A result that uses a gauge's thickness carries "Nominal thickness;
+  check the material's specification or measure before cutting." Its references are
+  the table and the system's tolerance standards, since the note sends users to the
+  specification.
+* **The choice.** The Sheet Metal domain offers `gauge`, with no default. Option keys
+  are the system and the size, e.g. `msg:12`, `uss:0000000`; a multi-zero size reads as
+  Machinery's Handbook writes it ("7/0 ga", "4/0 AWG"), and `GaugeSystems.key()` accepts
+  either form. The Sheet Metal page offers it in 2a.4.
+* **Formulas shown and evaluated agree.** Each formula is also kept as the expression
+  users will see (`FORMULAS`). A test evaluates that expression for every gauge and
+  requires the same stated thickness as the exact evaluation.
+* **Correction to the identifiers above.** The example `ss:304_2b` is dropped: 2B is a
+  finish, not a temper, and how to model a finish is a phase 2b question.
+
