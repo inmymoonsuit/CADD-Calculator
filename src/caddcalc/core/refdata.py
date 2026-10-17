@@ -1,8 +1,9 @@
 """Reference data: versioned, cited tables that ship inside the package (ADR-0014 §1).
 
-A table is a TOML file with a ``[table]`` header, its ``[[source]]`` list, and the content
-keys its domain module declares. This module loads and checks the parts every table
-shares: the header, the sources, and the release-checklist rules that can be checked
+A table is a TOML file with a ``[table]`` header, the ``[[publication]]`` list of works it
+cites, the ``[[source]]`` list of places in them, and the content keys its domain module
+declares. This module loads and checks the parts every table shares: the header, the
+publications and sources, and the release-checklist rules that can be checked
 mechanically (ADR-0014 §5).
 """
 
@@ -12,6 +13,7 @@ import datetime
 import hashlib
 import json
 import tomllib
+import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
@@ -29,11 +31,11 @@ from caddcalc.core.units import TypedValue, get_unit
 SCHEMA_VERSION = 1
 """The table schema this module reads; ``[table] schema`` must equal it."""
 
-MAX_CITE_ONLY_PER_SOURCE = 1
-"""The most values one cite-only source may define, in any table (ADR-0014 §5.1).
+MAX_CITE_ONLY_PER_PUBLICATION = 1
+"""The most values one cite-only publication may define, in any table (ADR-0014 §5.1).
 
 Raising it takes a code change and an ADR-0014 amendment, so an isolated cited fact can't
-quietly grow into a value set drawn from one cite-only source.
+quietly grow into a value set drawn from one cite-only publication.
 """
 
 
@@ -44,10 +46,11 @@ class License(Enum):
     CITE_ONLY_FACT = "cite_only_fact"
     """An isolated fact cited from a book or standard consulted in a legitimate copy."""
     OWN_MEASUREMENT = "own_measurement"
+    """A value the project measured itself; only an own-measurement publication has it."""
 
 
 class PublicationKind(Enum):
-    """What a source is. It decides which licenses and checks the source needs."""
+    """What a publication is. It decides which licenses and checks the publication needs."""
 
     BOOK = "book"
     STANDARD = "standard"
@@ -55,6 +58,8 @@ class PublicationKind(Enum):
     GOVERNMENT_DOCUMENT = "government_document"
     ARTICLE = "article"
     WEBSITE = "website"
+    OWN_MEASUREMENT = "own_measurement"
+    """The project's own measurements, such as a test log; its license is ``OWN_MEASUREMENT``."""
 
 
 class Basis(Enum):
@@ -78,36 +83,51 @@ class TrustLevel(Enum):
     RULE_OF_THUMB = "rule_of_thumb"
 
 
-_PUBLIC_BY_NATURE = frozenset({PublicationKind.STATUTE, PublicationKind.GOVERNMENT_DOCUMENT})
-"""Kinds that may be public domain without stating why, e.g. 17 U.S.C. §105."""
 _EDITIONED = frozenset({PublicationKind.BOOK, PublicationKind.STANDARD})
 _ONLINE = frozenset({PublicationKind.ARTICLE, PublicationKind.WEBSITE})
 _PERMITS_REUSE = "permits_reuse"
 _TABLE_KEYS = frozenset({"schema", "name", "version"})
-_SOURCE_KEYS = frozenset(
-    {"id", "kind", "title", "detail", "url", "edition", "locator", "accessed", "license"}
-    | {"third_party", "scope", "public_domain_basis", "cite_only_cap"}
-    | {"terms_url", "terms_checked", "terms_outcome"}
+_PUBLICATION_KEYS = frozenset(
+    {"id", "kind", "title", "edition", "url", "license", "public_domain_basis"}
+    | {"third_party", "cite_only_cap", "terms_url", "terms_checked", "terms_outcome"}
 )
+_SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail"})
+
+
+@dataclass(frozen=True)
+class TablePublication:
+    """One work a table cites, with the terms its values ship under (ADR-0014 §5).
+
+    The kind, license, terms, and cite-only cap belong to the publication, not to the
+    places in it that a table cites, so citing a book in several places can't raise its cap.
+    """
+
+    id: str
+    kind: PublicationKind
+    title: str
+    license: License
+    edition: str = ""
+    url: str = ""
+    third_party: bool = False
+    """Whether the publication credits the content to someone else (ADR-0014 §5.3)."""
+    public_domain_basis: str = ""
+    """Why it is public domain, e.g. ``"17 U.S.C. §105"`` or ``"published before 1930"``."""
+    cite_only_cap: int = 0
+    """How many values this cite-only publication may define, through any of its sources
+    (at most ``MAX_CITE_ONLY_PER_PUBLICATION``)."""
+    terms_url: str = ""
+    """Where an online publication's terms of use were read (ADR-0014 §5.2)."""
+    terms_checked: datetime.date | None = None
 
 
 @dataclass(frozen=True)
 class TableSource:
-    """One source a table cites, with the terms its values ship under."""
+    """One place in a publication that a table cites, such as a table on a page."""
 
     id: str
+    publication: TablePublication
     reference: Reference
-    kind: PublicationKind
-    license: License
-    third_party: bool = False
-    """Whether the publication credits the content to someone else (ADR-0014 §5.3)."""
-    public_domain_basis: str = ""
-    """Why a book, standard, or online work is public domain, e.g. ``"published before 1930"``."""
-    cite_only_cap: int = 0
-    """How many values this cite-only source may define (at most ``MAX_CITE_ONLY_PER_SOURCE``)."""
-    terms_url: str = ""
-    """Where an online source's terms of use were read (ADR-0014 §5.2)."""
-    terms_checked: datetime.date | None = None
+    """The citation: the publication's title, edition, and url, with this place's locator."""
 
 
 @dataclass(frozen=True)
@@ -121,7 +141,7 @@ class ReferenceValue:
     value: float
     """The value, in base units."""
     source: str
-    """The id of the source the number comes from. Its license is the value's license."""
+    """The id of the source the number comes from. Its publication's license is the value's."""
     basis: Basis
     trust: TrustLevel
     corroborating: tuple[str, ...] = ()
@@ -136,10 +156,11 @@ class ReferenceValue:
 
 @dataclass(frozen=True)
 class ReferenceTable:
-    """A loaded reference table: its header, its sources, and its domain content."""
+    """A loaded reference table: its header, what it cites, and its domain content."""
 
     name: str
     version: int
+    publications: Mapping[str, TablePublication]
     sources: Mapping[str, TableSource]
     data: Mapping[str, Any] = field(default_factory=dict)
     """The content keys its domain module declared, for that module to read."""
@@ -154,22 +175,26 @@ class ReferenceTable:
     def check_values(self, values: Iterable[ReferenceValue]) -> None:
         """Check the values a domain module built from this table.
 
+        Whether a value's defining source really states it can't be checked here; the
+        release checklist covers that (ADR-0014 §5).
+
         Raises:
             SpecError: A value cites a source the table doesn't declare, or a cite-only
-                source defines more values than its cap (ADR-0014 §5.1).
+                publication defines more values, through any of its sources, than its
+                cap (ADR-0014 §5.1).
         """
         defined: Counter[str] = Counter()
         for value in values:
             unknown = [s for s in (value.source, *value.corroborating) if s not in self.sources]
             if unknown:
                 raise SpecError(f"{self.name}: a value cites unknown sources {unknown}")
-            defined[value.source] += 1
-        for source_id, count in defined.items():
-            source = self.sources[source_id]
-            if source.license is License.CITE_ONLY_FACT and count > source.cite_only_cap:
+            defined[self.sources[value.source].publication.id] += 1
+        for publication_id, count in defined.items():
+            publication = self.publications[publication_id]
+            if publication.license is License.CITE_ONLY_FACT and count > publication.cite_only_cap:
                 raise SpecError(
-                    f"{self.name}: cite-only source {source_id!r} defines {count} values; "
-                    f"its cap is {source.cite_only_cap} (ADR-0014 §5.1)"
+                    f"{self.name}: cite-only publication {publication_id!r} defines {count} "
+                    f"values; its cap is {publication.cite_only_cap} (ADR-0014 §5.1)"
                 )
 
 
@@ -196,8 +221,9 @@ def load_table(package: str, filename: str, content_keys: Iterable[str]) -> Refe
     Args:
         package: The package that holds the file, e.g. ``"caddcalc.calculators.sheet_metal"``.
         filename: The file's path inside the package, e.g. ``"data/gauges.toml"``.
-        content_keys: The top-level keys the domain module reads, besides the header and
-            sources. Any other key is refused, so a misspelled key can't pass silently.
+        content_keys: The top-level keys the domain module reads, besides the header,
+            publications, and sources. Any other key is refused, so a misspelled key can't
+            pass silently.
 
     Raises:
         SpecError: The file is missing, isn't valid TOML, or breaks the table schema.
@@ -215,7 +241,8 @@ def parse_table(text: str, origin: str, content_keys: Iterable[str]) -> Referenc
     Args:
         text: The TOML.
         origin: Where the text came from, for error messages.
-        content_keys: The top-level keys allowed besides ``table`` and ``source``.
+        content_keys: The top-level keys allowed besides ``table``, ``publication``, and
+            ``source``.
 
     Raises:
         SpecError: The text isn't valid TOML, or breaks the table schema.
@@ -241,25 +268,56 @@ def parse_table(text: str, origin: str, content_keys: Iterable[str]) -> Referenc
         raise SpecError(f"{origin}: [table] name must be text")
     if not isinstance(version, int) or isinstance(version, bool) or version < 1:
         raise SpecError(f"{origin}: [table] version must be a whole number from 1")
+    publications = _parse_publications(origin, raw.pop("publication", []))
     sources: dict[str, TableSource] = {}
     for entry in raw.pop("source", []):
-        source = _parse_source(origin, entry)
+        source = _parse_source(origin, entry, publications)
         if source.id in sources:
             raise SpecError(f"{origin}: source {source.id!r} is declared twice")
         sources[source.id] = source
     stray = sorted(set(raw) - set(content_keys))
     if stray:
         raise SpecError(f"{origin}: unknown top-level keys {stray}")
-    return ReferenceTable(name, version, MappingProxyType(sources), MappingProxyType(raw), digest)
+    return ReferenceTable(
+        name,
+        version,
+        MappingProxyType(publications),
+        MappingProxyType(sources),
+        MappingProxyType(raw),
+        digest,
+    )
 
 
-def _parse_source(origin: str, entry: Any) -> TableSource:
+def _parse_publications(origin: str, entries: Any) -> dict[str, TablePublication]:
+    """Parse the publications, each declared once, however its title is spelt."""
+    publications: dict[str, TablePublication] = {}
+    by_work: dict[tuple[str, str], str] = {}
+    for entry in entries:
+        publication = _parse_publication(origin, entry)
+        if publication.id in publications:
+            raise SpecError(f"{origin}: publication {publication.id!r} is declared twice")
+        work = (_loosely(publication.title), _loosely(publication.edition))
+        if work in by_work:
+            raise SpecError(
+                f"{origin}: publications {by_work[work]!r} and {publication.id!r} have the same "
+                "title and edition; declare it once and cite each place as a source"
+            )
+        by_work[work] = publication.id
+        publications[publication.id] = publication
+    return publications
+
+
+def _loosely(text: str) -> str:
+    """Return ``text`` for comparing titles: casefolded, without spaces or punctuation."""
+    return "".join(ch for ch in unicodedata.normalize("NFKC", text).casefold() if ch.isalnum())
+
+
+def _parse_publication(origin: str, entry: Any) -> TablePublication:
     if not isinstance(entry, dict):
-        raise SpecError(f"{origin}: each [[source]] must be a table")
-    where = f"{origin}: source {entry.get('id', '?')!r}"
-    required = {"id", "kind", "title", "locator", "accessed", "license"}
-    _check_keys(where, entry, _SOURCE_KEYS, required=required)
-    for key in ("id", "title", "locator"):
+        raise SpecError(f"{origin}: each [[publication]] must be a table")
+    where = f"{origin}: publication {entry.get('id', '?')!r}"
+    _check_keys(where, entry, _PUBLICATION_KEYS, required={"id", "kind", "title", "license"})
+    for key in ("id", "title"):
         if not isinstance(entry[key], str) or not entry[key].strip():
             raise SpecError(f"{where} needs a {key}")
     kind = _enum(where, PublicationKind, entry["kind"])
@@ -278,32 +336,51 @@ def _parse_source(origin: str, entry: Any) -> TableSource:
     if not isinstance(cap, int) or isinstance(cap, bool) or cap < 0:
         raise SpecError(f"{where}: cite_only_cap must be a whole number from 0")
     if cap and license_ is not License.CITE_ONLY_FACT:
-        raise SpecError(f"{where}: only a cite-only source has a cite_only_cap")
-    if cap > MAX_CITE_ONLY_PER_SOURCE:
+        raise SpecError(f"{where}: only a cite-only publication has a cite_only_cap")
+    if cap > MAX_CITE_ONLY_PER_PUBLICATION:
         raise SpecError(
-            f"{where}: cite_only_cap {cap} is above the ceiling of {MAX_CITE_ONLY_PER_SOURCE} "
-            "(ADR-0014 §5.1)"
+            f"{where}: cite_only_cap {cap} is above the ceiling of "
+            f"{MAX_CITE_ONLY_PER_PUBLICATION} (ADR-0014 §5.1)"
         )
-    reference = Reference(
-        entry["title"],
-        detail=str(entry.get("detail", "")),
-        url=url,
-        edition=edition,
-        locator=entry["locator"],
-        accessed=_date(where, "accessed", entry["accessed"]),
-        scope=str(entry.get("scope", "")),
-    )
-    return TableSource(
+    return TablePublication(
         entry["id"],
-        reference,
         kind,
+        entry["title"],
         license_,
-        third_party,
+        edition=edition,
+        url=url,
+        third_party=third_party,
         public_domain_basis=basis,
         cite_only_cap=cap,
         terms_url=terms_url,
         terms_checked=terms_checked,
     )
+
+
+def _parse_source(
+    origin: str, entry: Any, publications: Mapping[str, TablePublication]
+) -> TableSource:
+    if not isinstance(entry, dict):
+        raise SpecError(f"{origin}: each [[source]] must be a table")
+    where = f"{origin}: source {entry.get('id', '?')!r}"
+    required = {"id", "publication", "locator", "accessed"}
+    _check_keys(where, entry, _SOURCE_KEYS, required=required)
+    for key in ("id", "publication", "locator"):
+        if not isinstance(entry[key], str) or not entry[key].strip():
+            raise SpecError(f"{where} needs a {key}")
+    publication = publications.get(entry["publication"])
+    if publication is None:
+        raise SpecError(f"{where} cites publication {entry['publication']!r}, which isn't declared")
+    reference = Reference(
+        publication.title,
+        detail=str(entry.get("detail", "")),
+        url=publication.url,
+        edition=publication.edition,
+        locator=entry["locator"],
+        accessed=_date(where, "accessed", entry["accessed"]),
+        scope=str(entry.get("scope", "")),
+    )
+    return TableSource(entry["id"], publication, reference)
 
 
 def _check_license(
@@ -315,16 +392,21 @@ def _check_license(
     edition: str,
     basis: str,
 ) -> None:
-    """Hold a source's license to what its kind allows (ADR-0014 §5.1, §5.3)."""
+    """Hold a publication's license to what its kind allows (ADR-0014 §5.1, §5.3)."""
     if kind in _EDITIONED and not edition.strip():
         raise SpecError(f"{where} is a {kind.value}, so it needs an edition")
-    if license_ is License.PUBLIC_DOMAIN and kind not in _PUBLIC_BY_NATURE and not basis.strip():
+    if license_ is License.PUBLIC_DOMAIN and not basis.strip():
         raise SpecError(
-            f"{where}: a {kind.value} is public domain only with a public_domain_basis, "
-            'e.g. "published before 1930"'
+            f"{where}: a public-domain {kind.value} needs a public_domain_basis, "
+            'e.g. "17 U.S.C. §105" or "published before 1930"'
         )
-    if kind in _EDITIONED and license_ is License.OWN_MEASUREMENT:
-        raise SpecError(f"{where}: a {kind.value} isn't our own measurement; cite it as cite-only")
+    if basis.strip() and license_ is not License.PUBLIC_DOMAIN:
+        raise SpecError(f"{where}: only a public-domain publication has a public_domain_basis")
+    if (kind is PublicationKind.OWN_MEASUREMENT) != (license_ is License.OWN_MEASUREMENT):
+        raise SpecError(
+            f"{where}: the own_measurement license goes with the own_measurement kind, and "
+            "only with it"
+        )
     if third_party and license_ is not License.CITE_ONLY_FACT:
         raise SpecError(
             f"{where} credits its content to a third party, so it is cite-only (ADR-0014 §5.3)"
@@ -332,7 +414,7 @@ def _check_license(
 
 
 def _check_terms(where: str, entry: Mapping[str, Any], url: str) -> tuple[str, datetime.date]:
-    """An online source needs terms that were read and permit reuse (ADR-0014 §5.2)."""
+    """An online publication needs terms that were read and permit reuse (ADR-0014 §5.2)."""
     if not url.strip():
         raise SpecError(f"{where} is online, so it needs a url")
     terms_url = str(entry.get("terms_url", ""))

@@ -5,25 +5,40 @@ schema = 1
 name = "Sample table"
 version = 2
 
-[[source]]
+[[publication]]
 id = "statute"
 kind = "statute"
 title = "A public-domain statute"
-locator = "section 1"
-url = "https://example.org/statute"
-accessed = 2026-10-17
+url = "https://uscode.house.gov/"
 license = "public_domain"
+public_domain_basis = "17 U.S.C. §105"
 
-[[source]]
+[[publication]]
 id = "handbook"
 kind = "book"
 title = "A handbook"
 edition = "3rd ed."
-locator = "Table 7, p. 12"
-accessed = 2026-10-17
 license = "cite_only_fact"
 cite_only_cap = 1
+
+[[source]]
+id = "statute"
+publication = "statute"
+locator = "section 1"
+accessed = 2026-10-17
+
+[[source]]
+id = "handbook"
+publication = "handbook"
+locator = "Table 7, p. 12"
+accessed = 2026-10-17
 scope = "bench practice"
+
+[[source]]
+id = "handbook_appendix"
+publication = "handbook"
+locator = "Appendix B"
+accessed = 2026-10-17
 
 [[system]]
 id = "sample"

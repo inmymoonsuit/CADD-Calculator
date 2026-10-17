@@ -504,3 +504,41 @@ the resolver's `options(choice)`, and the wording of the derived note's subjects
     `-`, `.`, and spaces into `_`, e.g. `al:6061_t6`, `ss:304_2b`.
   * A temper stays a separate, dependent choice; an option key never has a second colon.
 
+### 2026-10-17: publications apart from sources (maintainer, phase 2a)
+
+These replace, in the schema-hardening entry above, the source fields, the per-source
+cap, and the rule that a statute or government document is public domain without a
+stated basis. The schema changed before any table shipped, so it stays `schema = 1`.
+
+* **A publication is declared once.** A table lists each work it cites as a
+  `[[publication]]`: `id`, `kind`, `title`, `edition`, `url`, `license`,
+  `public_domain_basis`, the online terms (`terms_url`, `terms_checked`,
+  `terms_outcome`), `third_party`, and `cite_only_cap`. Each `[[source]]` cites a place
+  in one: `id`, `publication`, `locator`, `accessed`, `scope`, and `detail`.
+  * Kind, license, terms, and the cap belong to the publication, so citing a book in
+    several places can't multiply its cap. The cap is counted per publication, under
+    `MAX_CITE_ONLY_PER_PUBLICATION` (1), renamed from `MAX_CITE_ONLY_PER_SOURCE`.
+  * A value still names one defining source, whose publication gives its license.
+  * Two publications with the same title and edition are refused. They are compared
+    casefolded, with whitespace and punctuation removed, so spelling variants of one
+    work can't stand as two.
+* **Every public-domain publication states its basis,** statutes and government
+  documents included, e.g. "17 U.S.C. §105". A basis on a publication that isn't public
+  domain is refused.
+* **Public-domain hosts are allowlisted.** A test over the shipped tables requires each
+  public-domain publication's url to be on a US government or military host (`.gov`,
+  `.mil`) or a named mirror (everyspec.com, for DoD documents). A new host fails CI
+  until someone adds it to the test on purpose. The allowlist is a tripwire, not a
+  ruling: the basis states the claim, and a state `.gov` work needs its own, since
+  17 U.S.C. §105 covers federal works only. The US Standard statute's url is the
+  official one at uscode.house.gov, not a private mirror.
+* **Own measurements are their own kind.** `PublicationKind.own_measurement` takes the
+  `own_measurement` license, and no other kind does.
+* **What the validator can't check.** It can't tell whether a value's defining source
+  really states that value, or whether two differently worded editions are one work.
+  Both stay with the release checklist (§5).
+* **Correction to the identifiers above.** Phase 2b's material options name the
+  designation without a temper, e.g. `al:6061` and `ss:304`. The temper is its own
+  dependent choice, e.g. `temper:t6` or `temper:h32`. The example `al:6061_t6` was
+  wrong.
+

@@ -21,12 +21,14 @@ All notable changes are recorded here. The format follows
   the inputs that took it. No domain offers a choice yet.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks it: a known
-  schema version, only the content keys its domain module declares, and sources whose
-  kind, license, edition, and (for online sources) recorded terms of use agree with
-  ADR-0014 §5. `ReferenceTable.check_values()` checks that each value's defining source
-  is declared and that no cite-only source defines more values than its cap, itself
-  bounded by a code-level ceiling. `ReferenceValue`, `TableSpec`, the `License`,
-  `PublicationKind`, `Basis`, and `TrustLevel` enums, and `nominal()`, the one place a
+  schema version, only the content keys its domain module declares, each publication
+  declared once (`TablePublication`) with a kind, license, edition, public-domain
+  basis, and (for online ones) recorded terms of use that agree with ADR-0014 §5, and
+  sources (`TableSource`) that each cite a place in one. `ReferenceTable.check_values()`
+  checks that each value's defining source is declared and that no cite-only
+  publication defines more values than its cap, itself bounded by a code-level
+  ceiling. `ReferenceValue`, `TableSpec`, the `License`, `PublicationKind` (including
+  `own_measurement`), `Basis`, and `TrustLevel` enums, and `nominal()`, the one place a
   standard's stated precision is applied, rounding exact `Fraction` or `Decimal` input
   only. No data ships yet.
 - Project skeleton: a layered `caddcalc` package (core, calculators, CLI, PySide6 GUI).
