@@ -196,6 +196,9 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- The main window gains a File menu with Exit, beside Help > About. Both come from
+  `caddcalc.gui.actions.AppActions`, the app's shared commands, which carry Qt's menu
+  roles so macOS puts About and Quit in the application menu (ADR-0015 §5).
 - Branding packs: a `[welcome]` table (`art`, `art_focus`, `logo`) replaces the `splash`
   key (ADR-0015), and the splash screen and the smoke report's `splash_shown` are gone
   until the welcome screen replaces them. A pack that still names `splash` is refused

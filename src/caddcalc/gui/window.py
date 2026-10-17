@@ -12,6 +12,7 @@ from typing import Any, cast, override
 from PySide6.QtCore import QEvent, QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QFormLayout,
@@ -69,6 +70,7 @@ from caddcalc.core.formatting import (
     unit_suffix,
 )
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
+from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, Branding
 from caddcalc.gui.icons import (
     TABLER_DIR,
@@ -194,10 +196,24 @@ class MainWindow(QMainWindow):
     settings (ADR-0013 §8).
     """
 
-    def __init__(self, registry: Registry | None = None, branding: Branding = GENERIC) -> None:
+    def __init__(
+        self,
+        registry: Registry | None = None,
+        branding: Branding = GENERIC,
+        actions: AppActions | None = None,
+    ) -> None:
+        """Build the window over ``registry``'s calculators.
+
+        Args:
+            registry: The calculators and domains to show; the built-ins and plugins when
+                ``None``.
+            branding: The app's identity, for the title and About.
+            actions: The app's shared commands; the window makes its own when ``None``.
+        """
         super().__init__()
         self.registry = registry or default_registry()
         self.branding = branding
+        self.app_actions = actions if actions is not None else AppActions(branding, self)
         self.prefs = DisplayPrefs()
         self.calculator: Calculator | None = None
         """The calculator whose page is shown, if one is."""
@@ -368,9 +384,8 @@ class MainWindow(QMainWindow):
                     yield child
 
     def _build_menu(self) -> None:
-        help_menu = self.menuBar().addMenu("&Help")
-        self.about_action = help_menu.addAction(f"&About {self.branding.name.replace('&', '&&')}")
-        self.about_action.triggered.connect(self._show_about)
+        self.app_actions.fill(self.menuBar())
+        self.app_actions.about.triggered.connect(self._show_about)
 
     def _apply_icons(self) -> None:
         """(Re)color every icon for the current light or dark scheme."""
@@ -380,7 +395,7 @@ class MainWindow(QMainWindow):
                 domain.setIcon(0, icon("category"))
         for child in self._calculator_items():
             child.setIcon(0, icon("calculator"))
-        self.about_action.setIcon(icon("info-circle"))
+        self.app_actions.about.setIcon(icon("info-circle"))
 
     def _on_color_scheme_changed(self, *_args: object) -> None:
         clear_cache()
@@ -389,7 +404,9 @@ class MainWindow(QMainWindow):
         self._show_setting_problems()
 
     def _show_about(self) -> None:
-        QMessageBox.about(self, f"About {self.branding.name}", about_html(self.branding))
+        # Over whichever window is active, such as the welcome screen.
+        parent = QApplication.activeWindow() or self
+        QMessageBox.about(parent, f"About {self.branding.name}", about_html(self.branding))
 
     # --- selection ------------------------------------------------------------------------
 
