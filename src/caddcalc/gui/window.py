@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass
 from functools import partial
 from html import escape
 from typing import Any, cast, override
@@ -38,11 +39,13 @@ from caddcalc.core import (
     DomainSettings,
     DomainValues,
     InputError,
+    InputSource,
     Method,
     OutOfRangeError,
     Param,
     Registry,
     Result,
+    SourceKind,
     TypedValue,
 )
 from caddcalc.core.formatting import (
@@ -83,6 +86,28 @@ ICON_PX = 32
 """Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
 
 
+COURSE_EXAMPLE = "course example"
+"""How results name a value set by Load course example."""
+
+
+@dataclass(frozen=True)
+class FieldEntry:
+    """A value given to a calculator field, and how it got there.
+
+    ``value`` is text the user typed, or a base value set for them, such as the course
+    example. ``label`` says how a value the user didn't type got there, for results
+    (ADR-0013 §5); it is empty for typed values.
+    """
+
+    value: TypedValue | float
+    label: str = ""
+
+    @property
+    def base_value(self) -> float:
+        """The value, in base units."""
+        return self.value.value if isinstance(self.value, TypedValue) else self.value
+
+
 class ResultsBrowser(QTextBrowser):
     """A results pane that can show the vendored icons inline.
 
@@ -121,17 +146,22 @@ class MainWindow(QMainWindow):
         """The calculator whose page is shown, if one is."""
         self.domain: Domain | None = None
         """The domain whose settings page is shown, if one is."""
-        self.entries: dict[str, dict[str, TypedValue | float]] = {}
-        """What the user set in each calculator, by calculator id and parameter key.
+        self.entries: dict[str, dict[str, FieldEntry]] = {}
+        """Each calculator's own values, by calculator id and parameter key.
 
-        A ``TypedValue`` is text the user typed; a float is a base value loaded for them by
-        Load course example. An absent key means the calculator's default.
+        An absent key means the calculator's default.
         """
         self.overrides: dict[str, set[str]] = {}
         """The shared parameters each calculator overrides; sticky for the session (C)."""
         self.fields: dict[str, tuple[Param, QLineEdit]] = {}
-        self.field_errors: dict[str, str] = {}
-        """Why the text in a field of the shown calculator can't be read, by parameter key."""
+        self.pending_fields: dict[tuple[str, str], str] = {}
+        """Text typed in a calculator field that can't be read, by (calculator id, key).
+
+        It outlives the page, so the text and its explanation are still there when the
+        user comes back.
+        """
+        self.result: Result | None = None
+        """The shown calculator's last result, or ``None`` while its inputs have errors."""
         self.inherit_boxes: dict[str, QCheckBox] = {}
         self.override_notes: dict[str, QLabel] = {}
         self.domain_settings = DomainSettings()
@@ -351,6 +381,8 @@ class MainWindow(QMainWindow):
     # Each field shows the value the run uses for it. Only the user's own typing creates
     # intent: a unit switch, an inherited value, and a loaded example keep their base value
     # and are never re-read from the field (ADR-0013 §9). Fields recompute as the user types.
+    # A field inheriting a set family value is read-only: only unticking its box overrides
+    # (decision C), so a stray keystroke can't pin an override.
 
     def _rebuild_form(self) -> None:
         calc = self.calculator
@@ -363,11 +395,17 @@ class MainWindow(QMainWindow):
         self.fields.clear()
         self.inherit_boxes.clear()
         self.override_notes.clear()
-        self.field_errors.clear()
         domain = self.registry.domain(calc.domain)
         self.example_button.setVisible(any(m.legacy for m in calc.methods))
         for p in calc.params_for(self.method_key):
-            edit = QLineEdit(self._shown_text(calc, p))
+            edit = QLineEdit()
+            if self._inherits_set_value(calc, p):
+                self.pending_fields.pop((calc.id, p.key), None)  # it can't apply while inheriting
+            pending = self.pending_fields.get((calc.id, p.key))
+            edit.setText(self._shown_text(calc, p) if pending is None else pending)
+            default = p.default_value()
+            if default is not None:
+                edit.setPlaceholderText(field_text(default, p.dimension, self.prefs))
             edit.setToolTip(p.help)
             edit.textEdited.connect(partial(self._on_field_edited, p.key))
             field = QHBoxLayout()
@@ -377,7 +415,10 @@ class MainWindow(QMainWindow):
             row.addLayout(field)
             if p.shared:
                 box = QCheckBox(f"Use {domain.name} value")
-                box.setToolTip(f"Inherit this value from the {domain.name} settings.")
+                box.setToolTip(
+                    f"Use the {domain.name} settings' value. Untick to give this calculator "
+                    "its own value."
+                )
                 box.toggled.connect(partial(self._on_inherit_toggled, p.key))
                 field.addWidget(box)
                 note = QLabel()
@@ -393,56 +434,98 @@ class MainWindow(QMainWindow):
         """Whether ``p`` takes its domain's value in ``calc``, rather than overriding it."""
         return p.shared and p.key not in self.overrides.get(calc.id, set())
 
+    def _family_value(self, calc: Calculator, p: Param) -> TypedValue | None:
+        """The value set for ``p`` in ``calc``'s domain, if any."""
+        return (
+            self.domain_settings.get(self.registry.domain(calc.domain), p.key) if p.shared else None
+        )
+
+    def _inherits_set_value(self, calc: Calculator, p: Param) -> bool:
+        return self._inherits(calc, p) and self._family_value(calc, p) is not None
+
     def _own_value(self, calc: Calculator, p: Param) -> float | None:
         """The value ``calc`` itself has for ``p``: what the user set, or else the default."""
         entry = self.entries.get(calc.id, {}).get(p.key)
-        if entry is None:
-            return p.default_value()
-        return entry.value if isinstance(entry, TypedValue) else entry
+        return p.default_value() if entry is None else entry.base_value
+
+    def _value_in_use(self, calc: Calculator, p: Param) -> float | None:
+        """The value the run uses for ``p``: the family's, or else the calculator's own."""
+        inherited = self._family_value(calc, p)
+        if self._inherits(calc, p):
+            return p.default_value() if inherited is None else inherited.value
+        return self._own_value(calc, p)
 
     def _shown_text(self, calc: Calculator, p: Param) -> str:
         """Return the text a field shows: the value the run uses for it."""
         if self._inherits(calc, p):
-            inherited = self.domain_settings.get(self.registry.domain(calc.domain), p.key)
+            inherited = self._family_value(calc, p)
             if inherited is not None:
                 return entry_text(inherited, self.prefs)
-            value = p.default_value()  # nothing to inherit, so the run takes the default
         else:
             entry = self.entries.get(calc.id, {}).get(p.key)
-            if isinstance(entry, TypedValue):
-                return entry_text(entry, self.prefs)
-            value = self._own_value(calc, p)
+            if entry is not None and isinstance(entry.value, TypedValue):
+                return entry_text(entry.value, self.prefs)
+        value = self._value_in_use(calc, p)
         return "" if value is None else field_text(value, p.dimension, self.prefs)
 
+    def _field_problem(self, p: Param, text: str) -> str | None:
+        """Return why ``text`` can't be read as a value of ``p``, or ``None`` if it can."""
+        default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
+        try:
+            TypedValue.parse(text, p.dimension, default_unit)
+        except InputError as exc:
+            return f"{p.label}: {exc}"
+        return None
+
     def _on_field_edited(self, key: str, text: str) -> None:
-        """Keep what the user typed as intent; typing in a shared field overrides it."""
+        """Keep what the user typed as intent, unless it changes nothing.
+
+        Empty text drops the field's own value. Text that can't be read is kept, explained,
+        and applies nothing. Text whose value is the one already in use records nothing, so
+        a no-op edit can't pin an override (decision C).
+        """
         calc = self.calculator
         if calc is None:
             return
         p, _edit = self.fields[key]
-        if p.shared:
-            self.overrides.setdefault(calc.id, set()).add(key)  # sticky (decision C)
-        default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
-        try:
-            entry = TypedValue.parse(text, p.dimension, default_unit)
-        except InputError as exc:
-            self.field_errors[key] = f"{p.label}: {exc}"
+        own = self.entries.setdefault(calc.id, {})
+        if not text.strip():
+            self.pending_fields.pop((calc.id, key), None)
+            own.pop(key, None)
+        elif self._field_problem(p, text) is not None:
+            self.pending_fields[calc.id, key] = text
         else:
-            self.entries.setdefault(calc.id, {})[key] = entry
-            self.field_errors.pop(key, None)
+            shown = self._shown_text(calc, p)
+            self.pending_fields.pop((calc.id, key), None)
+            default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
+            typed = TypedValue.parse(text, p.dimension, default_unit)
+            if text.strip() != shown and typed.value != self._value_in_use(calc, p):
+                own[key] = FieldEntry(typed)
+                if p.shared:
+                    self.overrides.setdefault(calc.id, set()).add(key)  # sticky (decision C)
         self.recompute()
 
     def _on_inherit_toggled(self, key: str, inherit: bool) -> None:
+        """Tick to use the family value; untick to override it with an exact copy of it.
+
+        The copy changes nothing until the user edits it (as CAD tools do), and results
+        name it as copied from the family settings.
+        """
         calc = self.calculator
         if calc is None:
             return
+        p, edit = self.fields[key]
         overrides = self.overrides.setdefault(calc.id, set())
         if inherit:
             overrides.discard(key)
         else:
+            inherited = self._family_value(calc, p)
+            if inherited is not None:
+                domain = self.registry.domain(calc.domain)
+                copied = FieldEntry(inherited, f"copied from {domain.settings_label}")
+                self.entries.setdefault(calc.id, {})[key] = copied
             overrides.add(key)
-        p, edit = self.fields[key]
-        self.field_errors.pop(key, None)
+        self.pending_fields.pop((calc.id, key), None)
         edit.setText(self._shown_text(calc, p))
         self.recompute()
 
@@ -450,46 +533,73 @@ class MainWindow(QMainWindow):
         """Fill every input with the course example as explicit values (decision D).
 
         The built-in defaults are the course examples (docs/user/calculators/sheet-metal.md),
-        so each input gets its default, and shared inputs override the family settings.
+        so each input gets its default, and shared inputs override the family settings. A
+        method that isn't the course's is switched to the course method, so the example
+        gives the lesson's answer.
         """
         calc = self.calculator
         if calc is None:
             return
+        if not calc.get_method(self.method_key).legacy:
+            course = next((m for m in calc.methods if m.legacy), None)
+            if course is not None:
+                self.method_box.blockSignals(True)
+                self.method_box.setCurrentIndex(self.method_box.findData(course.key))
+                self.method_box.blockSignals(False)
         self.entries[calc.id] = {
-            p.key: value for p in calc.params if (value := p.default_value()) is not None
+            p.key: FieldEntry(value, COURSE_EXAMPLE)
+            for p in calc.params
+            if (value := p.default_value()) is not None
         }
         self.overrides[calc.id] = {p.key for p in calc.params if p.shared}
+        for key in [k for k in self.pending_fields if k[0] == calc.id]:
+            del self.pending_fields[key]
         self._rebuild_form()
 
-    def _run_arguments(self, calc: Calculator) -> tuple[dict[str, float], DomainValues]:
-        """Return the explicit inputs and the domain settings for running ``calc``.
+    def _run_arguments(
+        self, calc: Calculator
+    ) -> tuple[dict[str, float], dict[str, InputSource], DomainValues]:
+        """Return the explicit inputs, their labels, and the domain settings for ``calc``.
 
-        An inheriting field passes nothing, so the run takes the domain value or else the
+        An inheriting field passes nothing, so the run takes the family value or else the
         default. An overriding field passes its own value, or nothing for its default, and
-        its key is left out of the settings so the domain value can't take its place.
+        its key is left out of the settings so the family value can't take its place.
         """
         own = self.entries.get(calc.id, {})
-        inputs = {}
+        inputs: dict[str, float] = {}
+        labels: dict[str, InputSource] = {}
         for p in calc.params_for(self.method_key):
             entry = own.get(p.key)
             if entry is not None and not self._inherits(calc, p):
-                inputs[p.key] = entry.value if isinstance(entry, TypedValue) else entry
+                inputs[p.key] = entry.base_value
+                if entry.label:
+                    labels[p.key] = InputSource(SourceKind.EXPLICIT, entry.label)
         domain = self.registry.domain(calc.domain)
         overridden = self.overrides.get(calc.id, set())
         set_values = self.domain_settings.for_domain(domain).values
         settings = domain.values(**{k: v for k, v in set_values.items() if k not in overridden})
-        return inputs, settings
+        return inputs, labels, settings
 
-    def _refresh_fields(self, calc: Calculator) -> None:
-        """Outline unreadable fields, and show each shared field's state against its domain."""
+    def _refresh_fields(self, calc: Calculator) -> list[str]:
+        """Show each field's state, and return why any field's text can't be read.
+
+        Shared fields show their box while a family value is set, are read-only while
+        inheriting it, and show a note while overriding it.
+        """
         domain = self.registry.domain(calc.domain)
+        problems = []
         for key, (p, edit) in self.fields.items():
-            edit.setStyleSheet(ERROR_STYLE if key in self.field_errors else "")
+            pending = self.pending_fields.get((calc.id, key))
+            problem = None if pending is None else self._field_problem(p, pending)
+            edit.setStyleSheet(ERROR_STYLE if problem else "")
+            if problem:
+                problems.append(problem)
+            edit.setReadOnly(self._inherits_set_value(calc, p))
             box = self.inherit_boxes.get(key)
             note = self.override_notes.get(key)
             if box is None or note is None:
                 continue
-            inherited = self.domain_settings.get(domain, key)
+            inherited = self._family_value(calc, p)
             box.setVisible(inherited is not None)
             box.blockSignals(True)
             box.setChecked(self._inherits(calc, p))
@@ -500,25 +610,28 @@ class MainWindow(QMainWindow):
                 text = describe_override(domain.name, inherited.value, own, p.dimension, self.prefs)
             note.setText(text)
             note.setVisible(bool(text))
+        return problems
 
     def recompute(self) -> None:
         """Run the calculator on the form's values, and show the result or the input errors."""
         calc = self.calculator
         if calc is None:
             return
-        self._refresh_fields(calc)
+        problems = self._refresh_fields(calc)
         scheme = current_scheme()
-        errors = [self.field_errors[key] for key in self.fields if key in self.field_errors]
-        if errors:
-            self.output.setHtml(_error_html(errors, scheme))
+        self.result = None
+        if problems:
+            self.output.setHtml(_error_html(problems, scheme))
             return
         try:
-            inputs, settings = self._run_arguments(calc)
-            result = calc.run(inputs, method=self.method_key, settings=settings)
+            inputs, labels, settings = self._run_arguments(calc)
+            self.result = calc.run(
+                inputs, method=self.method_key, settings=settings, explicit_sources=labels
+            )
         except CaddCalcError as exc:
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
-        self.output.setHtml(result_html(calc, result, self.prefs, scheme))
+        self.output.setHtml(result_html(calc, self.result, self.prefs, scheme))
 
     # --- domain settings page -------------------------------------------------------------
     # Fields apply on Enter or when focus leaves them, and are checked as the user types.
@@ -629,18 +742,18 @@ class MainWindow(QMainWindow):
         inches would mean 5 mm after a switch to mm. Writing it as "5 in" keeps the
         user's meaning, and the field shows exactly what will be applied (ADR-0013 §9).
         Text that names its unit, or that can't be read in any unit, is left as typed.
+        This covers settings fields and calculator fields alike.
         """
         for (domain_id, key), text in list(self.pending_settings.items()):
             dimension = self.registry.domain(domain_id).setting(key).dimension
-            typed_in = display_unit(dimension, self.prefs)
-            if typed_in == display_unit(dimension, new_prefs):
-                continue
-            try:
-                parsed = parse_quantity_detailed(text, dimension, typed_in.symbol)
-            except InputError:
-                continue
-            if not parsed.explicit_unit:
-                self.pending_settings[domain_id, key] = f"{text.strip()} {typed_in.symbol}"
+            self.pending_settings[domain_id, key] = _name_unit(
+                text, dimension, self.prefs, new_prefs
+            )
+        for (calc_id, key), text in list(self.pending_fields.items()):
+            param = next(p for p in self.registry.get(calc_id).params if p.key == key)
+            self.pending_fields[calc_id, key] = _name_unit(
+                text, param.dimension, self.prefs, new_prefs
+            )
 
     def _clear_domain_settings(self) -> None:
         domain = self.domain
@@ -705,6 +818,21 @@ def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
         f"<p style='color:#c0392b'>{_img('alert-circle', 'icon_error', scheme)}"
         f"<b>Check the inputs:</b></p><ul>{items}</ul>"
     )
+
+
+def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayPrefs) -> str:
+    """Return ``text`` with the unit it was typed in, if the switch would change its meaning.
+
+    Only a bare number, in a dimension whose display unit changes, gains its unit.
+    """
+    typed_in = display_unit(dimension, old)
+    if typed_in == display_unit(dimension, new):
+        return text
+    try:
+        parsed = parse_quantity_detailed(text, dimension, typed_in.symbol)
+    except InputError:
+        return text
+    return text if parsed.explicit_unit else f"{text.strip()} {typed_in.symbol}"
 
 
 def _setting_about_html(

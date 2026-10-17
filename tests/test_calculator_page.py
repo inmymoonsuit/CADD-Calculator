@@ -16,6 +16,7 @@ pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
 BEND = "sheet_metal.bend_allowance"
 CONE = "sheet_metal.truncated_cone_layout"
+INCH = 25.4
 
 
 def set_family(window: Any, key: str, text: str) -> None:
@@ -29,50 +30,107 @@ def result(window: Any) -> str:
     return text
 
 
-def test_an_inherited_value_reaches_the_result_with_its_source() -> None:
+def source_of(window: Any, key: str) -> str:
+    from caddcalc.core.formatting import describe_source
+
+    return describe_source(window.result.source_of(key))
+
+
+def field(window: Any, key: str) -> Any:
+    return window.fields[key][1]
+
+
+def test_an_inherited_value_reaches_the_result_and_is_read_only() -> None:
     window = open_window()
     set_family(window, "thickness", "0.25")
     window.select_calculator(BEND)
-    window.method_box.setCurrentIndex(0)  # course: BA = (0.64·T + 1.57·R)·A/90
+    window.method_box.setCurrentIndex(window.method_box.findData("course"))
 
-    assert window.fields["thickness"][1].text() == "0.25"
+    thickness = field(window, "thickness")
+    assert thickness.text() == "0.25"
+    assert thickness.isReadOnly(), "only unticking overrides (decision C)"
     box = window.inherit_boxes["thickness"]
     assert not box.isHidden() and box.isChecked()
     assert "0.4049 in" in result(window), "BA with T = 0.25 in, R = 0.156 in"
     assert "Material thickness\n0.2500 in\n(Sheet Metal settings)" in result(window)
     assert "Inside bend radius\n0.1560 in\n(default)" in result(window)
+
+    type_into(thickness, "9", enter=False)
+    assert thickness.text() == "0.25"
+    assert source_of(window, "thickness") == "Sheet Metal settings"
     window.close()
 
 
-def test_typing_overrides_and_the_marker_follows_the_family_value() -> None:
+def test_a_no_op_edit_records_nothing() -> None:
+    """Typing "x" then Backspace leaves the value in use, so it pins no override."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    window = open_window()
+    window.select_calculator(BEND)
+    for unit in ("in", "mm"):
+        window.units_box.setCurrentText(unit)
+        radius = field(window, "inside_radius")
+        radius.end(False)
+        QTest.keyClicks(radius, "x")
+        QTest.keyClick(radius, Qt.Key.Key_Backspace)
+        assert BEND not in window.overrides or "inside_radius" not in window.overrides[BEND]
+        assert "inside_radius" not in window.entries.get(BEND, {})
+        assert source_of(window, "inside_radius") == "default"
+
+    window.units_box.setCurrentText("in")
+    set_family(window, "inside_radius", "0.3")
+    window.select_calculator(BEND)
+    assert source_of(window, "inside_radius") == "Sheet Metal settings"
+    assert window.result.inputs["inside_radius"] == pytest.approx(0.3 * INCH)
+    window.close()
+
+
+def test_unticking_copies_the_family_value_and_typing_then_overrides() -> None:
     window = open_window()
     set_family(window, "thickness", "0.25")
     window.select_calculator(BEND)
-    type_into(window.fields["thickness"][1], "0.1046", enter=False)  # forms recompute live
+    before = window.result.outputs
 
-    assert not window.inherit_boxes["thickness"].isChecked()
+    window.inherit_boxes["thickness"].setChecked(False)
+    assert field(window, "thickness").text() == "0.25"
+    assert not field(window, "thickness").isReadOnly()
+    assert window.result.outputs == before, "unticking changes nothing by itself"
+    assert source_of(window, "thickness") == "copied from Sheet Metal settings"
+
+    type_into(field(window, "thickness"), "0.1046", enter=False)
+    assert source_of(window, "thickness") == "entered"
     note = window.override_notes["thickness"]
     assert note.text() == "Sheet Metal value is 0.2500 in; this calculator uses 0.1046 in."
-    assert "Material thickness\n0.1046 in\n(entered)" in result(window)
+    window.close()
+
+
+def test_the_override_note_follows_the_family_value() -> None:
+    window = open_window()
+    set_family(window, "thickness", "0.25")
+    window.select_calculator(BEND)
+    window.inherit_boxes["thickness"].setChecked(False)
+    type_into(field(window, "thickness"), "0.1046", enter=False)
 
     set_family(window, "thickness", "0.3")
     window.select_calculator(BEND)
-    note = window.override_notes["thickness"]
-    assert note.text() == "Sheet Metal value is 0.3000 in; this calculator uses 0.1046 in."
-    assert "(entered)" in result(window), "the override is sticky"
+    assert window.override_notes["thickness"].text() == (
+        "Sheet Metal value is 0.3000 in; this calculator uses 0.1046 in."
+    )
+    assert source_of(window, "thickness") == "entered", "the override is sticky"
 
     set_family(window, "thickness", "")
     window.select_calculator(BEND)
     assert window.override_notes["thickness"].isHidden()
     assert window.inherit_boxes["thickness"].isHidden(), "nothing to inherit"
-    assert "Material thickness\n0.1046 in\n(entered)" in result(window)
+    assert source_of(window, "thickness") == "entered"
 
     set_family(window, "thickness", "0.3")
     window.select_calculator(BEND)
     window.inherit_boxes["thickness"].setChecked(True)
-    assert window.fields["thickness"][1].text() == "0.3"
+    assert field(window, "thickness").text() == "0.3"
     assert window.override_notes["thickness"].isHidden()
-    assert "Material thickness\n0.3000 in\n(Sheet Metal settings)" in result(window)
+    assert source_of(window, "thickness") == "Sheet Metal settings"
     window.close()
 
 
@@ -80,9 +138,34 @@ def test_the_settings_page_counts_the_calculators_that_override() -> None:
     window = open_window()
     set_family(window, "thickness", "0.25")
     window.select_calculator(BEND)
-    type_into(window.fields["thickness"][1], "0.1046", enter=False)
+    window.inherit_boxes["thickness"].setChecked(False)
     window.select_domain("sheet_metal")
     assert "Overridden in 1: Bend allowance & deduction" in page_text(window.settings_box)
+    window.close()
+
+
+def test_unreadable_text_stays_with_its_error_and_applies_no_prefix() -> None:
+    """Typing "0.1x" passes "0.1" on the way; after a rebuild it must not be in effect."""
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(field(window, "thickness"), "0.1x", enter=False)
+    assert "Material thickness: Unknown unit 'x'" in result(window)
+
+    for leave_and_return in (
+        lambda: (window.select_domain("sheet_metal"), window.select_calculator(BEND)),
+        lambda: window.units_box.setCurrentText("mm"),
+        lambda: window.units_box.setCurrentText("in"),
+    ):
+        leave_and_return()
+        assert field(window, "thickness").text() == "0.1x"
+        assert "border" in field(window, "thickness").styleSheet()
+        assert window.result is None
+        assert "Unknown unit 'x'" in result(window)
+
+    type_into(field(window, "thickness"), "", enter=False)
+    assert source_of(window, "thickness") == "default", "clearing drops the field's own value"
+    type_into(field(window, "thickness"), "0.25", enter=False)
+    assert window.result.inputs["thickness"] == pytest.approx(0.25 * INCH)
     window.close()
 
 
@@ -90,7 +173,7 @@ def test_a_units_round_trip_never_changes_a_calculator_value() -> None:
     """KI-017: switching units used to re-read six-decimal display text as the value."""
     window = open_window()
     window.select_calculator(BEND)
-    type_into(window.fields["thickness"][1], "1/3", enter=False)
+    type_into(field(window, "thickness"), "1/3", enter=False)
     for unit, thickness, radius in (
         ("mm", "8.466667", "3.9624"),
         ("in", "1/3", "0.156"),
@@ -98,15 +181,15 @@ def test_a_units_round_trip_never_changes_a_calculator_value() -> None:
         ("in", "1/3", "0.156"),
     ):
         window.units_box.setCurrentText(unit)
-        assert window.fields["thickness"][1].text() == thickness
-        assert window.fields["inside_radius"][1].text() == radius
-    typed = window.entries[BEND]["thickness"]
+        assert field(window, "thickness").text() == thickness
+        assert field(window, "inside_radius").text() == radius
+    typed = window.entries[BEND]["thickness"].value
     assert typed == TypedValue.parse("1/3", Dimension.LENGTH, "in")
-    assert typed.value == 1 / 3 * 25.4
+    assert window.result.inputs["thickness"] == 1 / 3 * INCH
     window.close()
 
 
-def test_load_course_example_restores_the_lesson_inputs_over_family_values() -> None:
+def test_load_course_example_restores_the_lesson_over_family_values() -> None:
     """Decision D: with T set to Lesson 2's 0.1046 in, Lesson 4's cone gives 132.30°."""
     window = open_window()
     set_family(window, "thickness", "0.1046")
@@ -115,12 +198,29 @@ def test_load_course_example_restores_the_lesson_inputs_over_family_values() -> 
 
     assert not window.example_button.isHidden()
     window.example_button.click()
-    assert window.fields["thickness"][1].text() == "0.0747"
+    assert field(window, "thickness").text() == "0.0747"
     assert not window.inherit_boxes["thickness"].isChecked()
     assert window.override_notes["thickness"].text() == (
         "Sheet Metal value is 0.1046 in; this calculator uses 0.0747 in."
     )
     assert "132.70°" in result(window)
+    assert source_of(window, "thickness") == "course example"
+    assert "Material thickness\n0.0747 in\n(course example)" in result(window)
+
+    type_into(field(window, "thickness"), "0.08", enter=False)
+    assert source_of(window, "thickness") == "entered"
+    window.close()
+
+
+def test_load_course_example_selects_the_course_method() -> None:
+    """Lesson 2's bend allowance is 0.311864 in; the K-factor method would give 0.310766."""
+    window = open_window()
+    window.select_calculator(BEND)
+    window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
+    window.example_button.click()
+    assert window.method_key == "course"
+    bend_allowance = window.result.outputs["bend_allowance"] / INCH
+    assert bend_allowance == pytest.approx(0.311864, abs=5e-7)
     window.close()
 
 
@@ -133,6 +233,6 @@ def test_a_family_k_factor_reaches_only_the_methods_that_use_it() -> None:
     assert "0.3119 in" in result(window), "the course formula has its factor built in"
 
     window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
-    assert window.fields["k_factor"][1].text() == "0.44"
+    assert field(window, "k_factor").text() == "0.44"
     assert "K-factor\n0.4400\n(Sheet Metal settings)" in result(window)
     window.close()

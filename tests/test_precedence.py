@@ -219,6 +219,32 @@ def test_sources_are_worded_once_for_every_front_end(source: InputSource, wordin
     assert describe_source(source) == wording
 
 
+def test_explicit_inputs_can_carry_a_label_without_changing_precedence() -> None:
+    example = InputSource(SourceKind.EXPLICIT, "course example")
+    result = _Plate().run(
+        {"thickness": 5.0, "width": 30.0},
+        settings=SET_T,
+        explicit_sources={"thickness": example},
+    )
+    assert result.outputs["total"] == pytest.approx(35.0)
+    assert result.source_of("thickness") == example
+    assert result.source_of("width") == InputSource(SourceKind.EXPLICIT)
+    assert describe_source(result.source_of("thickness")) == "course example"
+    assert describe_source(result.source_of("width")) == "entered"
+
+
+@pytest.mark.parametrize(
+    ("labels", "message"),
+    [
+        ({"width": InputSource(SourceKind.EXPLICIT, "x")}, "not in inputs"),
+        ({"thickness": InputSource(SourceKind.DOMAIN, "x")}, "only hold explicit"),
+    ],
+)
+def test_explicit_source_labels_are_checked(labels: dict[str, InputSource], message: str) -> None:
+    with pytest.raises(UsageError, match=message):
+        _Plate().run({"thickness": 5.0}, explicit_sources=labels)
+
+
 def test_a_reference_serialises_as_its_fields() -> None:
     reference = Reference("Materials table", "version 1", "https://example.org/materials")
     source = InputSource(SourceKind.DERIVED, "Steel, 304", reference=reference)

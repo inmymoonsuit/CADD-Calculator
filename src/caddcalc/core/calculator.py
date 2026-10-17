@@ -210,6 +210,7 @@ class Calculator(ABC):
         method: str | None = None,
         *,
         settings: DomainValues | None = None,
+        explicit_sources: Mapping[str, InputSource] | None = None,
     ) -> Result:
         """Run the calculator and record the work.
 
@@ -221,13 +222,23 @@ class Calculator(ABC):
             inputs: Values given for this run, by parameter key, in base units.
             method: The method key; the first method when ``None``.
             settings: The values the user has set for this calculator's domain.
+            explicit_sources: Labels for some of ``inputs``, by parameter key, e.g.
+                ``InputSource(SourceKind.EXPLICIT, "course example")``. Unlabelled
+                inputs are plain explicit values. Labels never change precedence.
 
         Raises:
             InputError: An input is unknown or missing.
             OutOfRangeError: An input is out of range. It names the input's source.
-            UsageError: ``settings`` belongs to another domain.
+            UsageError: ``settings`` belongs to another domain, or ``explicit_sources``
+                labels a key that isn't in ``inputs`` or gives a kind other than explicit.
         """
         inputs = dict(inputs or {})
+        labels = dict(explicit_sources or {})
+        stray = sorted(set(labels) - set(inputs))
+        if stray:
+            raise UsageError(f"{self.id}: explicit_sources labels keys not in inputs: {stray}")
+        if any(source.kind is not SourceKind.EXPLICIT for source in labels.values()):
+            raise UsageError(f"{self.id}: explicit_sources may only hold explicit sources")
         if settings is not None and settings.domain_id != self.domain:
             raise UsageError(
                 f"{self.id} belongs to domain {self.domain!r}, "
@@ -242,7 +253,7 @@ class Calculator(ABC):
         values: dict[str, float] = {}
         sources: dict[str, InputSource] = {}
         for p in self.params_for(m.key):
-            value, source = _resolve(p, inputs, settings)
+            value, source = _resolve(p, inputs, settings, labels)
             p.check(value, source)
             values[p.key] = value
             sources[p.key] = source
@@ -320,11 +331,14 @@ class Calculator(ABC):
 
 
 def _resolve(
-    p: Param, inputs: Mapping[str, float], settings: DomainValues | None
+    p: Param,
+    inputs: Mapping[str, float],
+    settings: DomainValues | None,
+    labels: Mapping[str, InputSource],
 ) -> tuple[float, InputSource]:
     """Pick one input's value and source by the precedence rule (ADR-0013 §4)."""
     if p.key in inputs:
-        return float(inputs[p.key]), EXPLICIT
+        return float(inputs[p.key]), labels.get(p.key, EXPLICIT)
     if p.shared and settings is not None and p.key in settings.values:
         source = InputSource(SourceKind.DOMAIN, settings.label, domain=settings.domain_id)
         return float(settings.values[p.key]), source

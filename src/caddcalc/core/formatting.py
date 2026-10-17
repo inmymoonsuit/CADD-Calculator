@@ -155,7 +155,7 @@ def describe_source(source: InputSource) -> str:
     The GUI and the CLI both use this, so they word sources the same way (ADR-0013 §5).
     """
     if source.kind is SourceKind.EXPLICIT:
-        return "entered"
+        return source.label or "entered"
     if source.kind is SourceKind.DEFAULT:
         return "default"
     label = source.label or ("domain settings" if source.kind is SourceKind.DOMAIN else "derived")

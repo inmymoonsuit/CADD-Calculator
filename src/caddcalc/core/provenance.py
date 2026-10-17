@@ -28,7 +28,11 @@ class InputSource:
 
     kind: SourceKind
     label: str = ""
-    """Who supplied the value, e.g. ``"Sheet Metal settings"``. Empty for explicit and default."""
+    """Who supplied the value, e.g. ``"Sheet Metal settings"``.
+
+    An explicit value may have one too, e.g. ``"course example"``; empty means typed or
+    given plainly. A default has none.
+    """
     domain: str | None = None
     """The domain id, when ``kind`` is ``DOMAIN``."""
     reference: Reference | None = None

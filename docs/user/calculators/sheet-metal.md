@@ -43,20 +43,26 @@ The settings page shows the same list under each field.
 ### Using a family value in a calculator
 
 * Once a Sheet Metal value is set, each calculator field that shares it shows the value
-  and a ticked **Use Sheet Metal value** box. The result lists it as *Sheet Metal
-  settings*.
-* Typing in such a field **overrides** the family value in that calculator, and the box
-  clears. The override lasts for the session, even if the family value changes later.
-  The result lists the value as *entered*.
+  and a ticked **Use Sheet Metal value** box. The field is read-only while the box is
+  ticked, and the result lists the value as *Sheet Metal settings*.
+* To give one calculator its own value, **untick the box**. The field keeps an exact
+  copy of the family value, so nothing changes until you edit it; the result lists it
+  as *copied from Sheet Metal settings*, and as *entered* once you type a new value.
+  The override lasts for the session, even if the family value changes later.
 * While a field overrides a set value, a note under it shows both values, e.g.
   "Sheet Metal value is 0.2500 in; this calculator uses 0.1046 in." Tick the box to
   use the family value again. The settings page shows how many calculators override
   each setting, and which.
-* A value that's unset in the family leaves each calculator its own default.
-* **Load course example** fills every input with the course example and overrides the
-  family values, so the lesson's numbers come out exactly. For example, with thickness
-  set to 0.1046 in, the cone's course method gives a 132.30° sweep. Loading the course
-  example restores its 0.0747 in and the lesson's 132.70°.
+* A value that's unset in the family leaves each calculator its own default, and its
+  fields work as ordinary inputs. Typing a value that's already in use changes nothing.
+* Text that can't be read is outlined in red and explained, and stays, through page
+  and unit switches, until you fix it or clear the field. Clearing a field returns it to
+  the calculator's default, shown in grey.
+* **Load course example** fills every input with the course example, overrides the
+  family values, and switches to the course method, so the lesson's numbers come out
+  exactly. The result lists those values as *course example*. For example, with
+  thickness set to 0.1046 in, the cone's course method gives a 132.30° sweep; loading
+  the course example restores its 0.0747 in and the lesson's 132.70°.
 
 ---
 

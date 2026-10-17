@@ -61,7 +61,9 @@ All notable changes are recorded here. The format follows
   another domain raise `UsageError`, the new error for API misuse. `Result.input_sources`
   records every input's `InputSource` (`core.provenance`), and `to_dict()` includes it,
   with a derived value's `reference` as a `Reference` or `null`. The CLI prints each
-  input's source, e.g. `(entered)` or `(default)`.
+  input's source, e.g. `(entered)` or `(default)`. `run(explicit_sources=...)` labels
+  explicit inputs, e.g. "course example", without changing precedence; it accepts only
+  explicit sources for keys in `inputs` and raises `UsageError` otherwise.
 - The Sheet Metal domain shares thickness, inside radius, and K-factor (ADR-0013, decision A).
   Its calculators build these parameters from the domain settings, keeping their own
   defaults: the cone keeps 0.0747 in, the V-die calculator shares R and T only in the
@@ -88,13 +90,18 @@ All notable changes are recorded here. The format follows
   with no loaded calculator is still listed, marked "No calculators loaded". Values set
   here are kept for the session.
 - Calculators inherit family settings (ADR-0013 §8, decisions C and D). Once a family
-  value is set, each field that shares it shows the value with a ticked "Use Sheet Metal
-  value" box. Typing overrides it for the session, and only overridden or edited values
-  are passed to `run()` as inputs. A note under an overriding field shows both values,
-  recomputed on every render. The settings page shows "Overridden in N" with the
-  calculators' names. "Load course example" fills every input with the course example,
-  overriding family values, for calculators with a legacy method. Results in the GUI
-  list each input with its source, as the CLI does.
+  value is set, each field that shares it shows the value, read-only, with a ticked
+  "Use Sheet Metal value" box. Unticking overrides it for the session with an exact
+  copy of the family value, labelled "copied from Sheet Metal settings" until edited.
+  Typing a value already in use records nothing, so no stray edit pins an override.
+  Only overridden or edited values are passed to `run()` as inputs. A note under an
+  overriding field shows both values, recomputed on every render, and the settings
+  page shows "Overridden in N" with the calculators' names. Unreadable text stays
+  outlined and explained across page and unit switches and applies nothing; clearing a
+  field returns it to its default. "Load course example" fills every input with the
+  course example, labelled "course example", overrides family values, and selects the
+  course method, for calculators with a legacy method. Results in the GUI list each
+  input with its source, as the CLI does.
 - `core.formatting.entry_text()` is the one display rule for typed values (ADR-0013
   §9.3): a field shows the user's own text while it names its unit or its unit is the
   display unit, and otherwise the value converted, without re-reading any display text.
