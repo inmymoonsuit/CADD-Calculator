@@ -7,6 +7,13 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- `caddcalc.gui.welcome.WelcomeScreen` (ADR-0015): a frameless, application-modal card
+  with the app's File and Help menus and an X, a vertical logo strip, and 16:9 art with
+  the name and version as live text on theme-coloured scrims (new palette roles
+  `welcome_scrim` and `on_welcome_scrim`). Pack art and logos that can't be used,
+  including art over 4096 px, fall back to generated art with a warning. Esc or the X
+  closes it, dragging the top bar moves it, and it shrinks to fit a small screen.
+  Startup doesn't show it yet.
 - **Phase 2a: gauge systems (ADR-0014).** The Sheet Metal page offers a gauge: a
   system (Manufacturers' Standard, galvanized, US Standard 1893, or AWG) and a number,
   which derives the thickness every calculator shares, at the system's published

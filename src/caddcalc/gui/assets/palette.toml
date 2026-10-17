@@ -31,6 +31,8 @@ text_error = "crimson"  # error messages and headings in results
 text_warning = "ink"    # amber text is too faint on white; the icon and wording signal it
 outline_error = "crimson"  # border of a field whose text can't be used
 outline_note = "ink"    # border of a field a result note concerns; amber is too faint
+welcome_scrim = "white"    # the welcome screen's name panel and version line, over art
+on_welcome_scrim = "ink"
 
 [dark]
 background = "ink"
@@ -52,3 +54,5 @@ text_error = "white"    # crimson is too faint on ink; the icon and wording sign
 text_warning = "amber"
 outline_error = "white"
 outline_note = "amber"
+welcome_scrim = "ink"
+on_welcome_scrim = "white"

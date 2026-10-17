@@ -65,6 +65,8 @@ and dark themes. A test keeps hex colors out of the GUI code except the palette 
 | `text_warning` | ink (amber on white is too faint) | amber | the Notes heading in results |
 | `outline_error` | crimson | white | the border of a field whose text can't be used |
 | `outline_note` | ink (amber on white is too faint) | amber | the border of a field a result note concerns |
+| `welcome_scrim` | white | ink | the welcome screen's name panel and version line, opaque over the art |
+| `on_welcome_scrim` | ink | white | their text (4.5:1 or more, tested) |
 
 Text roles keep at least 4.5:1 against the background, and outline roles at least 3:1.
 

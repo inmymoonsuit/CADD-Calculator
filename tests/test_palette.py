@@ -31,6 +31,7 @@ PAIRS = [
     ("text_warning", "background", 4.5),
     ("outline_error", "background", 3.0),
     ("outline_note", "background", 3.0),
+    ("on_welcome_scrim", "welcome_scrim", 4.5),
 ]
 
 
