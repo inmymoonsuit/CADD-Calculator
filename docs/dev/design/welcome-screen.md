@@ -74,15 +74,16 @@ uv run python packaging/make_welcome_template.py builds/welcome-template.png
 The logo sits in a box that floats over the art's left edge, inside a 96 px logo region.
 The box keeps at least 16 px from the card's left edge and from the art's top and
 bottom. It takes the logo's shape, plus 8 px of padding, as large as the region allows,
-and centred. A box whose short side would be under 48 px grows, keeping its shape,
-until it reaches 48 px or the region's edges. The logo is drawn inside the padding,
-fitted whole and centred ("contain"), never stretched or cropped. So a tall banner
-fills the region's height, a square mark gets a square box, and a wide wordmark gets
-a box 48 px tall. The box has a fill and a 1 px border. An **SVG** is preferred, since it scales
+and centred, but its long side is at most 320 px, so no logo becomes a full-height
+pillar. A box whose short side would be under 48 px then grows, keeping its shape,
+until it reaches 48 px or those limits. The logo is drawn inside the padding, fitted
+whole and centred ("contain"), never stretched or cropped. So a tall banner gets a
+box 320 px tall, a square mark an 80 px square, and a wide wordmark a box 48 px
+tall. The box has a white fill and a 1 px border. An **SVG** is preferred, since it scales
 to any display; a PNG works too. An SVG must be **self-contained**: an `<image>` or `<use>` may
 embed its data (`data:`) or point within the file (`#…`), never to another file, which a
-build wouldn't bundle. The same 8 MB budget applies. Without a logo, the box fills the
-region and shows the app icon and the name set upright.
+build wouldn't bundle. The same 8 MB budget applies. Without a logo, the box holds the
+app icon alone, 64 px in an 80 px square; the name is in the title pane.
 
 ## The pack
 
@@ -131,15 +132,19 @@ unmodified under the SIL Open Font License 1.1, in `gui/assets/fonts/vt323/` bes
 its `OFL.txt`, pinned to one google/fonts commit and hashed in `manifest.toml`. The
 app loads it into Qt when the welcome screen opens (`gui/fonts.py`). If the face
 can't be loaded, the name falls back to the fallback families, with a warning, and
-the screen still starts. The version uses the system's UI font at 11 px.
+the screen still starts. The version uses the system's UI font at 11 px. Both panes'
+text is drawn as its outline, antialiased in grey, so the two match and no platform
+adds a colour fringe; the text stays live, accessible text.
 
 * **On its grid.** VT323 has 1000 units to the em and 40 to a design pixel, so 25
   design pixels to the em. The name's size snaps to a whole number of device pixels
-  per design pixel: `n = max(1, round(50 × scale × ratio ÷ 25))`, where `scale` is
-  the card's on a small screen and `ratio` is the display's device pixel ratio, for
-  an em of `25n` device pixels. So it's 50 device pixels at 100% and 125%, 75 at
-  150%, and 100 at 200%. It's drawn unhinted and antialiased in grey, as its outline,
-  so every platform draws it alike; the name stays live, accessible text.
+  per design pixel: `n`, the nearest whole number to `50 × scale × ratio ÷ 25`, at
+  least 1, where `scale` is the card's on a small screen and `ratio` is the display's
+  device pixel ratio, for an em of `25n` device pixels. Ties round down, to keep the
+  title inside its safe area. So it's 50 device pixels at 100% and 125%, 75 at 150%
+  and 175%, and 100 at 200%. At 125% the name is 40 px, not 50, in logical pixels:
+  the grid rule prefers a crisp face to a blurry one. It's drawn unhinted, so every
+  platform draws it alike.
 * **Centred on its capitals.** The pane's vertical padding is the space above and
   below the capitals (560 of 1000 units), not the font's ascent and descent.
 * **Weight.** `typography.display_weight` is `regular` by default, which keeps the
@@ -219,6 +224,7 @@ hex values, so both themes and the palette's contrast tests apply.
 | `logo.margin_bottom` | 16 | ... from the art's bottom |
 | `logo.padding` | 8 | The space inside the box, around the logo (spacing scale) |
 | `logo.min_short_side` | 48 | The box's least short side; the box keeps the logo's shape up to it |
+| `logo.max_long_side` | 320 | The box's greatest long side, so no logo becomes a full-height pillar |
 | `logo.border_width` | 1 | The box's border |
 | `logo.border_role` | welcome_line | Its colour role |
 | `logo.fill_role` | welcome_paper | The box's fill: white in both themes, as logos are drawn for white |

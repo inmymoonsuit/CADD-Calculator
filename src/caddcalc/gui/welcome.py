@@ -20,7 +20,7 @@ import warnings
 from pathlib import Path
 from typing import override
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt
+from PySide6.QtCore import QEvent, QPointF, QRectF, Qt
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -44,7 +44,7 @@ from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC_ICON, PRODUCT_NAME, Branding
 from caddcalc.gui.fonts import display_family
 from caddcalc.gui.icons import Scheme, current_scheme, icon, role_color
-from caddcalc.gui.welcome_art import generic_art, generic_logo
+from caddcalc.gui.welcome_art import generic_art
 from caddcalc.gui.welcome_layout import (
     Rect,
     Size,
@@ -210,7 +210,8 @@ class _LogoBox(QWidget):
     """The logo's box, floating over the art's left edge: a fill, the logo, and a border.
 
     The box takes the logo's shape, as large as the logo area allows, centred, with a
-    least short side (ADR-0016 §3). The logo is contained in its padding.
+    least short side and a greatest long side (ADR-0016 §3). The logo is contained in
+    its padding. Without a logo, the box holds the app icon alone, so it's square.
     """
 
     def __init__(self, branding: Branding, parent: QWidget) -> None:
@@ -228,28 +229,32 @@ class _LogoBox(QWidget):
             self._image = read_image(logo, "welcome logo")
         self.source = "pack" if self._svg is not None or self._image is not None else "generic"
         """Where the logo came from: ``"pack"``, or ``"generic"``."""
+        if self.source == "generic":
+            # The generic mark is the app icon alone; the name is in the title pane.
+            self._image = read_image(GENERIC_ICON, "app icon")
         self.scale = 1.0
         """The card's scale, set by the screen, so the padding and border shrink with it."""
         self.tokens = branding.welcome_tokens
         self.setAccessibleName(f"{PRODUCT_NAME} logo")
 
     @property
-    def logo_size(self) -> Size | None:
-        """The logo's own size; ``None`` for the generic logo, which fills its box."""
+    def logo_size(self) -> Size:
+        """The logo's own size; a square when there's nothing to draw."""
         if self._svg is not None:
             size = self._svg.defaultSize()
             return Size(size.width(), size.height())
         if self._image is not None:
             ratio = self._image.devicePixelRatio()
             return Size(self._image.width() / ratio, self._image.height() / ratio)
-        return None
+        return Size(1, 1)
 
     def place(self, scale: float) -> None:
         """Size the box around the logo, inside the logo area, at the card's ``scale``."""
         logo = self.tokens.logo
         self.scale = scale
         area = scaled(self.tokens.logo_area, scale)
-        box = logo_box(self.logo_size, area, logo.padding * scale, logo.min_short_side * scale)
+        least, most = logo.min_short_side * scale, logo.max_long_side * scale
+        box = logo_box(self.logo_size, area, logo.padding * scale, least, most)
         self.setGeometry(round(box.x), round(box.y), round(box.width), round(box.height))
 
     @override
@@ -260,22 +265,13 @@ class _LogoBox(QWidget):
         p.fillRect(self.rect(), QColor(role_color(tokens.fill_role, scheme)))
         inner = tokens.padding * self.scale
         area = Rect(inner, inner, self.width() - 2 * inner, self.height() - 2 * inner)
-        size = self.logo_size
-        if self._svg is not None and size is not None:
+        target = _qrect(contain_fit(self.logo_size, area))
+        if self._svg is not None:
             p.setRenderHint(QPainter.RenderHint.Antialiasing)  # the logo's own shapes
-            self._svg.render(p, _qrect(contain_fit(size, area)))
+            self._svg.render(p, target)
             p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        elif self._image is not None and size is not None:
-            p.drawImage(_qrect(contain_fit(size, area)), self._image)
-        else:
-            logo = generic_logo(
-                QSize(round(area.width), round(area.height)),
-                self.devicePixelRatioF(),
-                GENERIC_ICON,
-                PRODUCT_NAME,
-                role_color("text", scheme),
-            )
-            p.drawImage(_qrect(area), logo)
+        elif self._image is not None:
+            p.drawImage(target, self._image)
         border = QColor(role_color(tokens.border_role, scheme))
         stroke(p, QRectF(self.rect()), border, tokens.border_width * self.scale)
         p.end()
@@ -293,7 +289,7 @@ class _Pane(QWidget):
     The display face is drawn at a whole multiple of its pixel grid, and centred on its
     capitals: the padding is the space around the caps (ADR-0016, amendments). The text
     is drawn in device pixels, so its size and baseline land on the display's grid, and
-    the display face as its outline; the text stays the pane's accessible name.
+    as its outline in both panes; the text stays the pane's accessible name.
     """
 
     def __init__(self, text: str, tokens: WelcomeStyle, pane: PaneTokens, parent: QWidget) -> None:
@@ -310,7 +306,7 @@ class _Pane(QWidget):
         self.text_font = QFont()
         """The font its text is drawn in, at its size in device pixels."""
         self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
-        self._outline = QPainterPath()  # the display face's text, drawn as its outline
+        self._outline = QPainterPath()  # the text, drawn as its outline
         self._ratio = 1.0
         self._fills: dict[Scheme, tuple[str, str, int]] = {}
         self.setAccessibleName(text)
@@ -346,9 +342,9 @@ class _Pane(QWidget):
         metrics = QFontMetricsF(font)  # the font as drawn, bold included
         width = metrics.horizontalAdvance(self.text)
         self._outline = QPainterPath()
+        self._outline.addText(QPointF(0, 0), font, self.text)
+        width = max(width, self._outline.boundingRect().right())
         if self.tokens.font == "display":
-            self._outline.addText(QPointF(0, 0), font, self.text)
-            width = max(width, self._outline.boundingRect().right())
             band = self.typography.display_cap_height * font.pixelSize()
             run = (width, band, band)  # centred on the capitals
         else:
@@ -384,16 +380,10 @@ class _Pane(QWidget):
         x = (self.width() * self._ratio - width) / 2
         y = (self.height() * self._ratio - band) / 2 + baseline
         at = QPointF(round(origin.dx() + x) - origin.dx(), round(origin.dy() + y) - origin.dy())
-        if self._outline.isEmpty():
-            p.setRenderHint(QPainter.RenderHint.TextAntialiasing)
-            p.setFont(self.text_font)
-            p.setPen(text)
-            p.drawText(at, self.text)
-        else:
-            # The display face is filled as its outline: grey antialiasing and no hinting
-            # on every platform, where some text engines would add a colour fringe.
-            p.setRenderHint(QPainter.RenderHint.Antialiasing)
-            p.fillPath(self._outline.translated(at), text)
+        # The text is filled as its outline: grey antialiasing on every platform, where
+        # some text engines would add a colour fringe, and both panes alike.
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.fillPath(self._outline.translated(at), text)
         p.end()
 
 

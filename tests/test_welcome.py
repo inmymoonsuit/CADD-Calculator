@@ -14,6 +14,7 @@ import pytest
 
 from caddcalc import __version__
 from caddcalc.gui.branding import GENERIC, Branding, load_branding
+from caddcalc.gui.welcome_layout import Rect
 from caddcalc.gui.welcome_style import style
 
 ART_SIZE, MAX_ART_PX, WINDOW = style().art.slot, style().art.max_px, style().window
@@ -133,7 +134,7 @@ def test_art_that_cant_be_used_falls_back_to_the_generic_art(tmp_path: Path, spo
     welcome.close()
 
 
-def test_an_invalid_logo_falls_back_to_the_icon_and_name(tmp_path: Path) -> None:
+def test_an_invalid_logo_falls_back_to_the_app_icon(tmp_path: Path) -> None:
     """The loader refuses malformed XML; this covers XML that Qt still can't render."""
     from dataclasses import replace
 
@@ -323,7 +324,7 @@ def test_the_logo_box_floats_over_the_arts_left_edge(tmp_path: Path, logo: str, 
     centre = area.y + area.height / 2
     assert abs(box.top() + box.height() / 2 - centre) <= 1, "centred vertically"
     if shape == "tall":
-        assert box.height() > area.height * 0.9, "a tall logo gets a tall box"
+        assert box.height() == round(tokens.logo.max_long_side * scale), "capped"
     elif shape == "square":
         assert box.width() == box.height(), "a square mark keeps its shape"
     else:
@@ -496,4 +497,39 @@ def test_a_packs_style_overrides_reach_the_screen(tmp_path: Path) -> None:
     assert welcome.logo.x() >= round(32 * scale), "the pack's margin"
     _text, _fill, alpha = welcome.art.name_pane.fill(current_scheme())
     assert alpha == math.ceil(0.4 * 255), "calm art: the pack's floor, not the shipped one"
+    welcome.close()
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_the_generic_mark_is_the_app_icon_alone_in_a_square_box(
+    scheme: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No name beside the icon, so nothing can vanish in the dark theme (ADR-0016, h)."""
+    from caddcalc.gui import welcome as module
+    from caddcalc.gui.icons import role_color
+    from caddcalc.gui.welcome_layout import contain_fit
+
+    monkeypatch.setattr(module, "current_scheme", lambda: scheme)
+    tokens = style()
+    welcome = screen()
+    welcome.show()
+    box = welcome.logo
+    scale = welcome.art.width() / tokens.art.slot.width
+    side = round((tokens.logo.region_width - tokens.logo.margin_left) * scale)
+    assert welcome.logo_source == "generic"
+    assert box.width() == box.height() == side, "80 px at full size: 64 px icon and padding"
+    image = box.grab().toImage()
+    fill = role_color(tokens.logo.fill_role, scheme)
+    inner = tokens.logo.padding * scale
+    icon = contain_fit(
+        box.logo_size, Rect(inner, inner, box.width() - 2 * inner, box.height() - 2 * inner)
+    )
+    border = 2
+    outside_icon = [
+        image.pixelColor(x, y).name().upper()
+        for x in range(border, box.width() - border)
+        for y in range(border, box.height() - border)
+        if not (icon.x - 1 <= x <= icon.x + icon.width and icon.y - 1 <= y <= icon.y + icon.height)
+    ]
+    assert outside_icon and set(outside_icon) == {fill}, "only the fill around the icon"
     welcome.close()

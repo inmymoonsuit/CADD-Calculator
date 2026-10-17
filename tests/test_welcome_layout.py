@@ -72,17 +72,14 @@ AREA = Rect(16, 16, 80, 508)
 @pytest.mark.parametrize(
     ("logo", "box"),
     [
-        (Size(72, 540), Rect(16, 22, 80, 496)),  # a tall banner: as tall as it can be
-        (Size(100, 100), Rect(16, 230, 80, 80)),  # a square mark: a square box
+        (Size(72, 540), Rect(30.19, 110, 51.61, 320)),  # a tall banner: capped at 320
+        (Size(256, 256), Rect(16, 230, 80, 80)),  # a square mark, the app icon: 80 × 80
         (Size(400, 100), Rect(16, 246, 80, 48)),  # a wordmark: the least short side
-        (Size(10, 540), Rect(32, 16, 48, 508)),  # a sliver: the least short side
-        (None, AREA),  # the generic logo fills the whole area
+        (Size(10, 540), Rect(32, 110, 48, 320)),  # a sliver: least short, greatest long
     ],
 )
-def test_the_logo_box_takes_the_logos_shape_within_its_minimums(
-    logo: Size | None, box: Rect
-) -> None:
-    assert logo_box(logo, AREA, 8, 48) == pytest.approx(box)
+def test_the_logo_box_takes_the_logos_shape_within_its_limits(logo: Size, box: Rect) -> None:
+    assert logo_box(logo, AREA, 8, 48, 320) == pytest.approx(box, abs=0.01)
 
 
 def test_the_logo_area_is_the_logo_region_less_its_margins() -> None:
@@ -117,3 +114,10 @@ def test_a_line_is_whole_device_pixels(ratio: float, device: int) -> None:
     assert device_line(1, ratio) == device
     assert device_line(0.4, 1) == 1, "never under one device pixel"
     assert device_line(0, ratio) == 0, "no line"
+
+
+@pytest.mark.parametrize(("ratio", "grid"), [(1.25, 2), (1.75, 3)])
+def test_a_tie_rounds_down_to_keep_the_title_in_its_safe_area(ratio: float, grid: int) -> None:
+    """2.5 design-pixel multiples round to 2 and 3.5 to 3, where round-half-even gives 4."""
+    assert display_pixels(50, 1, ratio, 25) == grid
+    assert display_pixels(50, 1, 1.26, 25) == 3, "past the tie, it rounds up"

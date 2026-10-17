@@ -1,16 +1,15 @@
-"""The welcome screen's generated content: the public build's art and its generic logo.
+"""The welcome screen's generated content: the public build's art.
 
-Both are drawn from the palette, as original line work that needs no notice, and stand
-in until the roadmap's commissioned generic art exists. They are content, not layout,
-so their proportions live here; the screen's layout comes from its tokens (ADR-0016).
+It's drawn from the palette, as original line work that needs no notice, and stands in
+until the roadmap's commissioned generic art exists. It's content, not layout, so its
+proportions live here; the screen's layout comes from its tokens (ADR-0016). Without a
+pack logo, the logo box holds the app icon.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QPen
+from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPen
 
 from caddcalc.gui.icons import palette
 
@@ -35,39 +34,6 @@ def generic_art(size: QSize, device_pixel_ratio: float) -> QImage:
         p.drawLine(QPointF(x, h * 0.18), QPointF(x - unit * 1.6, h * 0.92))
     p.setPen(QPen(QColor(_color("crimson")), max(1.5, unit / 18)))
     p.drawArc(QRectF(w * 0.08, h * 0.30, unit * 7, unit * 7), 30 * 16, 120 * 16)
-    p.end()
-    return image
-
-
-def generic_logo(
-    size: QSize, device_pixel_ratio: float, icon: Path, name: str, color: str
-) -> QImage:
-    """Return the generic logo: the app icon above the name set upright, on transparency.
-
-    Args:
-        size: The logo's size, in logical pixels; it's drawn to fill it.
-        device_pixel_ratio: The screen's ratio, so the logo is sharp on it.
-        icon: The app icon's file.
-        name: The product's name.
-        color: The name's colour, ``#RRGGBB``.
-    """
-    image = _canvas(size, device_pixel_ratio)
-    image.fill(Qt.GlobalColor.transparent)
-    p = QPainter(image)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-    w, h = size.width(), size.height()
-    side = min(w, h) * 0.9
-    p.drawImage(QRectF((w - side) / 2, 0, side, side), QImage(str(icon)))
-    p.setPen(QColor(color))
-    font = QFont()
-    font.setPixelSize(max(8, round(w * 0.36)))
-    font.setBold(True)
-    p.setFont(font)
-    p.translate(w / 2, side + (h - side) / 2)
-    p.rotate(-90)
-    room = h - side
-    p.drawText(QRectF(-room / 2, -w / 2, room, w), Qt.AlignmentFlag.AlignCenter, name)
     p.end()
     return image
 

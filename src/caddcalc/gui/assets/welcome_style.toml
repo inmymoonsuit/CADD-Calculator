@@ -35,6 +35,7 @@ margin_top = 16
 margin_bottom = 16
 padding = 8                        # inside the box, around the logo
 min_short_side = 48                # the box keeps the logo's shape up to this
+max_long_side = 320                # so no logo becomes a full-height pillar
 border_width = 1
 border_role = "welcome_line"
 fill_role = "welcome_paper"        # white in both themes: logos are drawn for white

@@ -310,8 +310,11 @@ All notable changes are recorded here. The format follows
     150%. The card is clipped to one rounded outline, its border stroked along it.
   * Each pane text has its own fill, white under ink and ink under white. The name
     needs 3:1 contrast (large text) and the version 4.5:1.
-  * The logo box keeps a least short side of 48 px instead of a least size, and its
-    fill is white in both themes.
+  * The logo box keeps a least short side of 48 px instead of a least size, and a
+    greatest long side of 320 px; its fill is white in both themes. Without a pack
+    logo it holds the app icon alone, in an 80 px square.
+  * Both panes' text is drawn as its outline, grey antialiased, so the name and the
+    version match on every platform. The title's grid size rounds ties down.
   * The corner radius is 5 px, and the card's border takes a new role, `card_border`,
     white in the dark theme.
   * Insets, margins, and paddings follow a spacing scale, and the loader refuses

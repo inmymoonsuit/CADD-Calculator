@@ -90,6 +90,7 @@ def edited(table: str, key: str, value: Any) -> dict[str, Any]:
         (edited("typography", "display_weight", 700), "must be one of bold, regular"),
         (edited("version_pane", "inset", 4), "version_pane.inset 4 is less than the card's"),
         (edited("logo", "region_width", 60), "less than its box's least short side, 48"),
+        (edited("logo", "max_long_side", 40), "max_long_side 40 is less than"),
         (edited("top_bar", "height", "32"), "top_bar.height must be a number"),
         (edited("art", "max_px", 4096.5), "art.max_px must be a whole number"),
         (edited("panes", "fill_opacity_min", True), "fill_opacity_min must be a number"),

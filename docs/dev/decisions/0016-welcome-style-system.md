@@ -280,3 +280,26 @@ capitals 560 units tall, and every advance a whole number of 40-unit design pixe
   had a white box. A pack may still choose another role.
 * M7 (the 960 × 572 card and the left safe area) and M9 (refusing `name`) were already
   built, in slices e and d.
+
+### 2026-10-17: after the render review (slice h)
+
+A design review of renders at 1×, 1.25×, 1.5×, and 2× found one High, two Mediums, and
+four Lows; the rest of its checklist passed. The project decided the fixes.
+
+* **The generic mark (H1, M1).** In the dark theme, the generic logo's upright name was
+  white on the white box. The generic mark is now the app icon alone, 64 px in an 80 px
+  square, centred by the box's rule; the name lives in the title pane. The drawn
+  generic logo is removed from `welcome_art`.
+* **No pillars (M1).** A new token, `logo.max_long_side` (320 px), caps the box's long
+  side, so no logo, a pack's included, becomes a full-height pillar. The loader requires
+  it to be at least `logo.min_short_side`.
+* **125% (M2).** The name snaps to 40 px there, in logical pixels: the grid rule working,
+  crisp over blurry. The art spec says so.
+* **Ties (L1).** The grid's tie rule is explicit: a half rounds down, to keep the title
+  inside its safe area, rather than relying on Python's round-half-even. So 2.5 gives 2
+  and 3.5 gives 3, where round-half-even gave 4 at 175%.
+* **The version's text (L2).** It's drawn as its outline too, so both panes are grey
+  antialiased and match, with no colour fringe; the text stays the pane's accessible
+  name.
+* L3, the art's rim under the version's safe area, goes to the maintainer; L4, the
+  live-window, focus-ring, and font-fallback checks, stays in KI-020.

@@ -8,6 +8,8 @@ source. Sizes are logical pixels unless they say otherwise. Standard library onl
 
 from __future__ import annotations
 
+import math
+
 from caddcalc.gui.welcome_style import Rect, Size, style
 
 __all__ = [
@@ -57,30 +59,41 @@ def contain_fit(source: Size, area: Rect) -> Rect:
     )
 
 
-def logo_box(source: Size | None, area: Rect, padding: float, min_short_side: float) -> Rect:
+def logo_box(
+    source: Size, area: Rect, padding: float, min_short_side: float, max_long_side: float
+) -> Rect:
     """Return the logo's box: the logo's shape plus its padding, as large as ``area`` allows.
 
     The box is centred in ``area``, so a tall banner, a square mark, and a wide wordmark
-    all fit (ADR-0016 §3). A box whose short side is under ``min_short_side`` grows,
-    keeping its shape, until it reaches it or meets ``area``'s edges, so a wide logo never
-    becomes a sliver; the logo stays contained, whole, in the box's padding.
+    all fit (ADR-0016 §3). Its long side is at most ``max_long_side``, so no logo becomes
+    a full-height pillar. A box whose short side is under ``min_short_side`` then grows,
+    keeping its shape, until it reaches it or meets those limits, so a wide logo never
+    becomes a sliver. The logo stays contained, whole, in the box's padding.
 
     Args:
-        source: The logo's size, or ``None`` for a logo that fills whatever box it's given.
+        source: The logo's size; only its shape matters.
         area: Where the box may sit.
         padding: The space inside the box, around the logo.
         min_short_side: The box's least short side.
+        max_long_side: The box's greatest long side.
     """
     inner = Rect(
         area.x + padding, area.y + padding, area.width - 2 * padding, area.height - 2 * padding
     )
-    fitted = inner if source is None else contain_fit(source, inner)
+    fitted = contain_fit(source, inner)
     width, height = fitted.width + 2 * padding, fitted.height + 2 * padding
+    shrink = min(1.0, max_long_side / max(width, height))
+    width, height = width * shrink, height * shrink
     grow = max(1.0, min_short_side / min(width, height))
-    width, height = min(width * grow, area.width), min(height * grow, area.height)
+    width = min(width * grow, area.width, max_long_side)
+    height = min(height * grow, area.height, max_long_side)
     return Rect(
         area.x + (area.width - width) / 2, area.y + (area.height - height) / 2, width, height
     )
+
+
+_TIE = 1e-9
+"""How near a half counts as one, so floating-point noise can't round a tie up."""
 
 
 def display_pixels(size: float, scale: float, ratio: float, em_pixels: int) -> int:
@@ -88,8 +101,9 @@ def display_pixels(size: float, scale: float, ratio: float, em_pixels: int) -> i
 
     A pixel face, such as VT323, is drawn crisply only at whole multiples of its design
     grid, so its size snaps to the nearest one: ``n`` device pixels per design pixel, at
-    least 1, for an em of ``em_pixels * n`` device pixels (ADR-0016, amendments).
-    Halves round to even, as Python's ``round`` does: 62.5 device pixels at 125% is 2.
+    least 1, for an em of ``em_pixels * n`` device pixels (ADR-0016, amendments). A tie
+    rounds down, to keep the title inside its safe area: 62.5 device pixels at 125% is 2,
+    and 87.5 at 175% is 3.
 
     Args:
         size: The wanted size, in logical pixels.
@@ -97,7 +111,7 @@ def display_pixels(size: float, scale: float, ratio: float, em_pixels: int) -> i
         ratio: The display's device pixels per logical pixel.
         em_pixels: The face's design pixels per em.
     """
-    return max(1, round(size * scale * ratio / em_pixels))
+    return max(1, math.floor(size * scale * ratio / em_pixels + 0.5 - _TIE))
 
 
 def device_line(width: float, ratio: float) -> int:

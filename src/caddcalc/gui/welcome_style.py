@@ -115,6 +115,8 @@ class LogoTokens:
     """The space inside the box, around the logo."""
     min_short_side: float
     """The box's least short side; the box keeps the logo's shape up to it."""
+    max_long_side: float
+    """The box's greatest long side, so no logo becomes a full-height pillar."""
     border_width: float
     border_role: str
     fill_role: str
@@ -367,6 +369,7 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "margin_bottom": _spacing,
             "padding": _spacing,
             "min_short_side": _number(1, 1024),
+            "max_long_side": _number(1, 4096),
             "border_width": _WIDTH,
             "border_role": _role,
             "fill_role": _role,
@@ -485,6 +488,11 @@ def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
         raise StyleError(
             f"{origin}: the logo's margins leave {area.width:g} × {area.height:g} px, less "
             f"than its box's least short side, {logo.min_short_side:g}"
+        )
+    if logo.max_long_side < logo.min_short_side:
+        raise StyleError(
+            f"{origin}: logo.max_long_side {logo.max_long_side:g} is less than "
+            f"logo.min_short_side {logo.min_short_side:g}"
         )
     if 2 * logo.padding >= logo.min_short_side:
         raise StyleError(
