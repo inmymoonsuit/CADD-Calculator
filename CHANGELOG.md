@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- What a domain tells about its selections (ADR-0014, amendments): `Domain.details`, a
+  `SelectionDetails`, gives `facts()` to show (`Fact`: a heading, text with quantities in
+  base units, and references) and `starting_values()` to offer (`StartingValue`: a
+  setting, its stated value, and the `ValueOrigin` to apply it with). Both are checked
+  against the domain's settings and tables.
 - Short titles for citations (ADR-0014, amendments): a `[[publication]]` may give a
   `short_title`, e.g. "FAA-H-8083-31B", which every shipped publication now has.
   `Reference.short` names a citation by it and its locator, and source labels and note

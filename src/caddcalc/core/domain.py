@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
+from typing import Protocol
 
 from caddcalc.core import expr
 from caddcalc.core.choices import OPTION_KEY, Choice, ChoiceResolver, DerivedValue, Option
@@ -14,6 +15,7 @@ from caddcalc.core.notes import Note
 from caddcalc.core.refdata import ReferenceTable, ReferenceValue, TableSpec
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Param
+from caddcalc.core.units import Dimension, TypedValue
 
 _DOMAIN_ID = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -40,6 +42,9 @@ class Domain:
     tables: tuple[TableSpec, ...] = field(default=(), compare=False)
     """The reference tables the domain draws on. A value the user applies, rather than
     types, must be an entry of one of them (``DomainSettings.set``)."""
+    details: SelectionDetails | None = field(default=None, compare=False)
+    """Tells what the selections mean, for a front end to show: facts, and cited
+    starting values the user may apply. Often the resolver itself."""
 
     @property
     def settings_label(self) -> str:
@@ -112,6 +117,47 @@ class Domain:
                 f"default, {marked}; at most one may be"
             )
         return options
+
+    def facts(self, selections: Mapping[str, str]) -> tuple[Fact, ...]:
+        """Return what the domain shows about ``selections``, such as a material's data.
+
+        Raises:
+            SpecError: A fact's text and quantities don't match, a bug in the domain.
+        """
+        if self.details is None:
+            return ()
+        facts = tuple(self.details.facts(selections))
+        for fact in facts:
+            if fact.text.count("{}") != len(fact.quantities):
+                raise SpecError(
+                    f"Domain {self.id!r}: fact {fact.heading!r} has "
+                    f"{fact.text.count('{}')} places for {len(fact.quantities)} quantities"
+                )
+        return facts
+
+    def starting_values(self, selections: Mapping[str, str]) -> tuple[StartingValue, ...]:
+        """Return the cited starting values the domain offers under ``selections``, checked.
+
+        Raises:
+            SpecError: A starting value is for a setting the domain doesn't have, measures
+                something else, or isn't an entry of one of the domain's tables. Each is
+                a bug in the domain.
+        """
+        if self.details is None:
+            return ()
+        offered = tuple(self.details.starting_values(selections))
+        for start in offered:
+            setting = self.find_setting(start.setting)
+            if setting is None or setting.dimension is not start.entry.dimension:
+                raise SpecError(
+                    f"Domain {self.id!r} offers {start.label!r} for {start.setting!r}, which "
+                    "isn't one of its settings of that dimension"
+                )
+            try:
+                self.check_origin(start.origin, start.entry.value)
+            except UsageError as exc:
+                raise SpecError(f"Domain {self.id!r} offers {start.label!r}: {exc}") from exc
+        return offered
 
     def check_origin(self, origin: ValueOrigin, value: float) -> None:
         """Check that ``origin`` is an entry of one of this domain's tables, giving ``value``.
@@ -312,6 +358,50 @@ class ValueOrigin:
         if source is None:
             raise UsageError(f"Table {table.name!r} has no source {value.source!r}")
         return cls(table.name, table.version, value, source.reference, note)
+
+
+@dataclass(frozen=True)
+class Fact:
+    """Something a domain shows about the user's selections, e.g. a material's strengths.
+
+    The text may name quantities, which a front end shows in its display units: each
+    ``{}`` in ``text`` takes the next of ``quantities``, in base units.
+    """
+
+    heading: str
+    """What it is about, e.g. ``"Strength"``."""
+    text: str
+    quantities: tuple[tuple[float, Dimension], ...] = ()
+    references: tuple[Reference, ...] = ()
+    """Its sources, each with its scope."""
+
+
+@dataclass(frozen=True)
+class StartingValue:
+    """A cited value a domain offers for a setting, which the user may apply (ADR-0014 M2).
+
+    Applying it sets ``entry`` with ``origin``; the value is then the user's own and keeps
+    its citation and note.
+    """
+
+    setting: str
+    """The setting key, e.g. ``"k_factor"``."""
+    entry: TypedValue
+    """The value, as its source states it."""
+    origin: ValueOrigin
+    """Its table entry, and the note results carry while it is in use."""
+    label: str
+    """How a front end offers it, e.g. ``"0.445, FAA-H-8083-31B"``."""
+
+
+class SelectionDetails(Protocol):
+    """Tells a front end what a domain's selections mean, beyond the values they derive."""
+
+    def facts(self, selections: Mapping[str, str]) -> Sequence[Fact]:
+        """Return the facts to show for ``selections``, the selections in effect."""
+
+    def starting_values(self, selections: Mapping[str, str]) -> Sequence[StartingValue]:
+        """Return the cited starting values to offer under ``selections``."""
 
 
 @dataclass(frozen=True)

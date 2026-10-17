@@ -6,7 +6,14 @@ or any third-party package (ADR-0003).
 
 from caddcalc.core.calculator import Calculator, Context, Result, ResultCheck
 from caddcalc.core.choices import Choice, ChoiceResolver, DerivedValue, Option
-from caddcalc.core.domain import Domain, DomainValues, ValueOrigin
+from caddcalc.core.domain import (
+    Domain,
+    DomainValues,
+    Fact,
+    SelectionDetails,
+    StartingValue,
+    ValueOrigin,
+)
 from caddcalc.core.errors import (
     CaddCalcError,
     CalculationError,
@@ -61,6 +68,7 @@ __all__ = [
     "Domain",
     "DomainSettings",
     "DomainValues",
+    "Fact",
     "InputError",
     "InputSource",
     "License",
@@ -79,8 +87,10 @@ __all__ = [
     "Registry",
     "Result",
     "ResultCheck",
+    "SelectionDetails",
     "SourceKind",
     "SpecError",
+    "StartingValue",
     "Step",
     "TablePublication",
     "TableSource",

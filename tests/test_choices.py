@@ -6,13 +6,14 @@ a "temper" choice depends on a "material" choice.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from typing import override
 
 import pytest
 
 from caddcalc.core import (
+    Basis,
     Calculator,
     Choice,
     ClearedChoice,
@@ -21,6 +22,7 @@ from caddcalc.core import (
     Dimension,
     Domain,
     DomainSettings,
+    Fact,
     Method,
     Note,
     NoteKind,
@@ -29,12 +31,17 @@ from caddcalc.core import (
     Output,
     Param,
     Reference,
+    ReferenceValue,
     Registry,
     SourceKind,
     SpecError,
+    StartingValue,
     Step,
+    TableSpec,
+    TrustLevel,
     TypedValue,
     UsageError,
+    ValueOrigin,
     Verification,
 )
 from caddcalc.core.formatting import DisplayPrefs, describe_error, describe_source
@@ -571,3 +578,89 @@ def test_an_explicit_input_can_carry_a_derived_values_note() -> None:
         _Bend().run(
             {"thickness": 2.0}, explicit_notes={"thickness": replace(CAUTION, subjects=("x",))}
         )
+
+
+# --- What a domain tells about its selections: facts and starting values ----------------------
+
+K = TypedValue.parse("0.44", Dimension.RATIO)
+K_ENTRY = ReferenceValue(
+    K.value,
+    "statute",
+    Basis.RULE_OF_THUMB,
+    TrustLevel.RULE_OF_THUMB,
+    stated=K,
+    quantity="constant",
+    conditions={"name": "k"},
+)
+"""An invented K starting value, as an entry of the sample table."""
+SAMPLE = TableSpec(
+    "tests",
+    "data/refdata_sample.toml",
+    frozenset({"system"}),
+    lambda _t: [K_ENTRY],
+    frozenset({"constant"}),
+)
+PROMPT = Note(NoteKind.WARNING, "Confirm K with a test bend.")
+
+
+class _Details:
+    def __init__(self, facts: Sequence[Fact] = (), starts: Sequence[StartingValue] = ()) -> None:
+        self._facts, self._starts = facts, starts
+
+    def facts(self, _selections: Mapping[str, str]) -> Sequence[Fact]:
+        return self._facts
+
+    def starting_values(self, _selections: Mapping[str, str]) -> Sequence[StartingValue]:
+        return self._starts
+
+
+def k_domain(details: _Details | None) -> Domain:
+    return Domain(
+        "bench",
+        "Bench",
+        "A domain for details tests.",
+        settings=(Param("k_factor", "K", "K-factor", Dimension.RATIO, minimum=0.0),),
+        tables=(SAMPLE,),
+        details=details,
+    )
+
+
+def start(
+    entry: TypedValue = K, value: ReferenceValue = K_ENTRY, setting: str = "k_factor"
+) -> StartingValue:
+    origin = ValueOrigin.of(SAMPLE.load(), value, PROMPT)
+    return StartingValue(setting, entry, origin, f"{entry.text}, a statute")
+
+
+def test_a_domain_without_details_tells_nothing() -> None:
+    assert k_domain(None).facts({}) == () and k_domain(None).starting_values({}) == ()
+
+
+def test_facts_fill_their_quantities_and_are_checked() -> None:
+    fact = Fact("Strength", "{} along the grain", ((289.6, Dimension.STRESS),))
+    assert k_domain(_Details(facts=[fact])).facts({}) == (fact,)
+    with pytest.raises(SpecError, match="1 places for 0 quantities"):
+        k_domain(_Details(facts=[replace(fact, quantities=())])).facts({})
+
+
+def test_a_starting_value_is_a_table_entry_the_user_can_apply() -> None:
+    domain = k_domain(_Details(starts=[start()]))
+    (offered,) = domain.starting_values({})
+    settings = DomainSettings().set(domain, offered.setting, offered.entry, origin=offered.origin)
+    assert settings.origin(domain, "k_factor") == offered.origin
+
+
+@pytest.mark.parametrize(
+    ("bad", "message"),
+    [
+        (lambda: start(setting="width"), "isn't one of its settings"),
+        (lambda: start(entry=TypedValue.parse("1 mm", L)), "isn't one of its settings"),
+        (lambda: start(value=replace(K_ENTRY, conditions={"name": "j"})), "no table entry"),
+        (lambda: start(entry=TypedValue.parse("0.45", Dimension.RATIO)), "is its entry's"),
+    ],
+)
+def test_a_starting_value_outside_the_domains_tables_is_a_domain_bug(
+    bad: Callable[[], StartingValue], message: str
+) -> None:
+    with pytest.raises(SpecError, match=message):
+        k_domain(_Details(starts=[bad()])).starting_values({})

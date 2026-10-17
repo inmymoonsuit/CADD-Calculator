@@ -1000,3 +1000,21 @@ the entries above, these replace them.
 * Every shipped publication has one. Both tables stay version 1 with their digests
   re-pinned; for the gauge table, already released, the change is citation metadata
   only, and its release record says so.
+
+### 2026-10-17: what a domain tells about its selections (phase 2b.7b)
+
+* **`Domain.details`**, a `SelectionDetails`, tells a front end what the selections mean
+  beyond the values they derive: `facts(selections)`, such as a material's minimum-radius
+  rule, strengths, and notes, and `starting_values(selections)`, the cited values the
+  user may apply. The sheet-metal resolver provides both (2b.7). *Why:* the window builds
+  every settings page from its domain, and knows no domain's data; a material-facts block
+  or K buttons written for sheet metal in the window would break that.
+* **A `Fact`** is a heading, text, its references, and quantities in base units: each
+  `{}` in the text takes the next quantity, shown in the display units, so a strength
+  reads in ksi or MPa as the length preference sets it. `Domain.facts()` refuses a fact
+  whose places and quantities don't match.
+* **A `StartingValue`** is a setting key, the value as its source states it, its
+  `ValueOrigin` (the table entry and the note results carry), and the label a front end
+  offers it by. `Domain.starting_values()` checks each against the domain's settings and,
+  through `check_origin`, its tables, so a starting value that couldn't be applied is a
+  domain bug, found when it is offered.
