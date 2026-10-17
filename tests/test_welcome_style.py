@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import math
 import re
 import tomllib
 from dataclasses import fields
@@ -12,14 +13,19 @@ from typing import Any
 import pytest
 
 from caddcalc.gui.welcome_style import (
+    RGB,
     STYLE_FILE,
     Size,
     StyleError,
     WelcomeStyle,
     contrast,
     luminance,
+    pane_fill,
     parse_style,
+    percentile_colors,
+    rgb,
     style,
+    worst_contrast,
 )
 
 ROOT = Path(__file__).parents[1]
@@ -37,9 +43,8 @@ def test_the_shipped_tokens_load_and_add_up() -> None:
     assert tokens.art.slot.width / tokens.art.slot.height == 16 / 9
     assert Size(1920, 1080) == tokens.art.supplied
     assert tokens.window == Size(
-        tokens.logo.region_width + tokens.art.slot.width,
-        tokens.top_bar.height + tokens.art.slot.height,
-    )
+        tokens.art.slot.width, tokens.top_bar.height + tokens.art.slot.height
+    ), "the art spans the card; the logo box floats over it (S2)"
     assert tokens.panes.text_roles == ("welcome_ink", "welcome_paper")
 
 
@@ -50,6 +55,16 @@ def test_each_panes_safe_area_lies_inside_the_art_slot(pane: str) -> None:
     assert area.x >= 0 and area.y >= 0
     assert area.x + area.width <= tokens.art.slot.width
     assert area.y + area.height <= tokens.art.slot.height
+
+
+def test_the_logo_box_fits_its_region_beside_the_panes() -> None:
+    tokens = style()
+    region, area = tokens.logo_region, tokens.logo_area
+    assert (region.x, region.y, region.height) == (0, 0, tokens.art.slot.height)
+    assert area.width >= tokens.logo.min_size.width
+    assert area.height >= tokens.logo.min_size.height
+    for pane in (tokens.name_pane, tokens.version_pane):
+        assert tokens.safe_area(pane).x >= region.x + region.width, "no overlap"
 
 
 def edited(table: str, key: str, value: Any) -> dict[str, Any]:
@@ -125,8 +140,13 @@ def test_the_spec_quotes_the_sizes_and_safe_areas_they_give() -> None:
         f"**{tokens.art.max_bytes // 1_000_000} MB**",
         f"**{tokens.art.max_px} px**",
     ]
-    for pane, name in ((tokens.name_pane, "Name pane"), (tokens.version_pane, "Version pane")):
-        cells = " | ".join(str(int(v)) for v in tokens.safe_area(pane))
+    areas = (
+        (tokens.logo_region, "Logo box"),
+        (tokens.safe_area(tokens.name_pane), "Name pane"),
+        (tokens.safe_area(tokens.version_pane), "Version pane"),
+    )
+    for area, name in areas:
+        cells = " | ".join(str(int(v)) for v in area)
         quoted.append(f"| {name} | {cells} |")
     missing = [text for text in quoted if text not in spec]
     assert missing == [], missing
@@ -161,3 +181,42 @@ def test_the_widget_takes_every_size_and_colour_from_the_tokens() -> None:
 def test_contrast_follows_wcag() -> None:
     assert contrast(luminance("#FFFFFF"), luminance("#000000")) == pytest.approx(21)
     assert contrast(luminance("#777777"), luminance("#777777")) == 1
+
+
+INK, PAPER, WHITE = rgb("#21251F"), rgb("#FFFFFF"), rgb("#FFFFFF")
+BLACK: RGB = (0, 0, 0)
+
+
+def test_percentiles_are_taken_by_nearest_rank() -> None:
+    pixels = bytes([0, 0, 0, 0] * 5 + [128, 128, 128, 0] * 90 + [255, 255, 255, 0] * 5)
+    assert percentile_colors(pixels, (5, 95)) == (BLACK, (128, 128, 128))
+    assert percentile_colors(pixels, (6, 96)) == ((128, 128, 128), (255, 255, 255))
+    with pytest.raises(ValueError, match="no pixels"):
+        percentile_colors(b"", (5, 95))
+
+
+@pytest.mark.parametrize(
+    ("art", "text", "raised"),
+    [
+        ([(244, 241, 234), WHITE], INK, False),  # calm, light art: ink at the floor
+        ([BLACK, (16, 20, 24)], PAPER, False),  # dark art: white at the floor
+        ([BLACK, WHITE], INK, True),  # busy art: the fill rises until ink reads
+    ],
+)
+def test_a_pane_stays_quiet_unless_the_art_would_hide_its_text(
+    art: list[RGB], text: RGB, raised: bool
+) -> None:
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    index, alpha = pane_fill(art, WHITE, [INK, PAPER], panes)
+    assert [INK, PAPER][index] == text
+    assert (alpha > floor) == raised and alpha >= floor
+    assert worst_contrast(text, WHITE, alpha, art) >= panes.min_contrast
+    if raised:
+        assert worst_contrast(text, WHITE, alpha - 1, art) < panes.min_contrast, "the least"
+
+
+def test_an_unreadable_fill_becomes_opaque_under_the_text_that_reads() -> None:
+    panes = style().panes
+    mid = (119, 119, 119)
+    assert pane_fill([BLACK, WHITE], mid, [INK, PAPER], panes) == (1, 255), "white: 4.48"

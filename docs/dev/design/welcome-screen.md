@@ -9,22 +9,24 @@ specification can't drift from the code.
 ## The layout
 
 ```
-┌───────────────────────────────────────────────────────────┐
+╭───────────────────────────────────────────────────────────╮
 │                                                    ⓘ  ✕  │  top bar, 32 px
-├───────┬───────────────────────────────────────────────────┤
-│       │                               ┌───────────────┐   │
-│ logo  │                               │   name pane   │   │
-│       │          art slot             └───────────────┘   │
-│       │          960 × 540                                │
-│       │                                                   │
-│       │                                  ┌ version ┐      │
-└───────┴───────────────────────────────────────────────────┘
- 96 px
+├───────────────────────────────────────────────────────────┤
+│  ┌────┐                                 ┌──────────────┐  │
+│  │    │                                 │  name pane   │  │
+│  │logo│          art slot               └──────────────┘  │
+│  │box │          960 × 540                                │
+│  │    │                                                   │
+│  └────┘                                      ┌ version ┐ │
+╰───────────────────────────────────────────────────────────╯
+  96 px logo region, over the art
 ```
 
 All sizes are logical pixels (a 100% display scale). The art slot is **960 × 540**, exactly
-16:9, beside a 96 px logo region and under a 32 px top bar, with the About button (ⓘ)
-and the X.
+16:9, and spans the card's full width under a 32 px top bar, with the About button (ⓘ)
+and the X. The logo's box floats over the art's left edge (ADR-0016, S2). A 1 px line
+borders the card, runs under the top bar, and borders the logo box; the card's outer
+corners are rounded by about 5 px, and everything inside is square.
 
 ## The art
 
@@ -39,16 +41,19 @@ and the X.
   missing.
 * **No text in the art.** The app's name and the version are live text over the art, in
   panes, so they're always current, follow the light and dark themes, and can be read by
-  a screen reader. Leave the safe areas below free of detail.
+  a screen reader. Leave the safe areas below free of detail: the logo box floats over
+  the art's left edge, and the panes over its corners.
 * **Safe areas,** in the slot's logical pixels, from its upper-left corner (double them on
   1920 × 1080 art):
 
   | Area | x | y | width | height |
   |---|---|---|---|---|
+  | Logo box | 0 | 0 | 96 | 540 |
   | Name pane | 560 | 24 | 376 | 88 |
   | Version pane | 754 | 510 | 200 | 24 |
 
-  Each pane hugs its text at its corner of the area.
+  The logo box sits inside its area, and each pane hugs its text at its corner of its
+  area.
 * **Focal point:** if the art isn't 16:9, it's scaled to cover the slot, and the overflow
   is cropped around `art_focus`, the point kept in view, as fractions of the art's width
   and height (`[0.5, 0.5]`, the centre, by default). A focal point near an edge is kept
@@ -64,13 +69,17 @@ uv run python packaging/make_welcome_template.py builds/welcome-template.png
 
 ## The logo
 
-The logo region is 96 px wide. The logo is drawn inside its box's 8 px padding, fitted
-whole and centred ("contain"), never stretched or cropped, so a tall banner, a square
-mark, and a wide wordmark all fit. An **SVG** is preferred, since it scales to any
-display; a PNG works too. An SVG must be **self-contained**: an `<image>` or `<use>` may
+The logo sits in a box that floats over the art's left edge, inside a 96 px logo region.
+The box keeps at least 16 px from the card's left edge and from the art's top and
+bottom. It takes the logo's shape, plus 8 px of padding, as large as the region allows,
+centred, and never smaller than 48 × 160 px. The logo is drawn inside the padding,
+fitted whole and centred ("contain"), never stretched or cropped. So a tall banner
+fills the region's height, and a square mark or a wide wordmark gets a short box,
+centred. The box has a fill and a 1 px border. An **SVG** is preferred, since it scales
+to any display; a PNG works too. An SVG must be **self-contained**: an `<image>` or `<use>` may
 embed its data (`data:`) or point within the file (`#…`), never to another file, which a
-build wouldn't bundle. The same 8 MB budget applies. Without a logo, the box shows the app
-icon and the name set upright.
+build wouldn't bundle. The same 8 MB budget applies. Without a logo, the box fills the
+region and shows the app icon and the name set upright.
 
 ## The pack
 
@@ -110,17 +119,28 @@ uv run python packaging/fetch_fonts.py --commit SHA
 
 ## On screen
 
-* **Smaller screens.** The card's preferred size is its tokens' (1056 × 572). On a screen
+* **Smaller screens.** The card's preferred size is its tokens' (960 × 572). On a screen
   whose available area is smaller, the whole card scales down to fit, and the art slot
-  stays 16:9. Lines never get thinner than one device pixel.
+  stays 16:9. The corners' radius is a fraction of the card's height, so it shrinks in
+  proportion. Lines never get thinner than one device pixel.
 * **High-DPI.** The art is drawn at the display's device pixel ratio: 2× art is
   downsampled at 100% and 150% scale, and upsampled slightly at 300%. The generic art is
   drawn at the display's ratio.
 * **The generic art** is drawn in code from the palette (`gui/welcome_art.py`), until the
   roadmap's commissioned generic art replaces it.
-* **The panes** take whichever of the two text roles contrasts more with their fill.
-* **Platforms.** The card is frameless with its own bar on every platform. Some behaviour
-  depends on the windowing system and needs checking by hand; see KI-020.
+* **The panes stay quiet, and readable** (ADR-0016, S3). Each pane's fill starts at 15%
+  opacity. When the screen opens, it measures the art under each pane, as it's drawn,
+  at the 5th and 95th percentiles of luminance. It raises the fill's opacity only as
+  far as the text needs to reach 4.5:1 contrast against the fill over both. The text
+  takes whichever of ink and white needs less, and the pane's border follows the text.
+  On calm art the panes stay at 15%; on dark art the text turns white; on busy art the
+  fill rises. The screen blends in 8 bits, so the contrast is checked a level either
+  side of each blend.
+* **Corners and platforms.** The card is frameless with its own bar on every platform.
+  It's drawn in a translucent window, so its rounded corners show the desktop. Where
+  the windowing system may not composite (X11, and other platforms but Windows, macOS,
+  and Wayland), the card keeps square corners. Some behaviour depends on the windowing
+  system and needs checking by hand; see KI-020.
 
 ## Design tokens
 
@@ -144,7 +164,7 @@ hex values, so both themes and the palette's contrast tests apply.
 | `top_bar.separator_width` | 1 | The line under the top bar |
 | `top_bar.separator_role` | welcome_line | Its colour role |
 | `logo.formats` | .svg, .png | The logo's file formats |
-| `logo.region_width` | 96 | The logo region's width |
+| `logo.region_width` | 96 | The logo region's width, over the art's left edge |
 | `logo.margin_left` | 16 | The box's least distance from the card's left edge |
 | `logo.margin_top` | 16 | ... from the art's top |
 | `logo.margin_bottom` | 16 | ... from the art's bottom |

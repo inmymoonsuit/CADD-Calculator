@@ -184,3 +184,27 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
 * A pack with a `name` key is refused, with a message saying to delete it, as `splash`
   was (ADR-0011, amended). At run time such a pack falls back to the generic branding
   with a warning; the build stops with the message.
+
+### 2026-10-17: the restyle as built (slice e)
+
+* **The card (S2).** The art spans the card's full width, so the card is 960 × 572
+  (`WelcomeStyle.window`). The logo box is a child of the art, placed by
+  `welcome_layout.logo_box` in `WelcomeStyle.logo_area`: the 96 px logo region less its
+  minimum margins. The art spec and template gain the logo region as a safe area,
+  0, 0, 96 × 540.
+* **The frame (§4).** The card is a translucent window. It paints the top bar's
+  background, and a frame on top of everything, which takes no mouse events, clears
+  what lies outside the rounded outline, then draws the border and the separator. The
+  separator sits on the top bar's whole-pixel edge, so it stays crisp when the card
+  scales. Corners are rounded only on Windows, macOS, and Wayland. Elsewhere they're
+  square: Qt's public API exposes no "this screen composites" capability, so the rule
+  goes by `QGuiApplication.platformName()` (KI-020).
+* **The panes (§5, S3).** Each pane measures the art beneath it from the art as the slot
+  draws it, at one sample per logical pixel, and takes the pixels at the 5th and 95th
+  percentiles of luminance (nearest rank). For each text role, the fill's alpha rises
+  from the floor, 39 of 255, the least at or above 15%, until the text reaches 4.5:1
+  against the fill blended over both pixels. The blend is checked a level either side in
+  each channel, as the screen blends in 8 bits. The role needing the least alpha wins;
+  if none reaches 4.5:1, the fill is opaque under the role that contrasts more. Tests
+  check this on light, dark, and busy generated art, against Qt's own blending.
+* This replaces "Until slice e" above.

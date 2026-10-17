@@ -162,8 +162,20 @@ by hand before a release on each platform:
 * **macOS:** About and Exit (Quit) must appear in the application menu for the main
   window, and the card must open as a window, not as a sheet attached to the main
   window.
-* **Frameless windows everywhere:** check whether the system draws a shadow and rounded
-  corners, and that the ⓘ, the X, Esc, and dragging work.
+* **Frameless windows everywhere:** check whether the system draws a shadow, and that the
+  ⓘ, the X, Esc, and dragging work.
+* **Rounded corners (ADR-0016 §4):** the card is a translucent window that paints its own
+  rounded corners and border. Without a compositor, a translucent window's corners show
+  black, and Qt's public API doesn't say whether an X11 desktop runs one. So the card
+  rounds its corners only on Windows, macOS, and Wayland, which always composite
+  (`COMPOSITING_PLATFORMS` in `gui/welcome.py`), and keeps them square on X11 and any
+  other platform. Rounding on X11 would need asking the X server whether a compositor
+  owns the `_NET_WM_CM_Sn` selection. On Windows 11, the system's own rounding doesn't
+  apply to frameless windows, so the painted radius is what shows. Check that the
+  corners are clean, with no dark or light fringe, at each display scale.
+* **Pane contrast at high DPI:** the panes measure the art at one sample per logical
+  pixel, from the art as drawn. At 150% and 200% scaling, check that the name and version
+  still read over the art; very fine detail is averaged in that sample.
 * **Keyboard focus:** Tab to the ⓘ and the X on each platform's real style and check
   that a focus ring shows; they are flat (auto-raise) buttons, which some styles draw
   without one.

@@ -10,7 +10,16 @@ from __future__ import annotations
 
 from caddcalc.gui.welcome_style import Rect, Size, style
 
-__all__ = ["Rect", "Size", "contain_fit", "cover_crop", "fit_scale", "pane_rect"]
+__all__ = [
+    "Rect",
+    "Size",
+    "contain_fit",
+    "cover_crop",
+    "fit_scale",
+    "logo_box",
+    "pane_rect",
+    "scaled",
+]
 
 
 def cover_crop(image: Size, slot: Size, focus: tuple[float, float] = (0.5, 0.5)) -> Rect:
@@ -44,6 +53,35 @@ def contain_fit(source: Size, area: Rect) -> Rect:
     return Rect(
         area.x + (area.width - width) / 2, area.y + (area.height - height) / 2, width, height
     )
+
+
+def logo_box(source: Size | None, area: Rect, padding: float, minimum: Size) -> Rect:
+    """Return the logo's box: the logo's shape plus its padding, as large as ``area`` allows.
+
+    The box is centred in ``area`` and never smaller than ``minimum``, so a tall banner, a
+    square mark, and a wide wordmark all fit (ADR-0016 §3). A wide logo makes a short box,
+    which ``minimum`` keeps from becoming a sliver; the logo is then contained in it.
+
+    Args:
+        source: The logo's size, or ``None`` for a logo that fills whatever box it's given.
+        area: Where the box may sit.
+        padding: The space inside the box, around the logo.
+        minimum: The box's least width and height; ``area`` caps it.
+    """
+    inner = Rect(
+        area.x + padding, area.y + padding, area.width - 2 * padding, area.height - 2 * padding
+    )
+    fitted = inner if source is None else contain_fit(source, inner)
+    width = min(max(fitted.width + 2 * padding, minimum.width), area.width)
+    height = min(max(fitted.height + 2 * padding, minimum.height), area.height)
+    return Rect(
+        area.x + (area.width - width) / 2, area.y + (area.height - height) / 2, width, height
+    )
+
+
+def scaled(rect: Rect, scale: float) -> Rect:
+    """Return ``rect`` with its position and size multiplied by ``scale``."""
+    return Rect(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale)
 
 
 def pane_rect(anchor: str, inset: float, size: Size, slot: Size) -> Rect:

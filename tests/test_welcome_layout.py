@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from caddcalc.gui.welcome_layout import Rect, Size, contain_fit, cover_crop, fit_scale, pane_rect
+from caddcalc.gui.welcome_layout import (
+    Rect,
+    Size,
+    contain_fit,
+    cover_crop,
+    fit_scale,
+    logo_box,
+    pane_rect,
+    scaled,
+)
 from caddcalc.gui.welcome_style import style
 
 SLOT = style().art.slot
@@ -38,7 +47,7 @@ def test_the_screen_shrinks_to_fit_a_small_screen_and_never_grows() -> None:
     window = style().window
     assert fit_scale(Size(1920, 1040)) == 1.0
     small = fit_scale(Size(911, 512))  # 1366 x 768 at 150%, less a taskbar
-    assert small == pytest.approx(911 / window.width)
+    assert small == pytest.approx(min(911 / window.width, 512 / window.height))
     assert window.width * small <= 911 and window.height * small <= 512
 
 
@@ -52,6 +61,32 @@ def test_the_screen_shrinks_to_fit_a_small_screen_and_never_grows() -> None:
 )
 def test_a_logo_is_contained_in_its_box_whole_and_centred(source: Size, fitted: Rect) -> None:
     assert contain_fit(source, Rect(10, 0, 100, 360)) == fitted
+
+
+AREA = Rect(16, 16, 80, 508)
+"""The shipped logo area: the logo region less its margins."""
+
+
+@pytest.mark.parametrize(
+    ("logo", "box"),
+    [
+        (Size(72, 540), Rect(16, 22, 80, 496)),  # a tall banner: as tall as it can be
+        (Size(100, 100), Rect(16, 190, 80, 160)),  # a square mark: the least height
+        (Size(400, 100), Rect(16, 190, 80, 160)),  # a wordmark: the least height, centred
+        (Size(10, 540), Rect(32, 16, 48, 508)),  # a sliver: the least width, centred
+        (None, AREA),  # the generic logo fills the whole area
+    ],
+)
+def test_the_logo_box_takes_the_logos_shape_within_its_minimums(
+    logo: Size | None, box: Rect
+) -> None:
+    assert logo_box(logo, AREA, 8, Size(48, 160)) == pytest.approx(box)
+
+
+def test_the_logo_area_is_the_logo_region_less_its_margins() -> None:
+    tokens = style()
+    assert tokens.logo_area == AREA
+    assert scaled(AREA, 0.5) == Rect(8, 8, 40, 254)
 
 
 @pytest.mark.parametrize(

@@ -351,7 +351,7 @@ def test_the_welcome_template_marks_the_safe_areas() -> None:
     template = importlib.import_module("make_welcome_template")
     image = template.draw_template()
     assert (image.width(), image.height()) == (1920, 1080)
-    background = image.pixelColor(5, 5).name()
+    background = image.pixelColor(1010, 610).name()  # clear of every area and line
     for area, _label in template.safe_areas():
         inside = image.pixelColor(int((area.x + 4) * scale), int((area.y + 4) * scale))
         assert inside.name() != background, "the safe area is marked"

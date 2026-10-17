@@ -12,8 +12,9 @@ without importing Qt.
 
 from __future__ import annotations
 
+import math
 import tomllib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, fields
 from functools import cache
 from pathlib import Path
@@ -177,10 +178,29 @@ class WelcomeStyle:
 
     @property
     def window(self) -> Size:
-        """The card's preferred size: the logo region beside the art, under the top bar."""
-        return Size(
-            self.logo.region_width + self.art.slot.width,
-            self.top_bar.height + self.art.slot.height,
+        """The card's preferred size: the art, at the card's full width, under the top bar.
+
+        The logo box floats over the art's left edge (S2), so it adds no width.
+        """
+        return Size(self.art.slot.width, self.top_bar.height + self.art.slot.height)
+
+    @property
+    def logo_region(self) -> Rect:
+        """The art's left edge, where the logo box floats, in the slot's coordinates.
+
+        The art keeps it clear of detail, like the panes' safe areas.
+        """
+        return Rect(0, 0, self.logo.region_width, self.art.slot.height)
+
+    @property
+    def logo_area(self) -> Rect:
+        """Where the logo box may sit: the logo region less its minimum margins."""
+        logo, height = self.logo, self.art.slot.height
+        return Rect(
+            logo.margin_left,
+            logo.margin_top,
+            logo.region_width - logo.margin_left,
+            height - logo.margin_top - logo.margin_bottom,
         )
 
     def safe_area(self, pane: PaneTokens) -> Rect:
@@ -403,15 +423,123 @@ def _palette() -> dict[str, Any]:
 
 # --- contrast (WCAG 2) ----------------------------------------------------------------------
 
+RGB = tuple[int, int, int]
+"""A colour's red, green, and blue, each from 0 to 255, as sRGB stores them."""
+_LEVELS = 255
+_LINEAR = tuple(
+    c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    for c in (level / _LEVELS for level in range(_LEVELS + 1))
+)
+"""Each 8-bit sRGB level's linear light, for relative luminance (WCAG 2)."""
+
+
+def rgb(color: str) -> RGB:
+    """Return a ``#RRGGBB`` colour's channels."""
+    return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+
+
+def rgb_luminance(color: Sequence[int]) -> float:
+    """Return the relative luminance of 8-bit sRGB channels, from 0 (black) to 1."""
+    r, g, b = _LINEAR[color[0]], _LINEAR[color[1]], _LINEAR[color[2]]
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
 
 def luminance(color: str) -> float:
     """Return the relative luminance of a ``#RRGGBB`` colour, from 0 (black) to 1."""
-    channels = [int(color[i : i + 2], 16) / 255 for i in (1, 3, 5)]
-    r, g, b = (c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return rgb_luminance(rgb(color))
 
 
 def contrast(first: float, second: float) -> float:
     """Return the contrast ratio of two relative luminances, from 1 to 21."""
     high, low = max(first, second), min(first, second)
     return (high + 0.05) / (low + 0.05)
+
+
+# --- the panes' contrast guarantee (ADR-0016 §5) -------------------------------------------
+
+
+def percentile_colors(rgbx: bytes, percentiles: tuple[float, float]) -> tuple[RGB, RGB]:
+    """Return the pixels at two percentiles of luminance, by nearest rank.
+
+    Args:
+        rgbx: Pixels as red, green, blue, and one unused byte each, as Qt's RGBX8888
+            images store them.
+        percentiles: The two percentiles, each from 0 to 100.
+    """
+    pixels = sorted(zip(rgbx[0::4], rgbx[1::4], rgbx[2::4], strict=True), key=rgb_luminance)
+    if not pixels:
+        raise ValueError("no pixels to measure")
+
+    def rank(percentile: float) -> RGB:
+        return pixels[max(math.ceil(percentile / 100 * len(pixels)), 1) - 1]
+
+    return rank(percentiles[0]), rank(percentiles[1])
+
+
+def _over(fill: RGB, art: RGB, alpha: int, rounding: Callable[[float], int]) -> RGB:
+    """Return ``fill`` at ``alpha`` (0 to 255) over ``art``, each channel rounded."""
+    return (
+        rounding((fill[0] * alpha + art[0] * (_LEVELS - alpha)) / _LEVELS),
+        rounding((fill[1] * alpha + art[1] * (_LEVELS - alpha)) / _LEVELS),
+        rounding((fill[2] * alpha + art[2] * (_LEVELS - alpha)) / _LEVELS),
+    )
+
+
+def worst_contrast(text: RGB, fill: RGB, alpha: int, art: Sequence[RGB]) -> float:
+    """Return the text's least contrast against ``fill`` at ``alpha`` over each colour.
+
+    The screen blends in 8 bits, so each channel may land a level either side of the
+    exact blend; both are measured, and the lower contrast counts.
+    """
+    text_luminance = rgb_luminance(text)
+    return min(
+        contrast(text_luminance, rgb_luminance(_over(fill, colour, alpha, rounding)))
+        for colour in art
+        for rounding in (math.floor, math.ceil)
+    )
+
+
+def pane_fill(
+    art: Sequence[RGB], fill: RGB, texts: Sequence[RGB], panes: PaneStyle
+) -> tuple[int, int]:
+    """Choose a pane's text colour and its fill's opacity over the art (ADR-0016 §5, S3).
+
+    The fill starts at ``panes.fill_opacity_min`` and rises only as far as the text
+    needs to reach ``panes.min_contrast`` against the fill over each of the ``art``
+    colours, the art's luminance percentiles under the pane. The text colour that
+    needs the least opacity wins; at the same opacity, the one with more contrast.
+
+    Args:
+        art: The art's colours under the pane, at its luminance percentiles.
+        fill: The fill's colour.
+        texts: The colours the text may take.
+        panes: The panes' style.
+
+    Returns:
+        The index of the text colour in ``texts``, and the fill's alpha, 0 to 255. If
+        no text colour reaches the contrast, the fill is opaque, under the text colour
+        that contrasts most with it.
+    """
+    floor = math.ceil(panes.fill_opacity_min * _LEVELS)
+    best: tuple[int, float, int] | None = None
+    for index, text in enumerate(texts):
+        for alpha in range(floor, _LEVELS + 1):
+            worst = worst_contrast(text, fill, alpha, art)
+            if worst >= panes.min_contrast:
+                if best is None or (alpha, -worst) < (best[0], -best[1]):
+                    best = (alpha, worst, index)
+                break
+    if best is not None:
+        return best[2], best[0]
+    return opaque_fill(fill, texts)
+
+
+def opaque_fill(fill: RGB, texts: Sequence[RGB]) -> tuple[int, int]:
+    """Return the text colour that contrasts most with ``fill``, and an opaque alpha.
+
+    Returns:
+        The index of the text colour in ``texts``, and 255.
+    """
+    fill_luminance = rgb_luminance(fill)
+    index = max(range(len(texts)), key=lambda i: contrast(rgb_luminance(texts[i]), fill_luminance))
+    return index, _LEVELS

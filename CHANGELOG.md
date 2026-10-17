@@ -298,6 +298,17 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- **The welcome screen's restyle (ADR-0016).**
+  * The art spans the card, now 960 × 572.
+  * The logo sits in a bordered box floating over the art's left edge. The box takes
+    the logo's shape, with minimum margins and a minimum size. The art spec and
+    template gain a left safe area for it.
+  * The card has a 1 px border, a 1 px line under the top bar, and rounded outer
+    corners where the windowing system composites. It is square elsewhere (KI-020).
+  * The name and version panes share one quiet style: a fill at 15% opacity, raised
+    only as far as their text needs to reach 4.5:1 contrast over the art beneath, with
+    a thin border in the text's colour. The version sits close to the bottom-right
+    corner.
 - **One product name (ADR-0016, S4).** Every edition is called "CADD Calculator" in its
   window title, on its welcome screen, and in About, and is told apart by its icon,
   art, logo, and About text. A branding pack's `name` key is removed: a pack that still

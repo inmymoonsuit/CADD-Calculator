@@ -2,8 +2,8 @@
 
     uv run python packaging/make_welcome_template.py builds/welcome-template.png
 
-The guide is the art's full size, 1920 × 1080, with the safe areas the panes cover
-shaded, and a grid in the slot's logical pixels. Draw the art on a layer above it, keep
+The guide is the art's full size, 1920 × 1080, with the safe areas the logo box and the
+panes cover shaded, and a grid in the slot's logical pixels. Draw the art on a layer above it, keep
 detail out of the shaded areas, then hide the guide. The sizes are the welcome screen's
 own design tokens (``caddcalc.gui.welcome_style``, ADR-0016).
 """
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter, QPen
 
 from caddcalc.gui.welcome_style import Rect, style
 from icons import ensure_qt_app
@@ -32,10 +32,26 @@ def _scaled(rect: Rect) -> QRectF:
     return QRectF(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale)
 
 
+def _label(p: QPainter, area: QRectF, text: str) -> None:
+    """Write ``text`` in ``area``, wrapped, in the largest size up to the painter's that fits."""
+    flags = Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap
+    font = QFont(p.font())
+    while font.pointSize() > 8:
+        bounds = QFontMetricsF(font).boundingRect(area, int(flags.value), text)
+        if area.contains(bounds):
+            break
+        font.setPointSize(font.pointSize() - 1)
+    p.save()
+    p.setFont(font)
+    p.drawText(area, flags, text)
+    p.restore()
+
+
 def safe_areas() -> tuple[tuple[Rect, str], ...]:
     """Return each area the art keeps clear of detail, with its label."""
     tokens = style()
     return (
+        (tokens.logo_region, "logo box"),
         (tokens.safe_area(tokens.name_pane), "name pane"),
         (tokens.safe_area(tokens.version_pane), "version pane"),
     )
@@ -63,13 +79,14 @@ def draw_template() -> QImage:
         area = _scaled(rect)
         p.fillRect(area, SAFE_AREA)
         p.setPen(QColor("white"))
-        p.drawText(area, Qt.AlignmentFlag.AlignCenter, f"{text}: keep clear of detail")
+        _label(p, area, f"{text}: keep clear of detail")
     centre = QRectF(supplied.width / 2 - 24, supplied.height / 2 - 24, 48, 48)
     p.setPen(QPen(QColor(INK), 3))
     p.drawEllipse(centre)
+    left = tokens.logo_region.width * tokens.art.supplied_scale
     p.drawText(
-        QRectF(0, supplied.height - 120, supplied.width / 2, 100),
-        Qt.AlignmentFlag.AlignCenter,
+        QRectF(left, supplied.height - 120, supplied.width / 2 - left, 100),
+        Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
         f"{int(supplied.width)} × {int(supplied.height)} px, 16:9, shown at "
         f"{int(slot.width)} × {int(slot.height)}. The circle marks the default "
         "focal point.",

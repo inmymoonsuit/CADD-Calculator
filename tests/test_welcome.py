@@ -26,16 +26,40 @@ LOGO_SVG = (
 )
 
 
+WIDE_LOGO_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100" viewBox="0 0 400 100">'
+    '<rect width="400" height="100" fill="#202020"/></svg>'
+)
+
+
+def generated_art(kind: str, size: tuple[int, int]) -> Any:
+    """Art drawn here: flat blue, calm and light, dark, or a busy black-and-white check."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QColor, QImage, QPainter
+
+    art = QImage(*size, QImage.Format.Format_RGB32)
+    art.fill(QColor({"blue": "#336699", "light": "#F4F1EA", "dark": "#101418"}.get(kind, "white")))
+    if kind == "busy":
+        p = QPainter(art)
+        square = 24
+        for x in range(0, size[0], square):
+            for y in range(0, size[1], square):
+                if (x // square + y // square) % 2:
+                    p.fillRect(x, y, square, square, Qt.GlobalColor.black)
+        p.end()
+    return art
+
+
 def pack(
-    folder: Path, *, art_size: tuple[int, int] = (1920, 1080), logo: str = LOGO_SVG
+    folder: Path,
+    *,
+    art_size: tuple[int, int] = (1920, 1080),
+    logo: str = LOGO_SVG,
+    art: str = "blue",
 ) -> Branding:
     """A pack with generated welcome art and logo."""
-    from PySide6.QtGui import QImage
-
     folder.mkdir(parents=True, exist_ok=True)
-    art = QImage(*art_size, QImage.Format.Format_RGB32)
-    art.fill(0xFF336699)
-    assert art.save(str(folder / "welcome-art.png"))
+    assert generated_art(art, art_size).save(str(folder / "welcome-art.png"))
     (folder / "logo.svg").write_text(logo, encoding="utf-8")
     (folder / "branding.toml").write_text(
         'edition = "test-edition"\n'
@@ -215,4 +239,129 @@ def test_the_about_button_shows_the_version_and_the_license(
     ((title, text),) = shown
     assert title == "About CADD Calculator"
     assert __version__ in text and "Apache License, Version 2.0" in text
+    welcome.close()
+
+
+# --- the restyle (ADR-0016 §3 to §5) -----------------------------------------------------
+
+
+def measured_contrast(welcome: Any, pane: Any) -> float:
+    """The text's least contrast over the art as Qt shows it, at the art's percentiles.
+
+    The art is grabbed with the pane hidden, the pane's fill is blended over it by Qt
+    itself, and the luminance under the pane is measured at the style's percentiles.
+    """
+    import math
+
+    from PySide6.QtGui import QColor, QImage, QPainter
+
+    from caddcalc.gui.icons import current_scheme, role_color
+    from caddcalc.gui.welcome_style import contrast, luminance, rgb_luminance
+
+    panes, scheme = style().panes, current_scheme()
+    role, alpha = pane.fill(scheme)
+    pane.hide()
+    shown = welcome.art.grab().toImage().convertToFormat(QImage.Format.Format_RGBX8888)
+    pane.show()
+    fill = QColor(role_color(panes.fill_role, scheme))
+    fill.setAlpha(alpha)
+    p = QPainter(shown)
+    p.fillRect(pane.geometry(), fill)
+    p.end()
+    data = bytes(shown.copy(pane.geometry()).constBits())
+    levels = sorted(rgb_luminance(c) for c in zip(data[0::4], data[1::4], data[2::4], strict=True))
+    text = luminance(role_color(role, scheme))
+    return min(
+        contrast(text, levels[max(math.ceil(q / 100 * len(levels)), 1) - 1])
+        for q in panes.percentiles
+    )
+
+
+@pytest.mark.parametrize(("art", "raised"), [("light", False), ("dark", False), ("busy", True)])
+def test_the_panes_stay_quiet_and_readable_over_any_art(
+    tmp_path: Path, art: str, raised: bool
+) -> None:
+    import math
+
+    from caddcalc.gui.icons import current_scheme
+
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    welcome = screen(pack(tmp_path / "pack", art=art))
+    welcome.show()
+    for pane in (welcome.art.name_pane, welcome.art.version_pane):
+        _role, alpha = pane.fill(current_scheme())
+        assert (alpha > floor) == raised, (pane.text, alpha)
+        assert alpha >= floor
+        assert measured_contrast(welcome, pane) >= panes.min_contrast, pane.text
+    welcome.close()
+
+
+@pytest.mark.parametrize(("logo", "tall"), [(LOGO_SVG, True), (WIDE_LOGO_SVG, False)])
+def test_the_logo_box_floats_over_the_arts_left_edge(tmp_path: Path, logo: str, tall: bool) -> None:
+    from caddcalc.gui.welcome_layout import scaled
+
+    tokens = style()
+    welcome = screen(pack(tmp_path / "pack", logo=logo))
+    welcome.show()  # placed once it has its size
+    scale = welcome.art.width() / tokens.art.slot.width  # the card fits its screen
+    box, area = welcome.logo.geometry(), scaled(tokens.logo_area, scale)
+    least = tokens.logo.min_size.width * scale, tokens.logo.min_size.height * scale
+    assert welcome.logo.parentWidget() is welcome.art, "over the art, not beside it"
+    assert box.left() >= round(area.x) and box.right() < round(area.x + area.width)
+    assert box.top() >= round(area.y) and box.bottom() < round(area.y + area.height)
+    assert box.width() >= round(least[0]) and box.height() >= round(least[1])
+    centre = area.y + area.height / 2
+    assert abs(box.top() + box.height() / 2 - centre) <= 1, "centred vertically"
+    if tall:
+        assert box.height() > area.height * 0.9, "a tall logo gets a tall box"
+    else:
+        assert box.height() == round(least[1]), "a wordmark gets the least height"
+    welcome.close()
+
+
+def test_the_card_has_rounded_corners_a_border_and_a_separator() -> None:
+    from PySide6.QtCore import Qt
+
+    from caddcalc.gui.icons import current_scheme, role_color
+
+    tokens, scheme = style(), current_scheme()
+    welcome = screen()
+    assert welcome.rounded, "the offscreen platform composites"
+    assert welcome.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    assert welcome.border.radius == pytest.approx(
+        tokens.card.corner_radius * welcome.height(), abs=0.01
+    )
+    welcome.show()
+    image = welcome.grab().toImage()
+    line = role_color(tokens.card.border_role, scheme)
+    middle = welcome.width() // 2
+    assert image.pixelColor(0, 0).alpha() == 0, "the corner is cut away"
+    assert image.pixelColor(middle, 0).name().upper() == line
+    assert image.pixelColor(middle, welcome.height() - 1).name().upper() == line
+    separator = role_color(tokens.top_bar.separator_role, scheme)
+    assert image.pixelColor(middle, welcome.top_bar.height() - 1).name().upper() == separator
+    welcome.close()
+
+
+def test_without_a_compositor_the_card_is_square(monkeypatch: pytest.MonkeyPatch) -> None:
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QGuiApplication
+
+    from caddcalc.gui import welcome as module
+
+    for platform, rounded in (
+        ("xcb", False),
+        ("eglfs", False),
+        ("windows", True),
+        ("wayland-egl", True),
+    ):
+        monkeypatch.setattr(QGuiApplication, "platformName", staticmethod(lambda p=platform: p))
+        assert module.can_round_corners() is rounded, platform
+    monkeypatch.setattr(QGuiApplication, "platformName", staticmethod(lambda: "xcb"))
+    welcome = screen()
+    assert not welcome.rounded and welcome.border.radius == 0
+    assert not welcome.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    welcome.show()
+    assert welcome.grab().toImage().pixelColor(0, 0).alpha() == 255, "square, opaque"
     welcome.close()
