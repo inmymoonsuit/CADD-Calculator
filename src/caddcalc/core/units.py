@@ -11,6 +11,7 @@ import math
 import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import NamedTuple
 
 from caddcalc.core.errors import InputError
 
@@ -21,6 +22,18 @@ class Dimension(Enum):
     LENGTH = "length"
     ANGLE = "angle"
     RATIO = "ratio"
+
+    @property
+    def with_article(self) -> str:
+        """The name with its indefinite article, for messages, e.g. ``"an angle"``."""
+        return _WITH_ARTICLE[self]
+
+
+_WITH_ARTICLE = {
+    Dimension.LENGTH: "a length",
+    Dimension.ANGLE: "an angle",
+    Dimension.RATIO: "a ratio",
+}
 
 
 @dataclass(frozen=True)
@@ -116,42 +129,75 @@ def parse_number(text: str) -> float:
     return value
 
 
+class ParsedQuantity(NamedTuple):
+    """A parsed quantity, and the unit that was applied to read it."""
+
+    value: float
+    """The value, in base units."""
+    unit: Unit
+    """The unit applied: the one the text named, or else the default unit."""
+    explicit_unit: bool
+    """Whether the text named its unit, as in ``"3 mm"``."""
+
+
 def parse_quantity(text: str, dimension: Dimension, default_unit: str | None = None) -> float:
     """Parse text such as ``0.1046 in``, ``3mm``, ``1-1/2"``, ``90°`` and return base units.
 
     ``default_unit`` applies when the text has no unit. It defaults to the base unit.
+
+    Raises:
+        InputError: The text isn't a valid value of ``dimension``.
+    """
+    return parse_quantity_detailed(text, dimension, default_unit).value
+
+
+def parse_quantity_detailed(
+    text: str, dimension: Dimension, default_unit: str | None = None
+) -> ParsedQuantity:
+    """Parse text like ``parse_quantity``, and also report the unit that was applied.
+
+    Raises:
+        InputError: The text isn't a valid value of ``dimension``.
     """
     m = _QUANTITY.fullmatch(text)
     if not m or not m.group("number"):
         raise InputError(f"Cannot read a value from {text!r}")
     number = parse_number(m.group("number"))
     unit_text = m.group("unit")
+    explicit = unit_text is not None
     if unit_text is None:
         unit_text = default_unit if default_unit is not None else BASE_UNITS[dimension]
     unit = get_unit(unit_text)
     if unit.dimension is not dimension:
         raise InputError(
-            f"{text!r} measures {unit.dimension.value}, but {dimension.value} is expected"
+            f"{text!r} is {unit.dimension.with_article}, but {dimension.with_article} is expected"
         )
-    return number * unit.factor
+    return ParsedQuantity(number * unit.factor, unit, explicit)
 
 
 @dataclass(frozen=True)
 class TypedValue:
-    """A value the user typed: the text, its exact parse, and the unit it was typed in.
+    """A value the user typed: the text, its exact parse, and the unit that was applied.
 
     This is the *intent* tier of ADR-0013 §9: the base-unit ``value`` is parsed once from
-    the user's own ``text`` and never re-read from rounded display text. ``unit`` is the
-    default unit in effect when the text was typed (``None`` when it doesn't matter, e.g.
-    for ratios); a front end may show ``text`` verbatim while that unit is still current.
+    the user's own ``text`` and never re-read from rounded display text. A front end may
+    show ``text`` verbatim when it named its unit, or when ``unit`` is the display unit;
+    otherwise it shows ``value`` in the display unit. Build one with ``parse``.
     """
 
     value: float
     """The exact parse, in base units."""
     text: str
     """What the user typed, stripped of surrounding space."""
-    unit: str | None = None
-    """The default unit the text was typed in, e.g. ``"in"``."""
+    unit: Unit
+    """The unit applied: the one the text named, or else the default unit."""
+    explicit_unit: bool
+    """Whether the text named its unit, as in ``"3 mm"``."""
+
+    @property
+    def dimension(self) -> Dimension:
+        """What the value measures: the dimension of its unit."""
+        return self.unit.dimension
 
     @classmethod
     def parse(cls, text: str, dimension: Dimension, default_unit: str | None = None) -> TypedValue:
@@ -160,4 +206,5 @@ class TypedValue:
         Raises:
             InputError: The text isn't a valid value of that dimension.
         """
-        return cls(parse_quantity(text, dimension, default_unit), text.strip(), default_unit)
+        parsed = parse_quantity_detailed(text, dimension, default_unit)
+        return cls(parsed.value, text.strip(), parsed.unit, parsed.explicit_unit)

@@ -68,10 +68,12 @@ All notable changes are recorded here. The format follows
   method that uses each, and K is shared only by K-factor methods. The die ratio P stays
   per calculator.
 - `DomainSettings`, the in-memory model of the domain settings a user sets during a session
-  (ADR-0013 §7). It is immutable, validates against each domain's settings, and keeps each
-  value as a `TypedValue`: the user's text, its exact base-unit parse, and the unit it was
-  typed in (§9). `for_domain()` returns the `DomainValues` that `run()` takes. Nothing is
-  saved to disk. `Domain.values(thickness=...)` also builds checked `DomainValues`: an
+  (ADR-0013 §7). It is immutable and starts empty; its setters are the only way to add a
+  value, and they check the setting's key, dimension, and range. Every method takes the
+  `Domain`. Each value is a `TypedValue`: the user's text, its exact base-unit parse, the
+  unit applied, and whether the text named that unit (§9), from the new
+  `parse_quantity_detailed()`. `for_domain()` returns the `DomainValues` that `run()`
+  takes. Nothing is saved to disk. `Domain.values(thickness=...)` also builds checked `DomainValues`: an
   unknown key raises `UsageError` naming the domain's settings, and an out-of-range value
   raises `OutOfRangeError`. Their label always comes from `Domain.settings_label`, e.g.
   "Sheet Metal settings". Building `DomainValues` directly checks only that it has a label.
@@ -85,7 +87,7 @@ All notable changes are recorded here. The format follows
 - Parameter and domain-setting symbols must be usable in formulas: an identifier that
   isn't a Python keyword or an evaluator function or constant. Domain setting symbols
   must also be unique.
-- A unit of the wrong kind now reads "'3 deg' measures angle, but length is expected".
+- A unit of the wrong kind now reads "'3 deg' is an angle, but a length is expected".
 - Range errors name the unit and use the display unit, e.g. the CLI's
   "Material thickness (T) must be greater than 0 in".
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no
