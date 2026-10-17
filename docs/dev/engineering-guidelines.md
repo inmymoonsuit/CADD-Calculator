@@ -65,7 +65,9 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
 6. **Types.** Everything in `src/` and `packaging/` passes `mypy --strict`. **[CI]**
 7. **Engineering values.**
    * Formulas go through `ctx.calc`, so the displayed work can't drift from the computed
-     value (ADR-0004).
+     value (ADR-0004). A value a standard defines, such as a gauge thickness, is computed
+     in its domain module by `expr.evaluate_exact` from the one expression its work shows
+     (ADR-0014, amendments).
    * Calculations work in base units, and only `core.formatting` rounds (ADR-0005). The
      one exception is a standard's own stated precision, such as a gauge thickness
      published to four decimals: that is data, applied only by

@@ -620,3 +620,27 @@ These refine the publications entry above.
   every shipped table, by its loose title and edition, against
   `MAX_CITE_ONLY_PER_PUBLICATION`.
 
+### 2026-10-17: one formula string, evaluated exactly and shown (maintainer, phase 2a)
+
+This replaces, in the gauge-table entry above, the formulas kept twice.
+
+* **`core.expr.evaluate_exact`.** It uses the same parser and allow-list as `evaluate`,
+  so one expression is both evaluated and shown.
+  * Arithmetic is exact rational arithmetic (`Fraction`), and a decimal literal is read
+    as written.
+  * A power with a non-integer exponent alone is computed as a `Decimal` to the stated
+    `digits`, then carried on exactly. A whole exponent above 1000 is refused.
+  * A float or bool input is refused, as are functions and `pi`, which have no exact
+    value.
+* **Each gauge formula exists once,** as its expression in `gauges.FORMULAS`; the Python
+  evaluators are gone. The float agreement test now holds `evaluate_exact` against
+  `evaluate` for every gauge, at its system's precision.
+* **A derived value shows its work.** `DerivedValue.work` is an optional `Step`, whose
+  value must equal the derived value. When an input takes the value, `run()` gives the
+  step that input's symbol and places it ahead of the calculator's own work.
+  * `Step` moves to `core.steps` and gains `substitution`: the shown values of the
+    expression's symbols, when they aren't the calculator's.
+  * A gauge's work reads T = (w + c) / 16 / B = (70 + 0) / 16 / 41.82 = 0.1046 in, and
+    its note says how the exact value was stated, e.g. "0.1046150167… in before
+    rounding to 4 decimal places". The front ends show that note from 2a.4.
+

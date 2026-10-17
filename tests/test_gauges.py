@@ -7,7 +7,6 @@ AWG from NBS Circular 391, Table 13. None is a reproduced table.
 
 from __future__ import annotations
 
-from decimal import Decimal
 from fractions import Fraction
 from importlib import resources
 
@@ -30,7 +29,7 @@ from caddcalc.core import (
     expr,
     parse_table,
 )
-from caddcalc.core.formatting import describe_note, describe_source
+from caddcalc.core.formatting import DisplayPrefs, describe_note, describe_source, render_step
 
 GAUGES = load_gauges(GAUGE_TABLE.load())
 SYSTEMS = {system.id: system for system in GAUGES.systems}
@@ -79,13 +78,48 @@ def test_each_system_covers_its_range_in_order() -> None:
 
 
 @pytest.mark.parametrize("system", GAUGES.systems, ids=lambda s: s.id)
-def test_each_formula_as_shown_agrees_with_its_exact_evaluation(system: GaugeSystem) -> None:
-    """The expression users see, evaluated in floats, states every gauge the same way."""
+def test_each_formula_agrees_in_floats_with_its_exact_evaluation(system: GaugeSystem) -> None:
+    """``evaluate_exact`` against ``evaluate``: every gauge states the same either way."""
     for gauge in system.gauges:
-        symbols = {name: float(value) for name, value in gauge.symbols.items()}
-        shown = expr.evaluate(system.formula.expression, symbols)
-        assert abs(shown - float(gauge.exact)) <= 1e-12 * float(gauge.exact), gauge.key
-        assert system.precision.state(Decimal(repr(shown))) == gauge.stated, gauge.key
+        exact = expr.evaluate_exact(system.formula.expression, gauge.symbols, digits=40)
+        assert exact == gauge.exact, gauge.key
+        floats = {name: float(value) for name, value in gauge.symbols.items()}
+        shown = expr.evaluate(system.formula.expression, floats)
+        assert abs(shown - float(exact)) <= 1e-12 * float(exact), gauge.key
+        assert system.precision.state(Fraction(repr(shown))) == gauge.stated, gauge.key
+
+
+def test_a_derived_thickness_shows_its_work_ahead_of_the_calculators() -> None:
+    settings = DomainSettings().set_choice(DOMAIN, "gauge", "msg:12").for_domain(DOMAIN)
+    result = BendAllowance().run(settings=settings)
+    work = result.steps[0]
+    assert (work.symbol, work.label, work.value) == (
+        "T",
+        "Material thickness (12 ga, Manufacturers' Standard)",
+        result.inputs["thickness"],
+    )
+    assert work.note == "0.1046150167… in before rounding to 4 decimal places"
+    symbolic, numeric, _ = render_step(work, result, DisplayPrefs())
+    assert (symbolic, numeric) == ("(w + c) / 16 / B", "(70 + 0) / 16 / 41.82")
+    assert result.steps[1:] == BendAllowance().run().steps
+    assert result.to_dict()["steps"][0]["substitution"] == {"w": "70", "c": "0", "B": "41.82"}
+
+    awg = DomainSettings().set_choice(DOMAIN, "gauge", "awg:0000").for_domain(DOMAIN)
+    work = BendAllowance().run(settings=awg).steps[0]
+    assert (
+        render_step(work, result, DisplayPrefs())[1]
+        == "0.005 · (0.46 / 0.005) ^ ((36 - (-3)) / 39)"
+    )
+    uss = DomainSettings().set_choice(DOMAIN, "gauge", "uss:26").for_domain(DOMAIN)
+    assert BendAllowance().run(settings=uss).steps[0].note == "exact, as the system states it"
+
+
+def test_no_work_is_shown_for_a_derived_value_not_used() -> None:
+    settings = DomainSettings().set_choice(DOMAIN, "gauge", "msg:12")
+    typed = settings.set_text(DOMAIN, "thickness", "0.125", "in").for_domain(DOMAIN)
+    steps = BendAllowance().run(settings=typed).steps
+    assert [s.symbol for s in steps] == [s.symbol for s in BendAllowance().run().steps]
+    assert all(s.substitution is None for s in steps)
 
 
 def test_us_standard_keeps_the_statutes_exact_decimals() -> None:

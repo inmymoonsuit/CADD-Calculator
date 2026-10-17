@@ -9,28 +9,17 @@ from dataclasses import dataclass, replace
 from typing import Any, ClassVar
 
 from caddcalc.core import expr
+from caddcalc.core.choices import DerivedValue
 from caddcalc.core.domain import DomainValues
 from caddcalc.core.errors import InputError, SpecError, UsageError
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
+from caddcalc.core.steps import Step
 from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
-
-
-@dataclass(frozen=True)
-class Step:
-    """One line of "show work": ``symbol = expression = value``."""
-
-    symbol: str
-    label: str
-    dimension: Dimension
-    value: float
-    expression: str | None = None
-    """The evaluated formula, or None when the value was computed in code (see ``note``)."""
-    note: str = ""
 
 
 @dataclass(frozen=True)
@@ -74,6 +63,7 @@ class Result:
                     "expression": s.expression,
                     "note": s.note,
                     **q(s.value, s.dimension),
+                    **({} if s.substitution is None else {"substitution": dict(s.substitution)}),
                 }
                 for s in self.steps
             ],
@@ -286,18 +276,23 @@ class Calculator(ABC):
         values: dict[str, float] = {}
         sources: dict[str, InputSource] = {}
         derived_notes: dict[Note, list[str]] = {}
+        derived_work: list[Step] = []
         for p in self.params_for(m.key):
             value, source = _resolve(p, inputs, settings, labels)
             p.check(value, source)
             values[p.key] = value
             sources[p.key] = source
-            note = _derived_note(p, source, settings)
-            if note is not None:
-                derived_notes.setdefault(note, []).append(p.key)
+            derived = _derived(p, source, settings)
+            if derived is not None and derived.note is not None:
+                derived_notes.setdefault(derived.note, []).append(p.key)
+            if derived is not None and derived.work is not None:
+                derived_work.append(replace(derived.work, symbol=p.symbol))
 
         ctx = Context(self, m, values)
-        # One note per derived note used, naming every input that took it (ADR-0014).
+        # One note per derived note used, naming every input that took it, and the work
+        # of each derived value used, ahead of the calculator's own (ADR-0014).
         ctx.notes.extend(replace(n, subjects=tuple(keys)) for n, keys in derived_notes.items())
+        ctx.steps.extend(derived_work)
         self.compute(ctx)
 
         missing = [o.key for o in self.outputs if o.key not in ctx.outputs]
@@ -390,12 +385,11 @@ def _resolve(
     return default, DEFAULT
 
 
-def _derived_note(p: Param, source: InputSource, settings: DomainValues | None) -> Note | None:
-    """The note a derived value carries, when ``p`` took that value."""
+def _derived(p: Param, source: InputSource, settings: DomainValues | None) -> DerivedValue | None:
+    """The derived value ``p`` took, if it took one."""
     if source.kind is not SourceKind.DERIVED or settings is None:
         return None
-    derived = settings.derived.get(p.key)
-    return None if derived is None else derived.note
+    return settings.derived.get(p.key)
 
 
 def _unique(owner: str, what: str, items: list[str]) -> None:

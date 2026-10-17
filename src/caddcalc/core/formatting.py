@@ -8,11 +8,12 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from caddcalc.core import expr
-from caddcalc.core.calculator import Calculator, Result, Step
+from caddcalc.core.calculator import Calculator, Result
 from caddcalc.core.errors import CaddCalcError
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError
+from caddcalc.core.steps import Step
 from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit
 
 DISCLAIMER = (
@@ -142,6 +143,8 @@ def render_step(step: Step, result: Result, prefs: DisplayPrefs) -> tuple[str, s
     if step.expression is None:
         return (step.note, None, value_text)
     symbolic = expr.render_symbolic(step.expression)
+    if step.substitution is not None:
+        return (symbolic, expr.render_numeric(step.expression, step.substitution), value_text)
     values: dict[str, str] = {}
     for name in expr.names(step.expression):
         v, dim = result.symbols[name]

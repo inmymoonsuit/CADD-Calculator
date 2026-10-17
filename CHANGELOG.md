@@ -27,8 +27,14 @@ All notable changes are recorded here. The format follows
   the system's published precision, e.g. 0.1046 in for `"msg:12"`, and results that use
   it carry a nominal-thickness caution citing the system's tolerance standard. The
   definitions ship as a cited, versioned table, `data/gauges.toml`; every thickness is
-  computed from them exactly. No gauge is selected by default, and the Sheet Metal page
-  doesn't offer the choice yet.
+  computed from them exactly, and a result that uses one shows its work ahead of the
+  calculator's (`DerivedValue.work`). No gauge is selected by default, and the Sheet
+  Metal page doesn't offer the choice yet.
+- `core.expr.evaluate_exact()`: evaluates a formula with exact rational arithmetic, for
+  values a standard defines, from the same expression its work shows. A non-integer
+  power alone is computed to a stated number of digits; a float input, a function, and
+  `pi` are refused. `Step` moves to `core.steps`, still exported from `caddcalc.core`,
+  and gains `substitution`, the shown values of symbols that aren't the calculator's.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks it: a known
   schema version, only the content keys its domain module declares, each publication

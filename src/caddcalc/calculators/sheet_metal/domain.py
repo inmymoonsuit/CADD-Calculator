@@ -52,5 +52,5 @@ DOMAIN = Domain(
     summary="Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts.",
     settings=(THICKNESS_SETTING, INSIDE_RADIUS_SETTING, K_FACTOR_SETTING),
     choices=(GAUGE,),
-    resolver=GaugeResolver(DOMAIN_ID, THICKNESS_SETTING.key),
+    resolver=GaugeResolver(DOMAIN_ID, THICKNESS_SETTING),
 )

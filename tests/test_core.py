@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
+from fractions import Fraction
 
 import pytest
 
@@ -24,6 +26,7 @@ from caddcalc.core import (
     Registry,
     SpecError,
     UnknownCalculatorError,
+    UsageError,
     Verification,
     expr,
     parse_quantity,
@@ -438,3 +441,55 @@ def test_expr_allows_long_flat_sums() -> None:
 def test_expr_tan_at_90_degrees_is_an_error_not_a_huge_number() -> None:
     with pytest.raises(CalculationError, match="undefined"):
         expr.evaluate("tand(x)", {"x": 90.0})
+
+
+def test_expr_evaluates_exactly_with_exact_inputs() -> None:
+    """The same expression, evaluated as rationals; 0.1 + 0.2 is 3/10, not 0.30000000000000004."""
+    assert expr.evaluate_exact("a + b", {"a": Decimal("0.1"), "b": Fraction(1, 5)}, digits=10) == (
+        Fraction(3, 10)
+    )
+    assert expr.evaluate_exact(
+        "(w + c) / 16 / B", {"w": 70, "c": 0, "B": Decimal("41.82")}, digits=10
+    ) == (Fraction(70, 16) / Fraction("41.82"))
+    assert expr.evaluate_exact("x ** 3 - -x", {"x": Fraction(1, 2)}, digits=10) == Fraction(5, 8)
+    assert expr.evaluate_exact("0.005 * 2", {}, digits=10) == Fraction(1, 100), "literal as written"
+
+
+def test_expr_evaluates_a_non_integer_power_to_the_stated_digits() -> None:
+    root = expr.evaluate_exact("x ** (1 / 2)", {"x": 2}, digits=30)
+    assert abs(root - Fraction("1.41421356237309504880168872421")) < Fraction(1, 10**28)
+    assert expr.evaluate_exact("x ** (1 / 2)", {"x": 2}, digits=5) == Fraction("1.4142")
+    assert expr.evaluate_exact("0 ** (1 / 2)", {}, digits=5) == 0
+
+
+@pytest.mark.parametrize(
+    ("symbols", "message"),
+    [
+        ({"x": 0.5}, "needs exact values; x is float 0.5"),
+        ({"x": True}, "needs exact values; x is bool"),
+        ({"x": Decimal("NaN")}, "needs finite values"),
+    ],
+)
+def test_a_float_cant_reach_the_exact_evaluator(symbols: dict[str, object], message: str) -> None:
+    with pytest.raises(UsageError, match=message):
+        expr.evaluate_exact("x + 1", symbols, digits=10)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("formula", "error", "message"),
+    [
+        ("sqrt(x)", SpecError, "functions have no exact value"),
+        ("pi * x", SpecError, "pi has no exact value"),
+        ("y + 1", SpecError, "unknown symbol 'y'"),
+        ("1 / (x - 4)", CalculationError, "Division by zero"),
+        ("(0 - x) ** (1 / 2)", CalculationError, "not a real number"),
+        ("x ** 1001", CalculationError, "above 1000"),
+    ],
+)
+def test_the_exact_evaluator_refuses_what_has_no_exact_value(
+    formula: str, error: type[Exception], message: str
+) -> None:
+    with pytest.raises(error, match=message):
+        expr.evaluate_exact(formula, {"x": 4}, digits=10)
+    with pytest.raises(UsageError, match="digits of 1 or more"):
+        expr.evaluate_exact("x", {"x": 4}, digits=0)

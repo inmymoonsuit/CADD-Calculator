@@ -18,9 +18,11 @@ import math
 import operator
 import re
 from collections.abc import Callable, Mapping
+from decimal import Decimal, InvalidOperation, localcontext
+from fractions import Fraction
 from functools import lru_cache
 
-from caddcalc.core.errors import CalculationError, SpecError
+from caddcalc.core.errors import CalculationError, SpecError, UsageError
 
 
 def _tand(deg: float) -> float:
@@ -223,6 +225,105 @@ def _eval(node: ast.expr, symbols: Mapping[str, float], expression: str) -> floa
         args = [_eval(a, symbols, expression) for a in node.args]
         return float(FUNCTIONS[node.func.id](*args))
     raise SpecError(f"Formula {expression!r} uses unsupported syntax")  # pragma: no cover
+
+
+_EXACT_BINARY_OPS: dict[type[ast.operator], Callable[[Fraction, Fraction], Fraction]] = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+}
+
+MAX_EXACT_EXPONENT = 1000
+"""The largest whole exponent ``evaluate_exact`` raises to, so a value stays cheap to hold."""
+
+
+def evaluate_exact(
+    expression: str, symbols: Mapping[str, Fraction | Decimal | int], *, digits: int
+) -> Fraction:
+    """Evaluate ``expression`` exactly, for a value a standard defines, such as a gauge's.
+
+    The same parser and allow-list as ``evaluate`` apply, so one expression is both
+    evaluated and shown. Arithmetic is exact rational arithmetic, and a decimal literal is
+    read as written. A power with a non-integer exponent has no exact value in general, so
+    it alone is computed as a ``Decimal`` to ``digits`` significant digits and carried on
+    exactly from there. Functions and ``pi`` have no exact value and are refused.
+
+    Args:
+        expression: The formula, e.g. ``"(w + c) / 16 / B"``.
+        symbols: Each symbol's exact value. A float or a bool is refused: a float has
+            already lost the exactness this evaluator exists for.
+        digits: Significant digits for a non-integer power.
+
+    Raises:
+        UsageError: A symbol's value isn't an exact ``Fraction``, ``Decimal``, or ``int``,
+            or ``digits`` is under 1.
+        SpecError: The expression is malformed, calls a function, uses ``pi``, or names an
+            unknown symbol.
+        CalculationError: It divides by zero, raises a negative number to a fractional
+            power, or raises to a whole power above ``MAX_EXACT_EXPONENT``.
+    """
+    if isinstance(digits, bool) or not isinstance(digits, int) or digits < 1:
+        raise UsageError(f"evaluate_exact() needs digits of 1 or more, not {digits!r}")
+    exact: dict[str, Fraction] = {}
+    for name, value in symbols.items():
+        if isinstance(value, bool) or not isinstance(value, Fraction | Decimal | int):
+            raise UsageError(
+                f"evaluate_exact() needs exact values; {name} is {type(value).__name__} {value!r}"
+            )
+        if isinstance(value, Decimal) and not value.is_finite():
+            raise UsageError(f"evaluate_exact() needs finite values; {name} is {value}")
+        exact[name] = Fraction(value)
+    node = parse(expression)
+    shown = render_symbolic(expression)
+    try:
+        return _exact(node, exact, expression, digits)
+    except ZeroDivisionError:
+        raise CalculationError(f"Division by zero in {shown}") from None
+    except (ValueError, OverflowError, InvalidOperation) as exc:
+        raise CalculationError(f"Cannot evaluate {shown} exactly: {exc}") from None
+
+
+def _exact(
+    node: ast.expr, symbols: Mapping[str, Fraction], expression: str, digits: int
+) -> Fraction:
+    if isinstance(node, ast.Constant):
+        # parse() admits only int and float literals; a float reads as its shortest text.
+        return Fraction(node.value) if isinstance(node.value, int) else Fraction(repr(node.value))
+    if isinstance(node, ast.Name):
+        if node.id in CONSTANTS:
+            raise SpecError(f"Formula {expression!r}: {node.id} has no exact value")
+        if node.id in symbols:
+            return symbols[node.id]
+        raise SpecError(f"Formula {expression!r} refers to unknown symbol {node.id!r}")
+    if isinstance(node, ast.BinOp):
+        left = _exact(node.left, symbols, expression, digits)
+        right = _exact(node.right, symbols, expression, digits)
+        if isinstance(node.op, ast.Pow):
+            return _power(left, right, digits)
+        return _EXACT_BINARY_OPS[type(node.op)](left, right)
+    if isinstance(node, ast.UnaryOp):
+        operand = _exact(node.operand, symbols, expression, digits)
+        return -operand if isinstance(node.op, ast.USub) else operand
+    if isinstance(node, ast.Call):
+        raise SpecError(f"Formula {expression!r}: functions have no exact value")
+    raise SpecError(f"Formula {expression!r} uses unsupported syntax")  # pragma: no cover
+
+
+def _power(base: Fraction, exponent: Fraction, digits: int) -> Fraction:
+    if exponent.denominator == 1:
+        if abs(exponent) > MAX_EXACT_EXPONENT:
+            raise ValueError(f"the exponent {exponent} is above {MAX_EXACT_EXPONENT}")
+        return Fraction(base ** int(exponent))
+    if base < 0:
+        raise ValueError("the result is not a real number")
+    if base == 0:
+        return Fraction(0)
+    with localcontext() as context:
+        context.prec = digits
+        b = Decimal(base.numerator) / Decimal(base.denominator)
+        e = Decimal(exponent.numerator) / Decimal(exponent.denominator)
+        return Fraction(b**e)
 
 
 _TOKEN = re.compile(r"\d+\.?\d*(?:[eE][-+]?\d+)?|\.\d+|[A-Za-z_]\w*|\*\*|\*")

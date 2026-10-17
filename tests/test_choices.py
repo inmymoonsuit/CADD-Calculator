@@ -32,6 +32,7 @@ from caddcalc.core import (
     Registry,
     SourceKind,
     SpecError,
+    Step,
     TypedValue,
     UsageError,
     Verification,
@@ -482,3 +483,22 @@ def test_a_resolver_sees_only_the_parents_a_choice_declares() -> None:
     after = before.set_choice(declared, "a", "a:2")
     assert after.cleared_choices(declared, before) == (ClearedChoice("u", "none"),)
     assert resolver.seen[-1] == ("u", {"a": "a:2"})
+
+
+def test_a_derived_values_work_shows_the_value_under_the_inputs_symbol() -> None:
+    source = InputSource(SourceKind.DERIVED, "plate 1", domain="shop", reference=TABLE)
+    with pytest.raises(SpecError, match=r"work of derived value 'plate 1' gives 3\.0, not 2\.0"):
+        DerivedValue(2.0, source, work=Step("X", "Plate", L, 3.0))
+
+    class _Worked(_Plates):
+        @override
+        def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
+            plain = super().derive(selections)["thickness"]
+            work = Step("X", "Plate", L, plain.value, "p / 2", substitution={"p": "4"})
+            return {"thickness": replace(plain, work=work)}
+
+    worked = replace(SHOP, resolver=_Worked())
+    settings = DomainSettings().set_choice(worked, "plate", "std:1").for_domain(worked)
+    result = _Bend().run(settings=settings)
+    assert result.steps[0] == Step("T", "Plate", L, 2.0, "p / 2", substitution={"p": "4"})
+    assert [s.symbol for s in result.steps] == ["T", "S"]

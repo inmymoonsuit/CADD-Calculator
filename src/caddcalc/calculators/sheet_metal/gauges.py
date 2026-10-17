@@ -1,15 +1,16 @@
 """Gauge systems: the gauge choice and the thickness each gauge gives (ADR-0014 §2).
 
 ``data/gauges.toml`` holds each system's definition: the statute's weights, the cited
-constants, and each system's range and published precision. The formulas live here. Each
-thickness is evaluated exactly and then stated at its system's precision by ``nominal()``,
-so a derived thickness is the system's own published value.
+constants, and each system's range and published precision. The formulas live here, each
+written once: ``expr.evaluate_exact`` evaluates it, the derived value's work shows it, and
+``nominal()`` states the result at its system's precision, so a derived thickness is the
+system's own published value.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import (
     ROUND_DOWN,
@@ -32,14 +33,17 @@ from caddcalc.core import (
     Note,
     NoteKind,
     Option,
+    Param,
     ReferenceTable,
     ReferenceValue,
     SourceKind,
     SpecError,
+    Step,
     TableSpec,
     TrustLevel,
     TypedValue,
     UsageError,
+    expr,
     nominal,
 )
 
@@ -65,8 +69,7 @@ WORKING_DIGITS = 40
 class Formula:
     """How a kind of gauge system turns a gauge into a thickness in inches.
 
-    ``expression`` is the formula as shown to users; ``evaluate`` is the same formula
-    evaluated exactly, and a test holds the two to agree at every system's precision.
+    The expression is written once: it is evaluated exactly and shown as the work.
     """
 
     expression: str
@@ -74,20 +77,12 @@ class Formula:
     """The symbols a system supplies from the table's constants."""
     per_gauge: str
     """The symbol each gauge supplies: ``"w"``, its weight, or ``"n"``, its index."""
-    evaluate: Callable[[Mapping[str, Decimal]], Fraction | Decimal]
     defaults: Mapping[str, Decimal] = MappingProxyType({})
     """Constants a system may leave out, e.g. no coating."""
 
-
-def _weight_thickness(symbols: Mapping[str, Decimal]) -> Fraction:
-    return (Fraction(symbols["w"]) + Fraction(symbols["c"])) / 16 / Fraction(symbols["B"])
-
-
-def _awg_diameter(symbols: Mapping[str, Decimal]) -> Decimal:
-    with localcontext() as context:
-        context.prec = WORKING_DIGITS
-        d0000, d36 = symbols["d0000"], symbols["d36"]
-        return d36 * (d0000 / d36) ** ((36 - symbols["n"]) / Decimal(39))
+    def evaluate(self, symbols: Mapping[str, Decimal]) -> Fraction:
+        """Return the thickness in inches, evaluated exactly (ADR-0014, amendments)."""
+        return expr.evaluate_exact(self.expression, symbols, digits=WORKING_DIGITS)
 
 
 FORMULAS: Mapping[str, Formula] = MappingProxyType(
@@ -96,14 +91,12 @@ FORMULAS: Mapping[str, Formula] = MappingProxyType(
             "(w + c) / 16 / B",
             frozenset({"B", "c"}),
             "w",
-            _weight_thickness,
             MappingProxyType({"c": Decimal(0)}),
         ),
         "awg": Formula(
             "d36 * (d0000 / d36) ** ((36 - n) / 39)",
             frozenset({"d0000", "d36"}),
             "n",
-            _awg_diameter,
         ),
     }
 )
@@ -158,14 +151,31 @@ class Precision:
     """Thicknesses under this are stated with ``decimals_below`` places instead."""
     decimals_below: int | None = None
 
-    def state(self, exact: Fraction | Decimal) -> TypedValue:
-        """Return ``exact`` inches as the system states it, e.g. ``"0.1046 in"``."""
+    def places(self, exact: Fraction) -> int:
+        """Return how many decimal places the system states ``exact`` inches with."""
         if self.decimals is None:
-            return nominal(exact, "in", _terminating_places(Fraction(exact)))
-        small = self.below is not None and Fraction(exact) < Fraction(self.below)
-        if small and self.decimals_below is not None:
-            return nominal(exact, "in", self.decimals_below, self.rounding)
-        return nominal(exact, "in", self.decimals, self.rounding)
+            return _terminating_places(exact)
+        if self.below is not None and self.decimals_below is not None and exact < self.below:
+            return self.decimals_below
+        return self.decimals
+
+    def state(self, exact: Fraction) -> TypedValue:
+        """Return ``exact`` inches as the system states it, e.g. ``"0.1046 in"``."""
+        return nominal(exact, "in", self.places(exact), self.rounding)
+
+    def explain(self, exact: Fraction) -> str:
+        """Say how ``exact`` inches became the stated value, for the derived value's work."""
+        if self.decimals is None:
+            return "exact, as the system states it"
+        return f"{_approx(exact)} in before rounding to {self.places(exact)} decimal places"
+
+
+def _approx(value: Fraction) -> str:
+    """Return ``value`` to 10 significant digits, with an ellipsis if that isn't exact."""
+    with localcontext() as context:
+        context.prec = 10
+        shown = Decimal(value.numerator) / Decimal(value.denominator)
+    return f"{shown:f}" + ("" if Fraction(shown) == value else "…")
 
 
 def _terminating_places(value: Fraction) -> int:
@@ -185,8 +195,9 @@ class Gauge:
     """How it reads, e.g. ``"12 ga"``."""
     symbols: Mapping[str, Decimal]
     """The formula's inputs for this gauge, for show-work."""
-    exact: Fraction | Decimal
-    """The thickness in inches, evaluated exactly (at ``WORKING_DIGITS`` where inexact)."""
+    exact: Fraction
+    """The thickness in inches, evaluated exactly (to ``WORKING_DIGITS`` for a non-integer
+    power)."""
     stated: TypedValue
     """The thickness at its system's precision, e.g. ``"0.1046 in"``."""
 
@@ -477,7 +488,7 @@ class GaugeResolver:
     The table loads on first use and is kept for the life of the process.
     """
 
-    def __init__(self, domain: str, setting: str, spec: TableSpec = GAUGE_TABLE) -> None:
+    def __init__(self, domain: str, setting: Param, spec: TableSpec = GAUGE_TABLE) -> None:
         """Resolve the gauge choice of ``domain`` into its ``setting``, from ``spec``."""
         self._domain = domain
         self._setting = setting
@@ -493,7 +504,7 @@ class GaugeResolver:
         return self.gauges.options if choice == GAUGE.key else ()
 
     def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
-        """Return the selected gauge's nominal thickness, with its caution."""
+        """Return the selected gauge's nominal thickness, with its caution and its work."""
         key = selections.get(GAUGE.key)
         if key is None:
             return {}
@@ -504,4 +515,23 @@ class GaugeResolver:
             domain=self._domain,
             reference=self.gauges.table.reference,
         )
-        return {self._setting: DerivedValue(gauge.stated.value, source, gauge.stated, system.note)}
+        work = Step(
+            self._setting.symbol,
+            f"{self._setting.label} ({gauge.label}, {system.name})",
+            self._setting.dimension,
+            gauge.stated.value,
+            system.formula.expression,
+            note=system.precision.explain(gauge.exact),
+            substitution=MappingProxyType({k: _shown(v) for k, v in gauge.symbols.items()}),
+        )
+        return {
+            self._setting.key: DerivedValue(
+                gauge.stated.value, source, gauge.stated, system.note, work
+            )
+        }
+
+
+def _shown(value: Decimal) -> str:
+    """Return a formula input as the work shows it, e.g. ``"41.82"`` or ``"(-3)"``."""
+    text = f"{value:f}"
+    return f"({text})" if value < 0 else text

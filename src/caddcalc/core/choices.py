@@ -15,6 +15,7 @@ from typing import Protocol
 from caddcalc.core.errors import SpecError
 from caddcalc.core.notes import Note
 from caddcalc.core.provenance import InputSource, SourceKind
+from caddcalc.core.steps import Step
 from caddcalc.core.units import TypedValue
 
 OPTION_KEY = re.compile(r"[a-z][a-z0-9_]*:[a-z0-9_]+")
@@ -63,8 +64,8 @@ class DerivedValue:
 
     Raises:
         SpecError: The source isn't a derived one or doesn't name its table (a
-            ``reference``), ``stated`` doesn't equal ``value``, or the note already has
-            subjects. A resolver that builds such a value has a bug.
+            ``reference``), ``stated`` or ``work`` doesn't equal ``value``, or the note
+            already has subjects. A resolver that builds such a value has a bug.
     """
 
     value: float
@@ -78,6 +79,9 @@ class DerivedValue:
 
     It has no subjects: ``Calculator.run`` names the inputs that took the value.
     """
+    work: Step | None = None
+    """How the value was derived, shown ahead of the calculator's work whenever the value
+    is used. ``Calculator.run`` gives it the symbol of the input that took the value."""
 
     def __post_init__(self) -> None:
         if self.source.kind is not SourceKind.DERIVED:
@@ -88,6 +92,11 @@ class DerivedValue:
             )
         if self.stated is not None and self.stated.value != self.value:
             raise SpecError(f"Stated value {self.stated.text!r} doesn't equal {self.value!r}")
+        if self.work is not None and self.work.value != self.value:
+            raise SpecError(
+                f"The work of derived value {self.source.label!r} gives {self.work.value!r}, "
+                f"not {self.value!r}"
+            )
         if self.note is not None and self.note.subjects:
             raise SpecError(
                 f"The note of derived value {self.source.label!r} has subjects; run() names "

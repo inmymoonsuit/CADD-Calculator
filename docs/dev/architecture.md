@@ -19,10 +19,11 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
                                    ▼
 ┌───────────────────── caddcalc.core  (stdlib only) ───────────────────────┐
 │  units.py       Dimension, Unit, parse_quantity (fractions, suffixes)    │
-│  expr.py        safe formula evaluator + symbolic/numeric rendering      │
+│  expr.py        safe formula evaluator (float and exact) + rendering     │
 │  spec.py        Param, Output, Method, Verification, OutOfRangeError     │
 │  reference.py   Reference: a citation (title, detail, URL)               │
-│  calculator.py  Calculator (base), Context, Step, Result                 │
+│  steps.py       Step: one line of show-work                              │
+│  calculator.py  Calculator (base), Context, Result                       │
 │  provenance.py  SourceKind, InputSource: where each input came from      │
 │  notes.py       Note, NoteKind: notes a result carries, with sources     │
 │  refdata.py     ReferenceTable, sources, load_table, nominal (ADR-0014)  │

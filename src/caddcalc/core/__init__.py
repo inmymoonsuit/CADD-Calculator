@@ -4,7 +4,7 @@ Standard library only. Nothing here may import ``caddcalc.gui``, ``caddcalc.cli`
 or any third-party package (ADR-0003).
 """
 
-from caddcalc.core.calculator import Calculator, Context, Result, Step
+from caddcalc.core.calculator import Calculator, Context, Result
 from caddcalc.core.choices import Choice, ChoiceResolver, DerivedValue, Option
 from caddcalc.core.domain import Domain, DomainValues
 from caddcalc.core.errors import (
@@ -36,6 +36,7 @@ from caddcalc.core.reference import Reference
 from caddcalc.core.registry import Registry
 from caddcalc.core.settings import ClearedChoice, DomainSettings
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, Verification
+from caddcalc.core.steps import Step
 from caddcalc.core.units import (
     Dimension,
     ParsedQuantity,
