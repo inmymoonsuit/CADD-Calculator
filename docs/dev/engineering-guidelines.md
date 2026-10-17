@@ -17,15 +17,18 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
    **[CI: test]** Adding a third-party dependency anywhere needs an ADR.
 3. **Qt stays in the GUI.** `core`, `calculators`, and `gui.branding` never import Qt.
    **[CI: import-linter]**
-4. **Single responsibility per layer.** Engineering logic (formulas, units, validation)
-   lives in `core` and `calculators`. Front ends only present calculator metadata and
-   results; they contain no formulas and no engineering decisions.
+4. **Single responsibility per layer.** Engineering logic (formulas, units, validation,
+   the precedence of shared settings) lives in `core` and `calculators`. Front ends only
+   present calculator metadata and results; they contain no formulas and no engineering
+   decisions. User-facing wording of input sources, errors, and result notes comes from
+   `core.formatting`, so every front end says the same thing (ADR-0013 §5).
 5. **Composition goes up, not down.** Lower layers expose mechanisms; higher layers decide
    what to assemble. For example, `core` provides `Registry`, and `calculators` decides
    which calculators are registered.
-6. **Stable public surface.** Calculator IDs, parameter keys, method keys, the names
-   exported by `caddcalc.core`, file formats (`branding.toml`, `palette.toml`, manifests),
-   and CLI options are public. Changing one needs a deprecation path and a CHANGELOG entry.
+6. **Stable public surface.** Calculator IDs, parameter keys, method keys, domain IDs and
+   their setting keys, entry-point group names, the names exported by `caddcalc.core`,
+   file formats (`branding.toml`, `palette.toml`, manifests), and CLI options are public.
+   Changing one needs a deprecation path and a CHANGELOG entry.
 7. **No boundary workarounds.** If a boundary blocks a change, redesign the change and
    record it in an ADR. Don't route around the boundary with a deferred import, a
    duplicated helper, or a callback hook.
@@ -47,11 +50,14 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
    * a one-line comment pointing to the `KI-` entry
 4. **No hidden state.** No monkeypatching of third-party code, no import-time side
    effects, and no module-level mutable state except caches with an explicit way to clear
-   them. Pass dependencies in (a registry, branding, display preferences) rather than
-   reaching for globals.
+   them. Pass dependencies in (a registry, branding, display preferences, a plugin
+   entry-point source) rather than reaching for globals.
 5. **Errors.**
    * Raise specific exceptions from the `CaddCalcError` hierarchy, and catch only what
-     you can handle.
+     you can handle. Each kind of error has one meaning: `InputError` for user input
+     (`OutOfRangeError` carries the parts of a range error), `SpecError` for a bug in a
+     calculator or domain definition, including a bad default, and `UsageError` for
+     calling the API wrongly.
    * Catch `Exception` broadly only at an isolation boundary, such as loading a plugin or
      the top of a UI event handler, with a reason on the suppression. **[CI: BLE]**
    * Don't use `assert` for checks in shipped code, because Python skips asserts under
@@ -61,6 +67,8 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
    * Formulas go through `ctx.calc`, so the displayed work can't drift from the computed
      value (ADR-0004).
    * Calculations work in base units, and only `core.formatting` rounds (ADR-0005).
+   * Display text is never read back as a value. Keep what the user typed as a
+     `TypedValue`, and show values through `entry_text` and `field_text` (ADR-0013 §9).
    * Every method cites its source.
 8. **Security.**
    * No `eval` or `exec`.

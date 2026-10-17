@@ -37,10 +37,13 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [ ] K-factor from a test bend (the inverse calculation)
 - [ ] Whole-part flat pattern: a chain of flanges (Σ outside dimensions − Σ BD)
 - [ ] Dimensioning reference: outside, inside, or centerline (KI-006)
-- [ ] Material library with cited data, plus user/shop-editable tables (CSV/TOML, with provenance fields)
-- [ ] Minimum inside bend radius checks per material and temper (from cited or user tables)
-- [ ] Gauge tables (manufacturer's standard steel gauge, aluminum, stainless), with sources.
-      **Each table must name its gauge system.** MH29 Table 13 lists 12 ga as 0.1093, not 0.1046.
+- [ ] Gauge systems computed from their definitions, with sources (ADR-0014 phase 2a):
+      Manufacturers' Standard, galvanized, US Standard 1893, and AWG.
+      **Each gauge must name its gauge system.** MH29 Table 13 lists 12 ga as 0.1093, not 0.1046.
+- [ ] Material library with cited data (ADR-0014 phase 2b). User or shop-editable tables
+      need a separate decision, outside the session-only model.
+- [ ] Minimum inside bend radius checks per material and temper, as result notes that say
+      so when no source covers the case (ADR-0014 phase 2b)
 - [ ] Feet-and-inches input (KI-009). Fraction display toggle in the GUI.
 - [ ] 1:1 printable SVG templates for cone layouts (annular sector) and flat blanks, to
       cut a paper template and check a first part (see KI-001). Use the conventions of the

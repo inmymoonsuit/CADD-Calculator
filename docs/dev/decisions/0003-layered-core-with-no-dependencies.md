@@ -42,3 +42,21 @@ caddcalc.cli  ─┼──▶  caddcalc.calculators.<domain>  ──▶  caddcal
 * **Depending on numpy, pint, or sympy from the start**: heavier installs and packaging for
   no current benefit. We can revisit for domains that need them, such as structural
   section properties.
+
+## Amendments
+
+### 2026-10-17: domains and session settings (ADR-0013)
+
+* `core` gains the machinery for calculator families, all standard library: `Domain`
+  and `DomainValues` (`core.domain`), the session's `DomainSettings` (`core.settings`),
+  input provenance (`core.provenance`), citations (`core.reference`), and result notes
+  (`core.notes`).
+* `DomainSettings` is a pure, immutable model. Core holds no session state: the GUI owns
+  the one instance for its window, and the CLI needs none.
+* Engineering behavior stays below the front ends: the precedence rule, validation, and
+  the wording of sources, errors, and notes (`core.formatting`). A settings feature
+  handled in the GUI alone was rejected for that reason (ADR-0013, alternatives).
+* `calculators` decides which domains exist (`BUILTIN_DOMAINS`), as it already decides
+  which calculators do.
+* `core`, `calculators`, and `gui.branding` never import Qt, which an import-linter
+  contract enforces alongside the layer order.

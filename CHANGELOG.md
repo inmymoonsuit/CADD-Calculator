@@ -15,6 +15,11 @@ All notable changes are recorded here. The format follows
   V-die opening, and truncated cone flat pattern. Each has the legacy course method and a
   general method.
 - Golden tests reproducing the original course spreadsheets.
+- ADR-0013 accepted, with phase 1 as built, and ADR-0014 (materials and reference data
+  for phase 2, accepted), with its research notes in
+  `docs/dev/research/materials-data-sources.md`. ADR-0003, ADR-0005, ADR-0006, and the
+  engineering guidelines are amended for domains, numeric intent, and the
+  `caddcalc.domains` entry-point group.
 - Developer docs (architecture, ADRs 0001 to 0010, known issues, engineering log, roadmap,
   legacy transcription) and user docs.
 - CI on Windows, macOS, and Linux.

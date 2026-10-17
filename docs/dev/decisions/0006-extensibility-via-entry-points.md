@@ -39,3 +39,22 @@ forking the app.
 
 * **Discovering built-ins through entry points too**: elegant, but fragile in frozen builds.
 * **Scanning a folder and importing every .py file**: no packaging or versioning story.
+
+## Amendments
+
+### 2026-10-17: domains as plugins (ADR-0013 §10)
+
+* **A second entry-point group, `caddcalc.domains`,** names a `Domain` or an iterable of
+  them. `default_registry()` registers every domain, built-in and plugin, before any
+  calculator, because a calculator's domain must already exist.
+* A calculator naming an unknown domain fails registration with a "did you mean" hint
+  that matches domain IDs and names. A plugin can't redefine a built-in domain.
+* An entry point naming an iterable is registered item by item. A bad item is recorded
+  as `name[index]` in `plugin_errors`, and the rest still load.
+* **Calculator IDs** are lowercase and dotted, with at least two parts. `domain.name`
+  above is the built-ins' convention, checked by a test; a plugin may use its own prefix
+  in any domain, e.g. `acme.flange_check`.
+* The public, stable API also covers domain IDs, domain setting keys, and both
+  entry-point group names.
+* Tests pass a fake entry-point source (`Registry(entry_points=...)`,
+  `default_registry(entry_points=...)`) instead of patching `importlib.metadata`.

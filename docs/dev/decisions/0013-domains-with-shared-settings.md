@@ -1,8 +1,9 @@
 # ADR-0013: Domains with shared settings that their calculators inherit
 
 * **Status:** **Accepted** (maintainer, 2026-10-17): the design, and the recommended option
-  of every decision below. Phase 1 is being built (§11). Phase 2 will be refined in its own
-  ADR before it starts.
+  of every decision below. Phase 1 is built (§11); §5 to §8 describe it as built.
+  **Superseded in part by [ADR-0014](0014-materials-and-reference-data.md)**, which plans
+  phase 2: at decision A (P), decision E (K and P), and §11's phase-2 list.
 * **Date:** 2026-10-17
 * **Reviewed by:** the Support & Review session (prior art, critique) and the Calculator
   Engine session (implementation), 2026-10-17
@@ -68,7 +69,7 @@ What the four tools agree on:
 5. The most-reported pitfall is an override that silently stops following the default
    when the default changes. No tool clearly flags it, and this design's markers do.
 
-## Proposed design
+## Design
 
 ### 1. `Domain` is a declared object
 
@@ -125,32 +126,55 @@ For each input the selected method uses, the first of these that exists wins:
 5. Otherwise an `InputError`
 
 A value that is out of range for this calculator **fails**, naming where it came from,
-e.g. "Sheet Metal setting T = … is outside this calculator's range; override it here".
-It never silently falls back to a default.
+e.g. "Material thickness (T) from Sheet Metal settings is 0.5 in, but this calculator
+needs at most 0.393701 in. Override it in this calculator." It never silently falls
+back to a default.
 
 ### 5. Provenance on every input
 
-`Result.input_sources` maps each input key to an `InputSource`, which has:
+`Result.input_sources` maps each input key to an `InputSource` (`core.provenance`), which
+has:
 * `kind`: explicit, domain, derived, or default
-* `label`: e.g. "Sheet Metal settings"
-* `reference`: an optional table name and version, used in phase 2
+* `label`: e.g. "Sheet Metal settings". An explicit value may have one too, e.g.
+  "course example" or "copied from Sheet Metal settings"; it never changes precedence.
+* `domain`: the domain id of a domain value, a separate field from its label
+* `reference`: an optional `Reference` (`core.reference`) naming a table and its version,
+  used in phase 2
 
 `Result.to_dict()` includes the source of every input. `core.formatting` writes the
-wording, so the GUI and the CLI print the same text, e.g.
+wording of sources (`describe_source`), errors (`describe_error`, in display units), and
+result notes (`describe_note`), so the GUI and the CLI print the same text, e.g.
 "T = 0.1046 in (Sheet Metal settings)".
 
 ### 6. Engine API
 
-`Calculator.run(inputs=None, method=None, *, settings=None)`, where `settings` holds the
-values the user has set for this calculator's domain, in base units. The Python API stays
-pure: with `settings=None`, results are exactly what they are today.
+`Calculator.run(inputs=None, method=None, *, settings=None, explicit_sources=None)`, where
+`settings` holds the values the user has set for this calculator's domain, in base units,
+and `explicit_sources` labels some explicit inputs. The Python API stays pure: with
+`settings=None`, results are what they were before domains existed.
+
+As built:
+* `settings` is a `DomainValues(domain_id, label, values)`: values by setting key, kept
+  as a read-only copy, with one label for all of them. `Domain.values(**by_key)` and
+  `DomainSettings.for_domain()` build checked ones, labelled by `Domain.settings_label`
+  ("Sheet Metal settings"); building one directly checks only that it has a label.
+* `explicit_sources` holds explicit `InputSource`s for keys in `inputs`.
+* Errors keep their meaning: `InputError` for user input, with `OutOfRangeError`
+  carrying the parameter, value, bound, and source; `SpecError` for a definition bug,
+  including a bad default; and `UsageError` for API misuse, such as another domain's
+  settings or a label for a key that isn't an input.
+* `Result.warnings` holds structured `Note`s (`core.notes`): a `NoteKind`, the text, and
+  an optional `Reference`. ADR-0014 needs the kinds; they landed in slice 7, before
+  release.
 
 ### 7. Settings last for the session (decision B)
 
 * `caddcalc.core.settings.DomainSettings` is a pure, in-memory model of the values the
-  user has set, per domain. It validates them against each domain's settings. Following
-  the numeric-intent rules below, each value keeps its base-unit number and the text the
-  user typed.
+  user has set, per domain. It is immutable and starts empty; its methods take the
+  `Domain`, and its setters are the only way in, checking each value's key, dimension,
+  and range. Following the numeric-intent rules below, each value is a `TypedValue`: the
+  text the user typed, its exact base-unit parse, the unit applied, and whether the text
+  named that unit.
 * The GUI holds one `DomainSettings` for the life of the app window. Closing the app
   discards it; the next session starts with every setting unset. There is **no settings
   file**, no store, and no new dependency.
@@ -163,21 +187,54 @@ pure: with `settings=None`, results are exactly what they are today.
 
 ### 8. GUI
 
+As built, with the details settled in review:
+
 * **Domain rows become pages.** Selecting "Sheet Metal" shows a form generated from
   `Domain.settings`:
   * an empty field means unset
-  * each field lists the calculators and methods that use it, e.g. "V-die opening (8×T
-    method)"
-  * a count shows how many calculators override it
+  * a field applies when the user presses Enter or leaves it, or leaves the page or
+    switches units. It is checked as the user types. Refused text applies nothing and
+    stays, outlined and explained, across page and unit switches; on a unit switch, a
+    bare number in it gains the unit it was typed in ("5" becomes "5 in").
+  * each field lists the calculators and methods that use it, e.g. "V-die opening (air
+    bending): 8 × thickness rule of thumb"
+  * an "Overridden in N" count names the calculators that override it
   * a "Clear all" button
-* **Inherit or override, per shared field.**
-  * An explicit "Use Sheet Metal value" toggle controls the field. Only overridden
-    fields are passed to `run` as inputs. Today every field is passed, which made shared
-    values unreachable.
-  * Overrides are sticky for the session (decision C).
-  * A non-modal note appears when the shared value changes while a field overrides it.
-* **"Load course example"** fills a calculator's course-example values as explicit
-  inputs (decision D).
+  * a family whose calculators all failed to load is still listed, marked "No
+    calculators loaded"
+* **Inherit or override, per shared field** (decision C).
+  * While a family value is set, the field shows it, read-only, with a ticked "Use Sheet
+    Metal value" box. While none is set, the box is hidden and the field is an ordinary
+    input.
+  * Only unticking overrides. The override starts as an exact copy of the family value,
+    so nothing changes until the user edits it. Results label it "copied from Sheet
+    Metal settings", or "copied earlier from Sheet Metal settings" once the family value
+    changes.
+  * Overrides are sticky for the session. Only overridden or edited values are passed
+    to `run` as inputs. An overridden key is withheld from `settings`, so an override
+    with no value of its own uses the calculator's default, never the family's.
+  * Calculator fields recompute as the user types, but an edit is judged when it ends:
+    on Enter, focus leaving, leaving the page, switching units or methods, or toggling
+    the box. An edit that ends on the text the field showed, on the value in use, or on
+    unreadable text records nothing, so a retype or a typo can't pin an override.
+    Unreadable text stays with its error; an empty field means no value of its own and
+    shows "default …". Text discarded because its field started inheriting is announced
+    in the field's note. Switching to another window mid-edit also ends the edit
+    (KI-018).
+  * The override note shows state, not events. Every render compares an overriding field
+    with the current family value and shows both, e.g. "Sheet Metal value is 0.2500 in;
+    this calculator uses 0.1046 in." There is no timing or debounce.
+  * Results list every input with its source, as the CLI does.
+* **"Load course example"** (decision D) fills the course method's inputs with their
+  defaults, which are the course examples, as explicit values labelled "course
+  example". They override family values. It selects the course (legacy) method if
+  another is selected, so the lesson's answer comes out; it judges any open edit first;
+  and it leaves inputs the course doesn't use untouched. It is shown for calculators
+  with a legacy method.
+
+Changed from the proposal in review (see the engineering log, 2026-10-17): the note
+became state-based instead of a non-modal message on change; typing no longer
+overrides an inheriting field; and fields stopped applying each keystroke.
 
 ### 9. Numeric intent (amends ADR-0005; decision J)
 
@@ -190,10 +247,11 @@ lessons that fit a calculator app:
    * *Presentation* is rounded display text.
 2. **Display text is never read back as intent.** A unit switch, an inherited value, and
    "Load course example" keep the base value. Only the user's own typing creates new
-   intent. Today the GUI breaks this rule (KI-017), and phase 1 fixes it.
+   intent. Before phase 1 the GUI broke this rule (KI-017); slice 6 fixed it.
 3. **Typed text is kept beside the value** for anything the user enters, form fields and
-   domain settings alike. A field shows the user's own spelling while its unit is
-   unchanged, and a converted value otherwise.
+   domain settings alike. A field shows the user's own spelling while it names its unit
+   or its unit is the display unit, and a converted value otherwise
+   (`core.formatting.entry_text`).
 4. **Doubles stay** (ADR-0005). Parametric CADD needs `Decimal` because Blender caches
    values as float32. This app has no float32 tier, and its formulas are transcendental.
 5. **Rules recorded now, for features that don't exist yet:**
@@ -213,18 +271,24 @@ lessons that fit a calculator app:
 ### 11. Phasing
 
 **Phase 1**, with sheet-metal settings for thickness, inside radius, and K-factor
-(decision A). It is built in slices, each passing ruff, mypy, lint-imports, and pytest:
+(decision A), was built in slices. Each passed ruff, mypy, lint-imports, and pytest, and
+each was reviewed; review fixes landed as follow-up commits:
 1. domains
 2. shared parameters, precedence, and provenance (including CLI output)
 3. the sheet-metal settings
 4. the in-memory settings model
 5. the GUI domain page
-6. GUI inherit and override, the numeric-intent rules for form fields (fixes KI-017),
+6. GUI inherit and override, the numeric-intent rules for form fields (fixed KI-017),
    and "Load course example"
-7. close-out: this ADR accepted, and amendments to ADR-0003, ADR-0005, ADR-0006, and the
-   guidelines
+7. close-out: structured result notes; this ADR accepted; and amendments to ADR-0003,
+   ADR-0005, ADR-0006, and the guidelines
 
-**Phase 2** is materials:
+**Phase 2** is materials. *Superseded in part by
+[ADR-0014](0014-materials-and-reference-data.md), which plans it:* material, gauge
+system, and gauge are domain-level choices rather than a calculator parameter kind; a
+gauge is one compound choice rather than "one active gauge table"; K and P are not
+derived values (M2, M3); and the default bend method is deferred to the ADR-0010
+question. The list as originally planned:
 * built-in reference tables with provenance and license fields (ADR-0004, ADR-0008)
 * a categorical parameter kind, used for material, gauge, and a domain-level default
   bend method (related to the ADR-0010 default-method question)
@@ -241,11 +305,11 @@ The maintainer accepted the recommended option for each.
 
 | | Question | Decision | Alternatives not taken |
 |---|---|---|---|
-| A | Shared in phase 1 | Thickness, inside radius, K-factor. The die ratio P moves to phase 2, derived from material. | All four; or thickness and K only |
+| A | Shared in phase 1 | Thickness, inside radius, K-factor. The die ratio P moves to phase 2, derived from material. *Superseded in part by ADR-0014 (M3): P is not derived from material.* | All four; or thickness and K only |
 | B | Where settings live | For the session only, not saved. | A per-user settings file |
-| C | Overrides | Explicit toggle, sticky for the session. A marker, an "overridden in N" count, and a note when the shared value changes. | Overrides dropped when the shared value changes (no CAD tool does this, and it loses work) |
-| D | Shared values vs course-example defaults | A set domain value wins, and "Load course example" restores the exact lesson inputs. | The domain value wins, with no course-example action; or course methods ignore domain values (an inconsistency nobody can see) |
-| E | Material-derived values (phase 2) | Live while linked to the material; typing a value breaks that field's link. | Suggestions the user accepts; or always live |
+| C | Overrides | Explicit toggle, sticky for the session. A marker, an "overridden in N" count, and a note when the shared value changes. As built: §8. | Overrides dropped when the shared value changes (no CAD tool does this, and it loses work) |
+| D | Shared values vs course-example defaults | A set domain value wins, and "Load course example" restores the exact lesson inputs. As built: §8. | The domain value wins, with no course-example action; or course methods ignore domain values (an inconsistency nobody can see) |
+| E | Material-derived values (phase 2) | Live while linked to the material; typing a value breaks that field's link. *Superseded in part by ADR-0014 (M2): K and P are not live derived values; material facts such as gauge to thickness are.* | Suggestions the user accepts; or always live |
 | G | Plugin calculator naming an unknown domain | Fail registration with a "did you mean" hint. | Create an empty domain automatically |
 | J | Adopt the numeric-intent rules (§9), amending ADR-0005 | Yes, and fix KI-017 in phase 1. | Keep ADR-0005 as is, and fix KI-017 alone |
 
@@ -270,11 +334,13 @@ That is about 2% per bend.
   they are.
 * Public-API changes before 0.1:
   * `Calculator.domain` becomes an id
-  * `run()` gains `settings`
-  * `Result` gains `input_sources`
+  * `run()` gains `settings` and `explicit_sources`
+  * `Result` gains `input_sources`, and `Result.warnings` holds `Note`s
+  * `caddcalc.core` exports `Domain`, `DomainValues`, `DomainSettings`, `TypedValue`,
+    `InputSource`, `Note`, `OutOfRangeError`, and `UsageError`, among others
   * there is a new entry-point group
 
-  Each needs a CHANGELOG entry. None needs a deprecation shim yet.
+  Each has a CHANGELOG entry. None needs a deprecation shim, because none was released.
 
 ## Alternatives considered
 

@@ -49,3 +49,23 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
 
 * Feet-and-inches input (`3'-4 1/2"`) is implemented (KI-009).
 * A domain needs forces, stresses, or areas.
+
+## Amendments
+
+### 2026-10-17: numeric intent (ADR-0013 §9, decision J)
+
+* **Three tiers.** *Intent* is what the user typed: its text and its exact parse in base
+  units. *Computation* uses doubles. *Presentation* is rounded display text.
+* **Display text is never read back as intent.** A unit switch, an inherited value, and a
+  loaded example keep their base value; only the user's own typing creates intent. This
+  fixed KI-017, where a unit switch rounded typed values to six decimals.
+* `TypedValue` keeps the text, its exact parse, the unit applied, and whether the text
+  named that unit, from `parse_quantity_detailed()`; `parse_quantity` wraps it. A
+  `TypedValue` built directly must agree with its own text.
+* `core.formatting.entry_text()` is the one display rule for a typed value: the user's
+  text while it names its unit or its unit is the display unit, and otherwise the value
+  converted, through `field_text()`. Unapplied bare-number text gains the unit it was
+  typed in when the display unit changes.
+* Doubles stay: there is no float32 tier, and the formulas are transcendental.
+* A test checks that every `Dimension` has its base unit, display unit, and wording, so
+  adding one (such as stress, ADR-0014) can't miss a table.

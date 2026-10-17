@@ -16,6 +16,54 @@ Template:
 
 ---
 
+## 2026-10-17: Suggesting the air-bend ratio P from a source we hadn't read
+**Tried:** the first draft of ADR-0014's decision M3 leaned on a strength-scaling rule
+and on strength figures known only from search summaries and vendor pages.
+**Outcome:** reverted in Support & Review's review of the ADR-0014 draft.
+**Why:** none of it had been read first-hand, and the publications' terms either
+restrict reuse or couldn't be read, so nothing from them can ship (ADR-0014 §5.2).
+**Instead / next time:** read a source first-hand, under terms that pass §5, before a
+decision relies on it. Until then, record what was seen as a lead, not as a fact.
+
+## 2026-10-17: Strength-scaled die ratio P
+**Tried:** deriving P for each material by scaling a baseline with tensile strength, in
+the first ADR-0014 draft.
+**Outcome:** dropped after Support & Review's review of the draft (H1).
+**Why:** published figures don't follow it for aluminum: an annealed temper is
+published with a higher P than harder tempers. For steels the result depends on whether
+a minimum or a typical strength is used.
+**Instead:** ADR-0014 M3. P stays a user input, the course's 0.156 stays the default, and
+the help asks for a test bend.
+
+## 2026-10-17: Judging each keystroke for a no-op calculator edit
+**Tried:** recording nothing when a calculator field's new value equaled the one in use,
+checked on every keystroke (slice 6b).
+**Outcome:** replaced in slice 6c, after Support & Review's review of 70cbdce (M1').
+**Why:** the keystrokes of a retype are real changes on the way ("0", "0.1", "0.15" on
+the way to "0.156"), so a retype or the typo "0.1x" still pinned an override.
+**Instead:** note how the field stood at the first keystroke, apply keystrokes
+provisionally, and judge the edit when it ends (ADR-0013 §8). Switching windows mid-edit
+still ends an edit (KI-018).
+
+## 2026-10-17: Typing in an inheriting field to override it
+**Tried:** in slice 6, typing in a field that showed the family value made it override,
+for the session.
+**Outcome:** replaced in slice 6b, after Support & Review's review of a2f23d0 (M1).
+**Why:** a no-op edit, such as typing a character and deleting it, pinned an override
+that then ignored later family values, invisibly while the family value was unset.
+**Instead:** a field inheriting a set family value is read-only, and only unticking "Use
+Sheet Metal value" overrides, starting from an exact copy (ADR-0013 decision C, as the
+CAD tools do).
+
+## 2026-10-17: Applying settings-page fields on every keystroke
+**Tried:** in slice 5, each keystroke in a Sheet Metal settings field set the value.
+**Outcome:** replaced in slice 5b, after Support & Review's review of cf08012 (H1).
+**Why:** a passing prefix was stored on the way: typing "15" for ".15" left K = 1 from
+the "1". After a page or unit switch the refused "15" and its error vanished, so every
+K-factor method would have used 1 with no sign of trouble.
+**Instead:** a settings field applies on Enter or when focus leaves it, is checked as
+the user types, and keeps refused text and its explanation until it is fixed.
+
 ## 2026-10-17: Nuitka 4.3 builds that crash when they open
 **Tried:** building the app with pyside6-deploy and the newest Nuitka, 4.3, which uv
 chose for `nuitka>=4.1.1`.
