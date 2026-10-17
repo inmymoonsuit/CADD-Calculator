@@ -1,0 +1,68 @@
+# The welcome screen's design tokens (ADR-0016): every size, colour role, and font it
+# uses. gui/welcome_style.py reads and checks them, and refuses unknown keys;
+# docs/dev/design/welcome-screen.md documents each, and a test keeps it quoting these
+# values. Sizes are logical pixels: 1 px is one device pixel at 100% scaling. Colours are
+# palette roles (palette.toml), so the light and dark themes and the contrast tests apply.
+schema = 1
+
+[art]
+slot = [960, 540]                  # the art's area, 16:9
+supplied_scale = 2                 # art is supplied at twice the slot's size
+formats = [".png", ".jpg", ".jpeg"]
+max_bytes = 8_000_000              # the largest art or logo file a pack may name
+max_px = 4096                      # the largest art width or height
+grid = 60                          # the art template's grid
+
+[card]
+corner_radius = 0.0087             # a fraction of the card's height: about 5 px
+border_width = 1
+border_role = "welcome_line"
+
+[top_bar]
+height = 32
+padding = 4                        # beside its buttons
+separator_width = 1
+separator_role = "welcome_line"
+
+[logo]
+formats = [".svg", ".png"]
+region_width = 96
+margin_left = 16                   # minimums
+margin_top = 16
+margin_bottom = 16
+padding = 8                        # inside the box, around the logo
+min_size = [48, 160]               # the box's least width and height
+border_width = 1
+border_role = "welcome_line"
+fill_role = "welcome_scrim"
+
+[panes]                            # the name and version panes' shared style
+fill_role = "welcome_scrim"
+fill_opacity_min = 0.15
+border_width = 1                   # in the text's role
+text_roles = ["welcome_ink", "welcome_paper"]
+min_contrast = 4.5                 # text against the fill over the art
+percentiles = [5, 95]              # of the art's luminance under a pane
+
+[name_pane]
+anchor = "top_right"
+inset = 24
+padding = [10, 16]                 # vertical, horizontal
+font = "display"
+font_size = 44
+safe_area = [376, 88]              # what the art keeps clear of detail
+
+[version_pane]
+anchor = "bottom_right"
+inset = 6
+padding = [2, 6]
+font = "body"
+font_size = 11
+safe_area = [200, 24]
+
+[typography]
+display_family = "VT323"
+display_file = "fonts/vt323/VT323-Regular.ttf"
+display_weight = 700               # S1: drawn bold
+fallback_families = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
+min_font_size = 9

@@ -14,7 +14,9 @@ import pytest
 
 from caddcalc import __version__
 from caddcalc.gui.branding import GENERIC, Branding, load_branding
-from caddcalc.gui.welcome_layout import ART_SIZE, MAX_ART_PX, WINDOW
+from caddcalc.gui.welcome_style import style
+
+ART_SIZE, MAX_ART_PX, WINDOW = style().art.slot, style().art.max_px, style().window
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -64,8 +66,8 @@ def test_the_generic_screen_shows_live_name_and_version_over_generated_art() -> 
 
     welcome = screen()
     assert (welcome.art_source, welcome.logo_source) == ("generic", "generic")
-    assert welcome.art.name_label.text() == "CADD Calculator"
-    assert welcome.art.version_label.text() == f"Version {__version__}"
+    assert welcome.art.name_pane.text == "CADD Calculator"
+    assert welcome.art.version_pane.text == f"Version {__version__}"
     assert welcome.windowModality() is Qt.WindowModality.ApplicationModal
     assert welcome.windowFlags() & Qt.WindowType.FramelessWindowHint
     assert welcome.findChildren(QMenuBar) == [], "the app's menus live in the main window"
@@ -78,7 +80,7 @@ def test_the_generic_screen_shows_live_name_and_version_over_generated_art() -> 
 def test_a_packs_art_and_logo_are_used(tmp_path: Path) -> None:
     welcome = screen(pack(tmp_path / "pack"))
     assert (welcome.art_source, welcome.logo_source) == ("pack", "pack")
-    assert welcome.art.version_label.text() == f"Version {__version__}", "no edition slug"
+    assert welcome.art.version_pane.text == f"Version {__version__}", "no edition slug"
     welcome.show()
     assert not welcome.grab().toImage().isNull()
     welcome.close()

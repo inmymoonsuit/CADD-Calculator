@@ -41,7 +41,7 @@ from pathlib import Path
 from typing import Any
 
 from caddcalc.core.errors import CaddCalcError
-from caddcalc.gui.welcome_layout import ART_FORMATS, LOGO_FORMATS, MAX_ART_BYTES
+from caddcalc.gui.welcome_style import style
 
 ENV_VAR = "CADDCALC_BRANDING"
 PACK_FILE = "branding.toml"
@@ -208,12 +208,14 @@ def _welcome(table: Any, root: Path) -> tuple[Path | None, tuple[float, float], 
             f"{toml_path}: unknown [welcome] key(s) {', '.join(unknown)}; "
             f"expected some of {', '.join(sorted(_WELCOME_KEYS))}"
         )
-    art = _pack_file(table, "art", root, frozenset(ART_FORMATS), label="welcome.art")
-    logo = _pack_file(table, "logo", root, frozenset(LOGO_FORMATS), label="welcome.logo")
+    tokens = style()
+    art = _pack_file(table, "art", root, frozenset(tokens.art.formats), label="welcome.art")
+    logo = _pack_file(table, "logo", root, frozenset(tokens.logo.formats), label="welcome.logo")
+    budget = tokens.art.max_bytes
     for path, label in ((art, "welcome.art"), (logo, "welcome.logo")):
-        if path is not None and path.stat().st_size > MAX_ART_BYTES:
+        if path is not None and path.stat().st_size > budget:
             raise BrandingError(
-                f"{toml_path}: {label} {path.name!r} is larger than {MAX_ART_BYTES // 1_000_000} MB"
+                f"{toml_path}: {label} {path.name!r} is larger than {budget // 1_000_000} MB"
             )
     if logo is not None and logo.suffix.lower() == ".svg":
         _check_self_contained(logo, toml_path)

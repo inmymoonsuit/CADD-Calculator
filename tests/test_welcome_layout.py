@@ -1,50 +1,27 @@
-"""The welcome screen's geometry and art specification (ADR-0015 §3)."""
+"""The welcome screen's geometry, placed from its tokens (ADR-0015 §3, ADR-0016)."""
 
 from __future__ import annotations
 
 import pytest
 
-from caddcalc.gui.welcome_layout import (
-    ART_SIZE,
-    ART_SUPPLIED,
-    LOGO_STRIP,
-    NAME_PANEL,
-    TOP_BAR,
-    VERSION_LINE,
-    WINDOW,
-    Rect,
-    Size,
-    cover_crop,
-    fit_scale,
-)
+from caddcalc.gui.welcome_layout import Rect, Size, contain_fit, cover_crop, fit_scale, pane_rect
+from caddcalc.gui.welcome_style import style
 
-
-def test_the_sizes_add_up() -> None:
-    assert ART_SIZE.width / ART_SIZE.height == 16 / 9
-    assert Size(1920, 1080) == ART_SUPPLIED
-    assert (LOGO_STRIP, TOP_BAR) == (72, 32)
-    assert Size(1032, 572) == WINDOW
-
-
-@pytest.mark.parametrize("area", [NAME_PANEL, VERSION_LINE])
-def test_the_safe_areas_lie_inside_the_art_slot(area: Rect) -> None:
-    assert area.x >= 0 and area.y >= 0
-    assert area.x + area.width <= ART_SIZE.width
-    assert area.y + area.height <= ART_SIZE.height
+SLOT = style().art.slot
 
 
 def test_art_of_the_slots_shape_is_shown_whole() -> None:
-    assert cover_crop(Size(1920, 1080), ART_SIZE) == Rect(0, 0, 1920, 1080)
+    assert cover_crop(Size(1920, 1080), SLOT) == Rect(0, 0, 1920, 1080)
 
 
 def test_wide_art_is_cropped_at_the_sides_around_its_focus() -> None:
-    crop = cover_crop(Size(3200, 1080), ART_SIZE, (0.35, 0.5))
+    crop = cover_crop(Size(3200, 1080), SLOT, (0.35, 0.5))
     assert (crop.width, crop.height, crop.y) == (1920, 1080, 0)
     assert crop.x == pytest.approx(0.35 * 3200 - 960)
 
 
 def test_tall_art_is_cropped_top_and_bottom() -> None:
-    crop = cover_crop(Size(1080, 1080), ART_SIZE)
+    crop = cover_crop(Size(1080, 1080), SLOT)
     assert (crop.x, crop.width) == (0, 1080)
     assert crop.height == pytest.approx(607.5)
     assert crop.y == pytest.approx((1080 - 607.5) / 2)
@@ -54,36 +31,38 @@ def test_tall_art_is_cropped_top_and_bottom() -> None:
 def test_a_focus_near_an_edge_keeps_the_crop_inside_the_art(
     focus: tuple[float, float], x: float
 ) -> None:
-    assert cover_crop(Size(3200, 1080), ART_SIZE, focus).x == x
+    assert cover_crop(Size(3200, 1080), SLOT, focus).x == x
 
 
 def test_the_screen_shrinks_to_fit_a_small_screen_and_never_grows() -> None:
+    window = style().window
     assert fit_scale(Size(1920, 1040)) == 1.0
     small = fit_scale(Size(911, 512))  # 1366 x 768 at 150%, less a taskbar
-    assert small == pytest.approx(911 / 1032)
-    assert WINDOW.width * small <= 911 and WINDOW.height * small <= 512
+    assert small == pytest.approx(911 / window.width)
+    assert window.width * small <= 911 and window.height * small <= 512
 
 
-def test_the_art_specification_quotes_the_code() -> None:
-    """docs/dev/design/welcome-screen.md is written by hand; this keeps it in step."""
-    from pathlib import Path
+@pytest.mark.parametrize(
+    ("source", "fitted"),
+    [
+        (Size(72, 540), Rect(36, 0, 48, 360)),  # a tall banner: full height, centred
+        (Size(100, 100), Rect(10, 130, 100, 100)),  # a square mark: full width
+        (Size(400, 100), Rect(10, 167.5, 100, 25)),  # a wide wordmark: small and centred
+    ],
+)
+def test_a_logo_is_contained_in_its_box_whole_and_centred(source: Size, fitted: Rect) -> None:
+    assert contain_fit(source, Rect(10, 0, 100, 360)) == fitted
 
-    from caddcalc.gui.welcome_layout import MAX_ART_BYTES, MAX_ART_PX
 
-    spec = (Path(__file__).parents[1] / "docs/dev/design/welcome-screen.md").read_text(
-        encoding="utf-8"
-    )
-    quoted = [
-        f"**{int(WINDOW.width)} × {int(WINDOW.height)}**",
-        f"**{int(ART_SIZE.width)} × {int(ART_SIZE.height)}**",
-        f"**{int(ART_SUPPLIED.width)} × {int(ART_SUPPLIED.height)}**",
-        f"{LOGO_STRIP} px logo strip",
-        f"{TOP_BAR} px bar",
-        f"**{MAX_ART_BYTES // 1_000_000} MB**",
-        f"**{MAX_ART_PX} px**",
-    ]
-    for area, name in ((NAME_PANEL, "Name panel"), (VERSION_LINE, "Version line")):
-        cells = " | ".join(str(int(v)) for v in area)
-        quoted.append(f"| {name} | {cells} |")
-    missing = [text for text in quoted if text not in spec]
-    assert missing == [], missing
+@pytest.mark.parametrize(
+    ("anchor", "corner"),
+    [
+        ("top_left", (6, 6)),
+        ("top_right", (894, 6)),
+        ("bottom_left", (6, 514)),
+        ("bottom_right", (894, 514)),
+    ],
+)
+def test_a_pane_sits_inset_from_its_anchor_corner(anchor: str, corner: tuple[int, int]) -> None:
+    rect = pane_rect(anchor, 6, Size(60, 20), SLOT)
+    assert (rect.x, rect.y, rect.width, rect.height) == (*corner, 60, 20)

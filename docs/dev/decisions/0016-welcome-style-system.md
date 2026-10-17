@@ -132,3 +132,24 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
 * The private pack's art and logo work unchanged. Its `name` either goes away (S4) or
   becomes "CADD Calculator".
 * The art spec gains a left safe area if S2 is accepted.
+
+## Amendments
+
+### 2026-10-17: the tokens as built (slice b)
+
+* **Files.** `gui/assets/welcome_style.toml` (`schema = 1`) and its stdlib-only loader
+  `gui/welcome_style.py`, which types each token in a dataclass per table, range-checks
+  it, refuses unknown or missing keys, and checks each role exists in both themes of
+  `palette.toml`. `welcome_layout.py` keeps only the placing rules (cover crop, contain
+  fit, a pane at its corner, fit to screen). The generated art and the generic logo are
+  content, not layout, and move to `gui/welcome_art.py`.
+* **Roles.** The maintainer's "ink" lines are the new role `welcome_line`: ink in the
+  light theme, slate in the dark one, since ink vanishes against the dark top bar. Pane
+  text chooses between `welcome_ink` and `welcome_paper`, ink and white in both themes,
+  because the art beneath is the same in both.
+* **Tokens beyond the table above:** `art.formats`, `art.max_bytes`, `art.max_px`, and
+  `art.grid` (the art budget and template, from `welcome_layout`), `logo.formats`,
+  `top_bar.padding`, `panes.text_roles`, `panes.min_contrast`, `panes.percentiles`, each
+  pane's `font` and `safe_area`, and `typography.min_font_size`.
+* **Until slice e:** the logo region still sits beside the art, at its new 96 px width,
+  and the panes are drawn fully opaque, which meets the contrast rule at any art.

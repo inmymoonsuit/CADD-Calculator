@@ -2,10 +2,10 @@
 
     uv run python packaging/make_welcome_template.py builds/welcome-template.png
 
-The guide is the art's full size, 1920 × 1080, with the areas the name panel and the
-version line cover shaded, and a grid in the slot's logical pixels. Draw the art on a
-layer above it, keep detail out of the shaded areas, then hide the guide. The sizes come
-from ``caddcalc.gui.welcome_layout``, the same module the welcome screen uses.
+The guide is the art's full size, 1920 × 1080, with the safe areas the panes cover
+shaded, and a grid in the slot's logical pixels. Draw the art on a layer above it, keep
+detail out of the shaded areas, then hide the guide. The sizes are the welcome screen's
+own design tokens (``caddcalc.gui.welcome_style``, ADR-0016).
 """
 
 from __future__ import annotations
@@ -17,14 +17,7 @@ from pathlib import Path
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen
 
-from caddcalc.gui.welcome_layout import (
-    ART_SCALE,
-    ART_SIZE,
-    ART_SUPPLIED,
-    NAME_PANEL,
-    VERSION_LINE,
-    Rect,
-)
+from caddcalc.gui.welcome_style import Rect, style
 from icons import ensure_qt_app
 
 BACKGROUND = "#D9DDE0"
@@ -35,40 +28,50 @@ INK = "#21251F"
 
 
 def _scaled(rect: Rect) -> QRectF:
-    return QRectF(
-        rect.x * ART_SCALE, rect.y * ART_SCALE, rect.width * ART_SCALE, rect.height * ART_SCALE
+    scale = style().art.supplied_scale
+    return QRectF(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale)
+
+
+def safe_areas() -> tuple[tuple[Rect, str], ...]:
+    """Return each area the art keeps clear of detail, with its label."""
+    tokens = style()
+    return (
+        (tokens.safe_area(tokens.name_pane), "name pane"),
+        (tokens.safe_area(tokens.version_pane), "version pane"),
     )
 
 
 def draw_template() -> QImage:
     """Return the guide image, at the size the art is supplied at."""
     ensure_qt_app()
-    image = QImage(int(ART_SUPPLIED.width), int(ART_SUPPLIED.height), QImage.Format.Format_ARGB32)
+    tokens = style()
+    slot, supplied = tokens.art.slot, tokens.art.supplied
+    image = QImage(int(supplied.width), int(supplied.height), QImage.Format.Format_ARGB32)
     image.fill(QColor(BACKGROUND))
     p = QPainter(image)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     p.setPen(QPen(QColor(GRID), 1))
-    step = 60 * ART_SCALE  # a line every 60 logical pixels
-    for x in range(0, int(ART_SUPPLIED.width) + 1, step):
-        p.drawLine(x, 0, x, int(ART_SUPPLIED.height))
-    for y in range(0, int(ART_SUPPLIED.height) + 1, step):
-        p.drawLine(0, y, int(ART_SUPPLIED.width), y)
+    step = tokens.art.grid * tokens.art.supplied_scale
+    for x in range(0, int(supplied.width) + 1, step):
+        p.drawLine(x, 0, x, int(supplied.height))
+    for y in range(0, int(supplied.height) + 1, step):
+        p.drawLine(0, y, int(supplied.width), y)
     font = QFont()
     font.setPointSize(26)
     p.setFont(font)
-    for rect, text in ((NAME_PANEL, "name panel"), (VERSION_LINE, "version line")):
+    for rect, text in safe_areas():
         area = _scaled(rect)
         p.fillRect(area, SAFE_AREA)
         p.setPen(QColor("white"))
         p.drawText(area, Qt.AlignmentFlag.AlignCenter, f"{text}: keep clear of detail")
-    centre = QRectF(ART_SUPPLIED.width / 2 - 24, ART_SUPPLIED.height / 2 - 24, 48, 48)
+    centre = QRectF(supplied.width / 2 - 24, supplied.height / 2 - 24, 48, 48)
     p.setPen(QPen(QColor(INK), 3))
     p.drawEllipse(centre)
     p.drawText(
-        QRectF(0, ART_SUPPLIED.height - 120, ART_SUPPLIED.width / 2, 100),
+        QRectF(0, supplied.height - 120, supplied.width / 2, 100),
         Qt.AlignmentFlag.AlignCenter,
-        f"{int(ART_SUPPLIED.width)} × {int(ART_SUPPLIED.height)} px, 16:9, shown at "
-        f"{int(ART_SIZE.width)} × {int(ART_SIZE.height)}. The circle marks the default "
+        f"{int(supplied.width)} × {int(supplied.height)} px, 16:9, shown at "
+        f"{int(slot.width)} × {int(slot.height)}. The circle marks the default "
         "focal point.",
     )
     p.end()

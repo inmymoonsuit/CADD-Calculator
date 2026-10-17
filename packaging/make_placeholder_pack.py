@@ -17,7 +17,7 @@ from pathlib import Path
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
-from caddcalc.gui.welcome_layout import ART_SUPPLIED
+from caddcalc.gui.welcome_style import style
 from icons import ROOT, ensure_qt_app
 
 TOML = """\
@@ -86,7 +86,8 @@ def write_pack(dest: Path) -> Path:
     _label(icon, "TEST", 40)
     icon.save(str(dest / "icon.png"))
 
-    art = QImage(int(ART_SUPPLIED.width), int(ART_SUPPLIED.height), QImage.Format.Format_ARGB32)
+    supplied = style().art.supplied
+    art = QImage(int(supplied.width), int(supplied.height), QImage.Format.Format_ARGB32)
     _checker(art, 120, "#ff00ff", "#202020")
     _label(art, "PLACEHOLDER WELCOME ART\nnot for distribution", 64)
     art.save(str(dest / "welcome-art.png"))

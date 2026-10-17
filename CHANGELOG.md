@@ -7,6 +7,14 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Design tokens for the welcome screen (ADR-0016): every size, colour role, and font it
+  uses is a token in `gui/assets/welcome_style.toml`, read, typed, and range-checked by
+  `gui/welcome_style.py`, which refuses unknown keys and checks each role against the
+  palette. The art specification documents every token, and tests keep it quoting them
+  and keep layout and colour literals out of `welcome.py`. New palette roles
+  `welcome_line`, `welcome_ink`, and `welcome_paper`. The generated art and generic logo
+  move to `gui/welcome_art.py`. The name and version now sit in panes that hug their
+  text at their corners, and the logo region is 96 px wide.
 - Phase 2b close-out (ADR-0014, amendments): the materials release record,
   `docs/dev/research/release-checklist-materials-v1.md`, with all seven items and the
   stand-ins disclosed, awaiting its sign-offs; the research notes' resolved items and

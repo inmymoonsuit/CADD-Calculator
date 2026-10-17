@@ -171,11 +171,11 @@ def test_invalid_packs_are_rejected_with_a_reason(tmp_path: Path, toml: str, mes
 
 
 def test_welcome_files_over_the_byte_budget_are_refused(tmp_path: Path) -> None:
-    from caddcalc.gui.welcome_layout import MAX_ART_BYTES
+    from caddcalc.gui.welcome_style import style
 
     pack = make_pack(tmp_path / "pack")
     with (pack / "welcome-art.png").open("r+b") as art:
-        art.truncate(MAX_ART_BYTES + 1)
+        art.truncate(style().art.max_bytes + 1)
     with pytest.raises(BrandingError, match=r"welcome\.art 'welcome-art\.png' is larger than 8 MB"):
         load_branding(pack)
 
@@ -330,14 +330,15 @@ def test_placeholder_pack_is_a_valid_pack(tmp_path: Path) -> None:
 @pytest.mark.gui
 @pytest.mark.usefixtures("build_script")
 def test_the_welcome_template_marks_the_safe_areas() -> None:
-    from caddcalc.gui.welcome_layout import ART_SCALE, NAME_PANEL, VERSION_LINE
+    from caddcalc.gui.welcome_style import style
 
+    scale = style().art.supplied_scale
     template = importlib.import_module("make_welcome_template")
     image = template.draw_template()
     assert (image.width(), image.height()) == (1920, 1080)
     background = image.pixelColor(5, 5).name()
-    for area in (NAME_PANEL, VERSION_LINE):
-        inside = image.pixelColor(int((area.x + 4) * ART_SCALE), int((area.y + 4) * ART_SCALE))
+    for area, _label in template.safe_areas():
+        inside = image.pixelColor(int((area.x + 4) * scale), int((area.y + 4) * scale))
         assert inside.name() != background, "the safe area is marked"
 
 

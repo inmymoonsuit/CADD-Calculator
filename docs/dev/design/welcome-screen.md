@@ -1,28 +1,30 @@
-# Welcome screen: art specification
+# Welcome screen: art specification and design tokens
 
-How to make art and a logo for the welcome screen of an edition (ADR-0015). The numbers
-here come from `caddcalc.gui.welcome_layout`, and a test checks that this page still
-quotes them, so the specification can't drift from the code.
+How to make art and a logo for the welcome screen of an edition (ADR-0015), and the
+design tokens that lay the screen out (ADR-0016). Every number here is a token in
+`src/caddcalc/gui/assets/welcome_style.toml`, read and checked by
+`caddcalc.gui.welcome_style`; a test checks that this page still quotes each one, so the
+specification can't drift from the code.
 
 ## The layout
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                                                    ⓘ  ✕ │  top bar, 32 px
-├──────┬───────────────────────────────────────────────────┤
-│      │                              ┌──────────────────┐ │
-│  L   │                              │   name panel     │ │
-│  O   │          art slot            └──────────────────┘ │
-│  G   │          960 × 540                                │
-│  O   │                                                   │
-│      │                               ┌──── version ────┐ │
-└──────┴───────────────────────────────────────────────────┘
- 72 px
+┌───────────────────────────────────────────────────────────┐
+│                                                    ⓘ  ✕  │  top bar, 32 px
+├───────┬───────────────────────────────────────────────────┤
+│       │                               ┌───────────────┐   │
+│ logo  │                               │   name pane   │   │
+│       │          art slot             └───────────────┘   │
+│       │          960 × 540                                │
+│       │                                                   │
+│       │                                  ┌ version ┐      │
+└───────┴───────────────────────────────────────────────────┘
+ 96 px
 ```
 
-All sizes are logical pixels (a 100% display scale). The whole screen is **1032 × 572**:
-a 72 px logo strip at the left, a 32 px bar across the top, with the About button (ⓘ)
-and the X, and the **960 × 540** art slot, which is exactly 16:9.
+All sizes are logical pixels (a 100% display scale). The art slot is **960 × 540**, exactly
+16:9, beside a 96 px logo region and under a 32 px top bar, with the About button (ⓘ)
+and the X.
 
 ## The art
 
@@ -35,19 +37,18 @@ and the X, and the **960 × 540** art slot, which is exactly 16:9.
   pack loader refuses a larger file; the screen checks the pixel size before it decodes the
   art, and shows the generic art with a warning if the art is too large, unreadable, or
   missing.
-* **No text in the art.** The app's name and the version are live text over the art, so
-  they're always current, follow the light and dark themes, and can be read by a screen
-  reader. Leave the safe areas below free of detail.
+* **No text in the art.** The app's name and the version are live text over the art, in
+  panes, so they're always current, follow the light and dark themes, and can be read by
+  a screen reader. Leave the safe areas below free of detail.
 * **Safe areas,** in the slot's logical pixels, from its upper-left corner (double them on
   1920 × 1080 art):
 
   | Area | x | y | width | height |
   |---|---|---|---|---|
-  | Name panel | 560 | 24 | 376 | 88 |
-  | Version line | 560 | 492 | 376 | 28 |
+  | Name pane | 560 | 24 | 376 | 88 |
+  | Version pane | 754 | 510 | 200 | 24 |
 
-  The name panel is an opaque card in the theme's colours; the version line hugs its
-  text at the right of its area.
+  Each pane hugs its text at its corner of the area.
 * **Focal point:** if the art isn't 16:9, it's scaled to cover the slot, and the overflow
   is cropped around `art_focus`, the point kept in view, as fractions of the art's width
   and height (`[0.5, 0.5]`, the centre, by default). A focal point near an edge is kept
@@ -63,12 +64,13 @@ uv run python packaging/make_welcome_template.py builds/welcome-template.png
 
 ## The logo
 
-The logo strip is 72 px wide and 540 px tall. An **SVG** is preferred, since it scales to
-any display; a PNG works too, at 144 × 1080 px for 2×. An SVG must be
-**self-contained**: an `<image>` or `<use>` may embed its data (`data:`) or point within
-the file (`#…`), never to another file, which a build wouldn't bundle. The logo is drawn upright, fitted
-inside the strip, centred, and never stretched. The same 8 MB budget applies. Without a
-logo, the strip shows the app icon and the name set vertically.
+The logo region is 96 px wide. The logo is drawn inside its box's 8 px padding, fitted
+whole and centred ("contain"), never stretched or cropped, so a tall banner, a square
+mark, and a wide wordmark all fit. An **SVG** is preferred, since it scales to any
+display; a PNG works too. An SVG must be **self-contained**: an `<image>` or `<use>` may
+embed its data (`data:`) or point within the file (`#…`), never to another file, which a
+build wouldn't bundle. The same 8 MB budget applies. Without a logo, the box shows the app
+icon and the name set upright.
 
 ## The pack
 
@@ -88,12 +90,69 @@ logo = "logo-vertical.svg"   # optional; the app icon and name when absent
 
 ## On screen
 
-* **Smaller screens.** 1032 × 572 is the preferred size. On a screen whose available area
-  is smaller, the whole card scales down to fit, and the art slot stays 16:9.
+* **Smaller screens.** The card's preferred size is its tokens' (1056 × 572). On a screen
+  whose available area is smaller, the whole card scales down to fit, and the art slot
+  stays 16:9. Lines never get thinner than one device pixel.
 * **High-DPI.** The art is drawn at the display's device pixel ratio: 2× art is
   downsampled at 100% and 150% scale, and upsampled slightly at 300%. The generic art is
   drawn at the display's ratio.
-* **The generic art** is drawn in code from the palette, until the roadmap's commissioned
-  generic art replaces it.
+* **The generic art** is drawn in code from the palette (`gui/welcome_art.py`), until the
+  roadmap's commissioned generic art replaces it.
+* **The panes** take whichever of the two text roles contrasts more with their fill.
 * **Platforms.** The card is frameless with its own bar on every platform. Some behaviour
   depends on the windowing system and needs checking by hand; see KI-020.
+
+## Design tokens
+
+To restyle the screen, edit `welcome_style.toml`; the loader refuses an unknown key, a
+wrong type, or a value out of range. Colours are palette roles (`palette.toml`), never
+hex values, so both themes and the palette's contrast tests apply.
+
+| Token | Value | Meaning |
+|---|---|---|
+| `art.slot` | 960 × 540 | The art's area, 16:9 |
+| `art.supplied_scale` | 2 | Art is supplied at this multiple of the slot |
+| `art.formats` | .png, .jpg, .jpeg | The art's file formats |
+| `art.max_bytes` | 8,000,000 | The largest art or logo file a pack may name, in bytes |
+| `art.max_px` | 4096 | The largest art width or height |
+| `art.grid` | 60 | The art template's grid |
+| `card.corner_radius` | 0.0087 | The outer corners' radius, as a fraction of the card's height: about 5 px |
+| `card.border_width` | 1 | The card's border |
+| `card.border_role` | welcome_line | Its colour role |
+| `top_bar.height` | 32 | The top bar's height |
+| `top_bar.padding` | 4 | The space beside its buttons |
+| `top_bar.separator_width` | 1 | The line under the top bar |
+| `top_bar.separator_role` | welcome_line | Its colour role |
+| `logo.formats` | .svg, .png | The logo's file formats |
+| `logo.region_width` | 96 | The logo region's width |
+| `logo.margin_left` | 16 | The box's least distance from the card's left edge |
+| `logo.margin_top` | 16 | ... from the art's top |
+| `logo.margin_bottom` | 16 | ... from the art's bottom |
+| `logo.padding` | 8 | The space inside the box, around the logo |
+| `logo.min_size` | 48 × 160 | The box's least width and height |
+| `logo.border_width` | 1 | The box's border |
+| `logo.border_role` | welcome_line | Its colour role |
+| `logo.fill_role` | welcome_scrim | The box's fill |
+| `panes.fill_role` | welcome_scrim | The panes' fill |
+| `panes.fill_opacity_min` | 0.15 | The fill's least opacity |
+| `panes.border_width` | 1 | The panes' border, in the text's role |
+| `panes.text_roles` | welcome_ink, welcome_paper | The text roles to choose between, dark then light |
+| `panes.min_contrast` | 4.5 | The least contrast of the text against the fill over the art |
+| `panes.percentiles` | 5 × 95 | The percentiles of the art's luminance measured under a pane |
+| `name_pane.anchor` | top_right | The corner the name pane hugs |
+| `name_pane.inset` | 24 | Its distance from that corner's edges |
+| `name_pane.padding` | 10 × 16 | Around its text: vertical × horizontal |
+| `name_pane.font` | display | The display face |
+| `name_pane.font_size` | 44 | Its text's pixel size |
+| `name_pane.safe_area` | 376 × 88 | The area art keeps clear of detail |
+| `version_pane.anchor` | bottom_right | The corner the version pane hugs |
+| `version_pane.inset` | 6 | Its distance from that corner's edges |
+| `version_pane.padding` | 2 × 6 | Around its text: vertical × horizontal |
+| `version_pane.font` | body | The system's UI font |
+| `version_pane.font_size` | 11 | Its text's pixel size |
+| `version_pane.safe_area` | 200 × 24 | The area art keeps clear of detail |
+| `typography.display_family` | VT323 | The display face's family |
+| `typography.display_file` | fonts/vt323/VT323-Regular.ttf | Its vendored file, under the assets folder |
+| `typography.display_weight` | 700 | The weight it's drawn at: bold (S1) |
+| `typography.fallback_families` | Consolas, DejaVu Sans Mono, Menlo, monospace | Tried in order when the display face can't be loaded |
+| `typography.min_font_size` | 9 | The least size text shrinks to on a small screen |

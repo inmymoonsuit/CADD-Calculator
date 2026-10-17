@@ -36,6 +36,9 @@ outline_no_value = "slate" # dashed border of a field no reference value could c
 text_limit = "crimson"     # a limit-exceeded note in results
 welcome_scrim = "white"    # the welcome screen's name panel and version line, over art
 on_welcome_scrim = "ink"
+welcome_line = "ink"       # the welcome card's border, top-bar separator, and logo box
+welcome_ink = "ink"        # welcome pane text over art: the same in both themes,
+welcome_paper = "white"    #   since the art is; the screen picks the one that reads
 
 [dark]
 background = "ink"
@@ -62,3 +65,6 @@ outline_no_value = "slate"
 text_limit = "white"        # crimson is too faint on ink; the icon and heading signal it
 welcome_scrim = "ink"
 on_welcome_scrim = "white"
+welcome_line = "slate"     # ink lines vanish against the ink top bar
+welcome_ink = "ink"
+welcome_paper = "white"

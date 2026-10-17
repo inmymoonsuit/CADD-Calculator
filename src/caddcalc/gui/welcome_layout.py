@@ -1,60 +1,16 @@
-"""The welcome screen's geometry and art specification (ADR-0015 §3).
+"""The welcome screen's geometry, computed from its design tokens (ADR-0015 §3, ADR-0016).
 
-One source for the widget, the tests, ``packaging/make_welcome_template.py``, and
-docs/dev/design/welcome-screen.md, so the specification can't drift from the code. Sizes
-are logical pixels unless they say otherwise. Standard library only: the branding loader
-uses the byte budget without importing Qt.
+The sizes are tokens in ``assets/welcome_style.toml`` (``welcome_style``); this module
+holds the rules that place things from them, so the widget, the tests,
+``packaging/make_welcome_template.py``, and docs/dev/design/welcome-screen.md share one
+source. Sizes are logical pixels unless they say otherwise. Standard library only.
 """
 
 from __future__ import annotations
 
-from typing import NamedTuple
+from caddcalc.gui.welcome_style import Rect, Size, style
 
-
-class Size(NamedTuple):
-    """A width and a height."""
-
-    width: float
-    height: float
-
-
-class Rect(NamedTuple):
-    """A rectangle: its upper-left corner, then its size."""
-
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-ART_SIZE = Size(960, 540)
-"""The art slot: exactly 16:9."""
-ART_SCALE = 2
-"""The art is supplied at twice the slot's size, so it stays sharp on high-DPI screens."""
-ART_SUPPLIED = Size(ART_SIZE.width * ART_SCALE, ART_SIZE.height * ART_SCALE)
-"""The size to supply art at: 1920 × 1080 device pixels."""
-LOGO_STRIP = 72
-"""The width of the vertical logo strip, left of the art slot."""
-TOP_BAR = 32
-"""The height of the bar across the top: the About button and the X."""
-WINDOW = Size(LOGO_STRIP + ART_SIZE.width, TOP_BAR + ART_SIZE.height)
-"""The whole screen at its preferred size, 1032 × 572. It scales down to fit a small screen."""
-
-MARGIN = 24
-"""The space between the art slot's edge and the text that sits over the art."""
-NAME_PANEL = Rect(ART_SIZE.width - MARGIN - 376, MARGIN, 376, 88)
-"""Where the name panel covers the art, in art-slot coordinates: keep it free of detail."""
-VERSION_LINE = Rect(ART_SIZE.width - MARGIN - 376, ART_SIZE.height - 20 - 28, 376, 28)
-"""Where the version line covers the art, in art-slot coordinates."""
-
-ART_FORMATS = (".png", ".jpg", ".jpeg")
-"""The art's file formats."""
-LOGO_FORMATS = (".svg", ".png")
-"""The logo's file formats: SVG scales to any screen, so it's preferred."""
-MAX_ART_BYTES = 8_000_000
-"""The largest art or logo file a pack may name, in bytes (8 MB). The loader checks it."""
-MAX_ART_PX = 4096
-"""The largest art width or height, in pixels. The screen checks it before decoding."""
+__all__ = ["Rect", "Size", "contain_fit", "cover_crop", "fit_scale", "pane_rect"]
 
 
 def cover_crop(image: Size, slot: Size, focus: tuple[float, float] = (0.5, 0.5)) -> Rect:
@@ -79,10 +35,29 @@ def cover_crop(image: Size, slot: Size, focus: tuple[float, float] = (0.5, 0.5))
     return Rect(x, y, width, height)
 
 
-def fit_scale(available: Size) -> float:
+def contain_fit(source: Size, area: Rect) -> Rect:
+    """Return ``source`` scaled to fit inside ``area``, centred, keeping its shape."""
+    if source.width <= 0 or source.height <= 0:
+        return area
+    scale = min(area.width / source.width, area.height / source.height)
+    width, height = source.width * scale, source.height * scale
+    return Rect(
+        area.x + (area.width - width) / 2, area.y + (area.height - height) / 2, width, height
+    )
+
+
+def pane_rect(anchor: str, inset: float, size: Size, slot: Size) -> Rect:
+    """Return where a pane of ``size`` sits, ``inset`` from the ``anchor`` corner of ``slot``."""
+    x = inset if anchor.endswith("left") else slot.width - inset - size.width
+    y = inset if anchor.startswith("top") else slot.height - inset - size.height
+    return Rect(x, y, size.width, size.height)
+
+
+def fit_scale(available: Size, window: Size | None = None) -> float:
     """Return how much to scale the whole screen so it fits ``available``, at most 1.
 
-    The preferred size is ``WINDOW``; on a smaller screen the whole card shrinks, keeping
-    the art slot at 16:9 (ADR-0015, amendments).
+    The preferred size is the card's (``WelcomeStyle.window``); on a smaller screen the
+    whole card shrinks, keeping the art slot at 16:9 (ADR-0015, amendments).
     """
-    return min(1.0, available.width / WINDOW.width, available.height / WINDOW.height)
+    card = window or style().window
+    return min(1.0, available.width / card.width, available.height / card.height)

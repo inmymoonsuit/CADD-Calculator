@@ -193,7 +193,8 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
 
 * **Modules:** `gui/welcome.py` (`WelcomeScreen`), `gui/actions.py` (`AppActions`), and
   `gui/welcome_layout.py`, the specification's constants, which the widget, the tests, the
-  template generator, and docs/dev/design/welcome-screen.md share.
+  template generator, and docs/dev/design/welcome-screen.md share. (ADR-0016 moved the
+  constants into design tokens, `gui/assets/welcome_style.toml`.)
 * **Connections:** the welcome screen uses bound methods only, so KI-019's weak slot
   helper stays private to `gui/window.py`; nothing needed to move.
 * **Commands:** File (Exit) and Help (Welcome Screen; About). Exit closes every window
