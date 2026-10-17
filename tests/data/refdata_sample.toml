@@ -1,9 +1,9 @@
 # A reference table for tests of caddcalc.core.refdata. The values are invented.
 
 [table]
+schema = 1
 name = "Sample table"
 version = 2
-cite_only_cap = 1
 
 [[source]]
 id = "statute"
@@ -22,6 +22,7 @@ edition = "3rd ed."
 locator = "Table 7, p. 12"
 accessed = 2026-10-17
 license = "cite_only_fact"
+cite_only_cap = 1
 scope = "bench practice"
 
 [[system]]

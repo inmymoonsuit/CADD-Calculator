@@ -437,3 +437,32 @@ Accepted with the phase 2a plan; the decisions above are unchanged.
     default. A range error names a derived source the way it names a domain one.
   * `nominal()` takes a `Fraction` (or a float at its exact binary value) and rounds by
     exact rational arithmetic, so a value exactly halfway rounds as the standard says.
+
+### 2026-10-17: table schema hardened after review (phase 2a)
+
+These replace the per-table cap and the float input of `nominal()` recorded above.
+
+* **Schema version.** `[table]` declares `schema = 1`; a table in an unknown schema is
+  refused. The domain module declares its content keys, and any other top-level key is
+  refused, so a misspelt `[[sytem]]` fails loudly.
+* **Kind and license agree (§5.1).** A public-domain source must be a statute or a
+  government document, or state its `public_domain_basis` (e.g. "published before
+  1930"). A book or a standard is a cite-only fact unless it states that basis.
+* **Online terms are recorded (§5.2).** An article or website needs a `url`, a
+  `terms_url`, the date its terms were checked (`terms_checked`), and
+  `terms_outcome = "permits_reuse"`; anything else is refused. So a site whose terms
+  couldn't be read can't be entered at all.
+* **A defining source per value.** Each `ReferenceValue` names the one source its
+  number comes from, separate from the sources that corroborate it. The value's license
+  is its defining source's.
+* **The cite-only cap is per source.** A cite-only source declares `cite_only_cap`, the
+  number of values it may define; the gauge table's MH29 basis has 1. A code-level
+  ceiling, `MAX_CITE_ONLY_PER_SOURCE` (1), bounds every cap. Raising it takes a code
+  change and an amendment here.
+* **Data is tied to its version.** A table's digest, a hash of its parsed content, is
+  pinned per name and version in the tests, so changing data without bumping the
+  version fails.
+* **`nominal()` takes exact input only.** It accepts a `Fraction` or a `Decimal` and
+  refuses a float, because some exact ties, such as US Standard 26 ga at 0.01875 in, sit
+  just below the tie as floats. A value with no exact form, such as an AWG diameter, is
+  computed as a `Decimal` at a stated working precision.

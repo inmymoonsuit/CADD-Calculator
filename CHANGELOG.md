@@ -15,13 +15,15 @@ All notable changes are recorded here. The format follows
   its default, names it as a derived source, and adds the value's note, such as a
   nominal caution, once whenever the value is used. No domain offers a choice yet.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
-  `load_table()` reads a cited TOML table shipped in a package and checks its header and
-  sources (kind, title, locator, access date, license, edition for books and standards,
-  third-party sources as cite-only); `ReferenceTable.check_values()` checks that values
-  cite declared sources and stay within the table's cite-only cap; `ReferenceValue`,
-  the `License`, `PublicationKind`, `Basis`, and `TrustLevel` enums, and `nominal()`,
-  the one place a standard's stated precision is applied, rounding exactly from a
-  `Fraction`. No data ships yet.
+  `load_table()` reads a cited TOML table shipped in a package and checks it: a known
+  schema version, only the content keys its domain module declares, and sources whose
+  kind, license, edition, and (for online sources) recorded terms of use agree with
+  ADR-0014 §5. `ReferenceTable.check_values()` checks that each value's defining source
+  is declared and that no cite-only source defines more values than its cap, itself
+  bounded by a code-level ceiling. `ReferenceValue`, `TableSpec`, the `License`,
+  `PublicationKind`, `Basis`, and `TrustLevel` enums, and `nominal()`, the one place a
+  standard's stated precision is applied, rounding exact `Fraction` or `Decimal` input
+  only. No data ships yet.
 - Project skeleton: a layered `caddcalc` package (core, calculators, CLI, PySide6 GUI).
 - Core framework: units and drafting-fraction parsing, a safe formula evaluator with
   show-work rendering, declarative calculators with references and verification status,
