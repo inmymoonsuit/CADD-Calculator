@@ -14,6 +14,16 @@ from caddcalc.core import Dimension, Domain, Param, Registry, TypedValue
 
 pytestmark = pytest.mark.gui
 
+PLATE = Domain(
+    "plate",
+    "Plate Tools",
+    "A plugin-style family whose length setting has a maximum.",
+    settings=(
+        Param("width", "W", "Width", Dimension.LENGTH, minimum=0.0, maximum=10.0),
+        Param("gap", "G", "Gap", Dimension.LENGTH),
+    ),
+)
+
 ACME = Domain(
     "acme",
     "Acme Tools",
@@ -222,6 +232,35 @@ def test_leaving_the_page_applies_text_typed_without_enter() -> None:
     assert k_factor(window) == TypedValue.parse("0.44", Dimension.RATIO)
     window.select_domain("sheet_metal")
     assert window.setting_fields["k_factor"][1].text() == "0.44"
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_refused_unitless_text_keeps_the_unit_it_was_typed_in() -> None:
+    """A refused "5" in inches must not become an accepted 5 mm after a switch to mm."""
+    registry = default_registry(load_plugins=False)
+    registry.register_domain(PLATE)
+    window = open_window(registry)
+    window.select_domain("plate")
+    type_into(window.setting_fields["width"][1], "5")
+    type_into(window.setting_fields["gap"][1], "abc")
+    assert "Width (W) must be at most" in plain(window.domain_note.text())
+
+    for step in (
+        lambda: window.units_box.setCurrentText("mm"),
+        lambda: (
+            window.select_calculator("sheet_metal.bend_allowance"),
+            window.select_domain("plate"),
+        ),
+        lambda: window.units_box.setCurrentText("in"),
+    ):
+        step()
+        _setting, width = window.setting_fields["width"]
+        assert width.text() == "5 in"
+        assert "border" in width.styleSheet()
+        assert window.setting_fields["gap"][1].text() == "abc"
+        assert window.domain_settings.get(PLATE, "width") is None, "never applied"
+        assert window.domain_settings.get(PLATE, "gap") is None
     window.close()
 
 

@@ -47,13 +47,14 @@ from caddcalc.core.formatting import (
     DisplayPrefs,
     describe_error,
     describe_setting_uses,
+    display_unit,
     entry_text,
     field_text,
     format_value,
     render_step,
     unit_suffix,
 )
-from caddcalc.core.units import Dimension, parse_quantity
+from caddcalc.core.units import Dimension, parse_quantity, parse_quantity_detailed
 from caddcalc.gui.branding import GENERIC, Branding
 from caddcalc.gui.icons import (
     TABLER_DIR,
@@ -319,7 +320,9 @@ class MainWindow(QMainWindow):
     def _on_units_changed(self, unit: str) -> None:
         self._read_fields()  # keep any valid edits made in the old unit
         self._apply_setting_edits()
-        self.prefs = DisplayPrefs(length_unit=unit)
+        prefs = DisplayPrefs(length_unit=unit)
+        self._name_pending_units(prefs)
+        self.prefs = prefs
         if self.domain is not None:
             self._rebuild_domain_form()
         else:
@@ -474,6 +477,26 @@ class MainWindow(QMainWindow):
         """Apply every field's unapplied text, as leaving each field would."""
         for key in list(self.setting_fields):
             self._apply_setting(key)
+
+    def _name_pending_units(self, new_prefs: DisplayPrefs) -> None:
+        """Before the display unit changes, give unapplied unitless text its unit.
+
+        Unapplied text is read in the display unit when it is applied, so "5" typed in
+        inches would mean 5 mm after a switch to mm. Writing it as "5 in" keeps the
+        user's meaning, and the field shows exactly what will be applied (ADR-0013 §9).
+        Text that names its unit, or that can't be read in any unit, is left as typed.
+        """
+        for (domain_id, key), text in list(self.pending_settings.items()):
+            dimension = self.registry.domain(domain_id).setting(key).dimension
+            typed_in = display_unit(dimension, self.prefs)
+            if typed_in == display_unit(dimension, new_prefs):
+                continue
+            try:
+                parsed = parse_quantity_detailed(text, dimension, typed_in.symbol)
+            except InputError:
+                continue
+            if not parsed.explicit_unit:
+                self.pending_settings[domain_id, key] = f"{text.strip()} {typed_in.symbol}"
 
     def _clear_domain_settings(self) -> None:
         domain = self.domain

@@ -83,7 +83,8 @@ All notable changes are recorded here. The format follows
   calculators and methods that use it. **Clear all** unsets the family. A field applies
   on Enter or when focus leaves it, and is checked as you type. Refused text applies
   nothing, so the setting keeps its previous value, and it stays outlined in red and
-  explained across page and unit switches until it is fixed. A family
+  explained across page and unit switches until it is fixed. On a unit switch, such text
+  typed without a unit gains the unit it was typed in ("5" becomes "5 in"). A family
   with no loaded calculator is still listed, marked "No calculators loaded". Values set
   here are kept for the session; calculators don't use them until the per-field
   inherit/override step (ADR-0013 phase 1, slice 6).

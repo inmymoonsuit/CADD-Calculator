@@ -20,6 +20,8 @@ is saved.
 A value applies when you press Enter or leave the field. As you type, text that can't be
 used is outlined in red and explained. It isn't applied, so the setting keeps the value
 it had, and the text stays, with its explanation, until you fix it or clear the field.
+If you switch units meanwhile, a number typed without a unit gains the unit you typed it
+in, so "5" becomes "5 in" and keeps its meaning.
 
 In the table, a calculator named alone uses the setting in every method; otherwise the
 methods that use it follow the colon.
