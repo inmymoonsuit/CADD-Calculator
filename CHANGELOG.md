@@ -72,7 +72,8 @@ All notable changes are recorded here. The format follows
   value, and they check the setting's key, dimension, and range. Every method takes the
   `Domain`. Each value is a `TypedValue`: the user's text, its exact base-unit parse, the
   unit applied, and whether the text named that unit (§9), from the new
-  `parse_quantity_detailed()`. `for_domain()` returns the `DomainValues` that `run()`
+  `parse_quantity_detailed()`. A `TypedValue` built directly must agree with its own
+  text, or it raises `UsageError`. `for_domain()` returns the `DomainValues` that `run()`
   takes. Nothing is saved to disk. `Domain.values(thickness=...)` also builds checked `DomainValues`: an
   unknown key raises `UsageError` naming the domain's settings, and an out-of-range value
   raises `OutOfRangeError`. Their label always comes from `Domain.settings_label`, e.g.

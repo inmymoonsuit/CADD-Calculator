@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import NamedTuple
 
-from caddcalc.core.errors import InputError
+from caddcalc.core.errors import InputError, UsageError
 
 
 class Dimension(Enum):
@@ -182,7 +182,8 @@ class TypedValue:
     This is the *intent* tier of ADR-0013 §9: the base-unit ``value`` is parsed once from
     the user's own ``text`` and never re-read from rounded display text. A front end may
     show ``text`` verbatim when it named its unit, or when ``unit`` is the display unit;
-    otherwise it shows ``value`` in the display unit. Build one with ``parse``.
+    otherwise it shows ``value`` in the display unit. Build one with ``parse``; building
+    one directly checks that ``text`` read in ``unit`` gives ``value`` and ``explicit_unit``.
     """
 
     value: float
@@ -193,6 +194,24 @@ class TypedValue:
     """The unit applied: the one the text named, or else the default unit."""
     explicit_unit: bool
     """Whether the text named its unit, as in ``"3 mm"``."""
+
+    def __post_init__(self) -> None:
+        # Re-reading the user's own text is safe; re-reading rounded display text isn't (§9).
+        try:
+            parsed = parse_quantity_detailed(self.text, self.dimension, self.unit.symbol)
+        except InputError as exc:
+            raise UsageError(f"TypedValue text {self.text!r} is not a value: {exc}") from None
+        agrees = (
+            parsed.unit == self.unit
+            and parsed.explicit_unit == self.explicit_unit
+            and abs(parsed.value - self.value) <= math.ulp(parsed.value)
+        )
+        if not agrees:
+            raise UsageError(
+                f"TypedValue text {self.text!r} doesn't read as {self.value!r} "
+                f"{BASE_UNITS[self.dimension]} with unit {self.unit.symbol!r} "
+                f"({'named' if self.explicit_unit else 'default'}); use TypedValue.parse()"
+            )
 
     @property
     def dimension(self) -> Dimension:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
@@ -57,6 +59,28 @@ def test_typed_values_record_the_unit_actually_applied(
         entry.unit,
         entry.explicit_unit,
     )
+
+
+@pytest.mark.parametrize(
+    ("value", "text", "unit", "explicit"),
+    [
+        (3.0, "90 deg", "mm", True),
+        (3.0, "3", "in", False),
+        (76.2, "3", "in", True),
+        (3.0, "abc", "mm", False),
+    ],
+)
+def test_a_typed_value_must_agree_with_its_own_text(
+    value: float, text: str, unit: str, explicit: bool
+) -> None:
+    with pytest.raises(UsageError, match="TypedValue text"):
+        TypedValue(value, text, get_unit(unit), explicit_unit=explicit)
+
+
+def test_a_typed_value_may_differ_from_its_parse_by_one_ulp() -> None:
+    exact = TypedValue.parse("1/3", Dimension.LENGTH, "in").value
+    nudged = math.nextafter(exact, math.inf)
+    assert TypedValue(nudged, "1/3", get_unit("in"), explicit_unit=False).value == nudged
 
 
 def test_nothing_is_set_at_first() -> None:
