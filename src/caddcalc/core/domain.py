@@ -83,8 +83,9 @@ class Domain:
 
         Raises:
             UsageError: The domain has no such choice.
-            SpecError: The resolver gives a malformed or repeated option key, or an
-                option without a label. Either is a bug in the domain.
+            SpecError: The resolver gives a malformed or repeated option key, an option
+                without a label, or more than one option marked as the default. Each is
+                a bug in the domain.
         """
         choice = self.choice(key)
         parents = MappingProxyType({p: selections[p] for p in choice.depends_on if p in selections})
@@ -99,6 +100,12 @@ class Domain:
             if not option.label.strip():
                 raise SpecError(f"Domain {self.id!r}: option {option.key!r} needs a label")
             seen.add(option.key)
+        marked = [o.key for o in options if o.default]
+        if len(marked) > 1:
+            raise SpecError(
+                f"Domain {self.id!r}: choice {key!r} marks {len(marked)} options as its "
+                f"default, {marked}; at most one may be"
+            )
         return options
 
     def ordered_choices(self) -> tuple[Choice, ...]:

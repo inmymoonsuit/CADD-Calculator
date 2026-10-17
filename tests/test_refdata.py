@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import datetime
+import math
 from collections import Counter
 from collections.abc import Iterable
+from dataclasses import replace
 from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 from fractions import Fraction
 from urllib.parse import urlsplit
@@ -13,6 +15,7 @@ import pytest
 
 from caddcalc.calculators import REFERENCE_TABLES
 from caddcalc.core import (
+    Band,
     Basis,
     Dimension,
     License,
@@ -447,6 +450,110 @@ def test_a_reference_value_agrees_with_its_stated_text() -> None:
     assert value.stated == stated
     with pytest.raises(SpecError, match="doesn't equal"):
         ReferenceValue(2.0, "s", Basis.TYPICAL, TrustLevel.RULE_OF_THUMB, stated=stated)
+
+
+IN = 25.4
+"""Millimetres per inch."""
+
+
+def band(low: float, high: float, *, low_in: bool = True, high_in: bool = True) -> Band:
+    """A thickness band, its ends given in inches."""
+    return Band(low * IN, high * IN, Dimension.LENGTH, low_in, high_in)
+
+
+def test_a_band_holds_its_ends_as_it_says() -> None:
+    closed = band(0.012, 0.051)
+    above = band(0.051, 0.090, low_in=False)
+    assert closed.contains(0.012 * IN) and closed.contains(0.051 * IN)
+    assert not closed.contains(0.0119 * IN)
+    assert not above.contains(0.051 * IN) and above.contains(0.090 * IN)
+    assert not closed.overlaps(above) and not above.overlaps(closed)
+    assert closed.overlaps(band(0.051, 0.090)), "two closed bands sharing an end overlap"
+    assert closed.overlaps(band(0.020, 0.030)) and not closed.overlaps(band(0.06, 0.07))
+    point = Band(1.0, 1.0, Dimension.LENGTH)
+    assert point.contains(1.0) and point.overlaps(Band(0.0, 1.0, Dimension.LENGTH))
+    assert str(above) == "(1.2954 mm, 2.286 mm]"
+
+
+@pytest.mark.parametrize(
+    ("ends", "message"),
+    [
+        ((2.0, 1.0, True, True), "holds no value"),
+        ((1.0, 1.0, False, True), "holds no value"),
+        ((math.inf, math.inf, True, True), "finite"),
+        ((math.nan, 1.0, True, True), "finite"),
+    ],
+)
+def test_a_band_must_hold_a_value(ends: tuple[float, float, bool, bool], message: str) -> None:
+    low, high, low_in, high_in = ends
+    with pytest.raises(SpecError, match=message):
+        Band(low, high, Dimension.LENGTH, low_in, high_in)
+
+
+def test_bands_of_different_dimensions_cant_be_compared() -> None:
+    with pytest.raises(UsageError, match="different dimensions"):
+        band(0, 1).overlaps(Band(0.0, 90.0, Dimension.ANGLE))
+
+
+def test_a_values_conditions_are_checked_and_kept_read_only() -> None:
+    value = ReferenceValue(
+        1.0, "s", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE, conditions={"temper": "temper:t6"}
+    )
+    assert dict(value.conditions) == {"temper": "temper:t6"}
+    with pytest.raises(TypeError):
+        value.conditions["temper"] = "temper:o"  # type: ignore[index]
+    for bad in ({"Temper": "temper:t6"}, {"temper": " "}, {"temper": 6}):
+        with pytest.raises(SpecError, match="Condition"):
+            ReferenceValue(
+                1.0,
+                "s",
+                Basis.TYPICAL,
+                TrustLevel.HANDBOOK_RULE,
+                conditions=bad,  # type: ignore[arg-type]
+            )
+
+
+def radius(source: str, thickness: Band | None, material: str = "al:6061") -> ReferenceValue:
+    """A banded minimum-radius value for one material; the value itself is invented."""
+    return ReferenceValue(
+        2.0,
+        source,
+        Basis.RULE_OF_THUMB,
+        TrustLevel.HANDBOOK_RULE,
+        quantity="min_radius",
+        band=thickness,
+        conditions={"material": material},
+    )
+
+
+def test_bands_in_one_series_must_not_overlap() -> None:
+    """A series is one quantity, from one source, under one set of conditions."""
+    sample = load_table("tests", "data/refdata_sample.toml", SAMPLE_KEYS)
+    low, high = band(0.012, 0.051), band(0.051, 0.090, low_in=False)
+    sample.check_values([radius("statute", low), radius("statute", high)])
+    with pytest.raises(SpecError, match="overlapping bands"):
+        sample.check_values([radius("statute", low), radius("statute", band(0.051, 0.090))])
+    with pytest.raises(SpecError, match="both with and without a band"):
+        sample.check_values([radius("statute", low), radius("statute", None)])
+    angle = Band(0.0, 90.0, Dimension.ANGLE)
+    with pytest.raises(SpecError, match="bands of different dimensions"):
+        sample.check_values([radius("statute", low), radius("statute", angle)])
+
+
+def test_other_sources_quantities_and_conditions_are_other_series() -> None:
+    """Sources may overlap: where they disagree, every one is shown (ADR-0014 M4)."""
+    sample = load_table("tests", "data/refdata_sample.toml", SAMPLE_KEYS)
+    low = band(0.012, 0.051)
+    sample.check_values(
+        [
+            radius("statute", low),
+            radius("handbook", low),
+            replace(radius("statute", low), quantity="f_tu"),
+            radius("statute", low, material="al:5052"),
+        ]
+    )
+    unbanded = ReferenceValue(1.0, "statute", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE)
+    sample.check_values([unbanded, unbanded])
 
 
 def test_every_shipped_table_loads_within_the_ceiling_and_is_pinned_to_its_version() -> None:

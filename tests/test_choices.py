@@ -210,6 +210,10 @@ def test_choices_are_validated_when_their_domain_registers(domain: Domain, messa
         ([Option("Std:1", "1")], "group:item"),
         ([Option("s:1", "1"), Option("s:1", "1")], "repeats"),
         ([Option("s:1", " ")], "needs a label"),
+        (
+            [Option("s:1", "1", default=True), Option("s:2", "2", default=True)],
+            "marks 2 options as its default",
+        ),
     ],
 )
 def test_options_are_checked_when_they_are_computed(options: list[Option], message: str) -> None:
@@ -435,6 +439,45 @@ def test_a_dependent_falls_back_to_its_default_when_its_option_is_cleared() -> N
     after = before.set_choice(defaulted, "material", "al:3003")
     assert after.choice(defaulted, "temper") == "temper:o"
     assert after.cleared_choices(defaulted, before) == (ClearedChoice("temper", "default"),)
+
+
+class _MarkedAlloys(_Alloys):
+    """Each material marks its own default temper: T6 for 6061, H14 for 3003."""
+
+    @override
+    def options(self, choice: str, selections: Mapping[str, str]) -> Sequence[Option]:
+        options = super().options(choice, selections)
+        if choice != "temper":
+            return options
+        return [replace(o, default=o.key in ("temper:t6", "temper:h14")) for o in options]
+
+
+MARKED = replace(ALLOYS, resolver=_MarkedAlloys())
+
+
+def test_each_parent_selection_can_mark_its_own_default() -> None:
+    fresh = DomainSettings()
+    assert fresh.choice(MARKED, "temper") == "temper:t6"
+    assert fresh.for_domain(MARKED).derived["inside_radius"].value == RADII["temper:t6"]
+    switched = fresh.set_choice(MARKED, "material", "al:3003")
+    assert switched.choice(MARKED, "temper") == "temper:h14"
+    assert switched.cleared_choices(MARKED, fresh) == ()
+
+
+def test_a_cleared_dependent_falls_back_to_the_marked_default() -> None:
+    before = DomainSettings().set_choice(MARKED, "temper", "temper:t6")
+    after = before.set_choice(MARKED, "material", "al:3003")
+    assert after.choice(MARKED, "temper") == "temper:h14"
+    assert after.cleared_choices(MARKED, before) == (ClearedChoice("temper", "default"),)
+    assert after.clear_domain(MARKED).choice(MARKED, "temper") == "temper:t6"
+    kept = DomainSettings().set_choice(MARKED, "temper", "temper:o")
+    assert kept.set_choice(MARKED, "material", "al:3003").choice(MARKED, "temper") == "temper:o"
+
+
+def test_a_choices_own_default_comes_before_a_marked_option() -> None:
+    temper = Choice("temper", "Temper", default="temper:o", depends_on=("material",))
+    both = replace(MARKED, choices=(temper, *MARKED.choices[1:]))
+    assert DomainSettings().choice(both, "temper") == "temper:o"
 
 
 def test_a_kept_dependent_may_be_offered_under_another_parent_selection() -> None:

@@ -37,6 +37,10 @@ class Option:
     group: str = ""
     """The group it belongs to, e.g. ``"Manufacturers' Standard"``, so a front end can show
     two levels."""
+    default: bool = False
+    """Whether it is selected until the user chooses, when the choice's own default isn't
+    offered. A dependent choice's default can then follow its parents: each material marks
+    its own default temper. At most one offered option is marked."""
 
 
 @dataclass(frozen=True)
@@ -50,7 +54,9 @@ class Choice:
     default: str | None = None
     """The option key selected until the user chooses, or ``None`` for no selection.
 
-    For a dependent choice it applies only where the parents' selections offer it.
+    For a dependent choice it applies only where the parents' selections offer it. Where
+    it isn't offered, or is ``None``, the offered option marked ``Option.default`` is
+    selected, if there is one.
     """
     depends_on: tuple[str, ...] = ()
     """Keys of the choices whose selections decide this one's options, e.g. a temper

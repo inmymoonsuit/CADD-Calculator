@@ -3,8 +3,8 @@
 A table is a TOML file with a ``[table]`` header, the ``[[publication]]`` list of works it
 cites, the ``[[source]]`` list of places in them, and the content keys its domain module
 declares. This module loads and checks the parts every table shares: the header, the
-publications and sources, and the release-checklist rules that can be checked
-mechanically (ADR-0014 §5).
+publications and sources, the bands and conditions of the values a domain module builds,
+and the release-checklist rules that can be checked mechanically (ADR-0014 §5).
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from __future__ import annotations
 import datetime
 import hashlib
 import json
+import math
 import re
 import tomllib
 import unicodedata
@@ -27,7 +28,7 @@ from typing import Any
 
 from caddcalc.core.errors import SpecError, UsageError
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import TypedValue, get_unit
+from caddcalc.core.units import Dimension, TypedValue, base_text, get_unit
 
 SCHEMA_VERSION = 1
 """The table schema this module reads; ``[table] schema`` must equal it."""
@@ -35,8 +36,10 @@ SCHEMA_VERSION = 1
 MAX_CITE_ONLY_PER_PUBLICATION = 1
 """The most values one cite-only publication may define, in any table (ADR-0014 §5.1).
 
-Raising it takes a code change and an ADR-0014 amendment, so an isolated cited fact can't
-quietly grow into a value set drawn from one cite-only publication.
+It counts reference-data values, not the coefficients in a method's formula, which are
+cited and rated with their method (ADR-0014, amendments). Raising it takes a code change
+and an ADR-0014 amendment, so an isolated cited fact can't quietly grow into a value set
+drawn from one cite-only publication.
 """
 
 
@@ -94,6 +97,7 @@ _PUBLICATION_KEYS = frozenset(
 )
 _SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail"})
 _LEADING_NUMBER = re.compile(r"[0-9]+")
+_CONDITION_KEY = re.compile(r"[a-z][a-z0-9_]*")
 
 
 @dataclass(frozen=True)
@@ -144,11 +148,71 @@ class TableSource:
 
 
 @dataclass(frozen=True)
+class Band:
+    """The range of a quantity, such as thickness, that a value applies across (ADR-0014 §1).
+
+    A value applies across its band as its source states it; values are never interpolated
+    between bands. The ends are in base units and say whether they're included, as a
+    ``Param``'s range does. A single listed point is a band whose ends are equal and
+    included.
+
+    Raises:
+        SpecError: An end isn't finite, the minimum is above the maximum, or the band holds
+            no value: equal ends with one of them excluded.
+    """
+
+    minimum: float
+    maximum: float
+    dimension: Dimension
+    min_inclusive: bool = True
+    max_inclusive: bool = True
+
+    def __post_init__(self) -> None:
+        if not (math.isfinite(self.minimum) and math.isfinite(self.maximum)):
+            raise SpecError(f"Band ends must be finite, not {self.minimum!r} and {self.maximum!r}")
+        empty = self.minimum == self.maximum and not (self.min_inclusive and self.max_inclusive)
+        if self.minimum > self.maximum or empty:
+            raise SpecError(f"Band {self} holds no value")
+
+    def __str__(self) -> str:
+        low = "[" if self.min_inclusive else "("
+        high = "]" if self.max_inclusive else ")"
+        return (
+            f"{low}{base_text(self.minimum, self.dimension)}, "
+            f"{base_text(self.maximum, self.dimension)}{high}"
+        )
+
+    def contains(self, value: float) -> bool:
+        """Return whether ``value``, in base units, is inside the band."""
+        return _reaches(self.minimum, self.min_inclusive, value, True) and _reaches(
+            value, True, self.maximum, self.max_inclusive
+        )
+
+    def overlaps(self, other: Band) -> bool:
+        """Return whether any value is inside both bands.
+
+        Raises:
+            UsageError: The bands measure different dimensions.
+        """
+        if other.dimension is not self.dimension:
+            raise UsageError(f"Band {self} can't be compared with {other}: different dimensions")
+        return _reaches(self.minimum, self.min_inclusive, other.maximum, other.max_inclusive) and (
+            _reaches(other.minimum, other.min_inclusive, self.maximum, self.max_inclusive)
+        )
+
+
+def _reaches(low: float, low_included: bool, high: float, high_included: bool) -> bool:
+    """Return whether a value can be at or above ``low`` and at or below ``high``."""
+    return low < high or (low == high and low_included and high_included)
+
+
+@dataclass(frozen=True)
 class ReferenceValue:
     """One value from a reference table, with its sources and how far to trust it.
 
     Raises:
-        SpecError: ``stated`` doesn't equal ``value``.
+        SpecError: ``stated`` doesn't equal ``value``, or a condition's key or value is
+            malformed.
     """
 
     value: float
@@ -161,10 +225,28 @@ class ReferenceValue:
     """Ids of sources that agree with it but don't define it, such as spot checks."""
     stated: TypedValue | None = None
     """The value as the source states it, when the source states it literally."""
+    quantity: str = ""
+    """What the value is, e.g. ``"min_radius"`` or ``"f_tu"``, when a table holds several
+    quantities. Bands are checked per quantity."""
+    band: Band | None = None
+    """The range, such as a thickness band, that the value applies across; ``None`` when
+    it doesn't depend on one."""
+    conditions: Mapping[str, str] = field(default_factory=dict)
+    """The case the value is for, e.g. ``{"material": "al:6061", "temper": "temper:t6"}``.
+
+    Keys are lowercase identifiers, and values are text, such as option keys. Stored as a
+    read-only copy.
+    """
 
     def __post_init__(self) -> None:
         if self.stated is not None and self.stated.value != self.value:
             raise SpecError(f"Stated value {self.stated.text!r} doesn't equal {self.value!r}")
+        for key, condition in self.conditions.items():
+            if not _CONDITION_KEY.fullmatch(key) or not isinstance(condition, str):
+                raise SpecError(f"Condition {key!r} = {condition!r} is malformed")
+            if not condition.strip():
+                raise SpecError(f"Condition {key!r} needs a value")
+        object.__setattr__(self, "conditions", MappingProxyType(dict(self.conditions)))
 
 
 @dataclass(frozen=True)
@@ -185,23 +267,49 @@ class ReferenceTable:
         """This table as a citation, e.g. ``"Gauge systems, version 1"``."""
         return Reference(self.name, f"version {self.version}")
 
+    def _check_band(self, value: ReferenceValue, others: list[Band | None]) -> None:
+        """Hold ``value``'s band apart from the bands already in its series, then add it."""
+        band = value.band
+        what = (
+            f"{self.name}: source {value.source!r} gives {value.quantity or 'a value'} "
+            f"{dict(value.conditions)}"
+        )
+        for other in others:
+            if (band is None) != (other is None):
+                raise SpecError(f"{what} both with and without a band")
+            if band is not None and other is not None:
+                if band.dimension is not other.dimension:
+                    raise SpecError(f"{what} in bands of different dimensions")
+                if band.overlaps(other):
+                    raise SpecError(f"{what} in overlapping bands {other} and {band} (ADR-0014 §1)")
+        others.append(band)
+
     def check_values(self, values: Iterable[ReferenceValue]) -> None:
         """Check the values a domain module built from this table.
 
         Whether a value's defining source really states it can't be checked here; the
         release checklist covers that (ADR-0014 §5).
 
+        Bands are checked per series: the values of one quantity, from one source, under
+        one set of conditions. Within a series, bands must not overlap, so a lookup finds
+        at most one value. Different sources may overlap, because where sources disagree
+        every one is shown (ADR-0014 M4).
+
         Raises:
-            SpecError: A value cites a source the table doesn't declare, or a cite-only
+            SpecError: A value cites a source the table doesn't declare; a cite-only
                 publication defines more values, through any of its sources, than its
-                cap (ADR-0014 §5.1).
+                cap (ADR-0014 §5.1); or a series mixes banded and unbanded values, mixes
+                dimensions, or has overlapping bands (ADR-0014 §1).
         """
         defined: Counter[str] = Counter()
+        series: dict[tuple[str, str, tuple[tuple[str, str], ...]], list[Band | None]] = {}
         for value in values:
             unknown = [s for s in (value.source, *value.corroborating) if s not in self.sources]
             if unknown:
                 raise SpecError(f"{self.name}: a value cites unknown sources {unknown}")
             defined[self.sources[value.source].publication.id] += 1
+            key = (value.quantity, value.source, tuple(sorted(value.conditions.items())))
+            self._check_band(value, series.setdefault(key, []))
         for publication_id, count in defined.items():
             publication = self.publications[publication_id]
             if publication.license is License.CITE_ONLY_FACT and count > publication.cite_only_cap:

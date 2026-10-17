@@ -101,7 +101,8 @@ class DomainSettings:
         """Return the option selected for ``key``, or ``None`` if there is none.
 
         The selection is the option the user chose, else the choice's default where the
-        selections it depends on offer it.
+        selections it depends on offer it, else the offered option marked as the default
+        (``Option.default``).
 
         Raises:
             UsageError: ``domain`` has no choice with that key.
@@ -210,8 +211,9 @@ def _resolve(domain: Domain, chosen: Mapping[str, str]) -> tuple[dict[str, str],
 
     Each choice is resolved after the choices it depends on, so its options are computed
     from their selections. A choice takes the option chosen for it if offered, else its
-    default if offered, else nothing. A kept option may be offered under a different
-    parent selection than the one it was chosen under.
+    default if offered, else the offered option marked as the default, else nothing. A
+    kept option may be offered under a different parent selection than the one it was
+    chosen under.
 
     Raises:
         SpecError: A choice that depends on nothing has a default it doesn't offer, a bug
@@ -220,7 +222,9 @@ def _resolve(domain: Domain, chosen: Mapping[str, str]) -> tuple[dict[str, str],
     selections: dict[str, str] = {}
     kept: dict[str, str] = {}
     for choice in domain.ordered_choices():
-        offered = {o.key for o in domain.options(choice.key, selections)}
+        options = domain.options(choice.key, selections)
+        offered = {o.key for o in options}
+        marked = next((o.key for o in options if o.default), None)
         picked = chosen.get(choice.key)
         if picked is not None and picked in offered:
             selections[choice.key] = kept[choice.key] = picked
@@ -231,4 +235,6 @@ def _resolve(domain: Domain, chosen: Mapping[str, str]) -> tuple[dict[str, str],
                 f"Domain {domain.id!r}: the default {choice.default!r} of {choice.key!r} "
                 "isn't one of its options"
             )
+        elif marked is not None:
+            selections[choice.key] = marked
     return selections, kept

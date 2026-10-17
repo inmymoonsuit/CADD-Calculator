@@ -19,6 +19,7 @@ from caddcalc.core.errors import (
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.refdata import (
+    Band,
     Basis,
     License,
     PublicationKind,
@@ -46,6 +47,7 @@ from caddcalc.core.units import (
 )
 
 __all__ = [
+    "Band",
     "Basis",
     "CaddCalcError",
     "CalculationError",

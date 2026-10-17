@@ -1,7 +1,7 @@
 # ADR-0014: Materials and reference data for sheet metal (ADR-0013 phase 2)
 
-* **Status:** **Accepted**; **phase 2a built** (gauge systems, 2026-10-17), phase 2b not
-  started. The design as built is in the [Amendments](#amendments), which refine §1,
+* **Status:** **Accepted**; **phase 2a built** (gauge systems, 2026-10-17), phase 2b under
+  way. The design as built is in the [Amendments](#amendments), which refine §1,
   §2, and §5. The maintainer approved M1–M7 as
   recommended on 2026-10-17. This ADR supersedes parts of ADR-0013: decision A's "P
   derived from material" (M3), decision E for K and P (M2), and §11's phase-2 list (see
@@ -758,3 +758,42 @@ These refine the bounded-evaluation entry above.
   of the 2b plan), with no separate stress control.
 * The coverage tests that already ran over every `Dimension` now also check that a bare
   number reads in the display unit.
+
+### 2026-10-17: bands, conditions, and per-parent defaults (maintainer, phase 2b.2)
+
+These build in core what §1 and the 2a clarification "Bands and conditions wait for
+phase 2b" deferred. The materials table that uses them, and its TOML shape, come with
+its data in 2b.4.
+
+* **`Band`** (`core.refdata`): a range in base units with included or excluded ends,
+  following `Param`'s pattern, and the dimension it measures. `contains()` looks a value
+  up; nothing interpolates between bands. A single listed point is a band whose ends are
+  equal and included.
+* **`ReferenceValue` gains `band`, `conditions`, and `quantity`.** Conditions are the case
+  a value is for, as text keyed by lowercase identifiers, such as the material and temper
+  option keys and the bend-angle case; they're kept read-only. `quantity` names what the
+  value is, such as a minimum radius or a tensile strength, so one table can hold several
+  quantities, and a min/typical/max range is three quantities.
+* **"Bands in one table don't overlap" now means one series:** the values of one
+  quantity, from one source, under one set of conditions. Within a series,
+  `check_values` refuses overlapping bands, a mix of banded and unbanded values, and
+  bands of different dimensions, so a lookup in one source finds at most one value.
+  Different sources for the same case may overlap. *Why:* where sources disagree, every
+  one is shown and the larger governs (M4; the maintainer's decision D1 takes 6061-T6
+  from two sources at once), which the per-table wording would forbid.
+* **`Option.default`** (the maintainer's decision on flag 2 of the 2b plan): a resolver
+  may mark one offered option as the default, so a dependent choice's default can follow
+  its parents, such as each material's single temper. A choice takes the option chosen
+  for it, else `Choice.default` where offered, else the marked option. Marking more than
+  one is a domain bug (`SpecError`). *Why:* `Choice.default` is one static key, which
+  can't name a different temper for each material. An auto-select rule (a lone option is
+  taken) was rejected, because its meaning would change when a material gains a second
+  temper.
+* **The cite-only cap counts reference-data values** (the maintainer's decision D7).
+  §5.1's cap counts the values a table defines, and any value the app offers to apply,
+  which therefore comes from a table, where the cap sees it; a button that computed a
+  cited value in code would evade the cap. The coefficients in a method's formula, such
+  as the course method's Machinery's Handbook equation, are part of the method, cited and
+  rated with it (ADR-0004, ADR-0010), and aren't counted. So MH29's K values (Eq 33 and
+  34) appear only as citations in the K-factor help, for the user to type, and
+  `MAX_CITE_ONLY_PER_PUBLICATION` stays 1.

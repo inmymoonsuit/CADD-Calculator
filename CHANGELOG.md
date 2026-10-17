@@ -7,6 +7,13 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Bands, conditions, and per-parent defaults for phase 2b (ADR-0014, amendments):
+  `core.Band`, a range with included or excluded ends that a reference value applies
+  across, never interpolated; `ReferenceValue.band`, `conditions`, and `quantity`; and
+  `ReferenceTable.check_values()` refuses overlapping bands within a series (one
+  quantity, from one source, under one set of conditions). `Option.default` lets a
+  resolver mark the option a choice falls back to, so each material can default to its
+  own temper.
 - A stress dimension for phase 2b's material strengths (ADR-0005 and ADR-0014,
   amendments): `Dimension.STRESS`, in MPa, with kPa, GPa, psi, and ksi. Stresses show
   in ksi when lengths are in inches or feet and in MPa when they're metric, to
