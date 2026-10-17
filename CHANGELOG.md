@@ -13,7 +13,9 @@ All notable changes are recorded here. The format follows
   `welcome_scrim` and `on_welcome_scrim`). Pack art and logos that can't be used,
   including art over 4096 px, fall back to generated art with a warning. Esc or the X
   closes it, dragging the top bar moves it, and it shrinks to fit a small screen.
-  Startup doesn't show it yet.
+  It shows at every start, before the main window is built, and blocks the main window
+  until it's closed; Help > Welcome Screen reopens it. The smoke report gains
+  `welcome_shown`, `welcome_art`, and `welcome_logo`, which the build checks.
 - **Phase 2a: gauge systems (ADR-0014).** The Sheet Metal page offers a gauge: a
   system (Manufacturers' Standard, galvanized, US Standard 1893, or AWG) and a number,
   which derives the thickness every calculator shares, at the system's published

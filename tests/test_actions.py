@@ -30,7 +30,8 @@ def test_each_command_carries_its_macos_menu_role() -> None:
     assert actions.about.menuRole() is QAction.MenuRole.AboutRole
     assert actions.quit.menuRole() is QAction.MenuRole.QuitRole
     assert actions.quit.shortcuts() == QKeySequence.keyBindings(QKeySequence.StandardKey.Quit)
-    assert (actions.preferences, actions.welcome) == (None, None), "not built yet"
+    assert actions.welcome.menuRole() is QAction.MenuRole.NoRole
+    assert actions.preferences is None, "there are no preferences yet"
 
 
 def test_menus_list_only_the_commands_that_exist() -> None:
@@ -39,7 +40,7 @@ def test_menus_list_only_the_commands_that_exist() -> None:
     actions = AppActions()
     assert [(t, [a.text() for a in items]) for t, items in actions.menus()] == [
         ("&File", ["E&xit"]),
-        ("&Help", ["&About CADD Calculator"]),
+        ("&Help", ["&Welcome Screen", "&About CADD Calculator"]),
     ]
 
 
@@ -47,11 +48,14 @@ def test_the_main_window_shows_the_shared_commands() -> None:
     from caddcalc.gui.actions import AppActions
 
     window = open_window()
-    assert menu_layout(window) == [("&File", ["E&xit"]), ("&Help", ["&About CADD Calculator"])]
+    assert menu_layout(window) == [
+        ("&File", ["E&xit"]),
+        ("&Help", ["&Welcome Screen", "&About CADD Calculator"]),
+    ]
     shared = AppActions(window.branding)
     other = type(window)(window.registry, actions=shared)
     assert other.app_actions is shared
-    assert other.menuBar().actions()[1].menu().actions() == [shared.about]
+    assert other.menuBar().actions()[1].menu().actions() == [shared.welcome, shared.about]
     other.close()
     window.close()
 

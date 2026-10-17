@@ -12,11 +12,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QApplication
 
+    from caddcalc.gui.actions import AppActions
     from caddcalc.gui.branding import Branding
+    from caddcalc.gui.welcome import WelcomeScreen
     from caddcalc.gui.window import MainWindow
 
 SMOKE_TEST_FLAG = "--smoke-test"
-"""``--smoke-test[=DIR]``: start, show the window, then quit with status 0.
+"""``--smoke-test[=DIR]``: start, show the welcome screen and the window, then quit with 0.
 
 Packaged builds are checked with it (``packaging/build.py --smoke-test``). With a DIR it
 also writes ``smoke-test.json`` and a ``window.png`` screenshot there.
@@ -45,9 +47,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 1
 
+    from PySide6.QtCore import QTimer
+
     from caddcalc import __version__
+    from caddcalc.gui.actions import AppActions
     from caddcalc.gui.branding import active_branding
-    from caddcalc.gui.window import MainWindow
+    from caddcalc.gui.welcome import WelcomeScreen
 
     args, smoke_test, report_dir = _split_smoke_test(list(sys.argv[1:] if argv is None else argv))
     branding = active_branding()
@@ -64,29 +69,78 @@ def main(argv: Sequence[str] | None = None) -> int:
     if branding.icon is not None:
         app.setWindowIcon(QIcon(str(branding.icon)))
 
-    window = MainWindow(branding=branding)
-    window.show()
+    # The welcome screen shows first and paints, so startup is never blank; the main
+    # window is built after it (ADR-0015 §1, amendments).
+    actions = AppActions(branding, app)
+    welcome = WelcomeScreen(branding, actions)
+    startup = _Startup(app, branding, actions, welcome)
+    welcome.show()
+    app.processEvents()
 
     if smoke_test:
+        startup.build_main_window()
         ready = time.perf_counter() - started
-        _write_smoke_report(report_dir, app, window, branding, ready)
+        _write_smoke_report(report_dir, app, startup.main_window(), branding, welcome, ready)
         status = 0
     else:
+        QTimer.singleShot(0, startup.build_main_window)
         status = int(app.exec())
-    _dispose(app, window)
+    _dispose(app, welcome, startup.window, actions)
     return status
 
 
-def _dispose(app: QApplication, window: MainWindow) -> None:
-    """Close and delete the window while the application still runs.
+class _Startup:
+    """Builds the main window once the welcome screen has painted (ADR-0015 §1).
 
-    Left to interpreter exit, the window would be torn down after or during Qt's own
-    teardown, in no set order (KI-019).
+    Until the main window shows, the welcome screen is the app's only window, so closing
+    it early mustn't end the app.
     """
-    from PySide6.QtCore import QEvent
 
-    window.close()
-    window.deleteLater()
+    def __init__(
+        self, app: QApplication, branding: Branding, actions: AppActions, welcome: WelcomeScreen
+    ) -> None:
+        self.app = app
+        self.branding = branding
+        self.actions = actions
+        self.welcome = welcome
+        self.window: MainWindow | None = None
+        app.setQuitOnLastWindowClosed(False)
+
+    def build_main_window(self) -> None:
+        """Build and show the main window behind the welcome screen."""
+        from shiboken6 import isValid
+
+        from caddcalc.gui.window import MainWindow
+
+        self.window = MainWindow(branding=self.branding, actions=self.actions)
+        self.window.show()
+        if isValid(self.welcome) and self.welcome.isVisible():
+            self.welcome.raise_()
+            self.welcome.activateWindow()
+        self.app.setQuitOnLastWindowClosed(True)
+
+    def main_window(self) -> MainWindow:
+        """Return the main window, once built."""
+        if self.window is None:
+            raise RuntimeError("the main window hasn't been built yet")
+        return self.window
+
+
+def _dispose(app: QApplication, *objects: object) -> None:
+    """Close and delete the app's windows and commands while the application still runs.
+
+    Left to interpreter exit, they would be torn down after or during Qt's own teardown,
+    in no set order (KI-019). A window the user closed is already deleted.
+    """
+    from PySide6.QtCore import QEvent, QObject
+    from PySide6.QtWidgets import QWidget
+    from shiboken6 import isValid
+
+    for item in objects:
+        if isinstance(item, QObject) and isValid(item):
+            if isinstance(item, QWidget):
+                item.close()
+            item.deleteLater()
     app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
@@ -110,6 +164,7 @@ def _write_smoke_report(
     app: QApplication,
     window: MainWindow,
     branding: Branding,
+    welcome: WelcomeScreen,
     ready_seconds: float,
 ) -> None:
     from caddcalc import __version__
@@ -126,6 +181,9 @@ def _write_smoke_report(
         "version": __version__,
         "window_title": window.windowTitle(),
         "icon_loaded": not app.windowIcon().isNull(),
+        "welcome_shown": welcome.isVisible(),
+        "welcome_art": welcome.art_source,
+        "welcome_logo": welcome.logo_source,
         "about_custom": branding.about_html is not None,
         "calculators": len(window.registry),
         "reference_tables": _load_reference_tables(),

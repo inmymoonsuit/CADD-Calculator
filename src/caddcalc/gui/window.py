@@ -81,6 +81,7 @@ from caddcalc.gui.icons import (
     render,
     role_color,
 )
+from caddcalc.gui.welcome import WelcomeScreen
 
 ID_ROLE = Qt.ItemDataRole.UserRole
 """Tree item data holding a calculator row's calculator id."""
@@ -386,6 +387,7 @@ class MainWindow(QMainWindow):
     def _build_menu(self) -> None:
         self.app_actions.fill(self.menuBar())
         self.app_actions.about.triggered.connect(self._show_about)
+        self.app_actions.welcome.triggered.connect(self.show_welcome)
 
     def _apply_icons(self) -> None:
         """(Re)color every icon for the current light or dark scheme."""
@@ -402,6 +404,16 @@ class MainWindow(QMainWindow):
         self._apply_icons()
         self.recompute()
         self._show_setting_problems()
+
+    def show_welcome(self) -> WelcomeScreen:
+        """Open the welcome screen over this window (Help > Welcome Screen).
+
+        It belongs to this window, blocks it until it's closed, and is deleted when closed
+        (ADR-0015, amendments).
+        """
+        welcome = WelcomeScreen(self.branding, self.app_actions, self)
+        welcome.show()
+        return welcome
 
     def _show_about(self) -> None:
         # Over whichever window is active, such as the welcome screen.

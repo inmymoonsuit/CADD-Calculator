@@ -371,6 +371,15 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
         problems.append("did not detect that it is packaged")
     if not report["icon_loaded"]:
         problems.append("window icon did not load")
+    if not report.get("welcome_shown"):
+        problems.append("the welcome screen did not show")
+    for part, path in (("art", branding.welcome_art), ("logo", branding.welcome_logo)):
+        expected = "generic" if path is None else "pack"
+        if report.get(f"welcome_{part}") != expected:
+            problems.append(
+                f"the welcome {part} came from {report.get(f'welcome_{part}')!r}, "
+                f"expected {expected!r}"
+            )
     if report.get("reference_tables") != len(REFERENCE_TABLES):
         problems.append(
             f"loaded {report.get('reference_tables')} reference tables, "

@@ -18,8 +18,9 @@ class AppActions(QObject):
     """The app-wide commands, shared by every window that shows them.
 
     Quit is handled here, because it concerns the whole app. The window that owns a
-    command's dialog connects the others: the main window shows About. A command that
-    doesn't exist yet, such as Preferences, is ``None`` and no menu lists it.
+    command's dialog connects the others: the main window shows About and the welcome
+    screen. A command that doesn't exist yet, such as Preferences, is ``None`` and no menu
+    lists it.
     """
 
     def __init__(self, branding: Branding = GENERIC, parent: QObject | None = None) -> None:
@@ -31,15 +32,15 @@ class AppActions(QObject):
         self.quit.setMenuRole(QAction.MenuRole.QuitRole)
         self.quit.setShortcuts(QKeySequence.StandardKey.Quit)
         self.quit.triggered.connect(QApplication.closeAllWindows)
+        self.welcome = QAction("&Welcome Screen", self)
+        self.welcome.setMenuRole(QAction.MenuRole.NoRole)
         self.preferences: QAction | None = None
         """Preferences…, once the app has preferences (ADR-0015 W3)."""
-        self.welcome: QAction | None = None
-        """Help > Welcome Screen, once the welcome screen exists."""
 
     def menus(self) -> tuple[tuple[str, tuple[QAction, ...]], ...]:
         """Return the menus in order, File then Help, each with the commands that exist."""
         file_menu = tuple(a for a in (self.preferences, self.quit) if a is not None)
-        help_menu = tuple(a for a in (self.welcome, self.about) if a is not None)
+        help_menu = (self.welcome, self.about)
         return (("&File", file_menu), ("&Help", help_menu))
 
     def fill(self, bar: QMenuBar) -> None:

@@ -369,6 +369,9 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     image.fill(0xFF1F5F99)
     assert image.save(str(pack / "icon.png"), "PNG")
     assert image.save(str(pack / "welcome-art.png"), "PNG")
+    (pack / "logo-vertical.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="72" height="540"/>', encoding="utf-8"
+    )
     monkeypatch.setenv(ENV_VAR, str(pack))
     report_dir = tmp_path / "report"
     try:
@@ -380,7 +383,12 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert report["edition"] == "test-edition"
     assert report["window_title"] == report["name"]
     assert report["icon_loaded"] and report["about_custom"]
-    assert "splash_shown" not in report, "the splash screen is gone (ADR-0015)"
+    assert "splash_shown" not in report, "the welcome screen replaced it (ADR-0015)"
+    assert (report["welcome_shown"], report["welcome_art"], report["welcome_logo"]) == (
+        True,
+        "pack",
+        "pack",
+    )
     assert not report["packaged"]
     assert report["reference_tables"] == len(REFERENCE_TABLES) == 1, "the gauge table"
     assert (report_dir / "window.png").stat().st_size > 0
@@ -400,3 +408,31 @@ def test_the_entry_point_reads_the_command_line(
     finally:
         qt.QApplication.instance().setApplicationDisplayName("")
     assert (tmp_path / "smoke-test.json").is_file()
+
+
+@pytest.mark.gui
+def test_startup_shows_the_generic_welcome_screen_and_leaves_no_window(
+    qt: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from PySide6.QtCore import QEvent
+
+    from caddcalc.gui.app import main
+    from caddcalc.gui.welcome import WelcomeScreen
+    from caddcalc.gui.window import MainWindow
+
+    monkeypatch.delenv(ENV_VAR, raising=False)
+    app = qt.QApplication.instance()
+    try:
+        assert main([f"--smoke-test={tmp_path}"]) == 0
+    finally:
+        app.setApplicationDisplayName("")
+    report = json.loads((tmp_path / "smoke-test.json").read_text(encoding="utf-8"))
+    assert (report["welcome_shown"], report["welcome_art"], report["welcome_logo"]) == (
+        True,
+        "generic",
+        "generic",
+    )
+    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    left = [w for w in app.topLevelWidgets() if isinstance(w, MainWindow | WelcomeScreen)]
+    assert left == [], "main() disposes of its windows (KI-019)"
+    assert app.quitOnLastWindowClosed(), "restored once the main window shows"

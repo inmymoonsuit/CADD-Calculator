@@ -169,3 +169,21 @@ def test_a_closed_welcome_screen_is_freed() -> None:
     del welcome
     flush()
     assert alive() is None
+
+
+def test_help_reopens_it_over_the_main_window() -> None:
+    from PySide6.QtCore import Qt
+
+    from caddcalc.gui.welcome import WelcomeScreen
+    from tests.qt_helpers import open_window
+
+    window = open_window()
+    window.show()
+    window.app_actions.welcome.trigger()
+    (welcome,) = window.findChildren(WelcomeScreen)
+    assert welcome.isVisible() and welcome.parentWidget() is window
+    assert welcome.windowModality() is Qt.WindowModality.ApplicationModal
+    welcome.close()
+    flush()
+    assert window.findChildren(WelcomeScreen) == [], "deleted when closed"
+    window.close()
