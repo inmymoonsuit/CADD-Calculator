@@ -13,6 +13,8 @@ uv run mypy                     # strict type checking of src/
 uv run caddcalc-gui             # run the app
 ```
 
+To build the standalone app, see [docs/dev/packaging.md](docs/dev/packaging.md).
+
 On Windows, if uv warns about hardlinks (the cache and the project are on different drives),
 set `UV_LINK_MODE=copy`.
 

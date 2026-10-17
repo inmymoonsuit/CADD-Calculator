@@ -42,6 +42,14 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
 ]
+# Packaging only (ADR-0009): `uv sync --extra gui --group build`, then
+# `uv run python packaging/build.py`. Pin Nuitka to the version that pyside6-deploy's
+# default.spec names for the locked PySide6: Nuitka 4.3 builds an app that crashes
+# (engineering log, 2026-10-17). pyside6-deploy needs patchelf on Linux.
+build = [
+    "nuitka==4.1.1",
+    "patchelf>=0.17; sys_platform == 'linux'",
+]
 
 [build-system]
 requires = ["hatchling>=1.27"]  # 1.27+ for PEP 639 license metadata
@@ -61,7 +69,7 @@ markers = ["gui: needs PySide6 (skipped when it is not installed)"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "tests", "packaging"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
@@ -70,5 +78,5 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true
-files = ["src"]
+files = ["src", "packaging"]
 python_version = "3.12"

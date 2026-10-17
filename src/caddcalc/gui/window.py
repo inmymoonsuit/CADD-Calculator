@@ -34,22 +34,24 @@ from caddcalc.core.formatting import (
     unit_suffix,
 )
 from caddcalc.core.units import Dimension, parse_quantity
+from caddcalc.gui.branding import GENERIC, Branding
 
 ID_ROLE = Qt.ItemDataRole.UserRole
 ERROR_STYLE = "QLineEdit { border: 1px solid #c0392b; }"
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, registry: Registry | None = None) -> None:
+    def __init__(self, registry: Registry | None = None, branding: Branding = GENERIC) -> None:
         super().__init__()
         self.registry = registry or default_registry()
+        self.branding = branding
         self.prefs = DisplayPrefs()
         self.calculator: Calculator | None = None
         self.values: dict[str, dict[str, float]] = {}
         """Last good input values per calculator id, by parameter key, in base units."""
         self.fields: dict[str, tuple[Param, QLineEdit]] = {}
 
-        self.setWindowTitle("CADD Calculator")
+        self.setWindowTitle(branding.name)
         self.resize(1100, 720)
         self._build_ui()
         self._build_menu()
@@ -117,19 +119,11 @@ class MainWindow(QMainWindow):
 
     def _build_menu(self) -> None:
         help_menu = self.menuBar().addMenu("&Help")
-        about = help_menu.addAction("&About CADD Calculator")
+        about = help_menu.addAction(f"&About {self.branding.name.replace('&', '&&')}")
         about.triggered.connect(self._show_about)
 
     def _show_about(self) -> None:
-        QMessageBox.about(
-            self,
-            "About CADD Calculator",
-            f"<h3>CADD Calculator {escape(__version__)}</h3>"
-            "<p>Open-source calculators for computer-aided drafting and design.</p>"
-            f"<p>{escape(DISCLAIMER)}</p>"
-            '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
-            "github.com/inmymoonsuit/CADD-Calculator</a></p>",
-        )
+        QMessageBox.about(self, f"About {self.branding.name}", about_html(self.branding))
 
     # --- selection ------------------------------------------------------------------------
 
@@ -223,6 +217,21 @@ class MainWindow(QMainWindow):
             self.output.setHtml(_error_html([str(exc)]))
             return
         self.output.setHtml(result_html(calc, result, self.prefs))
+
+
+GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
+
+
+def about_html(branding: Branding) -> str:
+    """Help > About text. A pack replaces the description; the version, the disclaimer,
+    and the link to the source code are always shown."""
+    return (
+        f"<h3>{escape(branding.name)} {escape(__version__)}</h3>"
+        + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
+        + f"<p>{escape(DISCLAIMER)}</p>"
+        '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
+        "github.com/inmymoonsuit/CADD-Calculator</a></p>"
+    )
 
 
 def _error_html(errors: list[str]) -> str:

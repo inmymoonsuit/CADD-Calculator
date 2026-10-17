@@ -21,5 +21,6 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0006](0006-extensibility-via-entry-points.md) | Extensibility: built-ins listed explicitly, plugins via entry points | Accepted |
 | [0007](0007-documentation-in-repo-not-wiki.md) | Documentation lives in the repo, not a wiki | Accepted |
 | [0008](0008-licensing-and-third-party-assets.md) | Licensing, and keeping third-party assets out of the repo | Accepted (Apache-2.0) |
-| [0009](0009-packaging-and-distribution.md) | Packaging and distribution | **Proposed** |
+| [0009](0009-packaging-and-distribution.md) | Packaging and distribution | Accepted (pyside6-deploy + Nuitka); installers, macOS/Linux, signing still proposed |
 | [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted |
+| [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed** |

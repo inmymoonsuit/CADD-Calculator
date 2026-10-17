@@ -44,15 +44,22 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [ ] Feet-and-inches input (KI-009). Fraction display toggle in the GUI.
 
 ### 0.3: Installable
-- [ ] Packaging spike, then accept ADR-0009 (pyside6-deploy/Nuitka vs Briefcase)
+- [x] Packaging spike, then accept ADR-0009: pyside6-deploy + Nuitka (pinned to 4.1.1),
+      standalone folder, built by `packaging/build.py`. Windows only so far (ADR-0009).
 - [ ] Installers for Windows, macOS, and Linux, built in CI on tags. GitHub Releases.
+      A workflow that builds generic archives on tags and drafts a release is sketched in
+      `.github/workflows/release.yml`. It hasn't run on GitHub, and macOS and Linux are untested.
+- [ ] Third-party license notices in the app folder (KI-016)
 - [ ] Generic art for the public build: logo/app icon (Windows `.ico`, macOS `.icns`,
       Linux PNG sizes) and splash. Use original work, released permissively (see
       ADR-0008, item 4), with the source files (SVG or `.blend`) committed so others can
       edit them. Build it only from assets whose licenses allow that: your own models,
       CC0 assets, or OFL fonts. Not purchased stock assets whose licenses forbid relicensing.
-- [ ] Branding hook: load name, icon, splash, and About text from an optional branding pack
-      at build or run time, with a `--branding <pack>` build option (ADR-0008, item 4)
+      Until then, an interim icon drawn in code (`packaging/icons.py`) is in
+      `src/caddcalc/gui/assets/`.
+- [x] Branding hook: load name, icon, splash, and About text from an optional branding pack
+      at build or run time, with a `--branding <pack>` build option (ADR-0008 item 4,
+      ADR-0011, `docs/dev/packaging.md`)
 - [x] Choose the license: Apache-2.0 (ADR-0008)
 - [ ] Docs site generator (ADR-0007) published to GitHub Pages
 

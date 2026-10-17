@@ -114,6 +114,27 @@ not-applicable, so `bend_allowance` accepts A = 180° and reports BA with OSSB a
 as "n/a (hem)". That needs a small change in `Calculator.run`, which today raises SpecError
 when any output is missing.
 
+### KI-015: Slow start on machines with many fonts (Low)
+
+On the maintainer's PC, which has 2,454 font families, the app takes 2.5 to 3.5 s to open,
+packaged or run from source. Profiling a source run: about 0.5 s for Qt's DirectWrite
+font database to list the families, and 1.5 s for the first `show()` (probably font
+fallback for π, ·, and ° in the results). The app's own work takes 0.13 s. With
+`QT_QPA_PLATFORM=windows:fontengine=gdi` the start takes 1.3 s. **Next:** measure on a
+typical lab PC. If it's still slow, try naming font families for the results pane, or
+show a splash screen. Switching the font engine changes how text looks, so check that
+before choosing it.
+
+### KI-016: Packaged builds lack third-party license notices (Medium)
+
+The app folder bundles at least Qt 6 and PySide6/Shiboken (LGPL-3.0), CPython (PSF
+License), OpenSSL's libcrypto (Apache-2.0), libffi (MIT), Nuitka's runtime (Apache-2.0),
+and the Microsoft C++ runtime (redistributable). `packaging/build.py` copies only the
+project's `LICENSE.md`, and the PySide6 wheels carry no LGPL text to copy.
+**Needed before a public release:** `THIRD_PARTY_NOTICES.md` (ADR-0008, Remaining) with
+the LGPL texts and a note on replacing the Qt libraries, copied into the app folder by
+the build.
+
 ## Resolved
 
 ### KI-011: K-factor method had no page citation (resolved 2026-10-16)

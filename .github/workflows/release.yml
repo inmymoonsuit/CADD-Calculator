@@ -1,0 +1,98 @@
+name: Release builds
+
+# Sketch from the 0.3 packaging spike (ADR-0009). It builds the GENERIC edition only.
+#
+# Branded editions are never built here (ADR-0008 item 4, ADR-0011): the repository has
+# no branding pack, the first step fails if a branding/ folder ever appears, and
+# packaging/build.py refuses any branded build when CI is set.
+#
+# Status: the Windows build and smoke test have run locally with the same commands.
+# This workflow has not run on GitHub yet, and the macOS and Linux jobs are untested.
+# The output is a portable archive per OS; real installers (Inno Setup, .dmg, AppImage)
+# come later (roadmap 0.3). Nothing is signed yet (ADR-0009, open questions).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Generic / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest supported Ubuntu, so the Linux build runs on older glibc too.
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+    env:
+      NUITKA_CACHE_DIR: ${{ github.workspace }}/../nuitka-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse to build with a branding pack in the checkout
+        shell: bash
+        run: |
+          if [ -e branding ]; then
+            echo "::error::branding/ must never be in the public repository (ADR-0008 item 4)"
+            exit 1
+          fi
+
+      - name: Install Qt runtime libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
+            libfontconfig1 libdbus-1-3
+          echo "QT_QPA_PLATFORM=offscreen" >> "$GITHUB_ENV"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: uv sync --extra gui --group build --locked
+
+      - name: Cache Nuitka's compiler downloads and ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUITKA_CACHE_DIR }}
+          key: nuitka-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: nuitka-${{ runner.os }}-
+
+      - name: Build the generic edition, start it, and archive it
+        run: uv run python packaging/build.py --smoke-test --archive
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CADDCalculator-generic-${{ runner.os }}
+          path: |
+            builds/generic/*.zip
+            builds/generic/*.tar.gz
+            builds/generic/*.build.json
+          if-no-files-found: error
+
+  draft-release:
+    name: Draft GitHub release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # A draft: the maintainer checks the archives and publishes the release by hand.
+      - name: Create a draft release with the generic archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
+            --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes \
+            dist/*.zip dist/*.tar.gz

@@ -19,3 +19,18 @@ All notable changes are recorded here. The format follows
   legacy transcription) and user docs.
 - CI on Windows, macOS, and Linux.
 - Licensed under Apache-2.0.
+- Packaging: `packaging/build.py` builds the desktop app as a standalone folder with
+  pyside6-deploy and Nuitka (pinned to 4.1.1), with an optional smoke test and archive
+  (ADR-0009, `docs/dev/packaging.md`).
+- Branding hook: an optional branding pack (`branding.toml` with a name, icon, splash, and
+  About text) is applied at build time with `build.py --branding PACK`, or at run time with
+  the `CADDCALC_BRANDING` environment variable (ADR-0011). The public build stays unbranded.
+- An interim generic app icon, drawn in code.
+- `caddcalc-gui --smoke-test[=DIR]` opens the window, optionally writes a report and a
+  screenshot to DIR, and exits. It is used to check packaged builds.
+- A sketch of a release workflow that builds the generic edition when a version tag is
+  pushed and drafts a GitHub release.
+
+### Changed
+- The window title and Help > About come from the active branding. About always keeps
+  the version, the disclaimer, and the link to the source code.

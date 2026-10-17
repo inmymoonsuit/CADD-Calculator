@@ -7,6 +7,7 @@
 | [known-issues.md](known-issues.md) | Limitations and formula doubts (`KI-NNN`) | you find or fix one |
 | [engineering-log.md](engineering-log.md) | Attempts that failed or were reverted | something didn't work, even if never committed |
 | [roadmap.md](roadmap.md) | Scope, milestones, open decisions | priorities change |
+| [packaging.md](packaging.md) | Building the app, the two editions, branding packs | the build or the pack format changes |
 | [legacy-workbooks.md](legacy-workbooks.md) | Transcription of the original Excel tools | never, except corrections. It is a historical record. |
 
 Day-to-day work items live in GitHub Issues, which link back to `KI-` and `ADR-` IDs.
