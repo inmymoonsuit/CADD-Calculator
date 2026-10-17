@@ -66,6 +66,20 @@ BASE_UNITS: dict[Dimension, str] = {
     Dimension.RATIO: "",
 }
 
+
+def base_text(value: float, dimension: Dimension) -> str:
+    """Write a base-unit value with its unit for developer and API messages, e.g. ``127 mm``.
+
+    Front ends show values in display units through ``core.formatting`` instead.
+    """
+    return f"{value:g} {BASE_UNITS[dimension]}".rstrip()
+
+
+def base_unit_names() -> str:
+    """Name every base unit, e.g. ``"mm, deg, ratio"``, for messages about base units."""
+    return ", ".join(unit or dimension.value for dimension, unit in BASE_UNITS.items())
+
+
 _LOOKUP: dict[str, Unit] = {}
 for _unit in UNITS:
     for _name in (_unit.symbol, *_unit.aliases):

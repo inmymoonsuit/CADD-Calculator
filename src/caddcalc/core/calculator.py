@@ -12,8 +12,8 @@ from caddcalc.core import expr
 from caddcalc.core.domain import DomainValues
 from caddcalc.core.errors import InputError, SpecError, UsageError
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
-from caddcalc.core.spec import Method, Output, Param
-from caddcalc.core.units import BASE_UNITS, Dimension
+from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
+from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
 
@@ -306,9 +306,16 @@ class Calculator(ABC):
             if p.default is not None:
                 try:
                     p.check(p.default_value() or 0.0, DEFAULT)
+                except OutOfRangeError as exc:
+                    raise SpecError(
+                        f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r} "
+                        f"(= {base_text(exc.value, p.dimension)}), which must be "
+                        f"{exc.relation} {base_text(exc.bound, p.dimension)}. Minimum and "
+                        f"maximum are in base units ({base_unit_names()})."
+                    ) from exc
                 except InputError as exc:
                     raise SpecError(
-                        f"{cls.id}: parameter {p.key!r} has a bad default: {exc}"
+                        f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
 
 

@@ -98,7 +98,9 @@ All notable changes are recorded here. The format follows
 - `UnknownCalculatorError` and `UnknownDomainError` print their message without the
   quotes `KeyError` adds, so the CLI shows `error: No calculator 'x'.`
 - A calculator default that doesn't parse or is out of range fails registration with
-  `SpecError`, as a definition bug, instead of an input error. `Registry()` and
+  `SpecError`, as a definition bug, instead of an input error. The message quotes the
+  default as written, gives its value and the bound in named base units, e.g. "bad default
+  '5 in' (= 127 mm), which must be at most 10 mm". `Registry()` and
   `DomainSettings()` start empty and are filled only through their checked methods.
 - Parameter and domain-setting symbols must be usable in formulas: an identifier that
   isn't a Python keyword or an evaluator function or constant. Domain setting symbols

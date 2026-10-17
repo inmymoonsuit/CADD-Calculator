@@ -10,7 +10,7 @@ from enum import Enum
 from caddcalc.core.errors import InputError
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import BASE_UNITS, Dimension, parse_quantity
+from caddcalc.core.units import Dimension, base_text, parse_quantity
 
 
 class Verification(Enum):
@@ -108,14 +108,18 @@ class OutOfRangeError(InputError):
         self.bound = bound
         self.above = above
         self.source = source
-        unit = BASE_UNITS[param.dimension]
-        super().__init__(self.describe(lambda v: f"{v:g} {unit}".rstrip()))
+        super().__init__(self.describe(lambda v: base_text(v, param.dimension)))
+
+    @property
+    def relation(self) -> str:
+        """What the bound requires, e.g. ``"at most"`` or ``"greater than"``."""
+        inclusive = self.param.max_inclusive if self.above else self.param.min_inclusive
+        return _RELATION[self.above, inclusive]
 
     def describe(self, show: Callable[[float], str]) -> str:
         """Return the message, with ``show`` writing each base-unit value as text."""
         p = self.param
-        inclusive = p.max_inclusive if self.above else p.min_inclusive
-        need = f"{_RELATION[self.above, inclusive]} {show(self.bound)}"
+        need = f"{self.relation} {show(self.bound)}"
         if self.source.kind is SourceKind.DOMAIN:
             return (
                 f"{p.label} ({p.symbol}) from {self.source.label} is {show(self.value)}, "

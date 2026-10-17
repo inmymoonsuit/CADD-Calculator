@@ -167,13 +167,25 @@ def test_parameter_symbols_must_be_usable_in_formulas(symbol: str) -> None:
         demo_registry().register(BadSymbol)
 
 
-@pytest.mark.parametrize("default", ["-1 in", "abc"])
-def test_a_bad_default_is_a_definition_error(default: str) -> None:
+@pytest.mark.parametrize(
+    ("default", "message"),
+    [
+        (
+            "5 in",
+            "'length' has a bad default '5 in' (= 127 mm), which must be at most 10 mm. "
+            "Minimum and maximum are in base units (mm, deg, ratio).",
+        ),
+        ("-1 in", "bad default '-1 in' (= -25.4 mm), which must be at least 0 mm."),
+        ("abc", "bad default 'abc': Cannot read a value from 'abc'"),
+    ],
+)
+def test_a_bad_default_is_a_definition_error(default: str, message: str) -> None:
     class BadDefault(_Demo):
-        params = (Param("length", "X", "Length", L, default=default, minimum=0.0),)
+        params = (Param("length", "X", "Length", L, default=default, minimum=0.0, maximum=10.0),)
 
-    with pytest.raises(SpecError, match="'length' has a bad default"):
+    with pytest.raises(SpecError) as caught:
         demo_registry().register(BadDefault)
+    assert message in str(caught.value)
 
 
 def test_a_registry_is_filled_only_by_registering() -> None:
