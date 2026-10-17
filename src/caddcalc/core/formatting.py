@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from caddcalc.core import expr
-from caddcalc.core.calculator import InputSource, Result, SourceKind, Step
+from caddcalc.core.calculator import Result, Step
+from caddcalc.core.errors import CaddCalcError
+from caddcalc.core.provenance import InputSource, SourceKind
+from caddcalc.core.spec import OutOfRangeError
 from caddcalc.core.units import Dimension, from_base, get_unit
 
 DISCLAIMER = (
@@ -115,6 +118,26 @@ def describe_source(source: InputSource) -> str:
         return "entered"
     if source.kind is SourceKind.DEFAULT:
         return "default"
-    if source.reference:
+    if source.reference is not None:
         return f"{source.label}, {source.reference}"
     return source.label
+
+
+def describe_error(error: CaddCalcError, prefs: DisplayPrefs) -> str:
+    """Return an error's message for users, with any values in display units.
+
+    The GUI and the CLI both use this, so an error reads the same in both.
+    """
+    if isinstance(error, OutOfRangeError):
+        dimension = error.param.dimension
+        return error.describe(lambda v: _quantity_text(v, dimension, prefs))
+    return str(error)
+
+
+def _quantity_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> str:
+    """Write a value for a message, e.g. ``0.393701 in``.
+
+    It keeps six significant digits rather than the display decimals, so a bound in a
+    message isn't rounded to a value the rejected input seems to satisfy.
+    """
+    return f"{display_value(value, dimension, prefs):g}{unit_suffix(dimension, prefs)}"

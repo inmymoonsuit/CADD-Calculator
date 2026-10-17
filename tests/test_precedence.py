@@ -15,14 +15,16 @@ from caddcalc.core import (
     InputError,
     InputSource,
     Method,
+    OutOfRangeError,
     Output,
     Param,
+    Reference,
     Registry,
     SourceKind,
-    SpecError,
+    UsageError,
     Verification,
 )
-from caddcalc.core.formatting import describe_source
+from caddcalc.core.formatting import DisplayPrefs, describe_error, describe_source
 
 L = Dimension.LENGTH
 SHOP = Domain(
@@ -131,13 +133,55 @@ def test_unset_settings_change_nothing() -> None:
 
 def test_an_out_of_range_domain_value_fails_and_names_its_source() -> None:
     too_thick = DomainValues("shop", "Shop settings", {"thickness": 50.0})
-    with pytest.raises(InputError, match=r"at most 10 \(value from Shop settings\)\. Override it"):
+    with pytest.raises(OutOfRangeError) as caught:
         _Plate().run(settings=too_thick)
+    error = caught.value
+    assert (error.param.key, error.value, error.bound, error.above) == (
+        "thickness",
+        50.0,
+        10.0,
+        True,
+    )
+    assert error.source.kind is SourceKind.DOMAIN
+    assert str(error) == (
+        "Thickness (T) from Shop settings is 50 mm, but this calculator needs at most 10 mm. "
+        "Override it in this calculator."
+    )
+    assert describe_error(error, DisplayPrefs(length_unit="in")) == (
+        "Thickness (T) from Shop settings is 1.9685 in, but this calculator needs at most "
+        "0.393701 in. Override it in this calculator."
+    )
 
 
-def test_settings_from_another_domain_are_refused() -> None:
-    with pytest.raises(SpecError, match="given settings for 'press'"):
+def test_an_out_of_range_explicit_value_is_worded_in_display_units() -> None:
+    with pytest.raises(OutOfRangeError) as caught:
+        _Plate().run({"thickness": 0.0})
+    assert caught.value.source.kind is SourceKind.EXPLICIT
+    assert str(caught.value) == "Thickness (T) must be greater than 0 mm"
+    inches = describe_error(caught.value, DisplayPrefs(length_unit="in"))
+    assert inches == "Thickness (T) must be greater than 0 in"
+    assert describe_error(InputError("plain"), DisplayPrefs()) == "plain"
+
+
+def test_settings_from_another_domain_are_refused_as_api_misuse() -> None:
+    with pytest.raises(UsageError, match="given settings for 'press'") as caught:
         _Plate().run(settings=DomainValues("press", "Press settings", {"thickness": 3.0}))
+    assert isinstance(caught.value, ValueError)
+
+
+def test_domain_values_keep_a_read_only_copy() -> None:
+    given = {"thickness": 3.0}
+    values = DomainValues("shop", "Shop settings", given)
+    given["thickness"] = 50.0
+    assert values.values == {"thickness": 3.0}
+    with pytest.raises(TypeError):
+        values.values["thickness"] = 1.0  # type: ignore[index]
+
+
+def test_a_result_reports_sources_only_for_its_inputs() -> None:
+    result = _Plate().run(method="width_only")
+    with pytest.raises(KeyError):
+        result.source_of("thickness")
 
 
 def test_to_dict_reports_each_inputs_source() -> None:
@@ -161,10 +205,24 @@ def test_to_dict_reports_each_inputs_source() -> None:
             "Sheet Metal settings",
         ),
         (
-            InputSource(SourceKind.DERIVED, "Steel, 304", reference="materials v1"),
-            "Steel, 304, materials v1",
+            InputSource(
+                SourceKind.DERIVED,
+                "Steel, 304",
+                reference=Reference("Materials table", "version 1"),
+            ),
+            "Steel, 304, Materials table, version 1",
         ),
     ],
 )
 def test_sources_are_worded_once_for_every_front_end(source: InputSource, wording: str) -> None:
     assert describe_source(source) == wording
+
+
+def test_a_reference_serialises_as_its_fields() -> None:
+    reference = Reference("Materials table", "version 1", "https://example.org/materials")
+    source = InputSource(SourceKind.DERIVED, "Steel, 304", reference=reference)
+    assert source.to_dict()["reference"] == {
+        "title": "Materials table",
+        "detail": "version 1",
+        "url": "https://example.org/materials",
+    }

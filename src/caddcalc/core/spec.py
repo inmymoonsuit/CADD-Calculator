@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
 from caddcalc.core.errors import InputError
-from caddcalc.core.units import Dimension, parse_quantity
+from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
+from caddcalc.core.units import BASE_UNITS, Dimension, parse_quantity
 
 
 class Verification(Enum):
@@ -33,6 +35,10 @@ class Reference:
 
     def __str__(self) -> str:
         return f"{self.title}, {self.detail}" if self.detail else self.title
+
+    def to_dict(self) -> dict[str, str]:
+        """Return a JSON-serialisable form."""
+        return {"title": self.title, "detail": self.detail, "url": self.url}
 
 
 @dataclass(frozen=True)
@@ -66,21 +72,71 @@ class Param:
         """Return whether the method ``method_key`` uses this parameter."""
         return not self.methods or method_key in self.methods
 
-    def check(self, value: float) -> None:
-        """Check that ``value`` (in base units) is finite and within the allowed range.
+    def check(self, value: float, source: InputSource = EXPLICIT) -> None:
+        """Check that ``value`` is finite and within the allowed range.
+
+        Args:
+            value: The value, in base units.
+            source: Where the value came from, so an error can say so.
 
         Raises:
-            InputError: The value is not finite or is out of range.
+            InputError: The value is not finite.
+            OutOfRangeError: The value is out of range.
         """
         if not math.isfinite(value):
             raise InputError(f"{self.label} ({self.symbol}) must be a finite number")
         lo, hi = self.minimum, self.maximum
         if lo is not None and (value < lo or (value == lo and not self.min_inclusive)):
-            word = "at least" if self.min_inclusive else "greater than"
-            raise InputError(f"{self.label} ({self.symbol}) must be {word} {lo:g}")
+            raise OutOfRangeError(self, value, bound=lo, above=False, source=source)
         if hi is not None and (value > hi or (value == hi and not self.max_inclusive)):
-            word = "at most" if self.max_inclusive else "less than"
-            raise InputError(f"{self.label} ({self.symbol}) must be {word} {hi:g}")
+            raise OutOfRangeError(self, value, bound=hi, above=True, source=source)
+
+
+_RELATION = {
+    (True, True): "at most",
+    (True, False): "less than",
+    (False, True): "at least",
+    (False, False): "greater than",
+}
+"""How a bound is worded, by (above the maximum, bound is inclusive)."""
+
+
+class OutOfRangeError(InputError):
+    """A value is outside its parameter's allowed range.
+
+    It carries the parts of the message, so a front end can word it in display units with
+    ``core.formatting.describe_error``. ``str()`` gives the message in base units.
+
+    Attributes:
+        param: The parameter whose range the value breaks.
+        value: The value, in base units.
+        bound: The bound it breaks, in base units.
+        above: Whether the value is above the maximum, rather than below the minimum.
+        source: Where the value came from.
+    """
+
+    def __init__(
+        self, param: Param, value: float, *, bound: float, above: bool, source: InputSource
+    ) -> None:
+        self.param = param
+        self.value = value
+        self.bound = bound
+        self.above = above
+        self.source = source
+        unit = BASE_UNITS[param.dimension]
+        super().__init__(self.describe(lambda v: f"{v:g} {unit}".rstrip()))
+
+    def describe(self, show: Callable[[float], str]) -> str:
+        """Return the message, with ``show`` writing each base-unit value as text."""
+        p = self.param
+        inclusive = p.max_inclusive if self.above else p.min_inclusive
+        need = f"{_RELATION[self.above, inclusive]} {show(self.bound)}"
+        if self.source.kind is SourceKind.DOMAIN:
+            return (
+                f"{p.label} ({p.symbol}) from {self.source.label} is {show(self.value)}, "
+                f"but this calculator needs {need}. Override it in this calculator."
+            )
+        return f"{p.label} ({p.symbol}) must be {need}"
 
 
 @dataclass(frozen=True)

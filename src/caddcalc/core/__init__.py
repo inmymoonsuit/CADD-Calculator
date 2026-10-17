@@ -4,14 +4,7 @@ Standard library only. Nothing here may import ``caddcalc.gui``, ``caddcalc.cli`
 or any third-party package (ADR-0003).
 """
 
-from caddcalc.core.calculator import (
-    Calculator,
-    Context,
-    InputSource,
-    Result,
-    SourceKind,
-    Step,
-)
+from caddcalc.core.calculator import Calculator, Context, Result, Step
 from caddcalc.core.domain import Domain, DomainValues
 from caddcalc.core.errors import (
     CaddCalcError,
@@ -20,10 +13,12 @@ from caddcalc.core.errors import (
     SpecError,
     UnknownCalculatorError,
     UnknownDomainError,
+    UsageError,
 )
+from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.registry import Registry
 from caddcalc.core.settings import DomainSettings
-from caddcalc.core.spec import Method, Output, Param, Reference, Verification
+from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, Reference, Verification
 from caddcalc.core.units import Dimension, TypedValue, parse_quantity
 
 __all__ = [
@@ -38,6 +33,7 @@ __all__ = [
     "InputError",
     "InputSource",
     "Method",
+    "OutOfRangeError",
     "Output",
     "Param",
     "Reference",
@@ -49,6 +45,7 @@ __all__ = [
     "TypedValue",
     "UnknownCalculatorError",
     "UnknownDomainError",
+    "UsageError",
     "Verification",
     "parse_quantity",
 ]

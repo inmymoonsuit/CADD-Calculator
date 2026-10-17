@@ -53,7 +53,9 @@ def test_cli_run_json_and_metric(capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["run", "sheet_metal.bend_allowance", "T=-1"]) == 2
-    assert "must be greater than 0" in capsys.readouterr().err
+    assert "Material thickness (T) must be greater than 0 in" in capsys.readouterr().err
+    assert main(["run", "sheet_metal.bend_allowance", "T=-1", "--units", "mm"]) == 2
+    assert "must be greater than 0 mm" in capsys.readouterr().err
     assert main(["run", "sheet_metal.bend_allowance", "Q=1"]) == 2
     assert main(["run", "no.such_calc"]) == 2
     last = capsys.readouterr().err.splitlines()[-1]

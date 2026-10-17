@@ -55,10 +55,13 @@ All notable changes are recorded here. The format follows
 - Shared parameters and input provenance (ADR-0013): a `Param(shared=True)` inherits
   the domain setting with its key, checked at registration. `Calculator.run()` takes
   `settings=DomainValues(...)` and picks each input as explicit, then domain setting,
-  then default. An out-of-range setting fails and names its source, and settings for
-  another domain are refused. `Result.input_sources` records each input's `InputSource`,
-  which `to_dict()` includes. The CLI prints each input's source, e.g. `(entered)` or
-  `(default)`.
+  then default. An out-of-range value raises `OutOfRangeError`, which carries the value,
+  bound, parameter, and source; `core.formatting.describe_error()` words it in display
+  units, and a domain setting's error says to override it in the calculator. Settings for
+  another domain raise `UsageError`, the new error for API misuse. `Result.input_sources`
+  records every input's `InputSource` (`core.provenance`), and `to_dict()` includes it,
+  with a derived value's `reference` as a `Reference` or `null`. The CLI prints each
+  input's source, e.g. `(entered)` or `(default)`.
 - The Sheet Metal domain shares thickness, inside radius, and K-factor (ADR-0013, decision A).
   Its calculators build these parameters from the domain settings, keeping their own
   defaults: the cone keeps 0.0747 in, the V-die calculator shares R and T only in the
@@ -80,6 +83,8 @@ All notable changes are recorded here. The format follows
   isn't a Python keyword or an evaluator function or constant. Domain setting symbols
   must also be unique.
 - A unit of the wrong kind now reads "'3 deg' measures angle, but length is expected".
+- Range errors name the unit and use the display unit, e.g. the CLI's
+  "Material thickness (T) must be greater than 0 in".
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no
   longer depends on the calculators layer above it (ADR-0003, ADR-0006).
 - The window title and Help > About come from the active branding. About always keeps

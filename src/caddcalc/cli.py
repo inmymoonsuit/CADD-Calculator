@@ -20,6 +20,7 @@ from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
+    describe_error,
     describe_source,
     format_value,
     render_step,
@@ -38,8 +39,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return int(args.handler(args))
     except CaddCalcError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
+        return _fail(str(exc))
+
+
+def _fail(message: str) -> int:
+    """Print an error and return the exit status for it."""
+    print(f"error: {message}", file=sys.stderr)
+    return 2
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -169,13 +175,16 @@ def parse_inputs(calc: Calculator, items: Sequence[str], length_unit: str) -> di
 
 def _cmd_run(args: argparse.Namespace) -> int:
     calc = default_registry().get(args.calculator)
-    result = calc.run(parse_inputs(calc, args.inputs, args.units), method=args.method)
-    if args.json:
-        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
-        return 0
     prefs = DisplayPrefs(
         length_unit=args.units, decimals=args.decimals, fraction_denominator=args.fraction
     )
+    try:
+        result = calc.run(parse_inputs(calc, args.inputs, args.units), method=args.method)
+    except CaddCalcError as exc:
+        return _fail(describe_error(exc, prefs))
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+        return 0
     print(format_result(calc, result, prefs, show_work=not args.no_work))
     return 0
 

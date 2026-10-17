@@ -5,56 +5,17 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from caddcalc.core import expr
 from caddcalc.core.domain import DomainValues
-from caddcalc.core.errors import InputError, SpecError
+from caddcalc.core.errors import InputError, SpecError, UsageError
+from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.spec import Method, Output, Param
 from caddcalc.core.units import BASE_UNITS, Dimension
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
-
-
-class SourceKind(Enum):
-    """Where an input value came from, in precedence order (ADR-0013 §4)."""
-
-    EXPLICIT = "explicit"
-    """Given for this run: a form field set to override, a CLI argument, or the API."""
-    DOMAIN = "domain"
-    """A domain setting the user has set."""
-    DERIVED = "derived"
-    """Computed from a built-in table. Reserved for materials (ADR-0013, phase 2)."""
-    DEFAULT = "default"
-    """The calculator parameter's own default."""
-
-
-@dataclass(frozen=True)
-class InputSource:
-    """The provenance of one input value."""
-
-    kind: SourceKind
-    label: str = ""
-    """Who supplied the value, e.g. ``"Sheet Metal settings"``. Empty for explicit and default."""
-    domain: str | None = None
-    """The domain id, when ``kind`` is ``DOMAIN``."""
-    reference: str = ""
-    """The table and version a derived value came from (phase 2)."""
-
-    def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-serialisable form."""
-        return {
-            "kind": self.kind.value,
-            "label": self.label,
-            "domain": self.domain,
-            "reference": self.reference or None,
-        }
-
-
-EXPLICIT = InputSource(SourceKind.EXPLICIT)
-DEFAULT = InputSource(SourceKind.DEFAULT)
 
 
 @dataclass(frozen=True)
@@ -86,7 +47,7 @@ class Result:
     dimensions: Mapping[str, Dimension]
     """Dimension of every input and output key."""
     warnings: tuple[str, ...]
-    input_sources: Mapping[str, InputSource] = field(default_factory=dict)
+    input_sources: Mapping[str, InputSource]
     """Where each input value came from, by parameter key (ADR-0013 §5)."""
 
     def to_dict(self) -> dict[str, Any]:
@@ -117,8 +78,12 @@ class Result:
         }
 
     def source_of(self, key: str) -> InputSource:
-        """Return where the input ``key`` came from (explicit if it was not recorded)."""
-        return self.input_sources.get(key, EXPLICIT)
+        """Return where the input ``key`` came from.
+
+        Raises:
+            KeyError: ``key`` is not an input of this run.
+        """
+        return self.input_sources[key]
 
 
 class Context:
@@ -258,12 +223,13 @@ class Calculator(ABC):
             settings: The values the user has set for this calculator's domain.
 
         Raises:
-            InputError: An input is unknown, missing, or out of range.
-            SpecError: ``settings`` belongs to another domain.
+            InputError: An input is unknown or missing.
+            OutOfRangeError: An input is out of range. It names the input's source.
+            UsageError: ``settings`` belongs to another domain.
         """
         inputs = dict(inputs or {})
         if settings is not None and settings.domain_id != self.domain:
-            raise SpecError(
+            raise UsageError(
                 f"{self.id} belongs to domain {self.domain!r}, "
                 f"but was given settings for {settings.domain_id!r}"
             )
@@ -277,14 +243,7 @@ class Calculator(ABC):
         sources: dict[str, InputSource] = {}
         for p in self.params_for(m.key):
             value, source = _resolve(p, inputs, settings)
-            try:
-                p.check(value)
-            except InputError as exc:
-                if source.kind is SourceKind.DOMAIN:
-                    raise InputError(
-                        f"{exc} (value from {source.label}). Override it in this calculator."
-                    ) from None
-                raise
+            p.check(value, source)
             values[p.key] = value
             sources[p.key] = source
 
@@ -340,7 +299,7 @@ class Calculator(ABC):
                 if mk not in method_keys:
                     raise SpecError(f"{cls.id}: parameter {p.key!r} names unknown method {mk!r}")
             if p.default is not None:
-                p.check(p.default_value() or 0.0)
+                p.check(p.default_value() or 0.0, DEFAULT)
 
 
 def _resolve(

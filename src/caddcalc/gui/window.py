@@ -30,6 +30,7 @@ from caddcalc.core import CaddCalcError, Calculator, Param, Registry, Result
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
+    describe_error,
     display_value,
     format_number,
     format_value,
@@ -278,7 +279,7 @@ class MainWindow(QMainWindow):
             inputs = {k: self.values[calc.id][k] for k in self.fields}
             result = calc.run(inputs, method=self.method_key)
         except CaddCalcError as exc:
-            self.output.setHtml(_error_html([str(exc)], scheme))
+            self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
         self.output.setHtml(result_html(calc, result, self.prefs, scheme))
 

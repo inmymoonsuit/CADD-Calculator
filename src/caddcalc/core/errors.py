@@ -19,6 +19,13 @@ class SpecError(CaddCalcError):
     """A calculator definition is malformed. This is a bug in the calculator, not in user input."""
 
 
+class UsageError(CaddCalcError, ValueError):
+    """The API was called incorrectly, e.g. a calculator was run with another domain's settings.
+
+    This is a bug in the calling code, not in a calculator definition or in user input.
+    """
+
+
 class _NotFoundError(CaddCalcError, KeyError):
     """A failed lookup by ID. Unlike a plain ``KeyError``, its message prints unquoted."""
 

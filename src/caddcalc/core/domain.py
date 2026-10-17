@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from caddcalc.core import expr
 from caddcalc.core.errors import SpecError
@@ -84,4 +85,10 @@ class DomainValues:
     label: str
     """Where the values come from, as shown to users, e.g. ``"Sheet Metal settings"``."""
     values: Mapping[str, float]
-    """Setting values by setting key, in base units. Unset settings are absent."""
+    """Setting values by setting key, in base units. Unset settings are absent.
+
+    Stored as a read-only copy, so changing the mapping passed in doesn't change these.
+    """
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "values", MappingProxyType(dict(self.values)))
