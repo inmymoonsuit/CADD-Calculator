@@ -256,4 +256,5 @@ def test_a_reference_serialises_as_its_fields() -> None:
         "locator": "",
         "accessed": None,
         "scope": "",
+        "short_title": "",
     }

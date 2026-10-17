@@ -63,9 +63,9 @@ def constant(
 
 
 TABLE_DIGESTS: dict[tuple[str, int], str] = {
-    ("Gauge systems", 1): "ed6163290ce1b92eb929efa905c5fcb7a7e9eeaacd83990a8e7cad1e32f51d0d",
+    ("Gauge systems", 1): "13491945779c6eea6059288cf8360b6213681d6b9267c609d0250b6763a8d84e",
     ("Sheet-metal materials", 1): (
-        "89668b302c8c962c3c69c5ce2ffc0136c33a3bc9e7300f64cc42f2f6474abf36"
+        "5518017207e887572e55fd8e51d27b7fd9b560d742e98712ca7f4b39224e19d7"
     ),
 }
 """The content hash of every shipped table, by (name, version). Changing a table's data
@@ -90,8 +90,21 @@ def test_a_reference_keeps_its_old_shape_and_gains_structured_fields() -> None:
         "locator": "Table 2, printed p. 2608",
         "accessed": "2026-10-17",
         "scope": "shop practice",
+        "short_title": "",
     }
     assert Reference("Plain").to_dict()["accessed"] is None
+
+
+def test_a_short_title_names_a_reference_in_labels_and_falls_back_to_the_full_one() -> None:
+    faa = Reference("FAA-H-8083-31B, Airframe", locator="p. 4-63", short_title="FAA-H-8083-31B")
+    assert (faa.short, str(faa)) == ("FAA-H-8083-31B, p. 4-63", "FAA-H-8083-31B, Airframe, p. 4-63")
+    assert Reference("Gauge systems", "version 1").short == "Gauge systems, version 1"
+    with pytest.raises(SpecError, match="short_title must be text"):
+        parse_table(table(publication(short_title='" "')), "test", SAMPLE_KEYS)
+    named = parse_table(table(publication(short_title='"Short"'), source()), "test", SAMPLE_KEYS)
+    assert (
+        named.publications["p"].short_title == named.sources["s"].reference.short_title == "Short"
+    )
 
 
 def test_a_note_names_each_sources_scope() -> None:

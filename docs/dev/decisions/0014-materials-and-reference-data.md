@@ -985,3 +985,18 @@ the entries above, these replace them.
   A1008 and A1011; galv: A653; uss: A1008, A1011, and 304; awg: the aluminums); and the
   `[practice]` entry at version 1. The materials table stays version 1, unreleased, with
   its digest re-pinned.
+
+### 2026-10-17: short titles for citations (maintainer, phase 2b.7a)
+
+* A `[[publication]]` may give a `short_title`, e.g. "FAA-H-8083-31B", and its sources'
+  references carry it. `Reference.short` is the short title and the locator, or the full
+  citation where there is no short title.
+* Source labels and note texts name a citation by its short form: "Sheet Metal settings,
+  starting value from FAA-H-8083-31B, Ch. 4, Step 4, printed p. 4-63, …", and the
+  minimum-radius notes' "TO 1-1A-9 gives …". The full citation stays in the references,
+  in JSON (`Reference.to_dict` gains `short_title`), and in a note's list of sources.
+  *Why:* the full citation made an input's source line several lines long. This replaces
+  2b.6's rule of naming a publication by its title up to the first comma.
+* Every shipped publication has one. Both tables stay version 1 with their digests
+  re-pinned; for the gauge table, already released, the change is citation metadata
+  only, and its release record says so.

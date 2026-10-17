@@ -97,7 +97,7 @@ _ONLINE = frozenset({PublicationKind.ARTICLE, PublicationKind.WEBSITE})
 _PERMITS_REUSE = "permits_reuse"
 _TABLE_KEYS = frozenset({"schema", "name", "version"})
 _PUBLICATION_KEYS = frozenset(
-    {"id", "kind", "title", "edition", "url", "license", "public_domain_basis"}
+    {"id", "kind", "title", "short_title", "edition", "url", "license", "public_domain_basis"}
     | {"third_party", "cite_only_cap", "terms_url", "terms_checked", "terms_outcome"}
 )
 _SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail"})
@@ -129,6 +129,8 @@ class TablePublication:
     terms_url: str = ""
     """Where an online publication's terms of use were read (ADR-0014 §5.2)."""
     terms_checked: datetime.date | None = None
+    short_title: str = ""
+    """How labels and note texts name it, e.g. ``"FAA-H-8083-31B"``; empty for the title."""
 
     @property
     def work(self) -> tuple[str, str]:
@@ -525,6 +527,9 @@ def _parse_publication(origin: str, entry: Any) -> TablePublication:
     if not isinstance(third_party, bool):
         raise SpecError(f"{where}: third_party must be true or false")
     edition = str(entry.get("edition", ""))
+    short_title = entry.get("short_title", "")
+    if not isinstance(short_title, str) or ("short_title" in entry and not short_title.strip()):
+        raise SpecError(f"{where}: short_title must be text")
     basis = str(entry.get("public_domain_basis", ""))
     url = str(entry.get("url", ""))
     _check_license(where, kind, license_, third_party=third_party, edition=edition, basis=basis)
@@ -553,6 +558,7 @@ def _parse_publication(origin: str, entry: Any) -> TablePublication:
         cite_only_cap=cap,
         terms_url=terms_url,
         terms_checked=terms_checked,
+        short_title=short_title,
     )
 
 
@@ -578,6 +584,7 @@ def _parse_source(
         locator=entry["locator"],
         accessed=_date(where, "accessed", entry["accessed"]),
         scope=str(entry.get("scope", "")),
+        short_title=publication.short_title,
     )
     return TableSource(entry["id"], publication, reference)
 

@@ -29,7 +29,9 @@ def apply_faa_k(window: Any) -> str:
         TypedValue.parse("0.445", Dimension.RATIO),
         origin=ValueOrigin.of(table, entry, TEST_BEND),
     )
-    return f"Sheet Metal settings, starting value from {table.sources[entry.source].reference}"
+    return (
+        f"Sheet Metal settings, starting value from {table.sources[entry.source].reference.short}"
+    )
 
 
 def open_k_factor_bend(window: Any) -> None:

@@ -21,7 +21,7 @@ from caddcalc.calculators.sheet_metal.materials import (
     RadiusSource,
     RadiusValue,
 )
-from caddcalc.core import Context, NoteKind, Reference, TablePublication
+from caddcalc.core import Context, NoteKind, Reference
 
 MAX_ANGLE = 90.0
 """The largest bend angle, in degrees, that the minimum radii are read for.
@@ -189,13 +189,9 @@ def _references(covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> tuple[R
 
 
 def _short(source: RadiusSource) -> str:
-    """Return a source's publication by its designation, e.g. ``"AC 43.13-1B"``."""
-    return _designation(source.source.publication)
-
-
-def _designation(publication: TablePublication) -> str:
-    """The part of a title before its first comma: the table's titles lead with it."""
-    return publication.title.partition(",")[0]
+    """Return a source's publication as note texts name it, e.g. ``"AC 43.13-1B"``."""
+    publication = source.source.publication
+    return publication.short_title or publication.title
 
 
 def _symbol(ctx: Context, key: str) -> str:

@@ -27,11 +27,24 @@ class Reference:
     """When the source was consulted."""
     scope: str = ""
     """The practice the source describes, e.g. ``"aerospace bench practice"``."""
+    short_title: str = ""
+    """How a label or a note's text names the work, e.g. ``"FAA-H-8083-31B"``."""
 
     def __str__(self) -> str:
         return ", ".join(
             part for part in (self.title, self.edition, self.detail, self.locator) if part
         )
+
+    @property
+    def short(self) -> str:
+        """The citation as a label names it, e.g. ``"FAA-H-8083-31B, p. 4-63"``.
+
+        That is the short title and the locator, or the full citation when there's no
+        short title.
+        """
+        if not self.short_title:
+            return str(self)
+        return ", ".join(part for part in (self.short_title, self.locator) if part)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable form; ``accessed`` is an ISO date or ``None``."""
@@ -43,4 +56,5 @@ class Reference:
             "locator": self.locator,
             "accessed": None if self.accessed is None else self.accessed.isoformat(),
             "scope": self.scope,
+            "short_title": self.short_title,
         }

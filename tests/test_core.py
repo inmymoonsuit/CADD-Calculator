@@ -213,6 +213,7 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
                 "locator": "",
                 "accessed": None,
                 "scope": "",
+                "short_title": "",
             },
             {
                 "title": "Second source",
@@ -222,6 +223,7 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
                 "locator": "",
                 "accessed": None,
                 "scope": "",
+                "short_title": "",
             },
         ],
         "subjects": ["length"],
@@ -288,6 +290,7 @@ def test_ctx_note_records_kinds_references_and_subjects() -> None:
                 "locator": "",
                 "accessed": None,
                 "scope": "",
+                "short_title": "",
             }
         ],
         "subjects": ["doubled"],

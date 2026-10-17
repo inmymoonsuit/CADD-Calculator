@@ -7,6 +7,12 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Short titles for citations (ADR-0014, amendments): a `[[publication]]` may give a
+  `short_title`, e.g. "FAA-H-8083-31B", which every shipped publication now has.
+  `Reference.short` names a citation by it and its locator, and source labels and note
+  texts use it: "Sheet Metal settings, starting value from FAA-H-8083-31B, Ch. 4, …".
+  References, JSON (which gains `short_title`), and a note's list of sources keep the full
+  citation. Without one, labels show the full citation as before.
 - **The minimum-radius check (ADR-0014, amendments).** With a material chosen, *Bend
   allowance & deduction* and *Flat length of a formed segment* check the inside radius
   against its cited minimum (`sheet_metal.checks.BendCheck`, a result check): the larger

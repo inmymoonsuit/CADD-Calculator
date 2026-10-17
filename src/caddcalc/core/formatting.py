@@ -208,8 +208,9 @@ def describe_source(source: InputSource) -> str:
     """Return how an input's source is shown to users, e.g. ``"Sheet Metal settings"``.
 
     A domain value the user applied from a citation names it, e.g. ``"Sheet Metal
-    settings, starting value from FAA-H-8083-31B, p. 4-63"`` (ADR-0014 M2). The GUI and
-    the CLI both use this, so they word sources the same way (ADR-0013 §5).
+    settings, starting value from FAA-H-8083-31B, p. 4-63"`` (ADR-0014 M2). A reference is
+    named by its short form (``Reference.short``). The GUI and the CLI both use this, so
+    they word sources the same way (ADR-0013 §5).
     """
     if source.kind is SourceKind.EXPLICIT:
         return source.label or "entered"
@@ -220,8 +221,8 @@ def describe_source(source: InputSource) -> str:
     if source.reference is None:
         return label
     if domain:
-        return f"{label}, starting value from {source.reference}"
-    return f"{label}, {source.reference}"
+        return f"{label}, starting value from {source.reference.short}"
+    return f"{label}, {source.reference.short}"
 
 
 _NOTE_HEADINGS = {

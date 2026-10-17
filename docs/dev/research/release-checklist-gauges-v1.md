@@ -25,3 +25,11 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
 
 * Maintainer: approved for release by the maintainer. Date: 2026-10-17
 * Review session (Support & Review): verified 4fa06d9, table digest ed6163290ce1…1d0d; all seven items pass. Date: 2026-10-17
+
+## Changes after sign-off
+
+* 2026-10-17, phase 2b.7a, by the maintainer's decision: `short_title` added to three
+  publications (15 U.S.C., NBS Circular 391, and *Machinery's Handbook*), for labels and
+  note texts. It is citation metadata only: no value, source, edition, or license
+  changed. The digest is now `13491945779c6eea6059288cf8360b6213681d6b9267c609d0250b6763a8d84e`,
+  and the table stays version 1. Not yet re-verified by the review session.

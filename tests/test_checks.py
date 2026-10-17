@@ -95,10 +95,9 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
     assert practice == exceeded, "bending practice only beside a limit"
     if exceeded:
         (limit,) = limits
-        assert [r.title.split(",")[0] for r in limit.references] == [
-            "AC 43.13-1B",
-            "TO 1-1A-9 / NAVAIR 01-1A-9",
-        ]
+        assert [r.short_title for r in limit.references] == ["AC 43.13-1B", "TO 1-1A-9"]
+        assert limit.text.count("TO 1-1A-9 gives") == 1, "the text names the short title"
+        assert "Engineering Series for Aircraft Repair" in describe_note(limit), "in full"
         assert "The check uses the larger." in limit.text
         assert limit.subjects == ("inside_radius", "thickness")
         assert "aircraft repair practice" in describe_note(limit), "each source's scope"
@@ -128,7 +127,7 @@ def test_304_uses_the_half_hard_row_as_a_labelled_stand_in() -> None:
     [
         ("ss:304", 0.10, "0.012–0.090 in and 0.190–0.250 in"),  # Table 2-16's gap
         ("cs:a1008", 0.25, "0.016–0.187 in"),  # mild steel stops at 0.187 in (D4)
-        ("al:6061", 0.30, "0.016–0.258 in and TO 1-1A-9 / NAVAIR 01-1A-9 lists 0.012–0.250 in"),
+        ("al:6061", 0.30, "0.016–0.258 in and TO 1-1A-9 lists 0.012–0.250 in"),
     ],
 )
 def test_a_thickness_no_source_lists_is_said_aloud(
@@ -147,7 +146,7 @@ def test_where_one_source_covers_the_thickness_it_is_used_alone() -> None:
     result = bend(0.012, 0.02, "al:6061")
     (gap,) = notes(result, GAP)
     assert gap.text.startswith("AC 43.13-1B lists 0.016–0.258 in")
-    assert "uses TO 1-1A-9 / NAVAIR 01-1A-9 alone" in gap.text
+    assert "uses TO 1-1A-9 alone" in gap.text
     (limit,) = notes(result, LIMIT)
     assert "0.03 in" in limit.text and "uses the larger" not in limit.text
 
