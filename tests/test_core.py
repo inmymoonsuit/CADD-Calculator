@@ -16,8 +16,11 @@ from caddcalc.core import (
     DomainValues,
     InputError,
     Method,
+    Note,
+    NoteKind,
     Output,
     Param,
+    Reference,
     Registry,
     SpecError,
     UnknownCalculatorError,
@@ -27,6 +30,7 @@ from caddcalc.core import (
 )
 from caddcalc.core.formatting import (
     DisplayPrefs,
+    describe_note,
     display_unit,
     format_value,
     render_step,
@@ -142,6 +146,44 @@ def test_run_uses_defaults_and_records_steps() -> None:
         "unit": "mm",
         "dimension": "length",
     }
+
+
+def test_notes_carry_a_kind_and_an_optional_reference() -> None:
+    limit = Note(
+        NoteKind.LIMIT_EXCEEDED,
+        "Past the bench limit.",
+        Reference("Shop handbook", "Table 4", "https://example.org/t4"),
+    )
+    assert limit.to_dict() == {
+        "kind": "limit_exceeded",
+        "text": "Past the bench limit.",
+        "reference": {
+            "title": "Shop handbook",
+            "detail": "Table 4",
+            "url": "https://example.org/t4",
+        },
+    }
+    plain = Note(NoteKind.WARNING, "Check this.")
+    assert plain.to_dict() == {"kind": "warning", "text": "Check this.", "reference": None}
+    assert describe_note(plain) == "Check this."
+    assert describe_note(limit) == "Limit exceeded: Past the bench limit. (Shop handbook, Table 4)"
+    gap = Note(NoteKind.NO_APPLICABLE_VALUE, "No table covers 0.3 in.")
+    assert describe_note(gap) == "No applicable value: No table covers 0.3 in."
+
+
+def test_ctx_warn_makes_a_warning_note_unless_told_otherwise() -> None:
+    class Noting(_Demo):
+        def compute(self, ctx: Context) -> None:
+            super().compute(ctx)
+            ctx.warn("Plain.")
+            ctx.warn("No data.", NoteKind.NO_APPLICABLE_VALUE, Reference("Table"))
+
+    result = Noting().run()
+    assert result.warnings == (
+        Note(NoteKind.WARNING, "Plain."),
+        Note(NoteKind.NO_APPLICABLE_VALUE, "No data.", Reference("Table")),
+    )
+    assert result.to_dict()["warnings"][1]["kind"] == "no_applicable_value"
 
 
 def test_run_rejects_out_of_range_and_unknown_inputs() -> None:

@@ -10,6 +10,7 @@ from fractions import Fraction
 from caddcalc.core import expr
 from caddcalc.core.calculator import Calculator, Result, Step
 from caddcalc.core.errors import CaddCalcError
+from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError
 from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit
@@ -160,6 +161,24 @@ def describe_source(source: InputSource) -> str:
         return "default"
     label = source.label or ("domain settings" if source.kind is SourceKind.DOMAIN else "derived")
     return label if source.reference is None else f"{label}, {source.reference}"
+
+
+_NOTE_HEADINGS = {
+    NoteKind.WARNING: "",
+    NoteKind.LIMIT_EXCEEDED: "Limit exceeded",
+    NoteKind.NO_APPLICABLE_VALUE: "No applicable value",
+}
+"""How each kind of note is introduced; a plain warning needs no heading."""
+
+
+def describe_note(note: Note) -> str:
+    """Return a note as one line for users: its kind, its text, and its source.
+
+    The GUI and the CLI both use this, so a note reads the same in both.
+    """
+    heading = _NOTE_HEADINGS[note.kind]
+    text = f"{heading}: {note.text}" if heading else note.text
+    return text if note.reference is None else f"{text} ({note.reference})"
 
 
 def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> list[str]:

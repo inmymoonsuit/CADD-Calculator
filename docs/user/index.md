@@ -27,6 +27,8 @@ Each result shows:
 | `· reproduces legacy` (added to either) | Matches the original course spreadsheets exactly. Good for coursework; see the method notes for caveats. |
 
 5. **Warnings**, such as a radius smaller than the thickness, or a segment too short for its bends.
+   Each is marked by kind: a *warning* to check, a *limit exceeded* (shown in red), or
+   *no applicable value*, when no reference covers the case.
 
 ## Disclaimer
 

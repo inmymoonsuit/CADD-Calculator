@@ -11,7 +11,9 @@ from typing import Any, ClassVar
 from caddcalc.core import expr
 from caddcalc.core.domain import DomainValues
 from caddcalc.core.errors import InputError, SpecError, UsageError
+from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
+from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
 from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names
 
@@ -46,7 +48,8 @@ class Result:
     """Every symbol known after the run (inputs and steps), for rendering the work."""
     dimensions: Mapping[str, Dimension]
     """Dimension of every input and output key."""
-    warnings: tuple[str, ...]
+    warnings: tuple[Note, ...]
+    """Notes on the result, in the order the calculation made them."""
     input_sources: Mapping[str, InputSource]
     """Where each input value came from, by parameter key (ADR-0013 §5)."""
 
@@ -74,7 +77,7 @@ class Result:
                 }
                 for s in self.steps
             ],
-            "warnings": list(self.warnings),
+            "warnings": [note.to_dict() for note in self.warnings],
         }
 
     def source_of(self, key: str) -> InputSource:
@@ -97,7 +100,7 @@ class Context:
             p.symbol: (inputs[p.key], p.dimension) for p in calculator.params if p.key in inputs
         }
         self.steps: list[Step] = []
-        self.warnings: list[str] = []
+        self.warnings: list[Note] = []
         self.outputs: dict[str, float] = {}
 
     def __getitem__(self, key: str) -> float:
@@ -135,9 +138,20 @@ class Context:
         """Record a value computed in Python (e.g. a table lookup), with a note explaining it."""
         return self._record(Step(symbol, label, dimension, value, None, note), output)
 
-    def warn(self, message: str) -> None:
-        """Add an engineering warning to the result."""
-        self.warnings.append(message)
+    def warn(
+        self,
+        message: str,
+        kind: NoteKind = NoteKind.WARNING,
+        reference: Reference | None = None,
+    ) -> None:
+        """Add a note to the result: a warning by default, or another ``NoteKind``.
+
+        Args:
+            message: One or two sentences for users.
+            kind: What the note tells the user.
+            reference: The source of the limit or rule behind it, if any.
+        """
+        self.warnings.append(Note(kind, message, reference))
 
     def _record(self, step: Step, output: str | None) -> float:
         if step.symbol in self.symbols:

@@ -21,6 +21,7 @@ from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
     describe_error,
+    describe_note,
     describe_source,
     format_value,
     render_step,
@@ -215,7 +216,7 @@ def format_result(
         lines.append(f"  {o.symbol:<6} {o.label:<32} {value}")
     if result.warnings:
         lines += ["", "Warnings"]
-        lines += [f"  ! {w}" for w in result.warnings]
+        lines += [f"  ! {describe_note(note)}" for note in result.warnings]
     lines += ["", f"Method status: {method.status}. {DISCLAIMER}"]
     return "\n".join(lines)
 

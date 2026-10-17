@@ -15,6 +15,7 @@ from caddcalc.core.errors import (
     UnknownDomainError,
     UsageError,
 )
+from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.registry import Registry
@@ -40,6 +41,8 @@ __all__ = [
     "InputError",
     "InputSource",
     "Method",
+    "Note",
+    "NoteKind",
     "OutOfRangeError",
     "Output",
     "Param",

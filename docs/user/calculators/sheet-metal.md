@@ -65,8 +65,8 @@ The settings page shows the same list under each field.
   returns it to the calculator's default, shown in grey as, e.g., "default 0.1046".
 * **Load course example** fills the course method's inputs with the course example,
   overrides the family values, and switches to the course method, so the lesson's
-  numbers come out exactly. Inputs the course doesn't use, such as K, go back to their
-  defaults. The result lists the course values as *course example*. For example, with
+  numbers come out exactly. Inputs the course doesn't use, such as K, are left exactly
+  as they were. The result lists the course values as *course example*. For example, with
   thickness set to 0.1046 in, the cone's course method gives a 132.30° sweep; loading
   the course example restores its 0.0747 in and the lesson's 132.70°.
 

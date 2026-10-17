@@ -42,6 +42,7 @@ from caddcalc.core import (
     InputError,
     InputSource,
     Method,
+    NoteKind,
     OutOfRangeError,
     Param,
     Registry,
@@ -53,6 +54,7 @@ from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
     describe_error,
+    describe_note,
     describe_override,
     describe_setting_uses,
     describe_source,
@@ -552,6 +554,7 @@ class MainWindow(QMainWindow):
         calc = self.calculator
         if calc is None or key not in self.fields:
             return
+        # KI-018: focus leaving for another window (Alt+Tab) also ends an edit here.
         start = self.edit_starts.pop((calc.id, key), None)
         if start is None:
             return
@@ -624,7 +627,7 @@ class MainWindow(QMainWindow):
         so each input the course method uses gets its default as an explicit value, and
         shared ones override the family settings. A method that isn't the course's is
         switched to the course method, so the example gives the lesson's answer. Inputs
-        the course doesn't use, such as K, go back to their defaults.
+        the course doesn't use, such as K, are left exactly as they were.
         """
         calc = self.calculator
         if calc is None:
@@ -632,21 +635,22 @@ class MainWindow(QMainWindow):
         course = next((m for m in calc.methods if m.legacy), None)
         if course is None:
             return
-        for key in [k for k in self.edit_starts if k[0] == calc.id]:
-            del self.edit_starts[key]
+        self._finish_field_edits()  # a shortcut or script may load mid-edit
         if not calc.get_method(self.method_key).legacy:
             self.method_box.blockSignals(True)
             self.method_box.setCurrentIndex(self.method_box.findData(course.key))
             self.method_box.blockSignals(False)
         lesson = calc.params_for(course.key)
-        self.entries[calc.id] = {
-            p.key: FieldEntry(value, EntryOrigin.COURSE_EXAMPLE)
-            for p in lesson
-            if (value := p.default_value()) is not None
-        }
+        self.entries.setdefault(calc.id, {}).update(
+            {
+                p.key: FieldEntry(value, EntryOrigin.COURSE_EXAMPLE)
+                for p in lesson
+                if (value := p.default_value()) is not None
+            }
+        )
         self.overrides.setdefault(calc.id, set()).update(p.key for p in lesson if p.shared)
-        for key in [k for k in self.pending_fields if k[0] == calc.id]:
-            del self.pending_fields[key]
+        for p in lesson:
+            self.pending_fields.pop((calc.id, p.key), None)
         self._rebuild_form()
 
     def _entry_label(self, calc: Calculator, p: Param, entry: FieldEntry) -> str:
@@ -922,6 +926,14 @@ def _img(name: str, role: str, scheme: Scheme) -> str:
     )
 
 
+_NOTE_ICONS = {
+    NoteKind.WARNING: ("alert-triangle", "icon_warning"),
+    NoteKind.LIMIT_EXCEEDED: ("alert-circle", "icon_error"),
+    NoteKind.NO_APPLICABLE_VALUE: ("info-circle", "icon"),
+}
+"""The icon and palette role that mark each kind of note in the results pane."""
+
+
 def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
     items = "".join(f"<li>{escape(e)}</li>" for e in errors)
     return (
@@ -995,7 +1007,10 @@ def result_html(
     )
     parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"]
     if result.warnings:
-        warn = "".join(f"<li>{escape(w)}</li>" for w in result.warnings)
+        warn = "".join(
+            f"<li>{_img(*_NOTE_ICONS[note.kind], scheme)}{escape(describe_note(note))}</li>"
+            for note in result.warnings
+        )
         parts.append(
             f"<h3 style='color:#b9770e'>{_img('alert-triangle', 'icon_warning', scheme)}"
             f"Warnings</h3><ul>{warn}</ul>"

@@ -17,17 +17,27 @@ from caddcalc.calculators.sheet_metal.common import (
     bend_angle,
 )
 from caddcalc.calculators.sheet_metal.domain import DOMAIN
-from caddcalc.core import Calculator, Context, Dimension, Method, Output, Param, Verification
+from caddcalc.core import (
+    Calculator,
+    Context,
+    Dimension,
+    Method,
+    NoteKind,
+    Output,
+    Param,
+    Verification,
+)
 
 LENGTH = Dimension.LENGTH
 
 
 def _check_bend(ctx: Context, *angle_symbols: str) -> None:
-    """Add engineering warnings once per run, checking each named bend angle."""
+    """Add engineering notes once per run, checking each named bend angle."""
     if ctx.value("R") < ctx.value("T"):
         ctx.warn(
             "Inside radius is smaller than the material thickness. Check the material's "
-            "minimum bend radius; tight bends can crack, especially in hard tempers."
+            "minimum bend radius; tight bends can crack, especially in hard tempers.",
+            NoteKind.LIMIT_EXCEEDED,
         )
     for a in angle_symbols:
         if ctx.value(a) > 90:
@@ -170,7 +180,8 @@ class FormedSegmentFlatLength(Calculator):
         _check_bend(ctx, "A1", "A2")
         if fpd <= 0:
             ctx.warn(
-                "The flat length is zero or negative: the segment is too short for these bends."
+                "The flat length is zero or negative: the segment is too short for these bends.",
+                NoteKind.LIMIT_EXCEEDED,
             )
 
 

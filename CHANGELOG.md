@@ -105,7 +105,7 @@ All notable changes are recorded here. The format follows
   returns it to its default, shown as "default 0.1046". "Load course example" fills
   the course method's inputs with the course example, labelled "course example",
   overrides family values, and selects the course method, for calculators with a
-  legacy method; other inputs go back to their defaults. Results in the GUI list each
+  legacy method; other inputs are left as they were. Results in the GUI list each
   input with its source, as the CLI does.
 - `core.formatting.entry_text()` is the one display rule for typed values (ADR-0013
   §9.3): a field shows the user's own text while it names its unit or its unit is the
@@ -120,6 +120,15 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- `Result.warnings` holds `Note`s instead of strings: a `NoteKind` (`warning`,
+  `limit_exceeded`, or `no_applicable_value`), the text, and an optional `Reference`.
+  `ctx.warn(text, kind, reference)` makes them, defaulting to a plain warning. In
+  `to_dict()` and `--json`, each warning is an object with `kind`, `text`, and
+  `reference`. The CLI prefixes a limit or a missing value with its kind, e.g.
+  "! Limit exceeded: …", and the GUI marks each kind with its own icon. A radius below
+  the thickness and a segment too short for its bends are limits; the rest are
+  warnings. Nothing has been released yet, so this changes the shape outright, with no
+  deprecation path.
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A
   calculator naming an unknown domain fails registration with a "did you mean" hint
   that matches domain IDs and names, and `Registry.by_domain()` is keyed by `Domain`.

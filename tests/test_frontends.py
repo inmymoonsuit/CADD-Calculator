@@ -51,6 +51,16 @@ def test_cli_run_json_and_metric(capsys: pytest.CaptureFixture[str]) -> None:
     assert data["outputs"]["die_opening"]["value"] == pytest.approx(1.5 / 0.156)
 
 
+def test_cli_reports_notes_with_their_kind(capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["run", "sheet_metal.bend_allowance", "T=0.25", "R=0.1"]
+    assert main([*args, "--json"]) == 0
+    notes = json.loads(capsys.readouterr().out)["warnings"]
+    assert [(n["kind"], n["reference"]) for n in notes] == [("limit_exceeded", None)]
+    assert "minimum bend radius" in notes[0]["text"]
+    assert main(args) == 0
+    assert "  ! Limit exceeded: Inside radius is smaller" in capsys.readouterr().out
+
+
 def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["run", "sheet_metal.bend_allowance", "T=-1"]) == 2
     assert "Material thickness (T) must be greater than 0 in" in capsys.readouterr().err
@@ -60,6 +70,21 @@ def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["run", "no.such_calc"]) == 2
     last = capsys.readouterr().err.splitlines()[-1]
     assert last.startswith("error: No calculator 'no.such_calc'."), "printed without quotes"
+
+
+@pytest.mark.gui
+def test_gui_results_mark_each_kind_of_note() -> None:
+    pytest.importorskip("PySide6.QtWidgets")
+    from caddcalc.calculators.sheet_metal import BendAllowance
+    from caddcalc.core.formatting import DisplayPrefs
+    from caddcalc.gui.window import result_html
+
+    calc = BendAllowance()
+    result = calc.run({"thickness": 3.0, "inside_radius": 1.0, "bend_angle": 120.0})
+    html = result_html(calc, result, DisplayPrefs())
+    assert "icon:light/icon_error/alert-circle" in html, "a limit is marked as an error"
+    assert "icon:light/icon_warning/alert-triangle" in html, "a warning is marked as one"
+    assert "Limit exceeded: Inside radius" in html
 
 
 @pytest.mark.gui

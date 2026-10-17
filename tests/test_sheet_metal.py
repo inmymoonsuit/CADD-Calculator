@@ -14,7 +14,7 @@ from caddcalc.calculators.sheet_metal import (
     VDieOpening,
 )
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
-from caddcalc.core import DomainValues, InputError, SourceKind
+from caddcalc.core import DomainValues, InputError, NoteKind, SourceKind
 from caddcalc.core.units import from_base, to_base
 from tests.helpers import run_inches
 
@@ -60,14 +60,16 @@ def test_zero_angle_end_contributes_nothing() -> None:
 def test_warns_when_radius_below_thickness() -> None:
     calc = BendAllowance()
     result = calc.run({"thickness": 3.0, "inside_radius": 1.0}, method="k_factor")
-    assert any("minimum bend radius" in w for w in result.warnings)
+    notes = [n for n in result.warnings if "minimum bend radius" in n.text]
+    assert [n.kind for n in notes] == [NoteKind.LIMIT_EXCEEDED]
 
 
 def test_flat_length_warns_when_segment_too_short() -> None:
     calc = FormedSegmentFlatLength()
     result = calc.run({"formed_dimension": 1.0, "bend_angle_2": 90.0}, method="course")
     assert result.outputs["flat_length"] < 0
-    assert any("too short" in w for w in result.warnings)
+    notes = [n for n in result.warnings if "too short" in n.text]
+    assert [n.kind for n in notes] == [NoteKind.LIMIT_EXCEEDED]
 
 
 def test_die_opening_eight_t_uses_only_thickness() -> None:
@@ -113,10 +115,11 @@ def test_each_warning_appears_once_with_two_steep_bends() -> None:
         {"thickness": 3.0, "inside_radius": 1.0, "bend_angle_1": 120.0, "bend_angle_2": 120.0},
         method="k_factor",
     )
-    radius_warnings = [w for w in result.warnings if "minimum bend radius" in w]
-    angle_warnings = [w for w in result.warnings if "past 90°" in w]
+    radius_warnings = [n for n in result.warnings if "minimum bend radius" in n.text]
+    angle_warnings = [n for n in result.warnings if "past 90°" in n.text]
     assert len(radius_warnings) == 1
-    assert [w[:2] for w in angle_warnings] == ["A1", "A2"]
+    assert [n.text[:2] for n in angle_warnings] == ["A1", "A2"]
+    assert {n.kind for n in angle_warnings} == {NoteKind.WARNING}
 
 
 # --- shared sheet-metal settings (ADR-0013, decision A) -----------------------------------

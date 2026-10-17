@@ -271,7 +271,37 @@ def test_load_course_example_selects_the_course_method() -> None:
 
     window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
     assert source_of(window, "thickness") == "course example"
-    assert source_of(window, "k_factor") == "default", "K = 0.4 isn't part of the course"
+    assert source_of(window, "k_factor") == "default", "K isn't part of the course"
+    window.close()
+
+
+def test_loading_mid_edit_judges_the_edit_first() -> None:
+    """A shortcut or script may load the example mid-edit; a no-op retype must not stick."""
+    window = open_window()
+    window.select_calculator(BEND)
+    window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
+    type_into(field(window, "k_factor"), "0.4", enter=False)  # K's default, retyped
+    window.load_course_example()
+    assert "k_factor" not in window.overrides.get(BEND, set())
+    set_family(window, "k_factor", "0.33")
+    window.select_calculator(BEND)
+    window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
+    assert source_of(window, "k_factor") == "Sheet Metal settings"
+    window.close()
+
+
+def test_loading_the_course_example_leaves_other_inputs_as_they_were() -> None:
+    window = open_window()
+    set_family(window, "k_factor", "0.33")
+    window.select_calculator(BEND)
+    window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
+    window.inherit_boxes["k_factor"].setChecked(False)
+    type_into(field(window, "k_factor"), "0.44")
+    window.example_button.click()
+    window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
+    assert source_of(window, "k_factor") == "entered"
+    assert window.result.inputs["k_factor"] == pytest.approx(0.44)
+    assert source_of(window, "thickness") == "course example"
     window.close()
 
 

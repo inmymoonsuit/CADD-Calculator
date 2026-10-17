@@ -137,6 +137,17 @@ components, and the note on replacing the Qt libraries. **Still needed before a 
 release:** the full license texts for those runtime components (LGPL-3.0 and the GPL-3.0
 it builds on, the PSF license, Apache-2.0, libffi's MIT text, and the MSVC runtime terms).
 
+### KI-018: Switching to another window mid-edit ends a calculator edit (Low)
+
+A calculator field's edit is judged when it ends, and Qt ends it when the field loses
+focus, including to another application (Alt+Tab). A half-typed value is then judged
+as final: if it differs from the value in use it is kept, and in a shared field it
+overrides. Typing on and pressing Enter replaces it with the intended value, but a
+retype interrupted this way can leave an override that a full retype wouldn't. The
+field's override note and the settings page's "Overridden in N" count show it, and
+ticking "Use … value" undoes it. Accepted for now; the code that judges an edit
+points here (`MainWindow._finish_field_edit`).
+
 ## Resolved
 
 ### KI-017: Switching units in the GUI rounded the typed value (resolved 2026-10-17)
