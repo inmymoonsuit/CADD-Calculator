@@ -9,10 +9,19 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
+from typing import Literal, NamedTuple
 
 from caddcalc.core.domain import Domain, DomainValues
 from caddcalc.core.errors import SpecError, UsageError
 from caddcalc.core.units import TypedValue
+
+
+class ClearedChoice(NamedTuple):
+    """A choice that lost the user's option because a selection it depends on changed."""
+
+    key: str
+    outcome: Literal["default", "none"]
+    """``"default"`` if it fell back to its default, ``"none"`` if nothing is selected."""
 
 
 @dataclass(frozen=True)
@@ -130,19 +139,20 @@ class DomainSettings:
         remaining = {k: v for k, v in self._choices.get(domain.id, {}).items() if k != key}
         return self._with(domain.id, choices=_resolve(domain, remaining)[1])
 
-    def cleared_choices(self, domain: Domain, before: DomainSettings) -> tuple[str, ...]:
+    def cleared_choices(self, domain: Domain, before: DomainSettings) -> tuple[ClearedChoice, ...]:
         """Return the choices whose option the user chose in ``before`` and this lost.
 
         Only choices cleared because a selection they depend on changed are named, in
-        dependency order, so a front end can announce them after ``set_choice`` or
-        ``clear_choice``. The choice the user changed is never among them.
+        dependency order, with what each fell back to, so a front end can announce them
+        after ``set_choice`` or ``clear_choice``. The choice the user changed is never
+        among them.
         """
         old_chosen = before._choices.get(domain.id, {})
         new_chosen = self._choices.get(domain.id, {})
         old = _resolve(domain, old_chosen)[0]
         new = _resolve(domain, new_chosen)[0]
         return tuple(
-            c.key
+            ClearedChoice(c.key, "default" if c.key in new else "none")
             for c in domain.ordered_choices()
             if c.key in old_chosen
             and c.key not in new_chosen
@@ -200,7 +210,8 @@ def _resolve(domain: Domain, chosen: Mapping[str, str]) -> tuple[dict[str, str],
 
     Each choice is resolved after the choices it depends on, so its options are computed
     from their selections. A choice takes the option chosen for it if offered, else its
-    default if offered, else nothing.
+    default if offered, else nothing. A kept option may be offered under a different
+    parent selection than the one it was chosen under.
 
     Raises:
         SpecError: A choice that depends on nothing has a default it doesn't offer, a bug

@@ -15,6 +15,7 @@ import pytest
 from caddcalc.core import (
     Calculator,
     Choice,
+    ClearedChoice,
     Context,
     DerivedValue,
     Dimension,
@@ -324,6 +325,13 @@ def test_a_derived_value_needs_a_derived_source_naming_its_table() -> None:
         DerivedValue(2.0, derived_source, stated=TypedValue.parse("3 mm", L))
 
 
+def test_only_run_names_the_inputs_a_derived_note_is_about() -> None:
+    source = InputSource(SourceKind.DERIVED, "plate 1", domain="shop", reference=TABLE)
+    about = replace(CAUTION, subjects=("thickness",))
+    with pytest.raises(SpecError, match="'plate 1' has subjects; run\\(\\) names"):
+        DerivedValue(2.0, source, note=about)
+
+
 def test_no_choice_means_no_derived_values() -> None:
     assert dict(DomainSettings().for_domain(SHOP).derived) == {}
     assert _Bend().run(settings=DomainSettings().for_domain(SHOP)).source_of("thickness").kind is (
@@ -392,7 +400,7 @@ def test_a_parent_change_clears_a_dependent_selection_it_no_longer_offers() -> N
     assert after.choice(ALLOYS, "material") == "al:3003"
     assert after.choice(ALLOYS, "temper") is None
     assert after == alloy("al:3003")
-    assert after.cleared_choices(ALLOYS, before) == ("temper",)
+    assert after.cleared_choices(ALLOYS, before) == (ClearedChoice("temper", "none"),)
     assert dict(after.for_domain(ALLOYS).derived) == {}
 
 
@@ -408,7 +416,7 @@ def test_clearing_a_parent_returns_it_to_its_default_and_clears_what_that_doesnt
     after = before.clear_choice(ALLOYS, "material")
     assert after.choice(ALLOYS, "material") == "al:6061"
     assert after.choice(ALLOYS, "temper") is None
-    assert after.cleared_choices(ALLOYS, before) == ("temper",)
+    assert after.cleared_choices(ALLOYS, before) == (ClearedChoice("temper", "none"),)
     assert before.clear_choice(ALLOYS, "temper").cleared_choices(ALLOYS, before) == ()
 
 
@@ -417,3 +425,60 @@ def test_clear_all_restores_each_choices_default() -> None:
     assert cleared == DomainSettings()
     assert cleared.choice(ALLOYS, "material") == "al:6061"
     assert cleared.choice(ALLOYS, "temper") is None
+
+
+def test_a_dependent_falls_back_to_its_default_when_its_option_is_cleared() -> None:
+    temper = Choice("temper", "Temper", default="temper:o", depends_on=("material",))
+    defaulted = replace(ALLOYS, choices=(temper, *ALLOYS.choices[1:]))
+    before = DomainSettings().set_choice(defaulted, "temper", "temper:t6")
+    after = before.set_choice(defaulted, "material", "al:3003")
+    assert after.choice(defaulted, "temper") == "temper:o"
+    assert after.cleared_choices(defaulted, before) == (ClearedChoice("temper", "default"),)
+
+
+def test_a_kept_dependent_may_be_offered_under_another_parent_selection() -> None:
+    """O temper, chosen under 3003, stays when the material falls back to its default, 6061."""
+    before = alloy("al:3003", "temper:o")
+    after = before.clear_choice(ALLOYS, "material")
+    assert (after.choice(ALLOYS, "material"), after.choice(ALLOYS, "temper")) == (
+        "al:6061",
+        "temper:o",
+    )
+    assert after.cleared_choices(ALLOYS, before) == ()
+
+
+class _Undeclared:
+    """The reviewer's probe: choice "u" declares no parent but reads "a" to decide."""
+
+    def __init__(self) -> None:
+        self.seen: list[tuple[str, dict[str, str]]] = []
+
+    def options(self, choice: str, selections: Mapping[str, str]) -> Sequence[Option]:
+        self.seen.append((choice, dict(selections)))
+        if choice == "a":
+            return [Option("a:1", "1"), Option("a:2", "2")]
+        return [Option("u:k", "K")] if selections.get("a") == "a:1" else []
+
+    def derive(self, _selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
+        return {}
+
+
+def test_a_resolver_sees_only_the_parents_a_choice_declares() -> None:
+    resolver = _Undeclared()
+    probe = Domain(
+        "probe",
+        "Probe",
+        "x",
+        choices=(Choice("a", "A", default="a:1"), Choice("u", "U")),
+        resolver=resolver,
+    )
+    Registry().register_domain(probe)
+    with pytest.raises(UsageError, match="no option 'u:k'"):
+        DomainSettings().set_choice(probe, "u", "u:k")
+    assert {choice: seen for choice, seen in resolver.seen if choice == "u"} == {"u": {}}
+
+    declared = replace(probe, choices=(probe.choices[0], Choice("u", "U", depends_on=("a",))))
+    before = DomainSettings().set_choice(declared, "u", "u:k")
+    after = before.set_choice(declared, "a", "a:2")
+    assert after.cleared_choices(declared, before) == (ClearedChoice("u", "none"),)
+    assert resolver.seen[-1] == ("u", {"a": "a:2"})

@@ -34,7 +34,7 @@ from caddcalc.core.refdata import (
 )
 from caddcalc.core.reference import Reference
 from caddcalc.core.registry import Registry
-from caddcalc.core.settings import DomainSettings
+from caddcalc.core.settings import ClearedChoice, DomainSettings
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, Verification
 from caddcalc.core.units import (
     Dimension,
@@ -51,6 +51,7 @@ __all__ = [
     "Calculator",
     "Choice",
     "ChoiceResolver",
+    "ClearedChoice",
     "Context",
     "DerivedValue",
     "Dimension",

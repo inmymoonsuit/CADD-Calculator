@@ -62,9 +62,9 @@ class DerivedValue:
     """A value a selection gives one domain setting.
 
     Raises:
-        SpecError: The source isn't a derived one, doesn't name its table (a
-            ``reference``), or ``stated`` doesn't equal ``value``. A resolver that builds
-            such a value has a bug.
+        SpecError: The source isn't a derived one or doesn't name its table (a
+            ``reference``), ``stated`` doesn't equal ``value``, or the note already has
+            subjects. A resolver that builds such a value has a bug.
     """
 
     value: float
@@ -74,7 +74,10 @@ class DerivedValue:
     stated: TypedValue | None = None
     """The value as its source states it, when it does."""
     note: Note | None = None
-    """A note that results carry whenever this value is used, such as a nominal caution."""
+    """A note that results carry whenever this value is used, such as a nominal caution.
+
+    It has no subjects: ``Calculator.run`` names the inputs that took the value.
+    """
 
     def __post_init__(self) -> None:
         if self.source.kind is not SourceKind.DERIVED:
@@ -85,6 +88,11 @@ class DerivedValue:
             )
         if self.stated is not None and self.stated.value != self.value:
             raise SpecError(f"Stated value {self.stated.text!r} doesn't equal {self.value!r}")
+        if self.note is not None and self.note.subjects:
+            raise SpecError(
+                f"The note of derived value {self.source.label!r} has subjects; run() names "
+                "the inputs that take the value"
+            )
 
 
 class ChoiceResolver(Protocol):
@@ -99,8 +107,9 @@ class ChoiceResolver(Protocol):
 
         Args:
             choice: The choice key.
-            selections: The current selections, for a choice whose options depend on
-                others (``Choice.depends_on``).
+            selections: The selections of the choices it depends on
+                (``Choice.depends_on``) and no others. A parent without a selection is
+                absent.
         """
 
     def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:

@@ -78,15 +78,17 @@ class Domain:
 
         Args:
             key: The choice key.
-            selections: The current selections, which a dependent choice's options need.
+            selections: The current selections. Only those of the choices it declares in
+                ``depends_on`` reach the resolver, so the declaration is a fact.
 
         Raises:
             UsageError: The domain has no such choice.
             SpecError: The resolver gives a malformed or repeated option key, or an
                 option without a label. Either is a bug in the domain.
         """
-        self.choice(key)
-        options = () if self.resolver is None else tuple(self.resolver.options(key, selections))
+        choice = self.choice(key)
+        parents = MappingProxyType({p: selections[p] for p in choice.depends_on if p in selections})
+        options = () if self.resolver is None else tuple(self.resolver.options(key, parents))
         seen: set[str] = set()
         for option in options:
             if not OPTION_KEY.fullmatch(option.key) or option.key in seen:

@@ -542,3 +542,22 @@ stated basis. The schema changed before any table shipped, so it stays `schema =
   dependent choice, e.g. `temper:t6` or `temper:h32`. The example `al:6061_t6` was
   wrong.
 
+### 2026-10-17: declared parents and derived-note subjects (maintainer, phase 2a)
+
+These refine the dependent-choices entry above.
+
+* **A resolver sees only the parents a choice declares.** `options()` receives the
+  selections of the choices in `depends_on` and no others, so the declaration is a
+  fact. A choice can't read a parent it doesn't declare and then lose its option
+  silently when that parent changes.
+* **A cleared choice says what it fell back to.** `cleared_choices()` returns
+  `ClearedChoice(key, outcome)`, where the outcome is `"default"` or `"none"`, so the
+  GUI can say "reset to its default" or "cleared".
+* **Only `run()` names a derived note's subjects.** A `DerivedValue` whose note already
+  has subjects is refused.
+* **A kept dependent may be offered under another parent selection.** A dependent option
+  is kept wherever the parents' new selections still offer it, including when a parent
+  falls back to its default. So it may survive under a different parent selection than
+  the one it was chosen under, e.g. an O temper chosen under one alloy, kept when the
+  material falls back to a default alloy that also offers O.
+
