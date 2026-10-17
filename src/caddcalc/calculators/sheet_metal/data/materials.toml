@@ -17,7 +17,7 @@ version = 1
 id = "faa_ac_43_13_1b"
 kind = "government_document"
 title = "AC 43.13-1B, Acceptable Methods, Techniques, and Practices - Aircraft Inspection and Repair"
-short_title = "AC 43.13-1B"
+short_title = "AC 43.13-1B (2024 ed. update)"
 edition = "1998, with Change 1; editorial update 2024"
 url = "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_43.13-1B_CHG_1_Ed_Upd_FAA.pdf"
 license = "public_domain"
@@ -37,19 +37,19 @@ public_domain_basis = "17 U.S.C. §105: a work of the US Federal Aviation Admini
 id = "usaf_to_1_1a_9"
 kind = "government_document"
 title = "TO 1-1A-9 / NAVAIR 01-1A-9, Engineering Series for Aircraft Repair: Aerospace Metals - General Data and Usage Factors"
-short_title = "TO 1-1A-9"
+short_title = "TO 1-1A-9 (2020 Change 3)"
 edition = "17 Nov 2016, Change 3 (24 Jan 2020)"
 url = "https://everyspec.com/USAF/USAF-Tech-Manuals/TO_1-1A-9_CHG-3_24JAN2020_56694/"
 license = "public_domain"
 public_domain_basis = "17 U.S.C. §105: a work of the US Air Force; Distribution Statement A"
 
-# The 2015 edition is cited only in notes: its generic annealed stainless row and its
-# bending practice. No value ships from it.
+# The 2015 edition is cited only in a note: its generic annealed stainless row. No value
+# ships from it.
 [[publication]]
 id = "usaf_to_1_1a_9_2015"
 kind = "government_document"
 title = "TO 1-1A-9 / NAVAIR 01-1A-9, Engineering Series for Aircraft Repair: Aerospace Metals - General Data and Usage Factors"
-short_title = "TO 1-1A-9 (2015)"
+short_title = "TO 1-1A-9 (2015 Change 14)"
 edition = "basic 1999, Change 14 (3 Oct 2015)"
 url = "https://everyspec.com/USAF/USAF-Tech-Manuals/TO_1-1A-9_CHG-14_53433/"
 license = "public_domain"
@@ -69,7 +69,7 @@ public_domain_basis = "17 U.S.C. §105: a work of the US Department of Defense"
 id = "edd5"
 kind = "book"
 title = "Engineering Drawing and Design (Madsen & Madsen)"
-short_title = "Engineering Drawing and Design"
+short_title = "Engineering Drawing and Design (5th ed.)"
 edition = "5th ed., Cengage Learning, 2012"
 license = "cite_only_fact"
 cite_only_cap = 1
@@ -77,8 +77,9 @@ cite_only_cap = 1
 [[source]]
 id = "ac_radii_aluminum"
 publication = "faa_ac_43_13_1b"
-locator = "Ch. 4, par 4-56, Table 4-6, p. 4-17"
-detail = "p. 4-14 in the earlier AC_43.13-1B_w-chg1.pdf; values identical"
+locator = "Table 4-6, p. 4-17"
+detail = "Ch. 4, par 4-56"
+remark = "p. 4-14 in the earlier AC_43.13-1B_w-chg1.pdf; values identical"
 accessed = 2026-10-17
 scope = "recommended radii for 90° bends in aluminum alloys; aircraft repair practice"
 
@@ -86,7 +87,7 @@ scope = "recommended radii for 90° bends in aluminum alloys; aircraft repair pr
 id = "to_radii_carbon_steel"
 publication = "usaf_to_1_1a_9"
 locator = "Table 2-15, p. 2-88"
-detail = "Table 2-34, p. 2-128 in Change 14 (2015); identical"
+remark = "Table 2-34, p. 2-128 in Change 14 (2015); identical"
 accessed = 2026-10-17
 scope = "cold bend radii (inside), carbon and low-alloy steel; aerospace practice; angle and condition not stated"
 
@@ -94,15 +95,16 @@ scope = "cold bend radii (inside), carbon and low-alloy steel; aerospace practic
 id = "to_radii_stainless"
 publication = "usaf_to_1_1a_9"
 locator = "Table 2-16, p. 2-88"
-detail = "Table 2-35, p. 2-128 in Change 14 (2015); identical. No 304-annealed row; 304 is listed for ½ Hard"
+remark = "Table 2-35, p. 2-128 in Change 14 (2015); identical. No 304-annealed row; 304 is listed for ½ Hard"
 accessed = 2026-10-17
 scope = "cold bend radii (inside), corrosion-resistant steel, by temper and thickness band"
 
 [[source]]
 id = "to_standard_radii_aluminum"
 publication = "usaf_to_1_1a_9"
-locator = "Tables A-31 and A-32, pp. A-45 and A-47 (aluminum rows)"
-detail = "Table A-16 in Change 14 (2015); aluminum values identical. Steel rows of A-31/A-32 not used"
+locator = "Tables A-31 and A-32, pp. A-45 and A-47"
+detail = "aluminum rows"
+remark = "Table A-16 in Change 14 (2015); aluminum values identical. Steel rows of A-31/A-32 not used (a column error)"
 accessed = 2026-10-17
 scope = "standard bend radii for 90° cold forming of flat sheet at room temperature; aerospace practice"
 
@@ -114,11 +116,13 @@ accessed = 2026-10-17
 scope = "standard bend radii for 90° cold forming; corrosion-resistant steel, no alloy named"
 
 [[source]]
-id = "to_2015_bending_practice"
-publication = "usaf_to_1_1a_9_2015"
-locator = "paras 2-239 and 2-240, and the handling list on p. 2-122"
+id = "to_bending_practice"
+publication = "usaf_to_1_1a_9"
+locator = "p. 2-80"
+detail = "¶2.18.1.2c; ¶¶2.19.1–2.19.1.1"
 accessed = 2026-10-17
-scope = "bend a practice piece first; form across the grain where possible"
+scope = "form across the grain where possible; check a practice bend, and add a thickness or more to the radius if it cracks"
+remark = "paras 2-239 and 2-240, and the handling list on p. 2-122, in Change 14 (2015)"
 
 [[source]]
 id = "hdbk5j_5052"
@@ -151,14 +155,16 @@ scope = "AISI 304 annealed (AMS 5513), read from the AISI 301 Annealed column, S
 [[source]]
 id = "faa_neutral_axis"
 publication = "faa_h_8083_31b"
-locator = "Ch. 4, Step 4, printed p. 4-63, and Fig 4-126, p. 4-64"
+locator = "p. 4-63"
+detail = "Ch. 4, Step 4; and Fig 4-126, p. 4-64"
 accessed = 2026-10-17
 scope = "neutral axis about 0.445 t from the inside radius; aircraft aluminum, bench forming"
 
 [[source]]
 id = "edd5_k"
 publication = "edd5"
-locator = "Ch. 19, Fig 19.11, printed p. 784"
+locator = "Fig 19.11, p. 784"
+detail = "Ch. 19"
 accessed = 2026-10-17
 scope = "instructional neutral-axis position, 0.4 t"
 
@@ -218,12 +224,14 @@ tempers = [
 
 # --- Minimum inside radius. Values are multiples of T (times_t: one value, or a range's
 # lower and upper bounds) or radii in the row's unit (radius), one per listed thickness or
-# band. angle is the bend angle the source states, or "not_stated".
+# band. angle is the bend angle the source states, or "not_stated"; practice names the
+# practice the source's minimums come from, as a note states it.
 
 [[min_radius]]
 material = "al:5052"
 temper = "temper:5052_h32"
 source = "ac_radii_aluminum"
+practice = "aerospace bending practice"
 trust = "spec_guidance"
 angle = "90"
 unit = "in"
@@ -234,6 +242,7 @@ times_t = [["0"], ["0"], ["1/2", "1"], ["1/2", "3/2"], ["1/2", "3/2"], ["1/2", "
 material = "al:6061"
 temper = "temper:6061_t6"
 source = "ac_radii_aluminum"
+practice = "aerospace bending practice"
 trust = "spec_guidance"
 angle = "90"
 unit = "in"
@@ -244,6 +253,7 @@ times_t = [["0", "1"], ["1/2", "3/2"], ["1", "2"], ["3/2", "3"], ["2", "4"], ["3
 material = "al:6061"
 temper = "temper:6061_t6"
 source = "to_standard_radii_aluminum"
+practice = "aerospace bending practice"
 trust = "spec_guidance"
 angle = "90"
 unit = "in"
@@ -261,6 +271,7 @@ label = "TO's group with 2014-T4, 2024-T3, 2024-T4, 7075-W, and 7178-W"
 material = "cs:a1008"
 temper = "temper:a1008_as_supplied"
 source = "to_radii_carbon_steel"
+practice = "aerospace bending practice"
 trust = "spec_guidance"
 angle = "not_stated"
 unit = "in"
@@ -272,6 +283,7 @@ label = "TO's 1020/1025 row, a conservative stand-in for A1008 CS"
 material = "ss:304"
 temper = "temper:304_annealed"
 source = "to_radii_stainless"
+practice = "aerospace bending practice"
 trust = "spec_guidance"
 angle = "not_stated"
 unit = "in"
@@ -288,7 +300,7 @@ see_also = ["to_2015_annealed_stainless"]
 # --- Bending practice, noted whenever a minimum-radius check applies.
 
 [practice]
-source = "to_2015_bending_practice"
+source = "to_bending_practice"
 note = "Form across the grain where possible, and bend a test piece first; if it cracks, increase the radius by a thickness or more until it doesn't."
 
 # --- Strengths, stated as the source gives them, longitudinal (L) and long transverse

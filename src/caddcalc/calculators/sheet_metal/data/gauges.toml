@@ -8,13 +8,13 @@
 [table]
 schema = 1
 name = "Gauge systems"
-version = 1
+version = 2
 
 [[publication]]
 id = "us_code"
 kind = "statute"
 title = "United States Code, Title 15"
-short_title = "15 U.S.C."
+short_title = "15 U.S.C. (2024 ed.)"
 edition = "2024 ed."
 url = "https://www.govinfo.gov/link/uscode/15/206?type=usc&year=2024&link-type=html"
 license = "public_domain"
@@ -34,7 +34,7 @@ public_domain_basis = "17 U.S.C. §105: a work of the US Bureau of Standards"
 id = "machinerys_handbook"
 kind = "book"
 title = "Machinery's Handbook"
-short_title = "Machinery's Handbook"
+short_title = "Machinery's Handbook (29th ed.)"
 edition = "29th ed., Industrial Press, 2012"
 license = "cite_only_fact"
 cite_only_cap = 1
@@ -138,7 +138,7 @@ scope = "general requirements for flat-rolled stainless, with dimensional-tolera
 id = "aluminum_sheet"
 publication = "astm_b209"
 locator = "referenced documents"
-detail = "latest revision seen, as of 2026-10-17"
+remark = "latest revision seen, as of 2026-10-17"
 accessed = 2026-10-17
 scope = "aluminum sheet and plate; lists ANSI H35.2 among its referenced documents"
 

@@ -146,6 +146,8 @@ class RadiusSource:
     """Whether the values are at listed thicknesses (D4), not at bands the source states."""
     coverage: str
     """The thicknesses it lists, e.g. ``"0.016–0.258 in"``."""
+    practice: str
+    """The practice its minimums come from, e.g. ``"aerospace bending practice"``."""
     label: str = ""
     """What the row is, when it isn't the material itself, e.g. a stand-in."""
     note: str = ""
@@ -383,7 +385,7 @@ class _Reader:
         _check_keys(
             where,
             entry,
-            {"material", "source", "trust", "angle", "unit"},
+            {"material", "source", "practice", "trust", "angle", "unit"},
             {"temper", "thicknesses", "bands", "times_t", "radius", "label", "note", "see_also"},
         )
         material, temper = self._case(where, entry, materials)
@@ -422,6 +424,7 @@ class _Reader:
             radius_values,
             "thicknesses" in entry,
             coverage,
+            _text(where, entry, "practice"),
             str(entry.get("label", "")),
             str(entry.get("note", "")),
             tuple(
@@ -806,6 +809,11 @@ def short(source: TableSource) -> str:
     return source.publication.short_title or source.publication.title
 
 
+def practices(sources: Iterable[RadiusSource]) -> str:
+    """Name the practices sources' minimums come from, each once, in order."""
+    return and_list(dict.fromkeys(source.practice for source in sources))
+
+
 def and_list(items: Iterable[str]) -> str:
     """Join phrases as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
     words = list(items)
@@ -827,7 +835,10 @@ def starting_value_note(k: KStart) -> Note:
 def _radius_fact(name: str, sources: Sequence[RadiusSource]) -> Fact:
     """Say how a material's bends are checked, and what each source lists."""
     cited = and_list(short(s.source) for s in sources)
-    rule = f"Bends up to 90° in {name} are checked against {cited}"
+    rule = (
+        f"Bends up to 90° in {name} are checked against the recommended minimums of "
+        f"{cited}, {practices(sources)}"
+    )
     if len(sources) > 1:
         rule += "; where they differ, the larger governs"
     parts = [f"{rule}."]

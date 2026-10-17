@@ -74,7 +74,7 @@ until you pick one, so by default you type the decimal thickness.
   cutting." Each system points to its own tolerance standard.
 * Each value comes from a cited definition: the 1893 gauge statute (15 U.S.C. §206),
   NBS Circular 391, and one fact from *Machinery's Handbook*. Results name the table,
-  "Gauge systems, version 1". To report a value that looks wrong, see
+  "Gauge systems, version 2". To report a value that looks wrong, see
   [Reporting a wrong value](#reporting-a-wrong-value).
 
 ### Choosing a material
@@ -120,6 +120,11 @@ With a material chosen, *Bend allowance & deduction* and *Flat length of a forme
 segment* check the inside radius against the material's cited minimum bend radius. Each
 note names its sources and how far each applies.
 
+* **What the minimums are.** They are the recommended minimums of aircraft-repair (FAA AC
+  43.13-1B) and USAF/NAVAIR (TO 1-1A-9) practice, for bends up to 90°. Press-brake
+  production can differ with tooling, grain direction, and the material lot, so make a
+  test bend before production.
+
 * **Limit exceeded** when the inside radius is below the minimum. Where sources differ,
   the larger minimum applies and every source is shown: 6061-T6 is checked against both
   AC 43.13-1B and TO 1-1A-9. A range, such as AC 43.13's ½T–1T, is checked at its upper
@@ -153,7 +158,7 @@ note names its sources and how far each applies.
   and a ticked **Use Sheet Metal value** box. The field is read-only while the box is
   ticked, and the result lists the value as *Sheet Metal settings*.
 * A gauge's thickness works the same way. The result lists it by its gauge, e.g.
-  *12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 1*,
+  *12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 2*,
   carries the caution, and shows the gauge's work before the calculator's own.
 * To give one calculator its own value, **untick the box**. The field keeps an exact
   copy of the family value, so nothing changes until you edit it; the result lists it

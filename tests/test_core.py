@@ -396,6 +396,19 @@ def test_a_failing_check_is_a_definition_error() -> None:
         _checked_by(stray)
 
 
+def test_a_check_sees_each_inputs_source_read_only() -> None:
+    """Review L2: a check tells a derived thickness from a typed one by its source."""
+    seen: dict[str, str] = {}
+
+    def sources(ctx: Context, _selections: Mapping[str, str]) -> None:
+        seen.update({k: s.kind.value for k, s in ctx.sources.items()})
+        with pytest.raises(TypeError):
+            ctx.sources["length"] = ctx.sources["length"]  # type: ignore[index]
+
+    _checked_by(sources)
+    assert seen == {"length": "explicit"}
+
+
 def test_notes_are_carried_then_computed_then_checked() -> None:
     def checked(ctx: Context, _selections: Mapping[str, str]) -> None:
         ctx.warn("From the check.")

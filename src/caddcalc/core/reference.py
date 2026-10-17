@@ -31,8 +31,9 @@ class Reference:
     """How a label or a note's text names the work, e.g. ``"FAA-H-8083-31B"``."""
 
     def __str__(self) -> str:
+        # The locator comes before the detail, which narrows it, e.g. a chapter or a step.
         return ", ".join(
-            part for part in (self.title, self.edition, self.detail, self.locator) if part
+            part for part in (self.title, self.edition, self.locator, self.detail) if part
         )
 
     @property

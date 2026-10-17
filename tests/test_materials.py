@@ -199,6 +199,22 @@ def test_edd5_defines_only_its_one_cite_only_value() -> None:
     assert [v.value for v in edd] == [0.4]
 
 
+def test_bending_practice_is_cited_to_the_current_edition() -> None:
+    """Review L4: the 2015 edition is kept only for its generic annealed stainless row."""
+    practice = materials().practice.source
+    assert (practice.id, practice.publication.id, practice.reference.locator) == (
+        "to_bending_practice",
+        "usaf_to_1_1a_9",
+        "p. 2-80",
+    )
+    from_2015 = [
+        s.id
+        for s in materials().table.sources.values()
+        if s.publication.id == "usaf_to_1_1a_9_2015"
+    ]
+    assert from_2015 == ["to_2015_annealed_stainless"]
+
+
 def test_materials_without_a_source_say_why() -> None:
     for key in ("cs:a653", "cs:a1011"):
         material = materials().by_key[key]

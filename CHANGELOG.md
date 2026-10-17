@@ -22,11 +22,14 @@ All notable changes are recorded here. The format follows
   setting, its stated value, and the `ValueOrigin` to apply it with). Both are checked
   against the domain's settings and tables.
 - Short titles for citations (ADR-0014, amendments): a `[[publication]]` may give a
-  `short_title`, e.g. "FAA-H-8083-31B", which every shipped publication now has.
-  `Reference.short` names a citation by it and its locator, and source labels and note
-  texts use it: "Sheet Metal settings, starting value from FAA-H-8083-31B, Ch. 4, …".
+  `short_title`, e.g. "AC 43.13-1B (2024 ed. update)", which every shipped publication now
+  has. `Reference.short` names a citation by it and its locator, and source labels and
+  note texts use it: "Sheet Metal settings, starting value from FAA-H-8083-31B, p. 4-63".
   References, JSON (which gains `short_title`), and a note's list of sources keep the full
-  citation. Without one, labels show the full citation as before.
+  citation, now with its locator before its detail. A source's `remark`, for reviewers,
+  is never rendered. Without a short title, labels show the full citation as before.
+  The gauge table, released at version 1, is now **"Gauge systems", version 2**:
+  citation metadata only, values unchanged.
 - **The minimum-radius check (ADR-0014, amendments).** With a material chosen, *Bend
   allowance & deduction* and *Flat length of a formed segment* check the inside radius
   against its cited minimum (`sheet_metal.checks.BendCheck`, a result check): the larger
@@ -276,6 +279,14 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- The minimum-radius check states its scope: "The inside radius is below the recommended
+  minimum for 6061-T6 aluminum in aerospace bending practice (AC 43.13-1B (2024 ed.
+  update), Table 4-6, p. 4-17; …)". Where only one source lists the thickness, the note
+  saying so is a warning, since the check still applies. The gauge-and-material warning
+  goes by the thickness's source, so a typed thickness equal to the gauge's isn't
+  warned about; a check sees each input's source (`Context.sources`). An applied K
+  starting value given for other materials than the chosen one gets a warning. The
+  bending-practice note cites TO 1-1A-9's current edition, p. 2-80.
 - The family settings page scrolls when its contents outgrow the window.
 - The "inside radius is smaller than the material thickness" warning is now part of the
   bend check: it is dropped wherever a cited minimum applies, and otherwise reads as

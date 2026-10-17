@@ -166,7 +166,7 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     derived = settings.for_domain(DOMAIN).derived["thickness"]
     assert derived.stated is not None and derived.stated.text == "0.1046 in"
     assert describe_source(derived.source) == (
-        "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 1"
+        "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 2"
     )
 
     gauged = BendAllowance().run(settings=settings.for_domain(DOMAIN))
@@ -176,7 +176,7 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     assert (note.kind, note.subjects) == (NoteKind.WARNING, ("thickness",))
     assert describe_note(note) == (
         "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check "
-        "the material's specification or measure before cutting. (Gauge systems, version 1; "
+        "the material's specification or measure before cutting. (Gauge systems, version 2; "
         "ASTM A568/A568M, 2025, rev. a, scope: general requirements for carbon and HSLA "
         "steel sheet (A1008, A1011))"
     )

@@ -63,9 +63,9 @@ def constant(
 
 
 TABLE_DIGESTS: dict[tuple[str, int], str] = {
-    ("Gauge systems", 1): "13491945779c6eea6059288cf8360b6213681d6b9267c609d0250b6763a8d84e",
+    ("Gauge systems", 2): "ed728b1429ce42cc307ebbde75b0a119e5a4fa3a80498b16f2bce0845adc1fe2",
     ("Sheet-metal materials", 1): (
-        "5518017207e887572e55fd8e51d27b7fd9b560d742e98712ca7f4b39224e19d7"
+        "c064d35b8e642f87db09c96747918186f0ec3cfe0b5b284e89c715b34ce3672f"
     ),
 }
 """The content hash of every shipped table, by (name, version). Changing a table's data
@@ -93,6 +93,18 @@ def test_a_reference_keeps_its_old_shape_and_gains_structured_fields() -> None:
         "short_title": "",
     }
     assert Reference("Plain").to_dict()["accessed"] is None
+
+
+def test_a_citation_puts_its_locator_before_its_detail_and_never_shows_a_remark() -> None:
+    """Review M1: a reviewer's remark read as part of the citation."""
+    cited = Reference("AC 43.13-1B", edition="2024", locator="Table 4-6, p. 4-17", detail="Ch. 4")
+    assert str(cited) == "AC 43.13-1B, 2024, Table 4-6, p. 4-17, Ch. 4"
+    remarked = parse_table(
+        table(publication(), source(remark='"p. 4-14 in an earlier file"')), "test", SAMPLE_KEYS
+    )
+    assert remarked.sources["s"].remark == "p. 4-14 in an earlier file"
+    assert "p. 4-14" not in str(remarked.sources["s"].reference)
+    assert "p. 4-14" not in str(remarked.sources["s"].reference.to_dict())
 
 
 def test_a_short_title_names_a_reference_in_labels_and_falls_back_to_the_full_one() -> None:

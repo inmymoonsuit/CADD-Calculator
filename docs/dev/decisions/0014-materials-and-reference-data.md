@@ -997,7 +997,8 @@ the entries above, these replace them.
   in JSON (`Reference.to_dict` gains `short_title`), and in a note's list of sources.
   *Why:* the full citation made an input's source line several lines long. This replaces
   2b.6's rule of naming a publication by its title up to the first comma.
-* Every shipped publication has one. Both tables stay version 1 with their digests
+* Every shipped publication has one. (Corrected in 2b.7c: the gauge table, already
+  released, takes version 2.) Both tables stay version 1 with their digests
   re-pinned; for the gauge table, already released, the change is citation metadata
   only, and its release record says so.
 
@@ -1047,3 +1048,44 @@ the entries above, these replace them.
   the new roles to the contrast minimums.
 * **The settings page scrolls,** since a material's facts and the settings' help can
   outgrow the window.
+
+### 2026-10-17: review fixes to citations and the check (maintainer, phase 2b.7c)
+
+Support & Review's review of 2b.3–2b.3b: no High, two Mediums, four Lows; the data
+matched the rendered pages value for value. These replace the entries above where they
+differ.
+
+* **The gauge table is version 2.** It was released at version 1, and by the rule
+  above, version bumps start at the first public release, so any content change after
+  it, even 2b.7a's citation metadata, takes a new version; otherwise "Gauge systems,
+  version 1" would name two contents. Its values are unchanged, and its release record
+  says so. The materials table is unreleased and stays version 1.
+* **Remarks aren't citations (M1).** A `[[source]]` may give a `remark`, for reviewers,
+  such as where an earlier edition has the same values. It is kept as
+  `TableSource.remark` and never rendered. `detail` is now only a sub-locator, such as a
+  chapter or a step, and a citation renders its locator before its detail. Short titles
+  carry an edition where the table cites more than one, or a dated update, e.g. "AC
+  43.13-1B (2024 ed. update)" and "TO 1-1A-9 (2020 Change 3)". Note texts and labels use
+  the short title and locator, e.g. "AC 43.13-1B (2024 ed. update), Table 4-6, p. 4-17",
+  and FAA's locator is now "p. 4-63", so the applied K reads "starting value from
+  FAA-H-8083-31B, p. 4-63". The full citation, its scope, and its detail stay in the
+  references, describe_note's list of sources, and JSON.
+* **The check states its scope (M2, §5.5).** A limit-exceeded note reads "The inside
+  radius is below the recommended minimum for 6061-T6 aluminum in aerospace bending
+  practice (AC 43.13-1B (2024 ed. update), Table 4-6, p. 4-17; TO 1-1A-9 (2020 Change
+  3), …) at this thickness: …". Each `[[min_radius]]` row names its `practice`, so the
+  scope comes from the data, and the facts use the same words. The user guide says the
+  sources are aircraft-repair and USAF/NAVAIR practice for 90° bends, and that
+  press-brake production may differ.
+* **Partial coverage is a warning (L1):** the check still applies, through the sources
+  that cover the thickness.
+* **The gauge warning goes by the source (L2).** A result check sees each input's
+  source, read-only (`Context.sources`, filled by `run()`), and the gauge-and-material
+  warning fires only when the thickness was derived from the gauge table, not when a
+  typed thickness happens to equal the gauge's.
+* **An applied K for another material (L3).** When the K-factor in use is a starting
+  value applied for other materials than the chosen one, a warning says which it was
+  given for and asks for a test bend.
+* **The practice note cites the current edition (L4):** TO 1-1A-9, 17 Nov 2016 with
+  Change 3, p. 2-80, ¶2.18.1.2c and ¶¶2.19.1–2.19.1.1, as Support & Review read it. The
+  2015 edition stays only for the generic annealed stainless row.

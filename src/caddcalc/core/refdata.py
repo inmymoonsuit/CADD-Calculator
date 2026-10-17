@@ -100,7 +100,7 @@ _PUBLICATION_KEYS = frozenset(
     {"id", "kind", "title", "short_title", "edition", "url", "license", "public_domain_basis"}
     | {"third_party", "cite_only_cap", "terms_url", "terms_checked", "terms_outcome"}
 )
-_SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail"})
+_SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail", "remark"})
 _LEADING_NUMBER = re.compile(r"[0-9]+")
 _CONDITION_KEY = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -152,6 +152,9 @@ class TableSource:
     publication: TablePublication
     reference: Reference
     """The citation: the publication's title, edition, and url, with this place's locator."""
+    remark: str = ""
+    """A note for reviewers, such as where an earlier edition has the same values. It is
+    never rendered: ``detail`` is for a sub-locator, which is part of the citation."""
 
 
 @dataclass(frozen=True)
@@ -586,7 +589,7 @@ def _parse_source(
         scope=str(entry.get("scope", "")),
         short_title=publication.short_title,
     )
-    return TableSource(entry["id"], publication, reference)
+    return TableSource(entry["id"], publication, reference, str(entry.get("remark", "")))
 
 
 def _check_license(

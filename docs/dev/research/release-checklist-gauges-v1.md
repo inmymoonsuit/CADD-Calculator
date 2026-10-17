@@ -28,8 +28,11 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
 
 ## Changes after sign-off
 
-* 2026-10-17, phase 2b.7a, by the maintainer's decision: `short_title` added to three
-  publications (15 U.S.C., NBS Circular 391, and *Machinery's Handbook*), for labels and
-  note texts. It is citation metadata only: no value, source, edition, or license
-  changed. The digest is now `13491945779c6eea6059288cf8360b6213681d6b9267c609d0250b6763a8d84e`,
-  and the table stays version 1. Not yet re-verified by the review session.
+* 2026-10-17, phases 2b.7a and 2b.7c, by the maintainer's decision: **version 2**.
+  `short_title` added to three publications ("15 U.S.C. (2024 ed.)", "NBS Circular 391",
+  "Machinery's Handbook (29th ed.)"), for labels and note texts, and B209's "latest
+  revision seen, as of 2026-10-17" moved from the rendered `detail` to the unrendered
+  `remark`. Citation metadata only: values unchanged, and no source, edition, or license
+  changed. The table was released at version 1, so the change takes version 2, digest
+  `ed728b1429ce42cc307ebbde75b0a119e5a4fa3a80498b16f2bce0845adc1fe2`. Awaiting the review
+  session's re-verification.

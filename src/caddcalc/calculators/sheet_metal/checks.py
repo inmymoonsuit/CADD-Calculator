@@ -21,9 +21,10 @@ from caddcalc.calculators.sheet_metal.materials import (
     RadiusSource,
     RadiusValue,
     and_list,
+    practices,
     short,
 )
-from caddcalc.core import Context, NoteKind, Reference
+from caddcalc.core import Context, NoteKind, Reference, SourceKind
 
 MAX_ANGLE = 90.0
 """The largest bend angle, in degrees, that the minimum radii are read for.
@@ -42,9 +43,11 @@ class BendCheck:
     """Checks a bend calculator's run against the chosen material (ADR-0014 §3).
 
     * A gauge thickness from a system the material isn't ordered by gets a warning (flag 9).
+    * A K starting value applied for other materials than the chosen one gets a warning.
     * With a material whose sources cover the case, the inside radius is checked against
-      the larger of their minimums (D1), each range at its upper bound (D2), and every
-      source is shown. A radius below it also gets the sources' bending practice.
+      the larger of their recommended minimums (D1), each range at its upper bound (D2),
+      and every source is shown with the practice it comes from. A radius below it also
+      gets the sources' bending practice.
     * Where no source covers the case, a no-applicable-value note says why: no source for
       the material, a bend past 90° (D10), or a thickness no source lists (D4). Then, as
       with no material chosen, an inside radius below the thickness gets the rule of thumb.
@@ -67,6 +70,7 @@ class BendCheck:
         if material is not None:
             temper = selections.get(TEMPER.key)
             self._check_gauge(ctx, material, temper, selections.get(GAUGE.key))
+            self._check_applied_k(ctx, material, temper)
             referenced = self._check_minimum(ctx, material, temper)
         if not referenced and ctx["inside_radius"] < ctx["thickness"]:
             # A rule of thumb, not a cited limit: published minimums go below 1T for some
@@ -82,15 +86,16 @@ class BendCheck:
     ) -> None:
         """Warn when the gauge's system isn't one the material is ordered by (flag 9).
 
-        Only a run that uses the gauge's thickness is warned: a thickness the user typed
-        over the gauge doesn't depend on its system.
+        Only a run whose thickness is derived from the gauge is warned, by its source, not
+        its value: a thickness the user typed doesn't depend on the gauge's system, even
+        when it equals the gauge's.
         """
-        if gauge_key is None:
+        thickness = ctx.sources.get("thickness")
+        if gauge_key is None or thickness is None or thickness.kind is not SourceKind.DERIVED:
             return
         gauges = self.gauges.gauges
         system, gauge = gauges.by_key[gauge_key]
-        in_use = math.isclose(ctx["thickness"], gauge.stated.value, rel_tol=_SAME)
-        if system.id in material.gauges or not in_use:
+        if system.id in material.gauges or thickness.reference != gauges.table.reference:
             return
         usual = " or ".join(s.name for s in gauges.systems if s.id in material.gauges)
         ctx.warn(
@@ -98,6 +103,28 @@ class BendCheck:
             f"ordered by {usual} gauge numbers. Each system gives a gauge number a different "
             "thickness, so check the thickness, or enter it as a decimal.",
             subjects=("thickness",),
+        )
+
+    def _check_applied_k(self, ctx: Context, material: Material, temper: str | None) -> None:
+        """Warn when the K-factor in use was applied for other materials than this one.
+
+        An applied starting value keeps its citation when the material changes, so its
+        source would otherwise read as covering a material it doesn't.
+        """
+        source = ctx.sources.get("k_factor")
+        if source is None or source.kind is not SourceKind.DOMAIN or source.reference is None:
+            return
+        data = self.materials.materials
+        start = next((k for k in data.k_starts if k.source.reference == source.reference), None)
+        if start is None or material.key in start.materials:
+            return
+        covered = and_list(
+            m.name_in(m.tempers[0].key) for m in data.materials if m.key in start.materials
+        )
+        ctx.warn(
+            f"The K starting value from {short(start.source)} was given for {covered}, not "
+            f"for {material.name_in(temper)}; confirm it with a test bend.",
+            subjects=("k_factor",),
         )
 
     def _check_minimum(self, ctx: Context, material: Material, temper: str | None) -> bool:
@@ -141,11 +168,10 @@ class BendCheck:
         alone = and_list(_short(s) for s, _ in covering)
         for source, value in found:
             if value is None:
-                ctx.note(
+                # A warning: the check still applies, through the sources that cover it.
+                ctx.warn(
                     f"{_short(source)} lists {source.coverage} for {name}, which doesn't reach "
                     f"this thickness, so the check uses {alone} alone.",
-                    NoteKind.NO_APPLICABLE_VALUE,
-                    references=(source.source.reference,),
                     subjects=("thickness",),
                 )
         minimum = max(value.minimum(thickness) for _, value in covering)
@@ -168,14 +194,21 @@ class BendCheck:
 
 
 def _limit(name: str, covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> str:
-    """Say what the radius is below: each source's minimum, as it states it."""
+    """Say what the radius is below, and how far that applies (ADR-0014 §5.5).
+
+    That is each source's recommended minimum, as the source states it, and the practice
+    it comes from.
+    """
+    sources = [source for source, _ in covering]
+    cited = "; ".join(s.source.reference.short for s in sources)
     given = []
     for source, value in covering:
         where = f"at {value.column}" if source.listed else f"for sheet {value.column}"
         label = f" ({source.label})" if source.label else ""
         given.append(f"{_short(source)} gives {value.stated} {where}{label}")
     text = (
-        f"The inside radius is below the minimum for {name} at this thickness: {and_list(given)}."
+        f"The inside radius is below the recommended minimum for {name} in "
+        f"{practices(sources)} ({cited}) at this thickness: {and_list(given)}."
     )
     if len(covering) > 1:
         text += " The check uses the larger."

@@ -88,10 +88,19 @@ class Context:
     It records each step compute makes, and the notes compute and the checks add.
     """
 
-    def __init__(self, calculator: Calculator, method: Method, inputs: Mapping[str, float]):
+    def __init__(
+        self,
+        calculator: Calculator,
+        method: Method,
+        inputs: Mapping[str, float],
+        sources: Mapping[str, InputSource] | None = None,
+    ):
         self.calculator = calculator
         self.method = method.key
         self.inputs = dict(inputs)
+        self.sources: Mapping[str, InputSource] = MappingProxyType(dict(sources or {}))
+        """Where each input came from (ADR-0013 §5), read-only, e.g. so a result check can
+        tell a gauge's thickness from a typed one."""
         self.symbols: dict[str, tuple[float, Dimension]] = {
             p.symbol: (inputs[p.key], p.dimension) for p in calculator.params if p.key in inputs
         }
@@ -190,7 +199,8 @@ class ResultCheck(Protocol):
         """Add notes about a finished run.
 
         Args:
-            ctx: The run after compute: its method, inputs, and outputs.
+            ctx: The run after compute: its method, inputs and their sources, and
+                outputs.
             selections: The selections in effect for the run's domain, by choice key
                 (``DomainValues.selections``); empty when the run has no settings.
         """
@@ -336,7 +346,7 @@ class Calculator(ABC):
             if derived is not None and derived.work is not None:
                 derived_work.append(replace(derived.work, symbol=p.symbol))
 
-        ctx = Context(self, m, values)
+        ctx = Context(self, m, values, sources)
         # One note per carried note used, naming every input that took it, and the work
         # of each derived value used, ahead of the calculator's own (ADR-0014).
         ctx.notes.extend(replace(n, subjects=tuple(keys)) for n, keys in used_notes.items())

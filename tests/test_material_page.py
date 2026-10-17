@@ -117,7 +117,10 @@ def test_the_facts_show_the_materials_rule_strengths_and_notes() -> None:
     choose(window, "Aluminum", "al:6061")
     shown = facts(window)
     assert window.settings_form.isRowVisible(window.facts_label)
-    assert "checked against AC 43.13-1B and TO 1-1A-9; where they differ, the larger" in shown
+    assert (
+        "checked against the recommended minimums of AC 43.13-1B (2024 ed. update) and "
+        "TO 1-1A-9 (2020 Change 3), aerospace bending practice; where they differ, the larger"
+    ) in shown
     assert "aircraft repair practice" in shown, "each source's scope"
     assert "Bending practice: Form across the grain" in shown
     assert "F_tu 42.0 ksi (L)" in shown and "A-basis allowables, MIL-HDBK-5J" in shown
@@ -144,11 +147,11 @@ def test_k_starting_values_are_offered_for_the_materials_they_cover() -> None:
     choose(window, "Aluminum", "al:6061")
     assert starts(window) == [
         "Use 0.445, FAA-H-8083-31B",
-        "Use 0.4, Engineering Drawing and Design",
+        "Use 0.4, Engineering Drawing and Design (5th ed.)",
     ]
     assert "test bend" in window.start_buttons["k_factor"][0].toolTip()
     choose(window, "Stainless steel", "ss:304")
-    assert starts(window) == ["Use 0.4, Engineering Drawing and Design"]
+    assert starts(window) == ["Use 0.4, Engineering Drawing and Design (5th ed.)"]
     choose(window, "Carbon steel", "cs:a653")
     assert starts(window) == []
     window.close()
@@ -262,6 +265,6 @@ def test_a_bend_below_the_materials_minimum_says_so_on_its_page() -> None:
     type_into(window.setting_fields["inside_radius"][1], "0.1")
     window.select_calculator("sheet_metal.bend_allowance")
     shown = window.output.toPlainText()
-    assert "Limit exceeded: The inside radius is below the minimum for 6061-T6" in shown
+    assert "Limit exceeded: The inside radius is below the recommended minimum for 6061-T6" in shown
     assert "Inside radius is smaller than the material thickness" not in shown
     window.close()

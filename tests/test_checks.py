@@ -16,7 +16,7 @@ from caddcalc.calculators.sheet_metal import (
     VDieOpening,
 )
 from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE, load_materials
-from caddcalc.core import DomainSettings, Note, NoteKind, Result
+from caddcalc.core import DomainSettings, Note, NoteKind, Result, ValueOrigin
 from caddcalc.core.formatting import describe_note
 
 IN = 25.4
@@ -95,8 +95,18 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
     assert practice == exceeded, "bending practice only beside a limit"
     if exceeded:
         (limit,) = limits
-        assert [r.short_title for r in limit.references] == ["AC 43.13-1B", "TO 1-1A-9"]
-        assert limit.text.count("TO 1-1A-9 gives") == 1, "the text names the short title"
+        assert [r.short_title for r in limit.references] == [
+            "AC 43.13-1B (2024 ed. update)",
+            "TO 1-1A-9 (2020 Change 3)",
+        ]
+        assert limit.text.startswith(
+            "The inside radius is below the recommended minimum for 6061-T6 aluminum in "
+            "aerospace bending practice (AC 43.13-1B (2024 ed. update), Table 4-6, p. 4-17; "
+            "TO 1-1A-9 (2020 Change 3), Tables A-31 and A-32, pp. A-45 and A-47) at this "
+            "thickness: "
+        ), "its scope, and each source by its short title and locator (review M1, M2)"
+        assert limit.text.count("TO 1-1A-9 (2020 Change 3) gives") == 1
+        assert "p. 4-14" not in describe_note(limit), "a reviewer's remark is never rendered"
         assert "Engineering Series for Aircraft Repair" in describe_note(limit), "in full"
         assert "The check uses the larger." in limit.text
         assert limit.subjects == ("inside_radius", "thickness")
@@ -127,7 +137,7 @@ def test_304_uses_the_half_hard_row_as_a_labelled_stand_in() -> None:
     [
         ("ss:304", 0.10, "0.012–0.090 in and 0.190–0.250 in"),  # Table 2-16's gap
         ("cs:a1008", 0.25, "0.016–0.187 in"),  # mild steel stops at 0.187 in (D4)
-        ("al:6061", 0.30, "0.016–0.258 in and TO 1-1A-9 lists 0.012–0.250 in"),
+        ("al:6061", 0.30, "0.016–0.258 in and TO 1-1A-9 (2020 Change 3) lists 0.012–0.250 in"),
     ],
 )
 def test_a_thickness_no_source_lists_is_said_aloud(
@@ -144,9 +154,10 @@ def test_a_thickness_no_source_lists_is_said_aloud(
 def test_where_one_source_covers_the_thickness_it_is_used_alone() -> None:
     """Flag 5: AC lists nothing as thin as 0.012 in, so TO checks it alone."""
     result = bend(0.012, 0.02, "al:6061")
-    (gap,) = notes(result, GAP)
-    assert gap.text.startswith("AC 43.13-1B lists 0.016–0.258 in")
-    assert "uses TO 1-1A-9 alone" in gap.text
+    assert notes(result, GAP) == [], "the check applied, through TO (review L1)"
+    (gap,) = [n for n in notes(result, WARNING) if "alone" in n.text]
+    assert gap.text.startswith("AC 43.13-1B (2024 ed. update) lists 0.016–0.258 in")
+    assert "uses TO 1-1A-9 (2020 Change 3) alone" in gap.text
     (limit,) = notes(result, LIMIT)
     assert "0.03 in" in limit.text and "uses the larger" not in limit.text
 
@@ -212,6 +223,44 @@ def test_a_gauge_from_another_materials_system_is_warned_about(
         assert note.kind is WARNING and note.subjects == ("thickness",)
         assert note.text.startswith("The gauge is 16 ") and "enter it as a decimal" in note.text
     assert mismatch(bend(0.06, 0.2, material, gauge=gauge)) == [], "a typed thickness"
+
+
+def test_a_typed_thickness_equal_to_the_gauges_isnt_warned_about() -> None:
+    """Review L2: the warning goes by the thickness's source, not its value."""
+    gauge_thickness = 0.0598  # Manufacturers' Standard 16 ga, as the system states it
+    typed = bend(gauge_thickness, 0.2, "al:6061", gauge="msg:16")
+    assert typed.source_of("thickness").kind.value == "explicit"
+    assert [n for n in typed.notes if n.text.startswith("The gauge is")] == []
+
+
+def applied_k(material: str, source: str) -> Result:
+    """Run a K-factor bend with ``material`` chosen and a K starting value applied."""
+    table = MATERIAL_TABLE.load()
+    entry = next(v for v in MATERIAL_TABLE.values(table) if v.source == source)
+    assert entry.stated is not None
+    origin = ValueOrigin.of(table, entry)
+    settings = (
+        DomainSettings()
+        .set(DOMAIN, "k_factor", entry.stated, origin=origin)
+        .set_choice(DOMAIN, "material", material)
+    )
+    inputs = {"thickness": 0.05 * IN, "inside_radius": 0.2 * IN}
+    return BendAllowance().run(inputs, "k_factor", settings=settings.for_domain(DOMAIN))
+
+
+def test_an_applied_k_given_for_other_materials_is_warned_about() -> None:
+    """Review L3: an applied value keeps its citation when the material changes."""
+    stainless = applied_k("ss:304", "faa_neutral_axis")
+    (warning,) = [n for n in stainless.notes if n.text.startswith("The K starting value")]
+    assert warning.text == (
+        "The K starting value from FAA-H-8083-31B was given for 5052-H32 aluminum and "
+        "6061-T6 aluminum, not for 304 stainless, annealed (2B finish); confirm it with a "
+        "test bend."
+    )
+    assert warning.subjects == ("k_factor",)
+    for material, source in (("al:6061", "faa_neutral_axis"), ("ss:304", "edd5_k")):
+        covered = applied_k(material, source)
+        assert all(not n.text.startswith("The K starting value") for n in covered.notes)
 
 
 def test_every_source_a_check_cites_states_its_scope() -> None:

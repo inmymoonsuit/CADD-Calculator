@@ -277,9 +277,9 @@ def test_an_applied_value_keeps_its_entry_and_citation_in_results() -> None:
     source = result.source_of("k_factor")
     assert (source.kind, source.reference) == (SourceKind.DOMAIN, FAA)
     assert describe_source(source) == (
-        "Sheet Metal settings, starting value from FAA-H-8083-31B, "
-        "Ch. 4, Step 4, printed p. 4-63, and Fig 4-126, p. 4-64"
+        "Sheet Metal settings, starting value from FAA-H-8083-31B, p. 4-63"
     ), "the short title and the locator; the full citation stays in the reference"
+    assert str(FAA).endswith("p. 4-63, Ch. 4, Step 4; and Fig 4-126, p. 4-64"), "locator first"
     assert str(FAA).startswith("FAA-H-8083-31B, Aviation Maintenance Technician Handbook")
     assert replace(TEST_BEND, subjects=("k_factor",)) in result.notes
     reference = result.to_dict()["inputs"]["k_factor"]["source"]["reference"]
