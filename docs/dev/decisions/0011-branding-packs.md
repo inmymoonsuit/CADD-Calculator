@@ -3,6 +3,9 @@
 * **Status:** **Proposed**. Implemented on 2026-10-17 in the packaging spike; to be
   accepted once the maintainer has reviewed the pack format.
 * **Date:** 2026-10-17
+* **Amended:** 2026-10-17 by [ADR-0015](0015-welcome-screen.md), which replaces the
+  `splash` key with a `[welcome]` table (`art`, `art_focus`, `logo`) and the splash
+  screen with a welcome screen.
 * **Deciders:** the maintainer set the branding policy (ADR-0008 item 4); this ADR
   proposes the mechanism
 
