@@ -1,7 +1,7 @@
 ---
 name: Reference value is wrong or rights-encumbered
 about: Report a value in a reference table, such as a gauge thickness, that is wrong or may not be redistributable
-labels: reference-data
+labels: ["reference data"]
 ---
 
 **Table and version:** e.g. "Gauge systems, version 1". A result names the table it used.
