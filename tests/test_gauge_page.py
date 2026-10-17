@@ -235,3 +235,30 @@ def test_the_wheel_doesnt_change_a_gauge() -> None:
     systems, gauges = window.choice_rows["gauge"]
     assert (systems.currentText(), gauges.currentText()) == (MSG, "12 ga")
     window.close()
+
+
+@pytest.mark.parametrize("unit", ["in", "mm"])
+@pytest.mark.parametrize(
+    ("system", "size", "stated"),
+    [
+        (
+            "US Standard 1893, as commonly used for stainless; practice varies",
+            "12 ga",
+            "0.109375 in",
+        ),
+        ("AWG (Brown & Sharpe), nonferrous", "40 AWG", "0.00314 in"),
+    ],
+)
+def test_both_pages_show_the_stated_thickness_in_the_work(
+    unit: str, system: str, size: str, stated: str
+) -> None:
+    """Review M3: the work rounded the stated value to the display decimals."""
+    window = open_window()
+    window.units_box.setCurrentText(unit)
+    pick(window, system, size)
+    text = about(window, "thickness")
+    assert f"= {stated}" in text
+    assert "= 0.1094 in" not in text and "= 0.0031 in" not in text
+    window.select_calculator(BEND)
+    assert f"= {stated}" in result(window)
+    window.close()

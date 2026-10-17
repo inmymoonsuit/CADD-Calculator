@@ -142,7 +142,8 @@ def render_step(
     that are dimensionally homogeneous. All built-in formulas are (see known-issues KI-005).
     A step with its own ``substitution``, such as a derived value's work, needs no result.
     A step with an ``expression_unit`` shows its value in that unit first, then in the
-    display unit, e.g. ``0.1046 in = 2.6568 mm``, so the substituted line stays true.
+    display unit, e.g. ``0.1046 in = 2.6568 mm``, so the substituted line stays true. A
+    stated value is shown as stated, e.g. ``0.109375 in``, never rounded for display.
 
     Raises:
         UsageError: ``result`` is ``None`` for a step that substitutes the run's values.
@@ -150,10 +151,14 @@ def render_step(
     value_text = format_value(step.value, step.dimension, prefs)
     if step.expression_unit is not None:
         unit = get_unit(step.expression_unit)
-        if unit.symbol != display_unit(step.dimension, prefs).symbol:
+        yielded = step.stated
+        if yielded is None:
             decimals = prefs.angle_decimals if step.dimension is Dimension.ANGLE else prefs.decimals
-            yielded = format_number(from_base(step.value, unit), decimals)
-            value_text = f"{yielded} {unit.symbol} = {value_text}"
+            yielded = f"{format_number(from_base(step.value, unit), decimals)} {unit.symbol}"
+        if unit.symbol != display_unit(step.dimension, prefs).symbol:
+            value_text = f"{yielded} = {value_text}"
+        elif step.stated is not None:
+            value_text = step.stated
     if step.expression is None:
         return (step.note, None, value_text)
     symbolic = expr.render_symbolic(step.expression)

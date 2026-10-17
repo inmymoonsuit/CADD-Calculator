@@ -243,6 +243,10 @@ without bound.
 """
 
 
+MAX_EXACT_DIGITS = 1000
+"""The most significant digits ``evaluate_exact`` computes a non-integer power to."""
+
+
 def evaluate_exact(
     expression: str, symbols: Mapping[str, Fraction | Decimal | int], *, digits: int
 ) -> Fraction:
@@ -258,20 +262,27 @@ def evaluate_exact(
         expression: The formula, e.g. ``"(w + c) / 16 / B"``.
         symbols: Each symbol's exact value. A float or a bool is refused: a float has
             already lost the exactness this evaluator exists for.
-        digits: Significant digits for a non-integer power.
+        digits: Significant digits for a non-integer power, from 1 to
+            ``MAX_EXACT_DIGITS``.
 
     Raises:
         UsageError: A symbol's value isn't an exact ``Fraction``, ``Decimal``, or ``int``,
-            or ``digits`` is under 1.
+            or ``digits`` is outside 1 to ``MAX_EXACT_DIGITS``.
         SpecError: The expression is malformed, calls a function, uses ``pi``, or names an
             unknown symbol.
         CalculationError: It divides by zero (including zero to a negative power),
             raises a negative number to a fractional power, or would make a value larger
-            than ``MAX_EXACT_BITS``. Zero to the power zero is 1, as in ``evaluate``.
+            than ``MAX_EXACT_BITS``, an input included. Zero to the power zero is 1, as in
+            ``evaluate``.
     """
-    if isinstance(digits, bool) or not isinstance(digits, int) or digits < 1:
-        raise UsageError(f"evaluate_exact() needs digits of 1 or more, not {digits!r}")
-    exact: dict[str, Fraction] = {}
+    if (
+        isinstance(digits, bool)
+        or not isinstance(digits, int)
+        or not 1 <= digits <= MAX_EXACT_DIGITS
+    ):
+        raise UsageError(
+            f"evaluate_exact() needs digits from 1 to {MAX_EXACT_DIGITS}, not {digits!r}"
+        )
     for name, value in symbols.items():
         if isinstance(value, bool) or not isinstance(value, Fraction | Decimal | int):
             raise UsageError(
@@ -279,10 +290,10 @@ def evaluate_exact(
             )
         if isinstance(value, Decimal) and not value.is_finite():
             raise UsageError(f"evaluate_exact() needs finite values; {name} is {value}")
-        exact[name] = _bounded(Fraction(value))
     node = parse(expression)
     shown = render_symbolic(expression)
     try:
+        exact = {name: _exact_input(value) for name, value in symbols.items()}
         return _exact(node, exact, expression, digits)
     except ZeroDivisionError:
         raise CalculationError(f"Division by zero in {shown}") from None
@@ -321,6 +332,18 @@ def _exact(
 
 def _bits(value: Fraction) -> int:
     return max(value.numerator.bit_length(), value.denominator.bit_length())
+
+
+def _exact_input(value: Fraction | Decimal | int) -> Fraction:
+    """Return an input as a ``Fraction``, refusing one too large before it is built."""
+    if isinstance(value, Decimal):
+        _sign, digits, exponent = value.as_tuple()
+        # A decimal digit is a little under 10/3 bits.
+        if (len(digits) + abs(int(exponent))) * 10 // 3 > MAX_EXACT_BITS:
+            raise ValueError(f"a value would exceed {MAX_EXACT_BITS} bits")
+    elif isinstance(value, int) and value.bit_length() > MAX_EXACT_BITS:
+        raise ValueError(f"a value would exceed {MAX_EXACT_BITS} bits")
+    return _bounded(Fraction(value))
 
 
 def _bounded(value: Fraction) -> Fraction:

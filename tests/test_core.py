@@ -494,7 +494,7 @@ def test_the_exact_evaluator_refuses_what_has_no_exact_value(
 ) -> None:
     with pytest.raises(error, match=message):
         expr.evaluate_exact(formula, {"x": 4}, digits=10)
-    with pytest.raises(UsageError, match="digits of 1 or more"):
+    with pytest.raises(UsageError, match="digits from 1 to 1000"):
         expr.evaluate_exact("x", {"x": 4}, digits=0)
 
 
@@ -557,4 +557,53 @@ def test_work_in_its_own_unit_is_shown_in_it_then_in_the_display_unit() -> None:
 def test_every_step_lists_its_substitution_and_expression_unit_in_json() -> None:
     result = default_registry(load_plugins=False).get("sheet_metal.bend_allowance").run()
     step = result.to_dict()["steps"][0]
-    assert (step["substitution"], step["expression_unit"]) == (None, None)
+    assert (step["substitution"], step["expression_unit"], step["stated"]) == (None, None, None)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [Decimal("1e-40000"), Decimal("1e40000"), Decimal("1e400000000"), 2**100001],
+    ids=["tiny Decimal", "huge Decimal", "vast Decimal", "huge int"],
+)
+def test_an_oversized_input_is_a_calculation_error(value: Decimal | int) -> None:
+    """The bound covers inputs too, before they are built, as the docstring promises."""
+    started = time.perf_counter()
+    with pytest.raises(CalculationError, match="exceed 100000 bits"):
+        expr.evaluate_exact("x + 1", {"x": value}, digits=10)
+    assert time.perf_counter() - started < 2.0
+    assert expr.evaluate_exact("x", {"x": Decimal("1e20000")}, digits=10) == 10**20000
+
+
+def test_the_exact_evaluators_digits_are_capped_before_any_work() -> None:
+    started = time.perf_counter()
+    with pytest.raises(UsageError, match="digits from 1 to 1000, not 20000"):
+        expr.evaluate_exact("2 ** 0.5", {}, digits=20000)
+    assert time.perf_counter() - started < 0.5
+    assert abs(expr.evaluate_exact("2 ** 0.5", {}, digits=1000) ** 2 - 2) < Fraction(1, 10**990)
+
+
+def test_a_stated_value_is_shown_as_stated_in_either_unit() -> None:
+    """Review M3: rounding 0.109375 in to 0.1094 in made a third value for 12 ga."""
+    from caddcalc.core import Step
+    from caddcalc.core.formatting import DisplayPrefs, render_step
+
+    step = Step(
+        "T",
+        "Thickness",
+        Dimension.LENGTH,
+        0.109375 * 25.4,
+        "w / 16 / B",
+        substitution={"w": "70", "B": "40"},
+        expression_unit="in",
+        stated="0.109375 in",
+    )
+    assert render_step(step, None, DisplayPrefs())[2] == "0.109375 in"
+    assert render_step(step, None, DisplayPrefs(length_unit="mm"))[2] == ("0.109375 in = 2.7781 mm")
+    with pytest.raises(SpecError, match="needs an expression_unit"):
+        Step("T", "Thickness", Dimension.LENGTH, 2.778125, "t", stated="0.109375 in")
+    with pytest.raises(SpecError, match="isn't its value in in"):
+        Step("T", "T", Dimension.LENGTH, 2.778125, "t", expression_unit="in", stated="0.1094 in")
+    with pytest.raises(SpecError, match="isn't its value in in"):
+        Step("T", "T", Dimension.LENGTH, 2.778125, "t", expression_unit="in", stated="2.778125 mm")
+    with pytest.raises(SpecError, match="stated value"):
+        Step("T", "T", Dimension.LENGTH, 2.778125, "t", expression_unit="in", stated="thick")

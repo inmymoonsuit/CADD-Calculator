@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from caddcalc.core.errors import InputError, SpecError
-from caddcalc.core.units import Dimension, get_unit
+from caddcalc.core.units import Dimension, TypedValue, get_unit
 
 
 @dataclass(frozen=True)
@@ -28,9 +28,15 @@ class Step:
     """The unit the expression yields, e.g. ``"in"``, when it isn't the base unit, as in a
     derived value's work. The work is shown in it, then converted to the display unit
     (ADR-0014, amendments; KI-005)."""
+    stated: str | None = None
+    """The value as its source states it, e.g. ``"0.109375 in"``, shown as the expression's
+    result instead of a figure rounded for display. It needs an ``expression_unit``, in
+    which it must state ``value`` exactly."""
 
     def __post_init__(self) -> None:
         if self.expression_unit is None:
+            if self.stated is not None:
+                raise SpecError(f"Step {self.symbol}: a stated value needs an expression_unit")
             return
         if self.expression is None:
             raise SpecError(f"Step {self.symbol}: only a formula step has an expression_unit")
@@ -42,4 +48,19 @@ class Step:
             raise SpecError(
                 f"Step {self.symbol}: {self.expression_unit!r} doesn't measure "
                 f"{self.dimension.with_article}"
+            )
+        if self.stated is None:
+            return
+        try:
+            stated = TypedValue.parse(self.stated, self.dimension)
+        except InputError as exc:
+            raise SpecError(f"Step {self.symbol}: stated value: {exc}") from None
+        if (
+            not stated.explicit_unit
+            or stated.unit.symbol != unit.symbol
+            or stated.value != self.value
+        ):
+            raise SpecError(
+                f"Step {self.symbol}: stated {self.stated!r} isn't its value in "
+                f"{self.expression_unit}"
             )

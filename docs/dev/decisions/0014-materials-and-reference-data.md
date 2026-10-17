@@ -733,3 +733,20 @@ These refine the corrections-path and gauge-picker entries above.
   tab, and ignore the mouse wheel, so scrolling past them can't change a gauge unseen.
 * The table stays at version 1 and its digest is re-pinned; it hasn't been released.
 
+### 2026-10-17: the work shows the stated value; inputs and digits bounded (maintainer, phase 2a)
+
+These refine the bounded-evaluation entry above.
+
+* **A derived value's work shows its stated value.** The work rounded the value in its
+  expression's unit to the display decimals, so US Standard 12 ga read "= 0.1094 in
+  (exact, as the system states it)", contradicting its own note and the stated
+  0.109375 in. `Step.stated` now carries the value as its source states it, and the work
+  shows that text, then the display-unit conversion: "= 0.109375 in = 2.7781 mm". A
+  stated value must name the expression's unit and equal the step's value. JSON lists
+  `stated` for every step, `null` when unused.
+* **Inputs are bounded too.** An input past `MAX_EXACT_BITS` is a `CalculationError`, and
+  is refused before it is built, so a huge `Decimal` costs nothing.
+* **Digits are capped.** `digits` above `MAX_EXACT_DIGITS` (1000) is refused before any
+  work.
+* The gauge table is unchanged; its digest is the same.
+

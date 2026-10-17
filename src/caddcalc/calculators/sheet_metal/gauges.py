@@ -542,6 +542,7 @@ class GaugeResolver:
             note=system.precision.explain(gauge.exact),
             substitution=MappingProxyType({k: _shown(v) for k, v in gauge.symbols.items()}),
             expression_unit=FORMULA_UNIT,
+            stated=gauge.stated.text,
         )
         return {
             self._setting.key: DerivedValue(

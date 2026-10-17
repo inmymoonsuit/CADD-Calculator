@@ -57,8 +57,10 @@ All notable changes are recorded here. The format follows
   `core.steps`, still exported from `caddcalc.core`, and gains `substitution`, the text
   shown for symbols that aren't the calculator's, and `expression_unit`, the unit a
   formula yields when it isn't the base unit. Work in such a unit is shown in it, then in
-  the display unit, e.g. `0.1046 in = 2.6568 mm`. JSON output lists both for every step,
-  `null` when unused.
+  the display unit, e.g. `0.1046 in = 2.6568 mm`, and a step's `stated` value, such as
+  US Standard 12 ga's `0.109375 in`, is shown as stated, never rounded for display. JSON
+  output lists all three for every step, `null` when unused. `evaluate_exact` takes at
+  most `MAX_EXACT_DIGITS` digits, and holds its inputs to the size bound too.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks it: a known
   schema version, only the content keys its domain module declares, each publication

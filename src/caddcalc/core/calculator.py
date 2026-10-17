@@ -65,6 +65,7 @@ class Result:
                     **q(s.value, s.dimension),
                     "substitution": None if s.substitution is None else dict(s.substitution),
                     "expression_unit": s.expression_unit,
+                    "stated": s.stated,
                 }
                 for s in self.steps
             ],

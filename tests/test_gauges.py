@@ -103,7 +103,7 @@ def test_a_derived_thickness_shows_its_work_ahead_of_the_calculators() -> None:
     assert result.steps[1:] == BendAllowance().run().steps
     step = result.to_dict()["steps"][0]
     assert step["substitution"] == {"w": "70", "c": "0", "B": "41.82"}
-    assert step["expression_unit"] == "in"
+    assert (step["expression_unit"], step["stated"]) == ("in", "0.1046 in")
     millimetres = render_step(work, result, DisplayPrefs(length_unit="mm"))
     assert millimetres[1:] == ("(70 + 0) / 16 / 41.82", "0.1046 in = 2.6568 mm")
 
@@ -231,3 +231,25 @@ def test_malformed_gauge_content_is_refused(old: str, new: str, message: str) ->
     assert TEXT.count(old) == 1, old
     with pytest.raises(SpecError, match=message):
         load_gauges(parse_table(TEXT.replace(old, new), "test", GAUGE_TABLE.content_keys))
+
+
+@pytest.mark.parametrize(
+    ("key", "stated", "millimetres"),
+    [
+        ("uss:12", "0.109375 in", "2.7781 mm"),
+        ("awg:40", "0.00314 in", "0.0798 mm"),
+        ("msg:12", "0.1046 in", "2.6568 mm"),
+    ],
+)
+def test_the_work_shows_the_stated_thickness_never_a_rounded_one(
+    key: str, stated: str, millimetres: str
+) -> None:
+    """Review M3: US Standard 12 ga's work said 0.1094 in, and 40 AWG's 0.0031 in."""
+    settings = DomainSettings().set_choice(DOMAIN, "gauge", key).for_domain(DOMAIN)
+    result = BendAllowance().run(settings=settings)
+    work = result.steps[0]
+    assert work.stated == stated
+    assert render_step(work, result, DisplayPrefs())[2] == stated
+    assert render_step(work, result, DisplayPrefs(length_unit="mm"))[2] == (
+        f"{stated} = {millimetres}"
+    )
