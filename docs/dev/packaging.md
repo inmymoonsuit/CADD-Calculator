@@ -87,6 +87,12 @@ about = "about.html"                          # optional; .html fragment or .txt
 
 The loader is `caddcalc.gui.branding`. It doesn't import Qt.
 
+## Notices
+
+The build copies `LICENSE.md` and `THIRD_PARTY_NOTICES.md` into the app folder. Third-party
+assets inside the package, such as the Tabler icons and their `LICENSE.txt`, ride along
+with the package data. See KI-016 for what the notices still lack.
+
 ## What the build does
 
 1. Copies `packaging/launcher.py` into `work/` as `CADDCalculator.py`. pyside6-deploy

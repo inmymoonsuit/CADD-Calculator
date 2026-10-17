@@ -216,7 +216,7 @@ def write_spec(
     spec["qt"] = {
         "qml_files": "",
         "excluded_qml_plugins": "",
-        "modules": "Core,Gui,Widgets",
+        "modules": "Core,Gui,Widgets,Svg",  # Svg: the recolored Tabler icons
         "plugins": "",
     }
     # pyside6-deploy splits extra_args with shlex, so quote paths that contain spaces.
@@ -270,7 +270,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
 
     output, exe = locate_output(edition_dir, name, mode)
     if output.is_dir():
-        shutil.copy2(ROOT / "LICENSE.md", output / "LICENSE.md")
+        for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
+            shutil.copy2(ROOT / notice, output / notice)
         bundled_pack = exe.parent / PACK_DIR_NAME
         if branding.is_generic and bundled_pack.exists():
             raise BuildError(f"a generic build must not contain {bundled_pack}")

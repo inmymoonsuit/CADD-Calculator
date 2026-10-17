@@ -9,6 +9,7 @@
 | [roadmap.md](roadmap.md) | Scope, milestones, open decisions | priorities change |
 | [packaging.md](packaging.md) | Building the app, the two editions, branding packs | the build or the pack format changes |
 | [design/palette.md](design/palette.md) | UI colors, their roles, and contrast rules | the palette or the themes change |
+| [design/icons.md](design/icons.md) | Vendored Tabler icons: pinning, adding, recoloring | you add or update an icon |
 | [legacy-workbooks.md](legacy-workbooks.md) | Transcription of the original Excel tools | never, except corrections. It is a historical record. |
 
 Day-to-day work items live in GitHub Issues, which link back to `KI-` and `ADR-` IDs.

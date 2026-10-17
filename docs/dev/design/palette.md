@@ -39,6 +39,20 @@ themes. Change colors there, then update this page and regenerate the swatch ima
 UI parts such as borders and icons. `tests/test_palette.py` checks every role pair in
 `palette.toml` against these minimums, so a color change that hurts readability fails CI.
 
+## Icon colors
+
+Icons are recolored per theme from the `icon*` roles in `palette.toml`
+([icons.md](icons.md)). Every icon role keeps at least 3:1 against its background.
+
+| Role | Light | Dark |
+|---|---|---|
+| `icon` (default) | slate | slate |
+| `icon_active` | ink | white |
+| `icon_error` | crimson | white (crimson on ink is too faint) |
+| `icon_warning` | ink (amber on white is too faint) | amber |
+
+Where a color can't be used, the icon's shape and the wording carry the meaning.
+
 ## Rules of thumb
 
 * Body text is ink on white (light) or white on ink (dark). Never slate, amber, or crimson
@@ -48,8 +62,8 @@ UI parts such as borders and icons. `tests/test_palette.py` checks every role pa
 * Errors also use crimson. Pair an error with an icon and wording, never color alone, so
   it doesn't read as just another primary button.
 * Warnings use an amber fill with ink text.
-* Icons (Tabler, planned) take the `muted` color by default and `text` when active,
-  substituted at load time per theme.
+* Icons (Tabler) take their color from the `icon*` roles, substituted at load time for
+  the current light or dark scheme.
 
 ## Not done yet
 

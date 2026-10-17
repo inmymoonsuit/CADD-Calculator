@@ -23,6 +23,10 @@ error = "crimson"
 on_error = "white"
 warning = "amber"
 on_warning = "ink"
+icon = "slate"          # default icon color
+icon_active = "ink"     # selected or emphasized icons
+icon_error = "crimson"
+icon_warning = "ink"    # amber icons on white are too faint (1.8:1); the shape signals it
 
 [dark]
 background = "ink"
@@ -36,3 +40,7 @@ error = "crimson"
 on_error = "white"
 warning = "amber"
 on_warning = "ink"
+icon = "slate"
+icon_active = "white"
+icon_error = "white"    # crimson icons on ink are too faint (2.0:1); the shape signals it
+icon_warning = "amber"

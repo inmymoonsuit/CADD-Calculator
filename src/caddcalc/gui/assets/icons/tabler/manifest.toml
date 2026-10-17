@@ -1,0 +1,21 @@
+# Tabler Icons vendored into CADD Calculator: only the icons the app uses.
+# Written by packaging/fetch_tabler_icons.py; see docs/dev/design/icons.md.
+name = "Tabler Icons"
+repository = "https://github.com/tabler/tabler-icons"
+package = "@tabler/icons"
+version = "3.49.0"
+license = "MIT"
+style = "outline"
+source = "https://cdn.jsdelivr.net/npm/@tabler/icons@{version}"
+
+[license_file]
+path = "LICENSE.txt"
+sha256 = "b740a1d46122672da62833e97f7e7c8a13fa85cbc7445b584b297cc00dde93db"
+
+# icon name = SHA-256 of its SVG file
+[icons]
+alert-circle = "0b35966a6d3a3e0602836f5d75cc4e94027a8a8e89ee2a2275c9a9e62d543ee6"
+alert-triangle = "92a951d8e90c1b1d986449e74a8b2e1c52982dc3dbe09b141ac11990420408f4"
+calculator = "452f7882c856316e04ea281ca8ee54541d71a341fb1ca07b983a12f487a484e0"
+category = "23e96a76ff94067dbb91ed41d86fec126009579b52d03b09c525de1f408e8d4a"
+info-circle = "bf4377dff0aaaddf1676a4bb7292f90f1102f19daaca7021331ba6a191317c1c"

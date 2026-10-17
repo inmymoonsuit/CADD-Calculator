@@ -23,6 +23,10 @@ PAIRS = [
     ("on_error", "error", 4.5),
     ("on_warning", "warning", 4.5),
     ("muted", "background", 3.0),
+    ("icon", "background", 3.0),
+    ("icon_active", "background", 3.0),
+    ("icon_error", "background", 3.0),
+    ("icon_warning", "background", 3.0),
 ]
 
 

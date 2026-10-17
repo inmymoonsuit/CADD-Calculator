@@ -31,6 +31,12 @@ All notable changes are recorded here. The format follows
 - UI color palette (crimson, slate, amber, ink) with light and dark role mappings in
   `gui/assets/palette.toml`, documented in `docs/dev/design/palette.md`. A test keeps every
   text/background pair at or above WCAG AA contrast.
+- Tabler Icons 3.49.0 (MIT), vendored with only the icons the app uses, pinned by SHA-256
+  in a manifest, refreshed with `packaging/fetch_tabler_icons.py`, and recolored from the
+  palette for light and dark schemes (`docs/dev/design/icons.md`). Icons appear in the
+  calculator list, Help > About, and the results' warnings and input errors.
+- `THIRD_PARTY_NOTICES.md`, shipped in packaged builds and in the wheel's license files,
+  and credited in Help > About.
 - A sketch of a release workflow that builds the generic edition when a version tag is
   pushed and drafts a GitHub release.
 

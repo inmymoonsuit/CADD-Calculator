@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from html import escape
+from typing import Any, cast
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -35,9 +37,39 @@ from caddcalc.core.formatting import (
 )
 from caddcalc.core.units import Dimension, parse_quantity
 from caddcalc.gui.branding import GENERIC, Branding
+from caddcalc.gui.icons import (
+    TABLER_DIR,
+    Scheme,
+    clear_cache,
+    current_scheme,
+    icon,
+    render,
+    role_color,
+)
 
 ID_ROLE = Qt.ItemDataRole.UserRole
 ERROR_STYLE = "QLineEdit { border: 1px solid #c0392b; }"
+ICON_URL_SCHEME = "icon"
+ICON_PX = 32
+"""Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
+
+
+class ResultsBrowser(QTextBrowser):
+    """A QTextBrowser that serves ``icon:<scheme>/<role>/<name>`` images from the vendored
+    Tabler icons, recolored from the palette (see :func:`_img`)."""
+
+    def loadResource(self, type: int, name: QUrl | str) -> Any:
+        url = QUrl(name) if isinstance(name, str) else name
+        kind = getattr(type, "value", type)
+        if kind == QTextDocument.ResourceType.ImageResource.value and (
+            url.scheme() == ICON_URL_SCHEME
+        ):
+            parts = url.path().split("/")
+            if len(parts) == 3 and parts[0] in ("light", "dark"):
+                scheme, role, icon_name = parts
+                if (TABLER_DIR / f"{icon_name}.svg").is_file():
+                    return render(icon_name, role_color(role, cast(Scheme, scheme)), ICON_PX)
+        return super().loadResource(type, name)
 
 
 class MainWindow(QMainWindow):
@@ -55,7 +87,9 @@ class MainWindow(QMainWindow):
         self.resize(1100, 720)
         self._build_ui()
         self._build_menu()
+        self._apply_icons()
         self.statusBar().showMessage(DISCLAIMER)
+        QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
         first = self.tree.topLevelItem(0)
         child = first.child(0) if first is not None else None
@@ -99,7 +133,7 @@ class MainWindow(QMainWindow):
         self.form_box = QGroupBox("Inputs")
         self.form = QFormLayout(self.form_box)
 
-        self.output = QTextBrowser()
+        self.output = ResultsBrowser()
         self.output.setOpenExternalLinks(True)
 
         right = QWidget()
@@ -119,8 +153,26 @@ class MainWindow(QMainWindow):
 
     def _build_menu(self) -> None:
         help_menu = self.menuBar().addMenu("&Help")
-        about = help_menu.addAction(f"&About {self.branding.name.replace('&', '&&')}")
-        about.triggered.connect(self._show_about)
+        self.about_action = help_menu.addAction(f"&About {self.branding.name.replace('&', '&&')}")
+        self.about_action.triggered.connect(self._show_about)
+
+    def _apply_icons(self) -> None:
+        """(Re)color every icon for the current light or dark scheme."""
+        for i in range(self.tree.topLevelItemCount()):
+            domain = self.tree.topLevelItem(i)
+            if domain is None:
+                continue
+            domain.setIcon(0, icon("category"))
+            for j in range(domain.childCount()):
+                child = domain.child(j)
+                if child is not None:
+                    child.setIcon(0, icon("calculator"))
+        self.about_action.setIcon(icon("info-circle"))
+
+    def _on_color_scheme_changed(self, *_args: object) -> None:
+        clear_cache()
+        self._apply_icons()
+        self.recompute()
 
     def _show_about(self) -> None:
         QMessageBox.about(self, f"About {self.branding.name}", about_html(self.branding))
@@ -207,16 +259,17 @@ class MainWindow(QMainWindow):
         if calc is None:
             return
         errors = self._read_fields()
+        scheme = current_scheme()
         if errors:
-            self.output.setHtml(_error_html(errors))
+            self.output.setHtml(_error_html(errors, scheme))
             return
         try:
             inputs = {k: self.values[calc.id][k] for k in self.fields}
             result = calc.run(inputs, method=self.method_key)
         except CaddCalcError as exc:
-            self.output.setHtml(_error_html([str(exc)]))
+            self.output.setHtml(_error_html([str(exc)], scheme))
             return
-        self.output.setHtml(result_html(calc, result, self.prefs))
+        self.output.setHtml(result_html(calc, result, self.prefs, scheme))
 
 
 GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
@@ -231,15 +284,30 @@ def about_html(branding: Branding) -> str:
         + f"<p>{escape(DISCLAIMER)}</p>"
         '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
         "github.com/inmymoonsuit/CADD-Calculator</a></p>"
+        '<p>Icons: <a href="https://tabler.io/icons">Tabler Icons</a>, MIT License. '
+        "Third-party notices are in THIRD_PARTY_NOTICES.md.</p>"
     )
 
 
-def _error_html(errors: list[str]) -> str:
+def _img(name: str, role: str, scheme: Scheme) -> str:
+    """An inline icon for the results pane, served by :class:`ResultsBrowser`."""
+    return (
+        f'<img src="{ICON_URL_SCHEME}:{scheme}/{role}/{name}" width="16" height="16" '
+        'align="middle">&nbsp;'
+    )
+
+
+def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
     items = "".join(f"<li>{escape(e)}</li>" for e in errors)
-    return f"<p style='color:#c0392b'><b>Check the inputs:</b></p><ul>{items}</ul>"
+    return (
+        f"<p style='color:#c0392b'>{_img('alert-circle', 'icon_error', scheme)}"
+        f"<b>Check the inputs:</b></p><ul>{items}</ul>"
+    )
 
 
-def result_html(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
+def result_html(
+    calc: Calculator, result: Result, prefs: DisplayPrefs, scheme: Scheme = "light"
+) -> str:
     method = calc.get_method(result.method)
     rows = "".join(
         f"<tr><td><b>{escape(o.symbol)}</b></td><td>{escape(o.label)}</td>"
@@ -250,7 +318,10 @@ def result_html(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"]
     if result.warnings:
         warn = "".join(f"<li>{escape(w)}</li>" for w in result.warnings)
-        parts.append(f"<h3 style='color:#b9770e'>Warnings</h3><ul>{warn}</ul>")
+        parts.append(
+            f"<h3 style='color:#b9770e'>{_img('alert-triangle', 'icon_warning', scheme)}"
+            f"Warnings</h3><ul>{warn}</ul>"
+        )
     work = []
     for step in result.steps:
         symbolic, numeric, value = render_step(step, result, prefs)
