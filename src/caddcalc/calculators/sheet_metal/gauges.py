@@ -74,6 +74,9 @@ def caution(standards: Sequence[TablePublication]) -> str:
     )
 
 
+FORMULA_UNIT = "in"
+"""The unit every gauge formula yields, and the stated thicknesses' unit."""
+
 WORKING_DIGITS = 40
 """Significant digits for a thickness with no exact form, such as AWG's, before rounding."""
 
@@ -174,7 +177,7 @@ class Precision:
 
     def state(self, exact: Fraction) -> TypedValue:
         """Return ``exact`` inches as the system states it, e.g. ``"0.1046 in"``."""
-        return nominal(exact, "in", self.places(exact), self.rounding)
+        return nominal(exact, FORMULA_UNIT, self.places(exact), self.rounding)
 
     def explain(self, exact: Fraction) -> str:
         """Say how ``exact`` inches became the stated value, for the derived value's work."""
@@ -538,6 +541,7 @@ class GaugeResolver:
             system.formula.expression,
             note=system.precision.explain(gauge.exact),
             substitution=MappingProxyType({k: _shown(v) for k, v in gauge.symbols.items()}),
+            expression_unit=FORMULA_UNIT,
         )
         return {
             self._setting.key: DerivedValue(

@@ -20,6 +20,9 @@ Not supported yet: combined feet and inches such as `3'-4 1/2"`.
 * **Rounding happens only for display.** Results show 4 decimals by default (angles show 2).
   The CLI's `--decimals` changes this, and `--fraction 64` adds the nearest 1/64".
 * JSON output (`--json`) is unrounded, in millimetres and degrees, and each value names its unit.
+  Each step also gives `substitution`, a map from its formula's symbols to the text shown
+  for them (not numbers), and `expression_unit`, the unit its formula yields; both are
+  `null` for an ordinary step, whose formula yields base units.
 
 Round only when you put the final number on a drawing. Rounding intermediate values,
 such as a bend allowance before adding up a flat pattern, builds up error.

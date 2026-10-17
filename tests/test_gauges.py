@@ -101,7 +101,11 @@ def test_a_derived_thickness_shows_its_work_ahead_of_the_calculators() -> None:
     symbolic, numeric, _ = render_step(work, result, DisplayPrefs())
     assert (symbolic, numeric) == ("(w + c) / 16 / B", "(70 + 0) / 16 / 41.82")
     assert result.steps[1:] == BendAllowance().run().steps
-    assert result.to_dict()["steps"][0]["substitution"] == {"w": "70", "c": "0", "B": "41.82"}
+    step = result.to_dict()["steps"][0]
+    assert step["substitution"] == {"w": "70", "c": "0", "B": "41.82"}
+    assert step["expression_unit"] == "in"
+    millimetres = render_step(work, result, DisplayPrefs(length_unit="mm"))
+    assert millimetres[1:] == ("(70 + 0) / 16 / 41.82", "0.1046 in = 2.6568 mm")
 
     awg = DomainSettings().set_choice(DOMAIN, "gauge", "awg:0000").for_domain(DOMAIN)
     work = BendAllowance().run(settings=awg).steps[0]

@@ -18,7 +18,7 @@ import math
 import operator
 import re
 from collections.abc import Callable, Mapping
-from decimal import Decimal, InvalidOperation, localcontext
+from decimal import Decimal, DecimalException, Overflow, localcontext
 from fractions import Fraction
 from functools import lru_cache
 
@@ -234,8 +234,13 @@ _EXACT_BINARY_OPS: dict[type[ast.operator], Callable[[Fraction, Fraction], Fract
     ast.Div: operator.truediv,
 }
 
-MAX_EXACT_EXPONENT = 1000
-"""The largest whole exponent ``evaluate_exact`` raises to, so a value stays cheap to hold."""
+MAX_EXACT_BITS = 100_000
+"""The most bits ``evaluate_exact`` lets a numerator or denominator reach.
+
+Every operation's result is checked, and a whole power is refused before it is computed
+if its estimated size is over, so nested powers, products, and sums can't grow a value
+without bound.
+"""
 
 
 def evaluate_exact(
@@ -260,8 +265,9 @@ def evaluate_exact(
             or ``digits`` is under 1.
         SpecError: The expression is malformed, calls a function, uses ``pi``, or names an
             unknown symbol.
-        CalculationError: It divides by zero, raises a negative number to a fractional
-            power, or raises to a whole power above ``MAX_EXACT_EXPONENT``.
+        CalculationError: It divides by zero (including zero to a negative power),
+            raises a negative number to a fractional power, or would make a value larger
+            than ``MAX_EXACT_BITS``. Zero to the power zero is 1, as in ``evaluate``.
     """
     if isinstance(digits, bool) or not isinstance(digits, int) or digits < 1:
         raise UsageError(f"evaluate_exact() needs digits of 1 or more, not {digits!r}")
@@ -273,14 +279,14 @@ def evaluate_exact(
             )
         if isinstance(value, Decimal) and not value.is_finite():
             raise UsageError(f"evaluate_exact() needs finite values; {name} is {value}")
-        exact[name] = Fraction(value)
+        exact[name] = _bounded(Fraction(value))
     node = parse(expression)
     shown = render_symbolic(expression)
     try:
         return _exact(node, exact, expression, digits)
     except ZeroDivisionError:
         raise CalculationError(f"Division by zero in {shown}") from None
-    except (ValueError, OverflowError, InvalidOperation) as exc:
+    except (ValueError, OverflowError, DecimalException) as exc:
         raise CalculationError(f"Cannot evaluate {shown} exactly: {exc}") from None
 
 
@@ -289,7 +295,10 @@ def _exact(
 ) -> Fraction:
     if isinstance(node, ast.Constant):
         # parse() admits only int and float literals; a float reads as its shortest text.
-        return Fraction(node.value) if isinstance(node.value, int) else Fraction(repr(node.value))
+        literal = (
+            Fraction(node.value) if isinstance(node.value, int) else Fraction(repr(node.value))
+        )
+        return _bounded(literal)
     if isinstance(node, ast.Name):
         if node.id in CONSTANTS:
             raise SpecError(f"Formula {expression!r}: {node.id} has no exact value")
@@ -300,8 +309,8 @@ def _exact(
         left = _exact(node.left, symbols, expression, digits)
         right = _exact(node.right, symbols, expression, digits)
         if isinstance(node.op, ast.Pow):
-            return _power(left, right, digits)
-        return _EXACT_BINARY_OPS[type(node.op)](left, right)
+            return _bounded(_power(left, right, digits))
+        return _bounded(_EXACT_BINARY_OPS[type(node.op)](left, right))
     if isinstance(node, ast.UnaryOp):
         operand = _exact(node.operand, symbols, expression, digits)
         return -operand if isinstance(node.op, ast.USub) else operand
@@ -310,20 +319,41 @@ def _exact(
     raise SpecError(f"Formula {expression!r} uses unsupported syntax")  # pragma: no cover
 
 
+def _bits(value: Fraction) -> int:
+    return max(value.numerator.bit_length(), value.denominator.bit_length())
+
+
+def _bounded(value: Fraction) -> Fraction:
+    if _bits(value) > MAX_EXACT_BITS:
+        raise ValueError(f"a value would exceed {MAX_EXACT_BITS} bits")
+    return value
+
+
 def _power(base: Fraction, exponent: Fraction, digits: int) -> Fraction:
+    if base == 0:
+        if exponent < 0:
+            raise ZeroDivisionError
+        return Fraction(1 if exponent == 0 else 0)
     if exponent.denominator == 1:
-        if abs(exponent) > MAX_EXACT_EXPONENT:
-            raise ValueError(f"the exponent {exponent} is above {MAX_EXACT_EXPONENT}")
-        return Fraction(base ** int(exponent))
+        if abs(base) == 1:
+            return Fraction(-1 if base < 0 and exponent.numerator % 2 else 1)
+        if abs(exponent.numerator) * _bits(base) > MAX_EXACT_BITS:
+            raise ValueError(f"a value would exceed {MAX_EXACT_BITS} bits")
+        return base**exponent.numerator
     if base < 0:
         raise ValueError("the result is not a real number")
-    if base == 0:
-        return Fraction(0)
     with localcontext() as context:
         context.prec = digits
         b = Decimal(base.numerator) / Decimal(base.denominator)
         e = Decimal(exponent.numerator) / Decimal(exponent.denominator)
-        return Fraction(b**e)
+        try:
+            result = b**e
+        except Overflow:
+            raise ValueError(f"a value would exceed {MAX_EXACT_BITS} bits") from None
+    # Ten is a little over three bits, so this bounds the Fraction the Decimal becomes.
+    if (abs(result.adjusted()) + digits) * 4 > MAX_EXACT_BITS:
+        raise ValueError(f"a value would exceed {MAX_EXACT_BITS} bits")
+    return Fraction(result)
 
 
 _TOKEN = re.compile(r"\d+\.?\d*(?:[eE][-+]?\d+)?|\.\d+|[A-Za-z_]\w*|\*\*|\*")

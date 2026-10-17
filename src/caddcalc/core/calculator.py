@@ -63,7 +63,8 @@ class Result:
                     "expression": s.expression,
                     "note": s.note,
                     **q(s.value, s.dimension),
-                    **({} if s.substitution is None else {"substitution": dict(s.substitution)}),
+                    "substitution": None if s.substitution is None else dict(s.substitution),
+                    "expression_unit": s.expression_unit,
                 }
                 for s in self.steps
             ],

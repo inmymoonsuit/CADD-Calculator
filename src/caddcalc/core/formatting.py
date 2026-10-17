@@ -141,11 +141,19 @@ def render_step(
     Substitution shows each symbol in display units, which is only meaningful for formulas
     that are dimensionally homogeneous. All built-in formulas are (see known-issues KI-005).
     A step with its own ``substitution``, such as a derived value's work, needs no result.
+    A step with an ``expression_unit`` shows its value in that unit first, then in the
+    display unit, e.g. ``0.1046 in = 2.6568 mm``, so the substituted line stays true.
 
     Raises:
         UsageError: ``result`` is ``None`` for a step that substitutes the run's values.
     """
     value_text = format_value(step.value, step.dimension, prefs)
+    if step.expression_unit is not None:
+        unit = get_unit(step.expression_unit)
+        if unit.symbol != display_unit(step.dimension, prefs).symbol:
+            decimals = prefs.angle_decimals if step.dimension is Dimension.ANGLE else prefs.decimals
+            yielded = format_number(from_base(step.value, unit), decimals)
+            value_text = f"{yielded} {unit.symbol} = {value_text}"
     if step.expression is None:
         return (step.note, None, value_text)
     symbolic = expr.render_symbolic(step.expression)

@@ -696,3 +696,23 @@ These settle release-checklist item 7 and refine the gauge-table entries above.
 * **Work notes.** The app and the CLI show a step's note under formula steps too, so a
   derived value's "before rounding" line appears with its work.
 
+### 2026-10-17: exact evaluation bounded, and work shown in its own unit (maintainer, phase 2a)
+
+These refine the one-formula-string entry above; they replace its exponent limit.
+
+* **Values are bounded, not just exponents.** `evaluate_exact` refuses any value whose
+  numerator or denominator would pass `MAX_EXACT_BITS` (100,000 bits). It checks every
+  operation's result, and estimates a whole power's size before computing it, so nested
+  powers, products, and sums can't run away; `((10 ** 1000) ** 1000) ** 1000` is refused
+  at once.
+* **Zero to a power.** A negative exponent is a division by zero; a positive one gives
+  0; and `0 ** 0` is 1, as in `evaluate` and Python's own power.
+* **Work in its own unit (KI-005).** A derived value's expression yields its own unit,
+  such as inches for a gauge, whatever the display unit. `Step.expression_unit` names it,
+  and the work shows the value in it, then in the display unit:
+  T = (w + c) / 16 / B = (70 + 0) / 16 / 41.82 = 0.1046 in = 2.6568 mm. It must be a
+  unit of the step's dimension, on a formula step.
+* **JSON lists both keys for every step.** `substitution` maps the formula's symbols to
+  the text shown for them, not to numbers, and `expression_unit` names the unit; each is
+  `null` for an ordinary step.
+

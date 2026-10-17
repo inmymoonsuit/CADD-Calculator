@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from decimal import Decimal
 from fractions import Fraction
 
@@ -483,7 +484,9 @@ def test_a_float_cant_reach_the_exact_evaluator(symbols: dict[str, object], mess
         ("y + 1", SpecError, "unknown symbol 'y'"),
         ("1 / (x - 4)", CalculationError, "Division by zero"),
         ("(0 - x) ** (1 / 2)", CalculationError, "not a real number"),
-        ("x ** 1001", CalculationError, "above 1000"),
+        ("x ** 100000", CalculationError, "exceed 100000 bits"),
+        ("0 ** (0 - 1 / 2)", CalculationError, "Division by zero"),
+        ("0 ** (0 - 1)", CalculationError, "Division by zero"),
     ],
 )
 def test_the_exact_evaluator_refuses_what_has_no_exact_value(
@@ -493,3 +496,65 @@ def test_the_exact_evaluator_refuses_what_has_no_exact_value(
         expr.evaluate_exact(formula, {"x": 4}, digits=10)
     with pytest.raises(UsageError, match="digits of 1 or more"):
         expr.evaluate_exact("x", {"x": 4}, digits=0)
+
+
+def test_zero_to_a_power_follows_evaluate() -> None:
+    assert expr.evaluate_exact("0 ** 0", {}, digits=10) == 1 == expr.evaluate("0 ** 0", {})
+    assert expr.evaluate_exact("0 ** (1 / 2)", {}, digits=10) == 0
+    assert expr.evaluate_exact("(0 - 1) ** 100001", {}, digits=10) == -1, "a unit base is cheap"
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "((10 ** 1000) ** 1000) ** 1000",
+        "(10 ** 3000) * (10 ** 3000) * (10 ** 3000) * (10 ** 3000) * (10 ** 3000) * (10 ** 3000)"
+        " * (10 ** 3000) * (10 ** 3000) * (10 ** 3000) * (10 ** 3000) * (10 ** 3000)",
+        "1 / (10 ** 30000) / (10 ** 30000) / (10 ** 30000) / (10 ** 30000)",
+        "2 ** (10 ** 9 / 3)",
+        "2 ** (0 - 10 ** 9 / 3)",
+    ],
+)
+def test_the_exact_evaluator_refuses_runaway_values_promptly(formula: str) -> None:
+    """The reviewer's probe hung before the size bound; nesting compounded the exponents."""
+    started = time.perf_counter()
+    with pytest.raises(CalculationError, match="exceed 100000 bits"):
+        expr.evaluate_exact(formula, {}, digits=40)
+    assert time.perf_counter() - started < 2.0
+
+
+def test_a_steps_expression_unit_must_measure_its_dimension() -> None:
+    from caddcalc.core import Step
+
+    with pytest.raises(SpecError, match="only a formula step"):
+        Step("T", "Thickness", Dimension.LENGTH, 1.0, expression_unit="in")
+    with pytest.raises(SpecError, match="Unknown unit 'furlong'"):
+        Step("T", "Thickness", Dimension.LENGTH, 1.0, "t", expression_unit="furlong")
+    with pytest.raises(SpecError, match="'deg' doesn't measure a length"):
+        Step("T", "Thickness", Dimension.LENGTH, 1.0, "t", expression_unit="deg")
+
+
+def test_work_in_its_own_unit_is_shown_in_it_then_in_the_display_unit() -> None:
+    """KI-005: "(70 + 0) / 16 / 41.82 = 2.6568 mm" would be false; the expression gives inches."""
+    from caddcalc.core import Step
+    from caddcalc.core.formatting import DisplayPrefs, render_step
+
+    step = Step(
+        "T",
+        "Thickness",
+        Dimension.LENGTH,
+        0.1046 * 25.4,
+        "(w + c) / 16 / B",
+        substitution={"w": "70", "c": "0", "B": "41.82"},
+        expression_unit="in",
+    )
+    inches = render_step(step, None, DisplayPrefs())
+    assert inches == ("(w + c) / 16 / B", "(70 + 0) / 16 / 41.82", "0.1046 in")
+    millimetres = render_step(step, None, DisplayPrefs(length_unit="mm"))
+    assert millimetres[1:] == ("(70 + 0) / 16 / 41.82", "0.1046 in = 2.6568 mm")
+
+
+def test_every_step_lists_its_substitution_and_expression_unit_in_json() -> None:
+    result = default_registry(load_plugins=False).get("sheet_metal.bend_allowance").run()
+    step = result.to_dict()["steps"][0]
+    assert (step["substitution"], step["expression_unit"]) == (None, None)

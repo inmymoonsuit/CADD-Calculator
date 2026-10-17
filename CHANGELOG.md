@@ -42,8 +42,12 @@ All notable changes are recorded here. The format follows
 - `core.expr.evaluate_exact()`: evaluates a formula with exact rational arithmetic, for
   values a standard defines, from the same expression its work shows. A non-integer
   power alone is computed to a stated number of digits; a float input, a function, and
-  `pi` are refused. `Step` moves to `core.steps`, still exported from `caddcalc.core`,
-  and gains `substitution`, the shown values of symbols that aren't the calculator's.
+  `pi` are refused, and so is any value over `MAX_EXACT_BITS`. `Step` moves to
+  `core.steps`, still exported from `caddcalc.core`, and gains `substitution`, the text
+  shown for symbols that aren't the calculator's, and `expression_unit`, the unit a
+  formula yields when it isn't the base unit. Work in such a unit is shown in it, then in
+  the display unit, e.g. `0.1046 in = 2.6568 mm`. JSON output lists both for every step,
+  `null` when unused.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks it: a known
   schema version, only the content keys its domain module declares, each publication
