@@ -155,7 +155,8 @@ All notable changes are recorded here. The format follows
   must also be unique.
 - The Sheet Metal thickness setting's help warns that gauge numbers mean different
   thicknesses in different gauge systems, and the K-factor setting's help gives the
-  typical range and the test-bend advice.
+  cited range of starting values (about 0.35 to 0.45, approaching 0.5 for large R/T) and
+  the test-bend advice. The user guide and glossary give the same cited range.
 - A unit of the wrong kind now reads "'3 deg' is an angle, but a length is expected".
 - Range errors name the unit and use the display unit, e.g. the CLI's
   "Material thickness (T) must be greater than 0 in".

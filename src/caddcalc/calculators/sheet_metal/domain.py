@@ -36,8 +36,9 @@ K_FACTOR_SETTING = Param(
     maximum=1.0,
     help=(
         "Neutral-axis position as a fraction of thickness, measured from the inside surface. "
-        "Typically 0.3 to 0.5. Use your shop's test-bend value for production. Used by "
-        "K-factor methods; course methods have the factor built in."
+        "Cited starting values are about 0.35 to 0.45 (FAA, Machinery's Handbook, and the "
+        "textbook's 0.4), approaching 0.5 for large R/T. Use your shop's test-bend value for "
+        "production. Used by K-factor methods; course methods have the factor built in."
     ),
 )
 

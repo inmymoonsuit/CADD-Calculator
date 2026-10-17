@@ -34,7 +34,9 @@ methods that use it follow the colon.
 
 * **Thickness:** enter the decimal thickness. Gauge numbers mean different thicknesses in
   different gauge systems (see *Thickness* in the [glossary](../glossary.md)).
-* **K-factor:** typically 0.3 to 0.5. Use your shop's test-bend value for production.
+* **K-factor:** cited starting values are about 0.35 to 0.45 (FAA, Machinery's Handbook,
+  and the textbook's 0.4), approaching 0.5 for large R/T. Use your shop's test-bend value
+  for production.
   The course methods have their factor built in, so they don't use this setting.
 * The V-die calculator's die ratio P is not shared; each calculation sets its own.
 

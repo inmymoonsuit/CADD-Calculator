@@ -26,8 +26,10 @@ the material in this app.
 **Inside radius (R)**: the radius of the inside surface of the bend.
 
 **K-factor (K)**: where the neutral axis sits, as a fraction of the thickness measured from
-the inside surface. It is usually 0.3 to 0.5. It is best measured from a test bend in your
-own shop.
+the inside surface. Cited starting values are about 0.35 to 0.45 (FAA, Machinery's
+Handbook, and the textbook's 0.4), approaching 0.5 for large R/T; see
+[materials-data-sources.md](../dev/research/materials-data-sources.md#4-neutral-axis-k-factor),
+§4. It is best measured from a test bend in your own shop.
 
 **Mold line (OML / IML)**: the line made by extending a flange's flat surface past the
 bend radius. The outside surface gives the outside mold line (OML), and the inside surface
