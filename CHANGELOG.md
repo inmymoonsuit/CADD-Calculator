@@ -42,6 +42,8 @@ All notable changes are recorded here. The format follows
 - Engineering guidelines (`docs/dev/engineering-guidelines.md`, ADR-0012), enforced in CI:
   Google-style docstrings and a best-practice ruff rule set, import-linter layer contracts
   (`uv run lint-imports`), and mypy strict. The codebase was brought into line.
+- `scripts/launch_app.cmd` and `scripts/launch_app.sh` run the work-in-progress app from the
+  checkout, with an optional `--branding FOLDER` (`docs/dev/launching.md`).
 
 ### Changed
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no

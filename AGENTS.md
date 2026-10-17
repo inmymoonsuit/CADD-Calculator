@@ -24,9 +24,11 @@ uv run ruff check . && uv run ruff format --check .
 uv run mypy
 uv run lint-imports                # architectural layer contracts
 uv run pytest                      # GUI tests run offscreen
+scripts/launch_app.sh --smoke-test # start the work-in-progress app, report, quit
 ```
 
-All five must pass before you report work as done (guidelines §5).
+The five checks (everything but the launcher) must pass before you report work as done
+(guidelines §5).
 
 ## Non-negotiable rules
 

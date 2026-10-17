@@ -4,6 +4,7 @@
 |---|---|---|
 | [engineering-guidelines.md](engineering-guidelines.md) | **The standard for all changes**: boundaries, coding, docstrings, definition of done | a rule changes (with an ADR if it matters) |
 | [architecture.md](architecture.md) | How the pieces fit | the structure changes |
+| [launching.md](launching.md) | Running the work-in-progress app from the checkout | the launcher changes |
 | [decisions/](decisions/README.md) | ADRs: why we chose what we chose | you make a hard-to-reverse choice |
 | [known-issues.md](known-issues.md) | Limitations and formula doubts (`KI-NNN`) | you find or fix one |
 | [engineering-log.md](engineering-log.md) | Attempts that failed or were reverted | something didn't work, even if never committed |

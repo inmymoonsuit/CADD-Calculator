@@ -68,7 +68,7 @@ markers = ["gui: needs PySide6 (skipped when it is not installed)"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests", "packaging"]
+src = ["src", "tests", "packaging", "scripts"]
 
 [tool.ruff.lint]
 # The standard and the reasons for each exclusion: docs/dev/engineering-guidelines.md.
@@ -97,7 +97,7 @@ ban-relative-imports = "all"
 
 [tool.mypy]
 strict = true
-files = ["src", "packaging"]
+files = ["src", "packaging", "scripts"]
 python_version = "3.12"
 
 # Architectural boundaries, checked by `uv run lint-imports` (ADR-0003, ADR-0012).

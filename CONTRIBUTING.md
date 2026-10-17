@@ -11,7 +11,7 @@ uv run pytest                   # tests (the GUI test runs offscreen if PySide6 
 uv run ruff check . && uv run ruff format --check .
 uv run mypy                     # strict type checking of src/ and packaging/
 uv run lint-imports             # architectural layer contracts
-uv run caddcalc-gui             # run the app
+scripts\launch_app.cmd          # run the work-in-progress app (scripts/launch_app.sh elsewhere)
 ```
 
 **Read [docs/dev/engineering-guidelines.md](docs/dev/engineering-guidelines.md) first.**

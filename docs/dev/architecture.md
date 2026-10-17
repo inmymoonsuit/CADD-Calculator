@@ -69,7 +69,8 @@ tests/                   pytest; golden legacy tests in test_legacy_golden.py
 docs/dev/                developer docs (this folder)
 docs/user/               user docs
 .github/                 CI workflow, issue and PR templates
-packaging/               build script, launcher, icon helpers (docs/dev/packaging.md)
+packaging/               build script, packaged-app launcher, icon helpers (packaging.md)
+scripts/                 developer launcher for the work-in-progress app (launching.md)
 resources/   (ignored)   local-only legacy and third-party material (ADR-0008)
 branding/    (ignored)   local branding packs for branded editions (ADR-0011)
 builds/      (ignored)   local packaging output
