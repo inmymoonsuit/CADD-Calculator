@@ -19,7 +19,8 @@ All notable changes are recorded here. The format follows
   give, each naming its table and its domain. A calculator takes a derived value after a
   typed or explicit one and before its default, names it as a derived source, and adds
   the value's note, such as a nominal caution, once whenever the value is used, naming
-  the inputs that took it; only `run()` names them.
+  the inputs that took it; only `run()` names them. An explicit input can carry such a
+  note too (`run(explicit_notes=...)`), as a copy of a derived value does.
 - Gauge systems for sheet metal (ADR-0014 §2, phase 2a): the Sheet Metal domain offers a
   `gauge` choice whose options name the system and the size, e.g. `"msg:12"` for 12 ga
   Manufacturers' Standard, `"galv:"`, `"uss:"`, and `"awg:"` for galvanized, US Standard

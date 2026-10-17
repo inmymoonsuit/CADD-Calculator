@@ -233,13 +233,15 @@ class Calculator(ABC):
         *,
         settings: DomainValues | None = None,
         explicit_sources: Mapping[str, InputSource] | None = None,
+        explicit_notes: Mapping[str, Note] | None = None,
     ) -> Result:
         """Run the calculator and record the work.
 
         Each input the method uses comes from the first of: ``inputs``, a shared
         parameter's set domain value in ``settings``, its derived value there, or the
         parameter's default (ADR-0013 §4). A derived value's note, such as a nominal
-        caution, is added to the result once whenever that value is used.
+        caution, is added to the result once whenever that value is used, and so is a
+        note an explicit input carries.
 
         Args:
             inputs: Values given for this run, by parameter key, in base units.
@@ -248,18 +250,29 @@ class Calculator(ABC):
             explicit_sources: Labels for some of ``inputs``, by parameter key, e.g.
                 ``InputSource(SourceKind.EXPLICIT, "course example")``. Unlabelled
                 inputs are plain explicit values. Labels never change precedence.
+            explicit_notes: Notes some of ``inputs`` carry, by parameter key, such as the
+                caution of a derived value an input was copied from (ADR-0014). Each is
+                added like a derived value's note, naming the inputs that carry it.
 
         Raises:
             InputError: An input is unknown or missing.
             OutOfRangeError: An input is out of range. It names the input's source.
-            UsageError: ``settings`` belongs to another domain, or ``explicit_sources``
-                labels a key that isn't in ``inputs`` or gives a kind other than explicit.
+            UsageError: ``settings`` belongs to another domain; ``explicit_sources``
+                labels a key that isn't in ``inputs`` or gives a kind other than explicit;
+                or ``explicit_notes`` names a key that isn't in ``inputs``, or gives a note
+                that already has subjects.
         """
         inputs = dict(inputs or {})
         labels = dict(explicit_sources or {})
+        carried = dict(explicit_notes or {})
         stray = sorted(set(labels) - set(inputs))
         if stray:
             raise UsageError(f"{self.id}: explicit_sources labels keys not in inputs: {stray}")
+        stray = sorted(set(carried) - set(inputs))
+        if stray:
+            raise UsageError(f"{self.id}: explicit_notes names keys not in inputs: {stray}")
+        if any(note.subjects for note in carried.values()):
+            raise UsageError(f"{self.id}: run() names a carried note's subjects; give none")
         if any(source.kind is not SourceKind.EXPLICIT for source in labels.values()):
             raise UsageError(f"{self.id}: explicit_sources may only hold explicit sources")
         if settings is not None and settings.domain_id != self.domain:
@@ -285,6 +298,8 @@ class Calculator(ABC):
             derived = _derived(p, source, settings)
             if derived is not None and derived.note is not None:
                 derived_notes.setdefault(derived.note, []).append(p.key)
+            if p.key in carried:
+                derived_notes.setdefault(carried[p.key], []).append(p.key)
             if derived is not None and derived.work is not None:
                 derived_work.append(replace(derived.work, symbol=p.symbol))
 

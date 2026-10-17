@@ -671,3 +671,12 @@ These settle release-checklist item 7 and refine the gauge-table entries above.
   released, so these changes keep it at version 1 and re-pin its digest. From the first
   release on, any change to a table's data bumps its version.
 
+### 2026-10-17: a copied derived value keeps its caution (maintainer, phase 2a)
+
+* **An explicit input can carry a note.** `run(explicit_notes=...)` gives some explicit
+  inputs a note, such as the caution of the derived value an input was copied from.
+  `run()` adds it like a derived value's note, naming the inputs that carry it, and
+  merges it with the same note from a derived value. A note for a key that isn't an
+  input, or one that already has subjects, is refused. This is how the calculator page
+  keeps the caution on a copy of a gauge thickness (review item M3).
+

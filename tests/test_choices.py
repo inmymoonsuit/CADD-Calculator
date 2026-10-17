@@ -502,3 +502,29 @@ def test_a_derived_values_work_shows_the_value_under_the_inputs_symbol() -> None
     result = _Bend().run(settings=settings)
     assert result.steps[0] == Step("T", "Plate", L, 2.0, "p / 2", substitution={"p": "4"})
     assert [s.symbol for s in result.steps] == ["T", "S"]
+
+
+def test_an_explicit_input_can_carry_a_derived_values_note() -> None:
+    """A copy of a derived value keeps its caution: it is still a nominal value."""
+    copied = InputSource(SourceKind.EXPLICIT, "copied from plate 1, Standard (nominal)")
+    result = _Bend().run(
+        {"thickness": 2.0},
+        settings=chosen().for_domain(SHOP),
+        explicit_sources={"thickness": copied},
+        explicit_notes={"thickness": CAUTION},
+    )
+    assert result.source_of("thickness") == copied
+    assert result.notes == (replace(CAUTION, subjects=("thickness", "inside_radius")),)
+    alone = _Bend().run({"thickness": 2.0}, explicit_notes={"thickness": CAUTION})
+    assert alone.notes == (replace(CAUTION, subjects=("thickness",)),)
+    unused = _WidthOnly().run(
+        {"thickness": 2.0}, method="width", explicit_notes={"thickness": CAUTION}
+    )
+    assert unused.notes == ()
+
+    with pytest.raises(UsageError, match=r"explicit_notes names keys not in inputs: \['width'\]"):
+        _Bend().run({"thickness": 2.0}, explicit_notes={"width": CAUTION})
+    with pytest.raises(UsageError, match="give none"):
+        _Bend().run(
+            {"thickness": 2.0}, explicit_notes={"thickness": replace(CAUTION, subjects=("x",))}
+        )
