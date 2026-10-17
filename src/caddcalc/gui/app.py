@@ -123,10 +123,24 @@ def _write_smoke_report(
         "splash_shown": splash is not None,
         "about_custom": branding.about_html is not None,
         "calculators": len(window.registry),
+        "reference_tables": _load_reference_tables(),
         "packaged": packaged_app_dir() is not None,
         "main_to_ready_s": round(ready_seconds, 3),
     }
     (report_dir / "smoke-test.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def _load_reference_tables() -> int:
+    """Load every shipped reference table and build its values; return how many loaded.
+
+    A table missing from a packaged build, or one that fails its checks, raises here, so
+    the smoke test fails instead of the first user who picks a gauge (ADR-0014).
+    """
+    from caddcalc.calculators import REFERENCE_TABLES
+
+    for spec in REFERENCE_TABLES:
+        list(spec.values(spec.load()))
+    return len(REFERENCE_TABLES)
 
 
 if __name__ == "__main__":

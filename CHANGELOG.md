@@ -7,6 +7,15 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Phase 2a: gauge systems (ADR-0014).** The Sheet Metal page offers a gauge: a
+  system (Manufacturers' Standard, galvanized, US Standard 1893, or AWG) and a number,
+  which derives the thickness every calculator shares, at the system's published
+  precision. Results carry a nominal-thickness caution that points to the system's
+  tolerance standard, and show how the thickness was computed. The data ships as a
+  cited, versioned table, computed exactly from public-domain definitions and one
+  cited fact, and checked against ADR-0014's release checklist
+  (`docs/dev/research/release-checklist-gauges-v1.md`). The entries below give the
+  details.
 - Domain choices and derived values (ADR-0014 §2, phase 2a): a `Domain` can offer
   `choices`, whose `options` come from its `resolver`; option keys such as `"msg:12"` are
   public. A choice can depend on others (`Choice.depends_on`, e.g. a temper on a
@@ -36,6 +45,8 @@ All notable changes are recorded here. The format follows
   calculator pages a gauge's thickness inherits, reads only, and copies like a set
   value; a copy is named after the gauge and keeps the caution. Work shows each derived
   step's note, such as the value before rounding, in the app and the CLI.
+- The packaged app's smoke report counts the reference tables it loaded, and the build
+  checks that each one is bundled.
 - A path for reporting a wrong or rights-encumbered reference value: a section in
   CONTRIBUTING.md and the *Reference value* issue template, linked from the README and
   the sheet-metal user guide (ADR-0014 §5.7).

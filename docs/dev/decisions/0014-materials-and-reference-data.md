@@ -1,6 +1,8 @@
 # ADR-0014: Materials and reference data for sheet metal (ADR-0013 phase 2)
 
-* **Status:** **Accepted** (phase 2 not started). The maintainer approved M1–M7 as
+* **Status:** **Accepted**; **phase 2a built** (gauge systems, 2026-10-17), phase 2b not
+  started. The design as built is in the [Amendments](#amendments), which refine §1,
+  §2, and §5. The maintainer approved M1–M7 as
   recommended on 2026-10-17. This ADR supersedes parts of ADR-0013: decision A's "P
   derived from material" (M3), decision E for K and P (M2), and §11's phase-2 list (see
   Consequences).

@@ -254,10 +254,26 @@ project therefore ships only an original compilation that needs no defense, as A
 
 ## 10. Open verification items
 
+Open (phase 2b needs the first four):
+
 * FAA-H-8083-31B Fig 4-124: confirm the alloy-to-column mapping visually.
 * TO 1-1A-9 Tables 2-35 and A-16: read the stainless values manually.
 * MIL-HDBK-5J Table 2.7.1.0(b): confirm 304's coverage and its values.
-* ASTM B209 → ANSI H35.2 (aluminum tolerances): confirmed from referenced-document
-  listings only; read ASTM's own B209 page.
+* TO 1-1A-9 Table A-19: re-read the 20 ga value in its "USSG (Revised)" column before
+  using it as a test value.
+* ASTM B209 → ANSI H35.2: confirmed from referenced-document listings only; read
+  ASTM's own B209 page.
 * The Fabricator's terms of use: read them before anything from the series is
   considered (ADR-0014 §5.2, M3).
+
+Resolved for phase 2a (2026-10-17; ADR-0014 amendments):
+
+* **ASTM A924** is the tolerance citation for coated (galvanized) sheet: ASTM's abstracts
+  show that A653 product conforms to it.
+* **ASTM B209** lists ANSI H35.2 among its referenced documents, by the standards-store
+  listings. Reading ASTM's own page stays open, above.
+* **US Standard 1893's precision** is the statute's own exact decimal column, read in the
+  official GPO text: 12 ga is .109375 in, and 37 ga .006640625 in. MH29 Table 13's 0.1093
+  is the same value truncated.
+* **ASTM A480's position on gauge numbers** couldn't be confirmed, so the claim was
+  withdrawn rather than resolved.

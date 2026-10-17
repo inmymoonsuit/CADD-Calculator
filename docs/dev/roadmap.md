@@ -37,11 +37,17 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [ ] K-factor from a test bend (the inverse calculation)
 - [ ] Whole-part flat pattern: a chain of flanges (Σ outside dimensions − Σ BD)
 - [ ] Dimensioning reference: outside, inside, or centerline (KI-006)
-- [ ] Gauge systems computed from their definitions, with sources (ADR-0014 phase 2a):
-      Manufacturers' Standard, galvanized, US Standard 1893, and AWG.
-      **Each gauge must name its gauge system.** MH29 Table 13 lists 12 ga as 0.1093, not 0.1046.
-- [ ] Material library with cited data (ADR-0014 phase 2b). User or shop-editable tables
-      need a separate decision, outside the session-only model.
+- [x] Gauge systems computed from their definitions, with sources (ADR-0014 phase 2a,
+      built 2026-10-17): Manufacturers' Standard, galvanized, US Standard 1893, and AWG,
+      chosen on the Sheet Metal page. Each gauge names its gauge system.
+- [ ] **Next:** material library with cited data (ADR-0014 phase 2b). User or
+      shop-editable tables need a separate decision, outside the session-only model.
+      Before it starts, close the open verification items in the research notes
+      (research §10):
+      - FAA-H-8083-31B Fig 4-124: confirm the alloy-to-column mapping
+      - TO 1-1A-9 Tables 2-35 and A-16: read the stainless values
+      - MIL-HDBK-5J Table 2.7.1.0(b): confirm 304's coverage and values
+      - TO 1-1A-9 Table A-19: re-check the 20 ga value
 - [ ] Minimum inside bend radius checks per material and temper, as result notes that say
       so when no source covers the case (ADR-0014 phase 2b)
 - [ ] Feet-and-inches input (KI-009). Fraction display toggle in the GUI.

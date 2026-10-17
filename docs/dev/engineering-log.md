@@ -16,6 +16,87 @@ Template:
 
 ---
 
+## 2026-10-17: Substituting a derived value's work in the display unit
+**Tried:** a gauge's work showed its substituted line, then the value in the display
+unit, e.g. "(70 + 0) / 16 / 41.82 = 2.6568 mm" (d03afe0).
+**Outcome:** fixed in 5579818, after Support & Review's review of d03afe0 (M3).
+**Why:** the expression yields inches, so the line was numerically false in mm: the
+KI-005 hazard.
+**Instead:** `Step.expression_unit`. The work shows the value in the expression's unit,
+then in the display unit: "= 0.1046 in = 2.6568 mm".
+
+## 2026-10-17: A per-exponent cap on exact powers
+**Tried:** `evaluate_exact` refused a whole exponent above 1000 (d03afe0).
+**Outcome:** replaced in 5579818, after Support & Review's review of d03afe0 (M1).
+**Why:** nesting compounds exponents that each pass the cap, so
+`((10 ** 1000) ** 1000) ** 1000` ran for over 20 s before it was killed.
+**Instead:** bound the values, not the exponents: `MAX_EXACT_BITS` is checked after every
+operation, and a whole power's size is estimated before it is computed.
+
+## 2026-10-17: Step JSON keys only when used
+**Tried:** `Result.to_dict` added a step's `substitution` only when it had one (d03afe0).
+**Outcome:** changed in 5579818, after Support & Review's review of d03afe0 (L1).
+**Why:** a consumer couldn't tell an old format from an ordinary step; `references` and
+`subjects` are always present.
+**Instead:** every step lists `substitution` and `expression_unit`, `null` when unused.
+
+## 2026-10-17: Gauge formulas kept twice
+**Tried:** each gauge formula as a display string beside a Python function that
+evaluated it exactly, with a test holding the two to agree (c02bd36).
+**Outcome:** replaced in d03afe0, by the proposal the maintainer approved in 2a.3.
+**Why:** two copies of a formula can drift, which ADR-0004's one-string rule exists to
+prevent.
+**Instead:** `expr.evaluate_exact` evaluates the one expression the work shows; the float
+agreement test now checks `evaluate_exact` against `evaluate`.
+
+## 2026-10-17: Checking options at registration, and giving resolvers every selection
+**Tried:** `Domain.validate_choices` computed every choice's options when the domain
+registered (20e6ac8); then the resolver's `options()` got all current selections
+(fe5e049).
+**Outcome:** changed in fe5e049 and 22bd1e3, after Support & Review's reviews of
+20e6ac8 (M2) and fe5e049 (M1).
+**Why:** a dependent choice's options depend on selections that don't exist at
+registration. And a resolver that read a parent it never declared lost its option
+silently when that parent changed, unannounced.
+**Instead:** registration checks only the static parts; options are checked when
+computed; and a resolver sees only the selections of the choices it declares.
+
+## 2026-10-17: Public domain by a source's kind
+**Tried:** a statute or government document was public domain without a stated basis
+(f31519c), and the host allowlist skipped a publication with no url (18f7db4).
+**Outcome:** closed in 18f7db4 and 71b8e32, after Support & Review's re-probes of
+f31519c (M1') and 18f7db4 (M1).
+**Why:** a vendor chart declared a government document passed both, with and without a
+url.
+**Instead:** every public-domain publication states its basis, and the tests hold its url
+to a host allowlist; one with no url must be named there on purpose.
+
+## 2026-10-17: Sources that carried their own license and cap
+**Tried:** each `[[source]]` declared its kind, license, terms, and cite-only cap
+(f31519c).
+**Outcome:** replaced in 18f7db4, after Support & Review's re-probe of f31519c (M2').
+**Why:** one book split into five sources, each capped at 1, defined five values.
+**Instead:** `[[publication]]` holds the kind, license, terms, and cap, and each
+`[[source]]` cites a place in one. Two publications with the same loose title and
+edition are refused, and a test counts each work's values across every shipped table
+(71b8e32).
+
+## 2026-10-17: A cite-only cap per table
+**Tried:** one `cite_only_cap` in each table's header (ADR-0014's first phase 2a
+amendment).
+**Outcome:** replaced in f31519c, after Support & Review's review of 85082a8.
+**Why:** §5.1 limits what any one cite-only source may supply, and a table-wide count
+measures the table, not the source.
+**Instead:** the cap is counted per defining publication, under a code-level ceiling,
+`MAX_CITE_ONLY_PER_PUBLICATION`.
+
+## 2026-10-17: Floats in nominal()
+**Tried:** `nominal()` accepted a float at its exact binary value (85082a8).
+**Outcome:** refused from f31519c, after Support & Review's review of 85082a8.
+**Why:** some exact ties sit just below the tie as floats: US Standard 26 ga is exactly
+0.01875 in, but the float rounds to 0.0187 at four decimals.
+**Instead:** `nominal()` takes an exact `Fraction` or `Decimal` only.
+
 ## 2026-10-17: Suggesting the air-bend ratio P from a source we hadn't read
 **Tried:** the first draft of ADR-0014's decision M3 leaned on a strength-scaling rule
 and on strength figures known only from search summaries and vendor pages.

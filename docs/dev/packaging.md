@@ -103,10 +103,13 @@ with the package data. See KI-016 for what the notices still lack.
 3. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
    mode. Nuitka must already be installed by uv (the `build` dependency group).
 4. Renames the `.dist` folder, copies `LICENSE.md` into it, and checks that a generic build
-   has no `branding/` folder and a branded build has one.
+   has no `branding/` folder and a branded build has one, and that every reference table
+   in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
+   bundled (`--include-package-data=caddcalc` carries them).
 5. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
-   run opens the window, writes the report, and exits. The script checks the reported
-   name, edition, icon, splash, and that the app knew it was packaged.
+   run opens the window, loads every reference table, writes the report, and exits. The
+   script checks the reported name, edition, icon, splash, the number of reference
+   tables loaded, and that the app knew it was packaged.
 
 `--mode onefile` builds a single self-extracting executable instead. It works, branded too,
 but starts about 0.9 s slower and unpacks to a temp folder on every start, which

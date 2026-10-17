@@ -33,6 +33,7 @@ from pathlib import Path
 from PySide6.QtGui import QImage
 
 from caddcalc import __version__
+from caddcalc.calculators import REFERENCE_TABLES
 from caddcalc.gui.branding import (
     GENERIC,
     PACK_DIR_NAME,
@@ -188,7 +189,7 @@ def nuitka_args(branding: Branding, staged_pack: Path | None) -> list[str]:
     args = [
         "--noinclude-qt-translations",
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
-        "--include-package-data=caddcalc",  # the generic icon in caddcalc/gui/assets
+        "--include-package-data=caddcalc",  # the generic icon and the reference tables
         f"--company-name={COMPANY}",
         f"--product-name={branding.name}",
         f"--file-description={branding.name}",
@@ -297,6 +298,9 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
             raise BuildError(f"a generic build must not contain {bundled_pack}")
         if not branding.is_generic and not (bundled_pack / PACK_FILE).is_file():
             raise BuildError(f"the branding pack is missing from {bundled_pack}")
+        if sys.platform != "darwin":  # the .app bundle's layout is unchecked (ADR-0009)
+            for missing in missing_tables(exe.parent):
+                raise BuildError(f"the reference table {missing} is missing from the build")
 
     files = [p for p in output.rglob("*") if p.is_file()] if output.is_dir() else [output]
     return {
@@ -314,7 +318,17 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "python": platform.python_version(),
         "pyside6": dist_version("PySide6-Essentials"),
         "nuitka": dist_version("Nuitka"),
+        "reference_tables": [f"{s.package}/{s.filename}" for s in REFERENCE_TABLES],
     }
+
+
+def missing_tables(app_dir: Path) -> list[str]:
+    """Return the shipped reference tables that aren't in a standalone build's folder."""
+    return [
+        f"{spec.package}/{spec.filename}"
+        for spec in REFERENCE_TABLES
+        if not (app_dir.joinpath(*spec.package.split(".")) / spec.filename).is_file()
+    ]
 
 
 def locate_output(edition_dir: Path, name: str, mode: str) -> tuple[Path, Path]:
@@ -359,6 +373,11 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
         problems.append("window icon did not load")
     if report["splash_shown"] != (branding.splash is not None):
         problems.append("splash screen shown/not shown unexpectedly")
+    if report.get("reference_tables") != len(REFERENCE_TABLES):
+        problems.append(
+            f"loaded {report.get('reference_tables')} reference tables, "
+            f"expected {len(REFERENCE_TABLES)}"
+        )
     if problems:
         raise BuildError(f"smoke test failed: {'; '.join(problems)}")
     return {"start_to_exit_s": times, "report_dir": str(report_dir), **report}

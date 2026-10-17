@@ -13,6 +13,7 @@ from types import ModuleType
 
 import pytest
 
+from caddcalc.calculators import REFERENCE_TABLES
 from caddcalc.gui import branding as branding_module
 from caddcalc.gui.app import _split_smoke_test
 from caddcalc.gui.branding import (
@@ -324,4 +325,5 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert report["window_title"] == report["name"]
     assert report["icon_loaded"] and report["splash_shown"] and report["about_custom"]
     assert not report["packaged"]
+    assert report["reference_tables"] == len(REFERENCE_TABLES) == 1, "the gauge table"
     assert (report_dir / "window.png").stat().st_size > 0
