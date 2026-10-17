@@ -46,9 +46,12 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
    range-checks it, records its source, and calls `compute(ctx)`.
 5. `compute` calls `ctx.calc("BA", "pi/180*A*(R + K*T)", ...)`. The formula string is
    evaluated by `core.expr` *and* stored as a `Step`.
-6. It returns a `Result`: outputs, steps, symbols, notes, and each input's source,
+6. Each of the calculator's result checks (`calc.checks`) reads the finished run and the
+   domain's selections, such as the chosen material, and may add notes, never steps
+   (ADR-0014).
+7. It returns a `Result`: outputs, steps, symbols, notes, and each input's source,
    all in base units.
-7. The front end formats it with `DisplayPrefs`. Rounding only happens here.
+8. The front end formats it with `DisplayPrefs`. Rounding only happens here.
    `render_step` produces the three-line work: `BA = π/180·A·(R + K·T)`, the substituted
    values, and the result.
 

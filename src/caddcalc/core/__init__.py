@@ -4,9 +4,9 @@ Standard library only. Nothing here may import ``caddcalc.gui``, ``caddcalc.cli`
 or any third-party package (ADR-0003).
 """
 
-from caddcalc.core.calculator import Calculator, Context, Result
+from caddcalc.core.calculator import Calculator, Context, Result, ResultCheck
 from caddcalc.core.choices import Choice, ChoiceResolver, DerivedValue, Option
-from caddcalc.core.domain import Domain, DomainValues
+from caddcalc.core.domain import Domain, DomainValues, ValueOrigin
 from caddcalc.core.errors import (
     CaddCalcError,
     CalculationError,
@@ -78,6 +78,7 @@ __all__ = [
     "ReferenceValue",
     "Registry",
     "Result",
+    "ResultCheck",
     "SourceKind",
     "SpecError",
     "Step",
@@ -89,6 +90,7 @@ __all__ = [
     "UnknownCalculatorError",
     "UnknownDomainError",
     "UsageError",
+    "ValueOrigin",
     "Verification",
     "load_table",
     "nominal",

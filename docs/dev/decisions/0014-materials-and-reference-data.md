@@ -2,7 +2,7 @@
 
 * **Status:** **Accepted**; **phase 2a built** (gauge systems, 2026-10-17), phase 2b under
   way. The design as built is in the [Amendments](#amendments), which refine §1,
-  §2, and §5. The maintainer approved M1–M7 as
+  §2, §3, and §5. The maintainer approved M1–M7 as
   recommended on 2026-10-17. This ADR supersedes parts of ADR-0013: decision A's "P
   derived from material" (M3), decision E for K and P (M2), and §11's phase-2 list (see
   Consequences).
@@ -255,9 +255,10 @@ The research changed what phase 2 can promise.
 * **Starter set:** 5052-H32, 6061-T6, mild cold-rolled steel (CS), and 304 annealed (2B).
   Galvanized and hot-rolled pickled and oiled (HR P&O) ship as gauge plus base-steel
   notes only, until we find a source for them.
-* **Minimum-radius warnings** are checks, not inputs. They run as a post-run domain check
-  over the resolved R and T and the chosen material, and add structured notes to the
-  `Result`, so no calculator's compute step needs the material:
+* **Minimum-radius warnings** are checks, not inputs. They run as a calculator-declared
+  result check (amended in phase 2b.3, see [Amendments](#amendments)) over the resolved R
+  and T and the chosen material, and add structured notes to the `Result`, so no
+  calculator's compute step needs the material:
   * aluminum: AC 43.13 Table 4-6, labelled "aerospace bench practice"
   * mild steel: 2T from TO 1-1A-9's 1020/1025 entry, labelled as a conservative stand-in
   * 304: TO 1-1A-9, after a manual check of the table
@@ -797,3 +798,32 @@ its data in 2b.4.
   rated with it (ADR-0004, ADR-0010), and aren't counted. So MH29's K values (Eq 33 and
   34) appear only as citations in the K-factor help, for the user to type, and
   `MAX_CITE_ONLY_PER_PUBLICATION` stays 1.
+
+### 2026-10-17: result checks, selections, and applied values (maintainer, phase 2b.3)
+
+The maintainer accepted these on flags 3 and 8 of the 2b plan. They are core additions;
+`run()`'s signature is unchanged.
+
+* **Checks are calculator-declared result checks.** §3 called the minimum-radius warning
+  "a post-run domain check". It is a `ResultCheck` that a calculator lists in
+  `Calculator.checks`; `run()` calls each after compute, with the run's context and the
+  domain's selections, and a check may add notes through `ctx.note` (so subjects are
+  checked and a limit-exceeded note cites its limit) but never steps, inputs, or
+  outputs, which `run()` refuses. *Why:* the calculator, not the domain, knows which of
+  its methods take R and T, so V-die opening and Cone can simply not declare it (flag 4),
+  and a run without settings, such as the CLI's, still gets the checks that need none.
+  The phase 1 inside-radius warning moves into the same check in 2b.6, so a referenced
+  check and the rule of thumb can't both speak; a note compute had already added could
+  not be withdrawn by a later domain check.
+* **`DomainValues.selections`** holds the selection in effect for each choice, which
+  `DomainSettings.for_domain()` fills, so a check sees the chosen material. Compute never
+  sees selections: formulas stay numeric (§2).
+* **Applied values keep their citation (M2).** `DomainSettings.set()` takes an `origin`,
+  the `Reference` a value was applied from, and an optional `note`, such as a test-bend
+  prompt; `DomainSettings.origin()` returns both as a `ValueOrigin`. The value is the
+  user's own domain value (`SourceKind.DOMAIN`), and its source carries the citation as
+  its `reference`, which `describe_source` words as "Sheet Metal settings, starting value
+  from FAA-H-8083-31B, p. 4-63"; the input's row already names the K-factor. The note
+  reaches results whenever the value is used, as a derived value's does. Typing over the
+  value, clearing it, or Clear all drops the origin and the note. A note without an
+  origin, or one with subjects, is refused.

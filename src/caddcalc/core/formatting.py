@@ -207,14 +207,21 @@ def render_step(
 def describe_source(source: InputSource) -> str:
     """Return how an input's source is shown to users, e.g. ``"Sheet Metal settings"``.
 
-    The GUI and the CLI both use this, so they word sources the same way (ADR-0013 §5).
+    A domain value the user applied from a citation names it, e.g. ``"Sheet Metal
+    settings, starting value from FAA-H-8083-31B, p. 4-63"`` (ADR-0014 M2). The GUI and
+    the CLI both use this, so they word sources the same way (ADR-0013 §5).
     """
     if source.kind is SourceKind.EXPLICIT:
         return source.label or "entered"
     if source.kind is SourceKind.DEFAULT:
         return "default"
-    label = source.label or ("domain settings" if source.kind is SourceKind.DOMAIN else "derived")
-    return label if source.reference is None else f"{label}, {source.reference}"
+    domain = source.kind is SourceKind.DOMAIN
+    label = source.label or ("domain settings" if domain else "derived")
+    if source.reference is None:
+        return label
+    if domain:
+        return f"{label}, starting value from {source.reference}"
+    return f"{label}, {source.reference}"
 
 
 _NOTE_HEADINGS = {

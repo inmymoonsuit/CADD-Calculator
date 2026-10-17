@@ -10,6 +10,7 @@ from types import MappingProxyType
 from caddcalc.core import expr
 from caddcalc.core.choices import OPTION_KEY, Choice, ChoiceResolver, DerivedValue, Option
 from caddcalc.core.errors import InputError, SpecError, UsageError
+from caddcalc.core.notes import Note
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Param
 
@@ -242,6 +243,31 @@ class Domain:
 
 
 @dataclass(frozen=True)
+class ValueOrigin:
+    """The citation of a set value the user applied rather than typed (ADR-0014 M2).
+
+    A cited starting value, such as a K-factor applied with a click, becomes the user's own
+    domain value but keeps its citation, and results show both while it's in use. Typing
+    over the value drops its origin.
+
+    Raises:
+        UsageError: The note already has subjects; ``Calculator.run`` names the inputs
+            that take the value.
+    """
+
+    reference: Reference
+    """The source the value was applied from."""
+    note: Note | None = None
+    """A note results carry while the value is in use, such as a test-bend prompt."""
+
+    def __post_init__(self) -> None:
+        if self.note is not None and self.note.subjects:
+            raise UsageError(
+                "The note of an applied value has subjects; run() names the inputs that take it"
+            )
+
+
+@dataclass(frozen=True)
 class DomainValues:
     """The setting values a user has set for one domain, as ``Calculator.run`` takes them.
 
@@ -263,11 +289,23 @@ class DomainValues:
     """Values the domain's choices derive, by setting key. A set value above takes
     precedence over a derived one (ADR-0013 §4). Stored as a read-only copy.
     """
+    selections: Mapping[str, str] = field(default_factory=dict)
+    """The selection in effect for each choice that has one, by choice key, for result
+    checks such as a minimum-radius check (``Calculator.checks``). Stored as a read-only
+    copy.
+    """
+    origins: Mapping[str, ValueOrigin] = field(default_factory=dict)
+    """The citations of set values the user applied rather than typed, by setting key.
+    Each key is also in ``values``. Stored as a read-only copy.
+    """
 
     def __post_init__(self) -> None:
         if not self.label.strip():
             raise UsageError(
                 f"DomainValues for {self.domain_id!r} needs a label; use Domain.values()"
             )
-        object.__setattr__(self, "values", MappingProxyType(dict(self.values)))
-        object.__setattr__(self, "derived", MappingProxyType(dict(self.derived)))
+        stray = sorted(set(self.origins) - set(self.values))
+        if stray:
+            raise UsageError(f"DomainValues for {self.domain_id!r} has origins of unset {stray}")
+        for name in ("values", "derived", "selections", "origins"):
+            object.__setattr__(self, name, MappingProxyType(dict(getattr(self, name))))

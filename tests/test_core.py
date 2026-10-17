@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Mapping
 from decimal import Decimal
 from fractions import Fraction
 
@@ -289,6 +290,61 @@ def test_ctx_note_records_kinds_references_and_subjects() -> None:
         ],
         "subjects": ["doubled"],
     }
+
+
+def _note_material(ctx: Context, selections: Mapping[str, str]) -> None:
+    """A result check that names the chosen material, or says none was chosen."""
+    material = selections.get("material")
+    if material is None:
+        ctx.note("No material chosen.", NoteKind.NO_APPLICABLE_VALUE, subjects=("length",))
+    else:
+        ctx.warn(f"Checked for {material}.", subjects=("doubled",))
+
+
+class _Checked(_Demo):
+    checks = (_note_material,)
+
+    def compute(self, ctx: Context) -> None:
+        super().compute(ctx)
+        ctx.warn("From compute.")
+
+
+def test_result_checks_run_after_compute_and_see_the_selections() -> None:
+    settings = DomainValues("demo", "Demo settings", {}, selections={"material": "al:6061"})
+    result = _Checked().run(settings=settings)
+    assert [n.text for n in result.notes] == ["From compute.", "Checked for al:6061."]
+    assert result.notes[1].subjects == ("doubled",)
+    assert _Checked().run().notes[1] == Note(
+        NoteKind.NO_APPLICABLE_VALUE, "No material chosen.", (), ("length",)
+    )
+
+
+def test_a_result_check_only_adds_notes() -> None:
+    def recompute(ctx: Context, _selections: Mapping[str, str]) -> None:
+        ctx.calc("Z", "X", label="Again", dimension=L)
+
+    def stray(ctx: Context, _selections: Mapping[str, str]) -> None:
+        ctx.warn("Odd.", subjects=("width",))
+
+    class Meddling(_Demo):
+        checks = (recompute,)
+
+    class Stray(_Demo):
+        checks = (stray,)
+
+    with pytest.raises(SpecError, match="a result check changed the work"):
+        Meddling().run()
+    with pytest.raises(SpecError, match=r"note subjects \['width'\]"):
+        Stray().run()
+
+
+def test_checks_are_a_tuple_of_callables() -> None:
+    class Listed(_Demo):
+        # A mutable list is the mistake under test.
+        checks = [_note_material]  # type: ignore[assignment]  # noqa: RUF012
+
+    with pytest.raises(SpecError, match="checks must be a tuple"):
+        Listed.validate_spec()
 
 
 def test_note_subjects_must_be_parameters_or_outputs() -> None:

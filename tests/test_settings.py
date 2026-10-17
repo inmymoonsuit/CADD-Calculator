@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -14,14 +15,18 @@ from caddcalc.core import (
     DomainSettings,
     DomainValues,
     InputError,
+    Note,
+    NoteKind,
     OutOfRangeError,
     Param,
+    Reference,
     SourceKind,
     TypedValue,
     UsageError,
+    ValueOrigin,
     parse_quantity_detailed,
 )
-from caddcalc.core.formatting import DisplayPrefs, entry_text, field_text
+from caddcalc.core.formatting import DisplayPrefs, describe_source, entry_text, field_text
 from caddcalc.core.units import get_unit
 
 OTHER = Domain(
@@ -235,6 +240,62 @@ def test_a_calculator_runs_with_the_session_settings() -> None:
         "sheet_metal",
     )
     assert result.inputs["k_factor"] == pytest.approx(0.44)
+
+
+FAA = Reference("FAA-H-8083-31B", locator="p. 4-63")
+TEST_BEND = Note(NoteKind.WARNING, "A starting value: confirm K with a test bend.", (FAA,))
+
+
+def applied_k() -> DomainSettings:
+    """Settings with a K-factor the user applied from a citation, as a click would."""
+    entry = TypedValue.parse("0.445", Dimension.RATIO)
+    return DomainSettings().set(SHEET_METAL, "k_factor", entry, origin=FAA, note=TEST_BEND)
+
+
+def test_an_applied_value_keeps_its_citation_in_results() -> None:
+    settings = applied_k()
+    assert settings.origin(SHEET_METAL, "k_factor") == ValueOrigin(FAA, TEST_BEND)
+    result = BendAllowance().run(method="k_factor", settings=settings.for_domain(SHEET_METAL))
+    source = result.source_of("k_factor")
+    assert (source.kind, source.reference) == (SourceKind.DOMAIN, FAA)
+    assert describe_source(source) == (
+        "Sheet Metal settings, starting value from FAA-H-8083-31B, p. 4-63"
+    )
+    assert replace(TEST_BEND, subjects=("k_factor",)) in result.notes
+    reference = result.to_dict()["inputs"]["k_factor"]["source"]["reference"]
+    assert (reference["title"], reference["locator"]) == ("FAA-H-8083-31B", "p. 4-63")
+
+
+def test_typing_over_an_applied_value_drops_its_citation() -> None:
+    typed = applied_k().set_text(SHEET_METAL, "k_factor", "0.445")
+    assert typed.origin(SHEET_METAL, "k_factor") is None
+    assert typed != applied_k(), "models compare their origins too"
+    result = BendAllowance().run(method="k_factor", settings=typed.for_domain(SHEET_METAL))
+    assert result.source_of("k_factor").reference is None
+    assert all(note.text != TEST_BEND.text for note in result.notes)
+    assert applied_k().clear(SHEET_METAL, "k_factor") == DomainSettings()
+    assert applied_k().clear_domain(SHEET_METAL) == DomainSettings()
+
+
+def test_an_applied_values_note_needs_its_origin_and_no_subjects() -> None:
+    entry = TypedValue.parse("0.445", Dimension.RATIO)
+    with pytest.raises(UsageError, match="needs the origin"):
+        DomainSettings().set(SHEET_METAL, "k_factor", entry, note=TEST_BEND)
+    about_k = replace(TEST_BEND, subjects=("k_factor",))
+    with pytest.raises(UsageError, match="has subjects"):
+        DomainSettings().set(SHEET_METAL, "k_factor", entry, origin=FAA, note=about_k)
+    with pytest.raises(UsageError, match="origins of unset"):
+        DomainValues(
+            "sheet_metal", "Sheet Metal settings", {}, origins={"k_factor": ValueOrigin(FAA)}
+        )
+
+
+def test_the_domain_values_carry_the_selections_in_effect() -> None:
+    values = DomainSettings().set_choice(SHEET_METAL, "gauge", "msg:12").for_domain(SHEET_METAL)
+    assert dict(values.selections) == {"gauge": "msg:12"}
+    assert dict(DomainSettings().for_domain(SHEET_METAL).selections) == {}
+    with pytest.raises(TypeError):
+        values.selections["gauge"] = "msg:10"  # type: ignore[index]
 
 
 @pytest.mark.parametrize("dimension", list(Dimension))

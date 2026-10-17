@@ -17,7 +17,7 @@ class SourceKind(Enum):
     DOMAIN = "domain"
     """A domain setting the user has set."""
     DERIVED = "derived"
-    """Computed from a built-in table. Reserved for materials (ADR-0013, phase 2)."""
+    """Computed from a built-in table, such as a gauge's thickness (ADR-0014)."""
     DEFAULT = "default"
     """The calculator parameter's own default."""
 
@@ -36,7 +36,8 @@ class InputSource:
     domain: str | None = None
     """The domain id, when ``kind`` is ``DOMAIN`` or ``DERIVED``."""
     reference: Reference | None = None
-    """The table and version a derived value came from (phase 2)."""
+    """The table and version a derived value came from; for a domain value, the citation
+    of a starting value the user applied rather than typed (ADR-0014 M2)."""
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable form. ``reference`` is ``None`` or its fields."""

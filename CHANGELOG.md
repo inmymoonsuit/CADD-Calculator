@@ -7,6 +7,13 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Result checks, selections, and applied values for phase 2b (ADR-0014, amendments):
+  `Calculator.checks` declares `ResultCheck`s that run after compute and add notes, never
+  work, seeing the domain's choice selections (`DomainValues.selections`), which compute
+  never sees. `DomainSettings.set()` takes an `origin` and a `note` for a cited value the
+  user applied rather than typed (`ValueOrigin`): results name it, e.g. "Sheet Metal
+  settings, starting value from FAA-H-8083-31B, p. 4-63", and carry the note while it's
+  in use. Typing over the value drops both.
 - Bands, conditions, and per-parent defaults for phase 2b (ADR-0014, amendments):
   `core.Band`, a range with included or excluded ends that a reference value applies
   across, never interpolated; `ReferenceValue.band`, `conditions`, and `quantity`; and

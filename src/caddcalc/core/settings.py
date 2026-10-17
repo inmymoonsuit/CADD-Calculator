@@ -11,8 +11,10 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Literal, NamedTuple
 
-from caddcalc.core.domain import Domain, DomainValues
+from caddcalc.core.domain import Domain, DomainValues, ValueOrigin
 from caddcalc.core.errors import SpecError, UsageError
+from caddcalc.core.notes import Note
+from caddcalc.core.reference import Reference
 from caddcalc.core.units import TypedValue
 
 
@@ -30,12 +32,14 @@ class DomainSettings:
 
     ``DomainSettings()`` is empty, and the methods that set values or choose options are
     the only way to add one, so everything in it has been checked against its domain.
-    Models compare equal when they hold the same values and choices.
+    Models compare equal when they hold the same values, origins, and choices.
     """
 
     _values: Mapping[str, Mapping[str, TypedValue]] = field(default_factory=dict, init=False)
     _choices: Mapping[str, Mapping[str, str]] = field(default_factory=dict, init=False)
     """The option key chosen for each choice, by domain id and choice key."""
+    _origins: Mapping[str, Mapping[str, ValueOrigin]] = field(default_factory=dict, init=False)
+    """The citation of each set value the user applied, by domain id and setting key."""
     __hash__ = None  # type: ignore[assignment]  # equal by value, and the values are dicts
 
     def get(self, domain: Domain, key: str) -> TypedValue | None:
@@ -51,10 +55,21 @@ class DomainSettings:
         """Return every value set in ``domain``, by setting key (read-only)."""
         return MappingProxyType(dict(self._values.get(domain.id, {})))
 
+    def origin(self, domain: Domain, key: str) -> ValueOrigin | None:
+        """Return the citation of the value set for ``key``, if the user applied it.
+
+        Raises:
+            UsageError: ``domain`` has no setting with that key.
+        """
+        domain.setting(key)
+        return self._origins.get(domain.id, {}).get(key)
+
     def set_text(
         self, domain: Domain, key: str, text: str, default_unit: str | None = None
     ) -> DomainSettings:
         """Return a copy with ``key`` set from the user's text.
+
+        A typed value has no origin, so typing over an applied value drops its citation.
 
         Args:
             domain: The domain the setting belongs to.
@@ -70,22 +85,48 @@ class DomainSettings:
         setting = domain.setting(key)
         return self.set(domain, key, TypedValue.parse(text, setting.dimension, default_unit))
 
-    def set(self, domain: Domain, key: str, entry: TypedValue) -> DomainSettings:
+    def set(
+        self,
+        domain: Domain,
+        key: str,
+        entry: TypedValue,
+        *,
+        origin: Reference | None = None,
+        note: Note | None = None,
+    ) -> DomainSettings:
         """Return a copy with ``key`` set to ``entry``.
 
+        Args:
+            domain: The domain the setting belongs to.
+            key: The setting key, e.g. ``"k_factor"``.
+            entry: The value.
+            origin: The source of a cited value the user applied rather than typed, such
+                as a K-factor starting value (ADR-0014 M2). The value becomes the user's
+                own and keeps this citation in results. Without one, any earlier origin
+                of ``key`` is dropped.
+            note: A note results carry while the value is in use, such as a test-bend
+                prompt. It needs an ``origin``.
+
         Raises:
-            UsageError: ``domain`` has no setting with that key, or ``entry`` measures
-                something else.
+            UsageError: ``domain`` has no setting with that key, ``entry`` measures
+                something else, or a note is given without an origin or with subjects.
             OutOfRangeError: The value is outside the setting's range.
         """
         setting = domain.setting(key)
+        if note is not None and origin is None:
+            raise UsageError(f"The note of setting {key!r} needs the origin it comes with")
         if entry.dimension is not setting.dimension:
             raise UsageError(
                 f"Setting {key!r} of domain {domain.id!r} is {setting.dimension.with_article}, "
                 f"but {entry.text!r} is {entry.dimension.with_article}"
             )
         setting.check(entry.value)
-        return self._with(domain.id, values={**self._values.get(domain.id, {}), key: entry})
+        origins = _without(self._origins.get(domain.id, {}), key)
+        if origin is not None:
+            origins[key] = ValueOrigin(origin, note)
+        return self._with(
+            domain.id, values={**self._values.get(domain.id, {}), key: entry}, origins=origins
+        )
 
     def clear(self, domain: Domain, key: str) -> DomainSettings:
         """Return a copy with ``key`` unset.
@@ -94,8 +135,11 @@ class DomainSettings:
             UsageError: ``domain`` has no setting with that key.
         """
         domain.setting(key)
-        remaining = {k: v for k, v in self._values.get(domain.id, {}).items() if k != key}
-        return self._with(domain.id, values=remaining)
+        return self._with(
+            domain.id,
+            values=_without(self._values.get(domain.id, {}), key),
+            origins=_without(self._origins.get(domain.id, {}), key),
+        )
 
     def choice(self, domain: Domain, key: str) -> str | None:
         """Return the option selected for ``key``, or ``None`` if there is none.
@@ -165,15 +209,24 @@ class DomainSettings:
 
         This is Clear all: each choice goes back to its default, not to no selection.
         """
-        return self._with(domain.id, values={}, choices={})
+        return self._with(domain.id, values={}, choices={}, origins={})
 
     def for_domain(self, domain: Domain) -> DomainValues:
-        """Return the values set for ``domain`` and those its choices derive, for ``run``."""
+        """Return what ``run`` takes for ``domain``.
+
+        That is the values set, with the origins of those the user applied, the values
+        its choices derive, and the selections in effect.
+        """
         values = domain.values(
             **{key: entry.value for key, entry in self._values.get(domain.id, {}).items()}
         )
         selections = _resolve(domain, self._choices.get(domain.id, {}))[0]
-        return replace(values, derived=domain.derived(selections))
+        return replace(
+            values,
+            derived=domain.derived(selections),
+            selections=selections,
+            origins=self._origins.get(domain.id, {}),
+        )
 
     def _with(
         self,
@@ -181,13 +234,20 @@ class DomainSettings:
         *,
         values: Mapping[str, TypedValue] | None = None,
         choices: Mapping[str, str] | None = None,
+        origins: Mapping[str, ValueOrigin] | None = None,
     ) -> DomainSettings:
-        """Return a copy with ``domain_id``'s values or choices replaced, already checked."""
+        """Return a copy with some of ``domain_id``'s entries replaced, already checked."""
         settings = DomainSettings()
         # The fields are frozen and not in __init__, so they are set directly.
         object.__setattr__(settings, "_values", _replaced(self._values, domain_id, values))
         object.__setattr__(settings, "_choices", _replaced(self._choices, domain_id, choices))
+        object.__setattr__(settings, "_origins", _replaced(self._origins, domain_id, origins))
         return settings
+
+
+def _without[V](entries: Mapping[str, V], key: str) -> dict[str, V]:
+    """Return a copy of ``entries`` without ``key``."""
+    return {k: v for k, v in entries.items() if k != key}
 
 
 def _replaced[V](

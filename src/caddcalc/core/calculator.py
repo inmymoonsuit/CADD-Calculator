@@ -6,11 +6,12 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Any, ClassVar
+from types import MappingProxyType
+from typing import Any, ClassVar, Protocol
 
 from caddcalc.core import expr
 from caddcalc.core.choices import DerivedValue
-from caddcalc.core.domain import DomainValues
+from caddcalc.core.domain import DomainValues, ValueOrigin
 from caddcalc.core.errors import InputError, SpecError, UsageError
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
@@ -82,7 +83,10 @@ class Result:
 
 
 class Context:
-    """Passed to ``Calculator.compute``. It records each step so the work can be shown."""
+    """Passed to ``Calculator.compute``, then to each result check, so the work can be shown.
+
+    It records each step compute makes, and the notes compute and the checks add.
+    """
 
     def __init__(self, calculator: Calculator, method: Method, inputs: Mapping[str, float]):
         self.calculator = calculator
@@ -173,6 +177,25 @@ class Context:
         return step.value
 
 
+class ResultCheck(Protocol):
+    """A check a calculator declares, run over each of its finished runs (ADR-0014 §3).
+
+    A check reads the run, through the context compute used, and adds notes through
+    ``ctx.note``; it never records steps or outputs. It sees the choice selections of the
+    run's domain settings, such as the chosen material, which compute never does, so
+    formulas stay numeric and a run without settings still gets the checks that need none.
+    """
+
+    def __call__(self, ctx: Context, selections: Mapping[str, str], /) -> None:
+        """Add notes about a finished run.
+
+        Args:
+            ctx: The run after compute: its method, inputs, and outputs.
+            selections: The selections in effect for the run's domain, by choice key
+                (``DomainValues.selections``); empty when the run has no settings.
+        """
+
+
 class Calculator(ABC):
     """Base class for every calculator, built-in or plugin.
 
@@ -194,6 +217,8 @@ class Calculator(ABC):
     params: ClassVar[tuple[Param, ...]]
     outputs: ClassVar[tuple[Output, ...]]
     methods: ClassVar[tuple[Method, ...]]
+    checks: ClassVar[tuple[ResultCheck, ...]] = ()
+    """Result checks run after every compute, in order, such as a minimum-radius check."""
 
     @abstractmethod
     def compute(self, ctx: Context) -> None:
@@ -242,8 +267,9 @@ class Calculator(ABC):
         Each input the method uses comes from the first of: ``inputs``, a shared
         parameter's set domain value in ``settings``, its derived value there, or the
         parameter's default (ADR-0013 §4). A derived value's note, such as a nominal
-        caution, is added to the result once whenever that value is used, and so is a
-        note an explicit input carries.
+        caution, is added to the result once whenever that value is used, and so are a
+        note an applied domain value carries (``DomainValues.origins``) and a note an
+        explicit input carries. After compute, each of ``checks`` runs and may add notes.
 
         Args:
             inputs: Values given for this run, by parameter key, in base units.
@@ -263,6 +289,7 @@ class Calculator(ABC):
                 labels a key that isn't in ``inputs`` or gives a kind other than explicit;
                 or ``explicit_notes`` names a key that isn't in ``inputs``, or gives a note
                 that already has subjects.
+            SpecError: compute left an output unset, or a result check changed the work.
         """
         inputs = dict(inputs or {})
         labels = dict(explicit_sources or {})
@@ -290,7 +317,7 @@ class Calculator(ABC):
 
         values: dict[str, float] = {}
         sources: dict[str, InputSource] = {}
-        derived_notes: dict[Note, list[str]] = {}
+        used_notes: dict[Note, list[str]] = {}
         derived_work: list[Step] = []
         for p in self.params_for(m.key):
             value, source = _resolve(p, inputs, settings, labels)
@@ -298,23 +325,28 @@ class Calculator(ABC):
             values[p.key] = value
             sources[p.key] = source
             derived = _derived(p, source, settings)
-            if derived is not None and derived.note is not None:
-                derived_notes.setdefault(derived.note, []).append(p.key)
-            if p.key in carried:
-                derived_notes.setdefault(carried[p.key], []).append(p.key)
+            origin = _origin(p, source, settings)
+            for note in (
+                None if derived is None else derived.note,
+                None if origin is None else origin.note,
+                carried.get(p.key),
+            ):
+                if note is not None:
+                    used_notes.setdefault(note, []).append(p.key)
             if derived is not None and derived.work is not None:
                 derived_work.append(replace(derived.work, symbol=p.symbol))
 
         ctx = Context(self, m, values)
-        # One note per derived note used, naming every input that took it, and the work
+        # One note per carried note used, naming every input that took it, and the work
         # of each derived value used, ahead of the calculator's own (ADR-0014).
-        ctx.notes.extend(replace(n, subjects=tuple(keys)) for n, keys in derived_notes.items())
+        ctx.notes.extend(replace(n, subjects=tuple(keys)) for n, keys in used_notes.items())
         ctx.steps.extend(derived_work)
         self.compute(ctx)
 
         missing = [o.key for o in self.outputs if o.key not in ctx.outputs]
         if missing:
             raise SpecError(f"{self.id} ({m.key}) did not produce: {', '.join(missing)}")
+        self._run_checks(ctx, settings)
 
         dimensions = {p.key: p.dimension for p in self.params}
         dimensions.update({o.key: o.dimension for o in self.outputs})
@@ -329,6 +361,15 @@ class Calculator(ABC):
             notes=tuple(ctx.notes),
             input_sources=sources,
         )
+
+    def _run_checks(self, ctx: Context, settings: DomainValues | None) -> None:
+        """Run the declared result checks, which may add notes and nothing else."""
+        selections = MappingProxyType({}) if settings is None else settings.selections
+        work = (dict(ctx.inputs), len(ctx.steps), dict(ctx.outputs))
+        for check in self.checks:
+            check(ctx, selections)
+        if (ctx.inputs, len(ctx.steps), ctx.outputs) != work:
+            raise SpecError(f"{self.id}: a result check changed the work; checks only add notes")
 
     # --- definition checks ----------------------------------------------------------------
 
@@ -352,6 +393,8 @@ class Calculator(ABC):
             raise SpecError(f"{cls.id} declares no methods")
         if not cls.outputs:
             raise SpecError(f"{cls.id} declares no outputs")
+        if not isinstance(cls.checks, tuple) or not all(callable(c) for c in cls.checks):
+            raise SpecError(f"{cls.id}: checks must be a tuple of result checks")
         method_keys = [m.key for m in cls.methods]
         _unique(cls.id, "method key", method_keys)
         _unique(cls.id, "parameter key", [p.key for p in cls.params])
@@ -391,7 +434,13 @@ def _resolve(
     if p.key in inputs:
         return float(inputs[p.key]), labels.get(p.key, EXPLICIT)
     if p.shared and settings is not None and p.key in settings.values:
-        source = InputSource(SourceKind.DOMAIN, settings.label, domain=settings.domain_id)
+        origin = settings.origins.get(p.key)
+        source = InputSource(
+            SourceKind.DOMAIN,
+            settings.label,
+            domain=settings.domain_id,
+            reference=None if origin is None else origin.reference,
+        )
         return float(settings.values[p.key]), source
     if p.shared and settings is not None and p.key in settings.derived:
         derived = settings.derived[p.key]
@@ -407,6 +456,13 @@ def _derived(p: Param, source: InputSource, settings: DomainValues | None) -> De
     if source.kind is not SourceKind.DERIVED or settings is None:
         return None
     return settings.derived.get(p.key)
+
+
+def _origin(p: Param, source: InputSource, settings: DomainValues | None) -> ValueOrigin | None:
+    """The origin of the set value ``p`` took, if it took one the user applied."""
+    if source.kind is not SourceKind.DOMAIN or settings is None:
+        return None
+    return settings.origins.get(p.key)
 
 
 def _unique(owner: str, what: str, items: list[str]) -> None:
