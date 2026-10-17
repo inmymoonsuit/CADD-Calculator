@@ -1,0 +1,74 @@
+[project]
+name = "cadd-calculator"
+dynamic = ["version"]
+description = "Open-source calculators for CADD drafting: sheet-metal bends, flat patterns, and more."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "CADD Calculator contributors" }]
+license = "Apache-2.0"
+license-files = ["LICENSE.md"]
+keywords = ["cad", "cadd", "drafting", "sheet metal", "bend allowance", "flat pattern", "engineering"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+# The core library and calculators use only the standard library (ADR-0003).
+dependencies = []
+
+[project.optional-dependencies]
+gui = ["PySide6-Essentials>=6.8"]
+
+[project.scripts]
+caddcalc = "caddcalc.cli:main"
+
+[project.gui-scripts]
+caddcalc-gui = "caddcalc.gui.app:main"
+
+[project.urls]
+Homepage = "https://github.com/inmymoonsuit/CADD-Calculator"
+Issues = "https://github.com/inmymoonsuit/CADD-Calculator/issues"
+
+# Third-party calculator packages register here (ADR-0006), e.g.:
+# [project.entry-points."caddcalc.calculators"]
+# my_calc = "my_package.module:MyCalculator"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]  # 1.27+ for PEP 639 license metadata
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/caddcalc/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/caddcalc"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["gui: needs PySide6 (skipped when it is not installed)"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+# Formula display strings intentionally use math symbols such as · π ° −.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+python_version = "3.12"

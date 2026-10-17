@@ -1,0 +1,219 @@
+"""Bend allowance, bend deduction, flat length of formed segments, and V-die opening."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+
+from caddcalc.calculators.sheet_metal.common import (
+    COURSE_METHOD,
+    INSIDE_RADIUS,
+    K_FACTOR,
+    K_FACTOR_METHOD,
+    LEGACY_LESSON_2,
+    LEGACY_ROUGH_DRAFT,
+    THICKNESS,
+    bend_allowance_formula,
+    bend_angle,
+)
+from caddcalc.core import Calculator, Context, Dimension, Method, Output, Param, Verification
+
+LENGTH = Dimension.LENGTH
+
+
+def _check_bend(ctx: Context, *angle_symbols: str) -> None:
+    """Add engineering warnings once per run, checking each named bend angle."""
+    if ctx.value("R") < ctx.value("T"):
+        ctx.warn(
+            "Inside radius is smaller than the material thickness. Check the material's "
+            "minimum bend radius; tight bends can crack, especially in hard tempers."
+        )
+    for a in angle_symbols:
+        if ctx.value(a) > 90:
+            ctx.warn(
+                f"{a} is past 90°. Its outside setback, tan({a}/2)·(R + T), is measured to the "
+                "virtual sharp. Some drawings dimension these bends to the outside-arc tangent "
+                "instead (KI-013), so confirm how the part is dimensioned."
+            )
+    if ctx.method == "k_factor" and ctx.value("K") > 0.5:
+        ctx.warn("A K-factor above 0.5 puts the neutral axis past mid-thickness, which is unusual.")
+
+
+class BendAllowance(Calculator):
+    id = "sheet_metal.bend_allowance"
+    name = "Bend allowance & deduction"
+    domain = "Sheet Metal"
+    summary = (
+        "Bend allowance (neutral-axis arc length), outside setback, and bend deduction "
+        "for a single bend."
+    )
+    params = (THICKNESS, INSIDE_RADIUS, bend_angle(), K_FACTOR)
+    outputs = (
+        Output(
+            "bend_allowance",
+            "BA",
+            "Bend allowance",
+            LENGTH,
+            "Length of the neutral axis through the bend.",
+        ),
+        Output(
+            "outside_setback",
+            "OSSB",
+            "Outside setback",
+            LENGTH,
+            "From the tangent point to the outside mold line (virtual sharp).",
+        ),
+        Output(
+            "bend_deduction",
+            "BD",
+            "Bend deduction",
+            LENGTH,
+            "Subtract from the sum of outside flange lengths to get the flat length.",
+        ),
+    )
+    methods = (COURSE_METHOD, K_FACTOR_METHOD)
+
+    def compute(self, ctx: Context) -> None:
+        ctx.calc(
+            "BA",
+            bend_allowance_formula(ctx.method, "A"),
+            label="Bend allowance",
+            dimension=LENGTH,
+            output="bend_allowance",
+        )
+        ctx.calc(
+            "OSSB",
+            "tand(A/2)*(R + T)",
+            label="Outside setback",
+            dimension=LENGTH,
+            output="outside_setback",
+        )
+        ctx.calc(
+            "BD", "2*OSSB - BA", label="Bend deduction", dimension=LENGTH, output="bend_deduction"
+        )
+        _check_bend(ctx, "A")
+
+
+class FormedSegmentFlatLength(Calculator):
+    """Generalizes the course "FPD with one / two 90° (or non-90°) bends" spreadsheets.
+
+    A formed segment measured to the outside (FVD) loses one outside setback for each bent
+    end and gains half that bend's allowance. Set A2 to 0° for a segment bent at one end only.
+    """
+
+    id = "sheet_metal.segment_flat_length"
+    name = "Flat length of a formed segment"
+    domain = "Sheet Metal"
+    summary = (
+        "Flat-pattern length of one segment, dimensioned to the outside, with a bend at "
+        "one or both ends."
+    )
+    params = (
+        THICKNESS,
+        INSIDE_RADIUS,
+        Param(
+            "formed_dimension",
+            "FVD",
+            "Formed view dimension",
+            LENGTH,
+            default="1.12 in",
+            minimum=0.0,
+            min_inclusive=False,
+            help="Outside dimension of the segment as drawn in the formed view.",
+        ),
+        bend_angle("bend_angle_1", "A1", "Bend angle at end 1", "90 deg"),
+        bend_angle("bend_angle_2", "A2", "Bend angle at end 2", "0 deg"),
+        K_FACTOR,
+    )
+    outputs = (
+        Output(
+            "flat_length",
+            "FPD",
+            "Flat pattern dimension",
+            LENGTH,
+            "This segment's length in the flat pattern.",
+        ),
+        Output("bend_allowance_1", "BA1", "Bend allowance, end 1", LENGTH),
+        Output("bend_allowance_2", "BA2", "Bend allowance, end 2", LENGTH),
+    )
+    methods = (COURSE_METHOD, K_FACTOR_METHOD)
+
+    def compute(self, ctx: Context) -> None:
+        ctx.calc(
+            "BA1",
+            bend_allowance_formula(ctx.method, "A1"),
+            label="Bend allowance, end 1",
+            dimension=LENGTH,
+            output="bend_allowance_1",
+        )
+        ctx.calc(
+            "BA2",
+            bend_allowance_formula(ctx.method, "A2"),
+            label="Bend allowance, end 2",
+            dimension=LENGTH,
+            output="bend_allowance_2",
+        )
+        ctx.calc("OSSB1", "tand(A1/2)*(R + T)", label="Outside setback, end 1", dimension=LENGTH)
+        ctx.calc("OSSB2", "tand(A2/2)*(R + T)", label="Outside setback, end 2", dimension=LENGTH)
+        fpd = ctx.calc(
+            "FPD",
+            "FVD - OSSB1 - OSSB2 + BA1/2 + BA2/2",
+            label="Flat pattern dimension",
+            dimension=LENGTH,
+            output="flat_length",
+        )
+        _check_bend(ctx, "A1", "A2")
+        if fpd <= 0:
+            ctx.warn(
+                "The flat length is zero or negative: the segment is too short for these bends."
+            )
+
+
+class VDieOpening(Calculator):
+    id = "sheet_metal.v_die_opening"
+    name = "V-die opening (air bending)"
+    domain = "Sheet Metal"
+    summary = "Suggested female (V) die opening for air bending on a press brake."
+    params = (
+        replace(INSIDE_RADIUS, methods=("radius_ratio",)),
+        Param(
+            "radius_ratio",
+            "P",
+            "Radius-to-die-opening ratio",
+            Dimension.RATIO,
+            default="0.156",
+            minimum=0.0,
+            min_inclusive=False,
+            maximum=1.0,
+            help=(
+                "In air bending the inside radius forms at roughly this fraction of the "
+                "die opening. The course used 0.156 (mild steel). It varies by material."
+            ),
+            methods=("radius_ratio",),
+        ),
+        replace(THICKNESS, methods=("eight_t",)),
+    )
+    outputs = (Output("die_opening", "V", "Die opening", LENGTH),)
+    methods = (
+        Method(
+            "radius_ratio",
+            "Inside-radius percentage rule",
+            "V = R / P: the die opening that naturally produces inside radius R.",
+            Verification.UNVERIFIED,
+            legacy=True,
+            references=(LEGACY_LESSON_2, LEGACY_ROUGH_DRAFT),
+            notes=("The course hard-coded P = 0.156. Here P is an input (KI-003).",),
+        ),
+        Method(
+            "eight_t",
+            "8 × thickness rule of thumb",
+            "V = 8·T: a common starting point for mild steel.",
+            Verification.UNVERIFIED,
+            notes=("Citation needed (KI-004).",),
+        ),
+    )
+
+    def compute(self, ctx: Context) -> None:
+        if ctx.method == "radius_ratio":
+            ctx.calc("V", "R/P", label="Die opening", dimension=LENGTH, output="die_opening")
+        else:
+            ctx.calc("V", "8*T", label="Die opening", dimension=LENGTH, output="die_opening")

@@ -1,0 +1,25 @@
+# Architecture Decision Records (ADRs)
+
+An ADR records one significant decision: the context, what we chose, what we gave up,
+and what we rejected. ADRs are **append-only history**. To change a decision, write a new
+ADR that supersedes the old one, and set the old one's status to
+`Superseded by ADR-NNNN`. Do not rewrite history.
+
+Write an ADR when a choice is hard to reverse, affects contributors or users, or would
+otherwise be re-argued later: languages, frameworks, file formats, units, licensing,
+public APIs, and how formulas are verified.
+
+Start from [template.md](template.md). Number sequentially and never reuse numbers.
+
+| # | Title | Status |
+|---|---|---|
+| [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
+| [0002](0002-python-and-pyside6.md) | Python 3.12+ with PySide6 (Qt) for the desktop app | Accepted |
+| [0003](0003-layered-core-with-no-dependencies.md) | Layered architecture with a dependency-free core | Accepted |
+| [0004](0004-declarative-calculators-with-provenance.md) | Declarative calculators: formulas as data, provenance, verification status | Accepted |
+| [0005](0005-units-precision-and-display.md) | Units, numeric precision, and display rounding | Accepted |
+| [0006](0006-extensibility-via-entry-points.md) | Extensibility: built-ins listed explicitly, plugins via entry points | Accepted |
+| [0007](0007-documentation-in-repo-not-wiki.md) | Documentation lives in the repo, not a wiki | Accepted |
+| [0008](0008-licensing-and-third-party-assets.md) | Licensing, and keeping third-party assets out of the repo | Accepted (Apache-2.0) |
+| [0009](0009-packaging-and-distribution.md) | Packaging and distribution | **Proposed** |
+| [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted |

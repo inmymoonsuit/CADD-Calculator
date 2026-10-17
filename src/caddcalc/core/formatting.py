@@ -1,0 +1,94 @@
+"""Turning base-unit values into display text. Rounding happens only here (ADR-0005)."""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from fractions import Fraction
+
+from caddcalc.core import expr
+from caddcalc.core.calculator import Result, Step
+from caddcalc.core.units import Dimension, from_base, get_unit
+
+DISCLAIMER = (
+    "Results are for drafting and education. Verify against your shop's tooling, "
+    "material data, and test bends before manufacturing."
+)
+
+
+@dataclass(frozen=True)
+class DisplayPrefs:
+    length_unit: str = "in"
+    decimals: int = 4
+    angle_decimals: int = 2
+    fraction_denominator: int | None = None
+    """When set (e.g. 64) and the length unit is inches, also show the nearest fraction."""
+
+
+def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
+    if dimension is Dimension.LENGTH:
+        return f" {prefs.length_unit}"
+    if dimension is Dimension.ANGLE:
+        return "°"
+    return ""
+
+
+def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> float:
+    """Convert a base-unit value to the display unit, without rounding."""
+    if dimension is Dimension.LENGTH:
+        return from_base(value, prefs.length_unit)
+    return value  # angles display in degrees, ratios as-is
+
+
+def format_number(value: float, decimals: int) -> str:
+    text = f"{value:.{decimals}f}"
+    return "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
+
+
+def format_value(
+    value: float, dimension: Dimension, prefs: DisplayPrefs, *, unit: bool = True
+) -> str:
+    shown = display_value(value, dimension, prefs)
+    decimals = prefs.angle_decimals if dimension is Dimension.ANGLE else prefs.decimals
+    text = format_number(shown, decimals)
+    if unit:
+        text += unit_suffix(dimension, prefs)
+    if (
+        unit
+        and dimension is Dimension.LENGTH
+        and prefs.fraction_denominator
+        and get_unit(prefs.length_unit).symbol == "in"
+    ):
+        text += f'  (≈ {to_fraction(shown, prefs.fraction_denominator)}")'
+    return text
+
+
+def to_fraction(value: float, denominator: int = 64) -> str:
+    """Nearest drafting fraction: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``."""
+    if not math.isfinite(value):
+        return str(value)
+    sign = "-" if value < 0 else ""
+    frac = Fraction(round(abs(value) * denominator), denominator)
+    whole, rem = divmod(frac.numerator, frac.denominator)
+    if rem == 0:
+        return f"{sign}{whole}"
+    part = f"{rem}/{frac.denominator}"
+    return f"{sign}{whole}-{part}" if whole else f"{sign}{part}"
+
+
+def render_step(step: Step, result: Result, prefs: DisplayPrefs) -> tuple[str, str | None, str]:
+    """Return (symbolic, substituted, value) text for one step of the work.
+
+    Substitution shows each symbol in display units, which is only meaningful for formulas
+    that are dimensionally homogeneous. All built-in formulas are (see known-issues KI-005).
+    """
+    value_text = format_value(step.value, step.dimension, prefs)
+    if step.expression is None:
+        return (step.note, None, value_text)
+    symbolic = expr.render_symbolic(step.expression)
+    values: dict[str, str] = {}
+    for name in expr.names(step.expression):
+        v, dim = result.symbols[name]
+        text = format_value(v, dim, prefs, unit=dim is Dimension.ANGLE)
+        values[name] = f"({text})" if text.startswith("-") else text
+    return (symbolic, expr.render_numeric(step.expression, values), value_text)

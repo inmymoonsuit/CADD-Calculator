@@ -1,0 +1,41 @@
+# --- Local-only material (see docs/dev/legacy-workbooks.md and ADR-0008) ---
+# resources/ holds local reference material that may not be redistributed.
+/resources/
+# builds/ is the local output folder for packaged installers.
+/builds/
+# Local branding packs for separately built editions (ADR-0008, item 4). Never committed.
+/branding/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Packaging (Nuitka / pyside6-deploy / PyInstaller) ---
+*.build/
+*.dist/
+*.onefile-build/
+deployment/
+*.spec
+
+# --- Docs site output ---
+/site/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.lnk
+.idea/
+.vscode/
+*.swp
