@@ -23,5 +23,5 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
 
 ## Sign-off
 
-* Maintainer: ______________________ Date: ____________
+* Maintainer: approved for release by the maintainer. Date: 2026-10-17
 * Review session (Support & Review): verified 4fa06d9, table digest ed6163290ce1…1d0d; all seven items pass. Date: 2026-10-17
