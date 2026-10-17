@@ -98,6 +98,22 @@ standards (ASME, ISO, BS) and handbooks are not. Data tables need a redistributa
 or original measurements. Keep anything you can't redistribute in the git-ignored
 `resources/` folder (ADR-0008).
 
+## Reporting a wrong or rights-encumbered value
+
+Every value in a reference table, such as a gauge thickness, cites where it comes from
+(ADR-0014). If one is wrong, or you believe it can't be redistributed, please open a
+[*Reference value* issue](https://github.com/inmymoonsuit/CADD-Calculator/issues/new?template=reference_value.md) and give:
+
+* the table and its version, e.g. "Gauge systems, version 1" (a result names the table it
+  used)
+* the value or its option key, e.g. `msg:12`
+* what's wrong
+* your evidence or source: cite it, but don't paste copyrighted text or tables
+* any rights concern, and who holds the rights
+
+We fix or remove a reported value promptly once it's checked, and record the change in
+the CHANGELOG.
+
 ## Code style
 
 The full standard is [docs/dev/engineering-guidelines.md](docs/dev/engineering-guidelines.md)

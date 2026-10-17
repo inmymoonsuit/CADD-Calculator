@@ -25,11 +25,14 @@ All notable changes are recorded here. The format follows
   Manufacturers' Standard, `"galv:"`, `"uss:"`, and `"awg:"` for galvanized, US Standard
   1893 (as commonly used for stainless), and AWG. Choosing one derives the thickness at
   the system's published precision, e.g. 0.1046 in for `"msg:12"`, and results that use
-  it carry a nominal-thickness caution citing the system's tolerance standard. The
+  it carry a nominal-thickness caution pointing to the system's tolerance standard. The
   definitions ship as a cited, versioned table, `data/gauges.toml`; every thickness is
   computed from them exactly, and a result that uses one shows its work ahead of the
   calculator's (`DerivedValue.work`). No gauge is selected by default, and the Sheet
   Metal page doesn't offer the choice yet.
+- A path for reporting a wrong or rights-encumbered reference value: a section in
+  CONTRIBUTING.md and the *Reference value* issue template, linked from the README and
+  the sheet-metal user guide (ADR-0014 §5.7).
 - `core.expr.evaluate_exact()`: evaluates a formula with exact rational arithmetic, for
   values a standard defines, from the same expression its work shows. A non-integer
   power alone is computed to a stated number of digits; a float input, a function, and

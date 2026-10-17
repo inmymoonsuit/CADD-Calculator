@@ -644,3 +644,30 @@ This replaces, in the gauge-table entry above, the formulas kept twice.
     its note says how the exact value was stated, e.g. "0.1046150167… in before
     rounding to 4 decimal places". The front ends show that note from 2a.4.
 
+### 2026-10-17: the corrections path and the gauge table's citations (maintainer, phase 2a)
+
+These settle release-checklist item 7 and refine the gauge-table entries above.
+
+* **Corrections (§5.7).** CONTRIBUTING.md has a "Reporting a wrong or rights-encumbered
+  value" section, and `.github/ISSUE_TEMPLATE/reference_value.md` asks for the table and
+  version, the value or option key, what's wrong, the evidence, and any rights concern.
+  Both promise to fix or remove a value promptly. The README and the sheet-metal user
+  guide link to it.
+* **The caution points to the standard.** Each system's caution reads, e.g., "Nominal
+  thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check the
+  material's specification or measure before cutting." The pointer is built from the
+  tolerance publications, so each designation is written once, as a title and an
+  edition.
+* **Tolerance scopes say only what the abstracts confirm.** A568: general requirements
+  for carbon and HSLA steel sheet (A1008, A1011). A924: general requirements for hot-dip
+  metallic-coated sheet (A653). A480: general requirements for flat-rolled stainless,
+  with dimensional-tolerance annexes. ANSI H35.2: its title. B209, 2021 rev. a, is the
+  latest revision seen, as of 2026-10-17.
+* **The statute's url is pinned to the 2024 edition** (`year=2024`), matching its
+  recorded edition.
+* **The US Standard label keeps its scope**, e.g. "12 ga, US Standard 1893, as commonly
+  used for stainless; practice varies (nominal)".
+* **Version bumps start with the first public release.** The gauge table hasn't been
+  released, so these changes keep it at version 1 and re-pin its digest. From the first
+  release on, any change to a table's data bumps its version.
+

@@ -51,6 +51,8 @@ uv run pytest                # tests
 * **Developers:** [docs/dev/](docs/dev/README.md) covers architecture, the decision records (ADRs), known
   issues, the engineering log, the roadmap, and the legacy-workbook transcription.
 * **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md).
+* **A wrong reference value?** See
+  [Reporting a wrong or rights-encumbered value](CONTRIBUTING.md#reporting-a-wrong-or-rights-encumbered-value).
 
 ## Disclaimer
 

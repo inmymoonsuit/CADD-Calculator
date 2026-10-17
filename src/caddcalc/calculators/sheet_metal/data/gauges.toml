@@ -15,7 +15,7 @@ id = "us_code"
 kind = "statute"
 title = "United States Code, Title 15"
 edition = "2024 ed."
-url = "https://www.govinfo.gov/link/uscode/15/206?type=usc&year=mostrecent&link-type=html"
+url = "https://www.govinfo.gov/link/uscode/15/206?type=usc&year=2024&link-type=html"
 license = "public_domain"
 public_domain_basis = "17 U.S.C. §105: a work of the US Government"
 
@@ -42,7 +42,7 @@ cite_only_cap = 1
 id = "astm_a568"
 kind = "standard"
 title = "ASTM A568/A568M"
-edition = "A568/A568M-25a"
+edition = "2025, rev. a"
 url = "https://store.astm.org/a0568_a0568m-25a.html"
 license = "cite_only_fact"
 
@@ -50,7 +50,7 @@ license = "cite_only_fact"
 id = "astm_a924"
 kind = "standard"
 title = "ASTM A924/A924M"
-edition = "A924/A924M-26"
+edition = "2026"
 url = "https://store.astm.org/a0924_a0924m-26.html"
 license = "cite_only_fact"
 
@@ -58,21 +58,21 @@ license = "cite_only_fact"
 id = "astm_a480"
 kind = "standard"
 title = "ASTM A480/A480M"
-edition = "A480/A480M-25b"
+edition = "2025, rev. b"
 license = "cite_only_fact"
 
 [[publication]]
 id = "astm_b209"
 kind = "standard"
 title = "ASTM B209/B209M"
-edition = "B209/B209M-21a"
+edition = "2021, rev. a"
 license = "cite_only_fact"
 
 [[publication]]
 id = "ansi_h35_2"
 kind = "standard"
-title = "ANSI H35.2, Dimensional Tolerances for Aluminum Mill Products"
-edition = "H35.2-2017"
+title = "ANSI H35.2"
+edition = "2017"
 license = "cite_only_fact"
 
 [[source]]
@@ -116,35 +116,36 @@ id = "uncoated_steel_tolerances"
 publication = "astm_a568"
 locator = "scope"
 accessed = 2026-10-17
-scope = "thickness tolerances for uncoated carbon steel sheet"
+scope = "general requirements for carbon and HSLA steel sheet (A1008, A1011)"
 
 [[source]]
 id = "coated_steel_tolerances"
 publication = "astm_a924"
 locator = "scope"
 accessed = 2026-10-17
-scope = "thickness tolerances for hot-dip coated steel sheet, such as A653 galvanized"
+scope = "general requirements for hot-dip metallic-coated sheet (A653)"
 
 [[source]]
 id = "stainless_tolerances"
 publication = "astm_a480"
 locator = "scope"
 accessed = 2026-10-17
-scope = "thickness tolerances for flat-rolled stainless sheet"
+scope = "general requirements for flat-rolled stainless, with dimensional-tolerance annexes"
 
 [[source]]
 id = "aluminum_sheet"
 publication = "astm_b209"
 locator = "referenced documents"
+detail = "latest revision seen, as of 2026-10-17"
 accessed = 2026-10-17
-scope = "aluminum sheet and plate, with dimensional tolerances per ANSI H35.2"
+scope = "aluminum sheet and plate; lists ANSI H35.2 among its referenced documents"
 
 [[source]]
 id = "aluminum_tolerances"
 publication = "ansi_h35_2"
 locator = "title"
 accessed = 2026-10-17
-scope = "thickness tolerances for aluminum sheet"
+scope = "Dimensional Tolerances for Aluminum Mill Products"
 
 # The definition's constants. Each value is exact text, read as a Fraction or a Decimal.
 
@@ -191,7 +192,7 @@ tolerances = ["coated_steel_tolerances"]
 [[system]]
 id = "uss"
 name = "US Standard 1893"
-scope = "as commonly used for stainless (practice varies)"
+scope = "as commonly used for stainless; practice varies"
 size_label = "ga"
 formula = "weight"
 constants = { B = "wrought_iron_basis" }

@@ -39,6 +39,7 @@ from caddcalc.core import (
     SourceKind,
     SpecError,
     Step,
+    TablePublication,
     TableSpec,
     TrustLevel,
     TypedValue,
@@ -58,8 +59,20 @@ GAUGE = Choice(
 )
 """The sheet-metal domain's gauge choice. Its option keys, e.g. ``"msg:12"``, are public."""
 
-CAUTION = "Nominal thickness; check the material's specification or measure before cutting."
-"""The note a result carries whenever it uses a gauge's thickness (ADR-0014 §5.5)."""
+
+def caution(standards: Sequence[TablePublication]) -> str:
+    """Return the note a result carries whenever it uses a gauge's thickness (ADR-0014 §5.5).
+
+    It points to the system's tolerance standards, e.g. "Nominal thickness; mill
+    tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check the material's
+    specification or measure before cutting."
+    """
+    cited = " and ".join(f"{s.title}, {s.edition}" for s in standards)
+    return (
+        f"Nominal thickness; mill tolerances apply (see {cited}). "
+        "Check the material's specification or measure before cutting."
+    )
+
 
 WORKING_DIGITS = 40
 """Significant digits for a thickness with no exact form, such as AWG's, before rounding."""
@@ -329,9 +342,11 @@ def _system(
     defined_by = _source(table, where, entry["defined_by"])
     checked = tuple(_source(table, where, s) for s in _list(entry, "checked_against"))
     tolerances = [table.sources[_source(table, where, s)] for s in _list(entry, "tolerances")]
+    if not tolerances:
+        raise SpecError(f"{where}: name the system's tolerance standards")
     note = Note(
         NoteKind.WARNING,
-        CAUTION,
+        caution([s.publication for s in tolerances]),
         references=(table.reference, *(s.reference for s in tolerances)),
     )
     gauges: list[Gauge] = []
@@ -511,7 +526,7 @@ class GaugeResolver:
         system, gauge = self.gauges.by_key[key]
         source = InputSource(
             SourceKind.DERIVED,
-            f"{gauge.label}, {system.name} (nominal)",
+            f"{gauge.label}, {system.group} (nominal)",
             domain=self._domain,
             reference=self.gauges.table.reference,
         )

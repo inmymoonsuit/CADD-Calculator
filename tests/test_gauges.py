@@ -14,7 +14,6 @@ import pytest
 
 from caddcalc.calculators.sheet_metal import DOMAIN, BendAllowance
 from caddcalc.calculators.sheet_metal.gauges import (
-    CAUTION,
     GAUGE_TABLE,
     GaugeSystem,
     designation,
@@ -151,10 +150,10 @@ def test_each_system_cites_its_tolerance_standard() -> None:
         "msg": ["ASTM A568/A568M"],
         "galv": ["ASTM A924/A924M"],
         "uss": ["ASTM A480/A480M"],
-        "awg": ["ASTM B209/B209M", "ANSI H35.2, Dimensional Tolerances for Aluminum Mill Products"],
+        "awg": ["ASTM B209/B209M", "ANSI H35.2"],
     }
     assert (
-        SYSTEMS["uss"].group == "US Standard 1893, as commonly used for stainless (practice varies)"
+        SYSTEMS["uss"].group == "US Standard 1893, as commonly used for stainless; practice varies"
     )
 
 
@@ -170,10 +169,29 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     assert gauged.outputs == BendAllowance().run().outputs, "12 ga is the course default"
     assert gauged.source_of("thickness").kind is SourceKind.DERIVED
     (note,) = gauged.notes
-    assert (note.kind, note.text, note.subjects) == (NoteKind.WARNING, CAUTION, ("thickness",))
+    assert (note.kind, note.subjects) == (NoteKind.WARNING, ("thickness",))
     assert describe_note(note) == (
-        f"{CAUTION} (Gauge systems, version 1; ASTM A568/A568M, A568/A568M-25a, "
-        "scope: thickness tolerances for uncoated carbon steel sheet)"
+        "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check "
+        "the material's specification or measure before cutting. (Gauge systems, version 1; "
+        "ASTM A568/A568M, 2025, rev. a, scope: general requirements for carbon and HSLA "
+        "steel sheet (A1008, A1011))"
+    )
+
+
+def test_each_caution_points_to_its_systems_tolerance_standards() -> None:
+    cautions = {s.id: s.note.text.split("(see ")[1].split(")")[0] for s in GAUGES.systems}
+    assert cautions == {
+        "msg": "ASTM A568/A568M, 2025, rev. a",
+        "galv": "ASTM A924/A924M, 2026",
+        "uss": "ASTM A480/A480M, 2025, rev. b",
+        "awg": "ASTM B209/B209M, 2021, rev. a and ANSI H35.2, 2017",
+    }
+
+
+def test_the_us_standard_label_keeps_its_scope() -> None:
+    settings = DomainSettings().set_choice(DOMAIN, "gauge", "uss:12").for_domain(DOMAIN)
+    assert settings.derived["thickness"].source.label == (
+        "12 ga, US Standard 1893, as commonly used for stainless; practice varies (nominal)"
     )
 
 

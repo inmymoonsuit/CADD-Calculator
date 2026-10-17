@@ -150,3 +150,12 @@ Course method:
 > outside, or mean surface gives 132.70°. `course` reproduces the coursework;
 > `mean_diameter` develops the mid-surface from outside diameters. Check the first part
 > with a paper template.
+
+## Reporting a wrong value
+
+Every reference value, such as a gauge thickness, cites its source, and a result names the
+table it came from. If a value looks wrong, or you believe it can't be redistributed,
+please report it with the [*Reference value* issue template](https://github.com/inmymoonsuit/CADD-Calculator/issues/new?template=reference_value.md); see
+[Reporting a wrong or rights-encumbered value](../../../CONTRIBUTING.md#reporting-a-wrong-or-rights-encumbered-value).
+We fix or remove a reported value promptly.
+
