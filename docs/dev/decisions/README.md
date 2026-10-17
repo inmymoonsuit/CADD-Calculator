@@ -25,3 +25,4 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted |
 | [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed** |
 | [0012](0012-engineering-standards-enforced-by-tooling.md) | Write down the engineering standards, and enforce them with tooling | Accepted |
+| [0013](0013-domains-with-shared-settings.md) | Domains with shared settings that their calculators inherit | Accepted (phase 1 in progress) |
