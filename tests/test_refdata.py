@@ -42,6 +42,9 @@ SAMPLE_KEYS = {"system"}
 
 TABLE_DIGESTS: dict[tuple[str, int], str] = {
     ("Gauge systems", 1): "ed6163290ce1b92eb929efa905c5fcb7a7e9eeaacd83990a8e7cad1e32f51d0d",
+    ("Sheet-metal materials", 1): (
+        "7ae5ae0ead36e421c5ff376d80f376f819427e12c98509ff78baf4d2ddac515d"
+    ),
 }
 """The content hash of every shipped table, by (name, version). Changing a table's data
 without bumping its version fails ``test_every_shipped_table_is_pinned_to_its_version``."""

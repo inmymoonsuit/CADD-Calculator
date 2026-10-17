@@ -394,7 +394,7 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
         "pack",
     )
     assert not report["packaged"]
-    assert report["reference_tables"] == len(REFERENCE_TABLES) == 1, "the gauge table"
+    assert report["reference_tables"] == len(REFERENCE_TABLES) == 2, "gauges and materials"
     assert (report_dir / "window.png").stat().st_size > 0
 
 

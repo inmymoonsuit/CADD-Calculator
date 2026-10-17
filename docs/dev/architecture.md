@@ -14,6 +14,7 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  sheet_metal: BendAllowance, FormedSegmentFlatLength, VDieOpening,       │
 │               TruncatedConeLayout                                        │
 │               gauge choice: gauges.py and data/gauges.toml (ADR-0014)    │
+│               materials: materials.py and data/materials.toml            │
 │  (future)   tolerancing, fasteners, structural, geometry, ...            │
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼

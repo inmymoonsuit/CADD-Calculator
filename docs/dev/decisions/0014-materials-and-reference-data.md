@@ -827,3 +827,57 @@ The maintainer accepted these on flags 3 and 8 of the 2b plan. They are core add
   reaches results whenever the value is used, as a derived value's does. Typing over the
   value, clearing it, or Clear all drops the origin and the note. A note without an
   origin, or one with subjects, is refused.
+
+### 2026-10-17: the materials table as built (maintainer, phase 2b.4)
+
+`sheet_metal/data/materials.toml`, version 1, loaded and checked by
+`sheet_metal.materials`. It follows the materials data brief's rows and the maintainer's
+decisions D1–D10 and the 2b plan's flags.
+
+* **Materials and keys (flag 1).** `al:5052` (H32), `al:6061` (T6), `cs:a1008` (mild
+  cold-rolled, CS), `cs:a653` (galvanized), `cs:a1011` (hot-rolled, pickled and oiled),
+  and `ss:304`, labelled "304, annealed (2B finish)": the finish is part of the material,
+  not a choice. The carbon steels are named by their specification, as names only. Each
+  temper is an option key (`temper:h32`, `temper:t6`, `temper:annealed`), so a second
+  temper can be added without renaming; the carbon steels have none. Each material lists
+  the gauge systems it is ordered by, for 2b.6's gauge-and-material warning.
+* **Minimum radii are stated as their sources state them:** a multiple of T, a range of
+  multiples, or a radius in inches, at the source's own listed thicknesses or bands.
+  * 5052-H32: AC 43.13-1B Table 4-6. 6061-T6: Table 4-6 and TO 1-1A-9 Tables A-31/A-32,
+    both kept, so 2b.6 can take the larger at each thickness (D1).
+  * Mild steel: TO Table 2-15's 2T for 1020/1025, labelled a conservative stand-in for
+    A1008 CS, from 0.016 to 0.187 in (D4).
+  * 304: TO Table 2-16's ½ Hard 2T, labelled the conservative stand-in, with the 2015
+    edition's generic annealed figure in its note (D3). Its bands are 0.012–0.051 in
+    inclusive, over 0.051 to 0.090 in, and 0.190–0.250 in (flag 6); the gap has no
+    value.
+  * No steel or stainless value comes from the 2020 Tables A-31/A-32 (D9).
+  * Galvanized and HR P&O have no rows. They state why in `radius_note`, which the loader
+    requires of a material without rows.
+* **Listed thicknesses become bands in one place** (D4): `listed_bands()` gives each
+  listing the band `(previous + 2%, this + 2%]`, the first `[−2%, +2%]`, so a sheet
+  within 2% of a listing reads there and one between listings reads at the next one up.
+  The loader holds every row non-decreasing with thickness, which makes the next one up
+  never the less conservative reading, and refuses listings whose 2% overlap. Explicit
+  bands, such as Table 2-16's, are used as stated.
+* **Values and their identity.** Each band gives one `ReferenceValue` per quantity:
+  `min_radius` (a radius), `min_radius_t` (one multiple), or `min_radius_t_low` and
+  `min_radius_t_high` (a range's bounds); `f_tu_l`, `f_tu_lt`, `f_ty_l`, and `f_ty_lt`;
+  and `k_start`. Conditions name the material, the temper, and the bend angle the source
+  states (`90` or `not_stated`).
+* **`Basis.RECOMMENDED_MINIMUM`** is new, for a least value that published practice
+  recommends, such as a minimum bend radius. *Why:* `SPEC_MINIMUM` means a property a
+  material specification guarantees, which a bend radius from an advisory circular isn't.
+  Radius rows are trusted as specification guidance, and strengths as handbook rules.
+* **Strengths** are MIL-HDBK-5J's, stored with their basis: S-basis as
+  `SPEC_MINIMUM`, and 6061-T6 at A-basis only (D5). MIL-HDBK-5J is cited knowingly as a
+  cancelled source (D6; the release record says so). Mild steel takes the AISI 1025
+  annealed row as a stated stand-in (flag 10), which replaces §3's "A1008 stays unset";
+  304's note says its values are for AMS 5513 while 2B sheet is commonly bought to
+  A240/A480.
+* **K starting values:** FAA-H-8083-31B's stated 0.445 for the aluminums, with its note
+  that the formula implies 0.4475, and EDD5's 0.4, its one cite-only value, for the
+  materials the brief names. The loader marks both as rules of thumb whatever the table
+  says. MH29's values are cited only in the K-factor help (D7, D8).
+* **The 2015 edition of TO 1-1A-9** is declared for its notes only, its generic annealed
+  stainless row and its bending practice, and defines no value.

@@ -7,6 +7,16 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Phase 2b: the materials table (ADR-0014, amendments).**
+  `sheet_metal/data/materials.toml` (version 1) defines the starter materials, keyed
+  `al:5052`, `al:6061`, `cs:a1008`, `cs:a653`, `cs:a1011`, and `ss:304`, with their
+  tempers. It gives cited minimum inside radii (AC 43.13-1B Table 4-6, and TO 1-1A-9
+  Tables 2-15, 2-16, and A-31/A-32), MIL-HDBK-5J strengths with their basis, and two
+  K-factor starting values (FAA-H-8083-31B's 0.445 and the textbook's 0.4), every value as
+  its source states it. `sheet_metal.materials` loads and checks it, and
+  `listed_bands()` reads a sheet within 2% of a listed thickness at that listing, else at
+  the next one up. `Basis.RECOMMENDED_MINIMUM` is new, for a minimum bend radius. The
+  table is the second in `REFERENCE_TABLES`, so the smoke report counts 2.
 - Result checks, selections, and applied values for phase 2b (ADR-0014, amendments):
   `Calculator.checks` declares `ResultCheck`s that run after compute and add notes, never
   work, seeing the domain's choice selections (`DomainValues.selections`), which compute
@@ -227,6 +237,8 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- The K-factor help names its cited starting values: 0.445 for aircraft aluminum (FAA),
+  about 0.408 and 0.452 from *Machinery's Handbook* by material, and the textbook's 0.4.
 - About names the license (Apache-2.0), and opens over whichever window is active.
 - If the main window can't be built, the app says so and exits with status 1 instead of
   running on with no window. A pack's SVG logo must be self-contained, and the welcome

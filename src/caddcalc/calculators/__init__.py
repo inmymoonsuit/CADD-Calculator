@@ -10,12 +10,13 @@ from importlib import metadata
 
 from caddcalc.calculators import sheet_metal
 from caddcalc.calculators.sheet_metal.gauges import GAUGE_TABLE
+from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE
 from caddcalc.core.refdata import TableSpec
 from caddcalc.core.registry import EntryPointSource, Registry
 
 BUILTIN_DOMAINS = (sheet_metal.DOMAIN,)
 BUILTIN_CALCULATORS = (*sheet_metal.CALCULATORS,)
-REFERENCE_TABLES: tuple[TableSpec, ...] = (GAUGE_TABLE,)
+REFERENCE_TABLES: tuple[TableSpec, ...] = (GAUGE_TABLE, MATERIAL_TABLE)
 """Every reference table the built-in domains ship (ADR-0014 §1)."""
 
 

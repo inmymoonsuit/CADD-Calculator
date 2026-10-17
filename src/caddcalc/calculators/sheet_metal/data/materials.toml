@@ -1,0 +1,333 @@
+# Sheet-metal materials (ADR-0014 §3, phase 2b).
+#
+# Each material lists its tempers and the gauge systems it is ordered by. Each value row
+# cites one source and states its values as that source does: the minimum inside radius
+# as a multiple of the thickness (T) or as a radius, at the source's own listed
+# thicknesses or bands; strengths with their basis; and K-factor starting values.
+# caddcalc.calculators.sheet_metal.materials turns listed thicknesses into bands (the
+# maintainer's decision D4) and checks every value. Changing the data needs a version
+# bump; the tests pin its digest.
+
+[table]
+schema = 1
+name = "Sheet-metal materials"
+version = 1
+
+[[publication]]
+id = "faa_ac_43_13_1b"
+kind = "government_document"
+title = "AC 43.13-1B, Acceptable Methods, Techniques, and Practices - Aircraft Inspection and Repair"
+edition = "1998, with Change 1; editorial update 2024"
+url = "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_43.13-1B_CHG_1_Ed_Upd_FAA.pdf"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Federal Aviation Administration"
+
+[[publication]]
+id = "faa_h_8083_31b"
+kind = "government_document"
+title = "FAA-H-8083-31B, Aviation Maintenance Technician Handbook - Airframe"
+edition = "2023"
+url = "https://www.faa.gov/sites/faa.gov/files/FAA-H-8083-31B_Aviation_Maintenance_Technician_Handbook.pdf"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Federal Aviation Administration"
+
+[[publication]]
+id = "usaf_to_1_1a_9"
+kind = "government_document"
+title = "TO 1-1A-9 / NAVAIR 01-1A-9, Engineering Series for Aircraft Repair: Aerospace Metals - General Data and Usage Factors"
+edition = "17 Nov 2016, Change 3 (24 Jan 2020)"
+url = "https://everyspec.com/USAF/USAF-Tech-Manuals/TO_1-1A-9_CHG-3_24JAN2020_56694/"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Air Force; Distribution Statement A"
+
+# The 2015 edition is cited only in notes: its generic annealed stainless row and its
+# bending practice. No value ships from it.
+[[publication]]
+id = "usaf_to_1_1a_9_2015"
+kind = "government_document"
+title = "TO 1-1A-9 / NAVAIR 01-1A-9, Engineering Series for Aircraft Repair: Aerospace Metals - General Data and Usage Factors"
+edition = "basic 1999, Change 14 (3 Oct 2015)"
+url = "https://everyspec.com/USAF/USAF-Tech-Manuals/TO_1-1A-9_CHG-14_53433/"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Air Force; Distribution Statement A"
+
+[[publication]]
+id = "mil_hdbk_5j"
+kind = "government_document"
+title = "MIL-HDBK-5J, Metallic Materials and Elements for Aerospace Vehicle Structures"
+edition = "J, 31 Jan 2003 (cancelled; superseded by MMPDS)"
+url = "https://everyspec.com/MIL-HDBK/MIL-HDBK-0001-0099/MIL_HDBK_5J_139/"
+license = "public_domain"
+public_domain_basis = "17 U.S.C. §105: a work of the US Department of Defense"
+
+[[publication]]
+id = "edd5"
+kind = "book"
+title = "Engineering Drawing and Design (Madsen & Madsen)"
+edition = "5th ed., Cengage Learning, 2012"
+license = "cite_only_fact"
+cite_only_cap = 1
+
+[[source]]
+id = "ac_radii_aluminum"
+publication = "faa_ac_43_13_1b"
+locator = "Ch. 4, par 4-56, Table 4-6, p. 4-17"
+detail = "p. 4-14 in the earlier AC_43.13-1B_w-chg1.pdf; values identical"
+accessed = 2026-10-17
+scope = "recommended radii for 90° bends in aluminum alloys; aircraft repair practice"
+
+[[source]]
+id = "to_radii_carbon_steel"
+publication = "usaf_to_1_1a_9"
+locator = "Table 2-15, p. 2-88"
+detail = "Table 2-34, p. 2-128 in Change 14 (2015); identical"
+accessed = 2026-10-17
+scope = "cold bend radii (inside), carbon and low-alloy steel; aerospace practice; angle and condition not stated"
+
+[[source]]
+id = "to_radii_stainless"
+publication = "usaf_to_1_1a_9"
+locator = "Table 2-16, p. 2-88"
+detail = "Table 2-35, p. 2-128 in Change 14 (2015); identical. No 304-annealed row; 304 is listed for ½ Hard"
+accessed = 2026-10-17
+scope = "cold bend radii (inside), corrosion-resistant steel, by temper and thickness band"
+
+[[source]]
+id = "to_standard_radii_aluminum"
+publication = "usaf_to_1_1a_9"
+locator = "Tables A-31 and A-32, pp. A-45 and A-47 (aluminum rows)"
+detail = "Table A-16 in Change 14 (2015); aluminum values identical. Steel rows of A-31/A-32 not used"
+accessed = 2026-10-17
+scope = "standard bend radii for 90° cold forming of flat sheet at room temperature; aerospace practice"
+
+[[source]]
+id = "to_2015_annealed_stainless"
+publication = "usaf_to_1_1a_9_2015"
+locator = "Table A-16, pp. A-18 and A-19, Corrosion Resistant, Annealed row"
+accessed = 2026-10-17
+scope = "standard bend radii for 90° cold forming; corrosion-resistant steel, no alloy named"
+
+[[source]]
+id = "to_2015_bending_practice"
+publication = "usaf_to_1_1a_9_2015"
+locator = "paras 2-239 and 2-240, and the handling list on p. 2-122"
+accessed = 2026-10-17
+scope = "bend a practice piece first; form across the grain where possible"
+
+[[source]]
+id = "hdbk5j_5052"
+publication = "mil_hdbk_5j"
+locator = "Table 3.5.1.0(b1), p. 3-220"
+accessed = 2026-10-17
+scope = "5052 sheet and plate, AMS 4016 (H32), S-basis"
+
+[[source]]
+id = "hdbk5j_6061"
+publication = "mil_hdbk_5j"
+locator = "Table 3.6.2.0(b1), p. 3-264"
+accessed = 2026-10-17
+scope = "6061 sheet, AMS 4025/4027 and AMS-QQ-A-250/11 (T6, T62), A- and B-basis"
+
+[[source]]
+id = "hdbk5j_1025"
+publication = "mil_hdbk_5j"
+locator = "Table 2.2.1.0(b), p. 2-8"
+accessed = 2026-10-17
+scope = "AISI 1025 annealed sheet, strip and plate (AMS 5046, AMS-S-7952), S-basis"
+
+[[source]]
+id = "hdbk5j_304"
+publication = "mil_hdbk_5j"
+locator = "Table 2.7.1.0(b), p. 2-223, footnote b"
+accessed = 2026-10-17
+scope = "AISI 304 annealed (AMS 5513), read from the AISI 301 Annealed column, S-basis"
+
+[[source]]
+id = "faa_neutral_axis"
+publication = "faa_h_8083_31b"
+locator = "Ch. 4, Step 4, printed p. 4-63, and Fig 4-126, p. 4-64"
+accessed = 2026-10-17
+scope = "neutral axis about 0.445 t from the inside radius; aircraft aluminum, bench forming"
+
+[[source]]
+id = "edd5_k"
+publication = "edd5"
+locator = "Ch. 19, Fig 19.11, printed p. 784"
+accessed = 2026-10-17
+scope = "instructional neutral-axis position, 0.4 t"
+
+# --- Materials: option keys are public. A material has tempers, each with its full name,
+# or a name of its own. gauges lists the gauge systems it is ordered by (gauges.toml ids).
+
+[[material]]
+key = "al:5052"
+label = "5052"
+group = "Aluminum"
+gauges = ["awg"]
+tempers = [{ key = "temper:h32", label = "H32", name = "5052-H32 aluminum" }]
+
+[[material]]
+key = "al:6061"
+label = "6061"
+group = "Aluminum"
+gauges = ["awg"]
+tempers = [{ key = "temper:t6", label = "T6", name = "6061-T6 aluminum" }]
+
+[[material]]
+key = "cs:a1008"
+label = "Mild steel, cold-rolled (ASTM A1008 CS)"
+group = "Carbon steel"
+name = "mild cold-rolled steel (A1008 CS)"
+gauges = ["msg", "uss"]
+
+[[material]]
+key = "cs:a653"
+label = "Galvanized steel (ASTM A653)"
+group = "Carbon steel"
+name = "galvanized steel (A653)"
+gauges = ["galv"]
+radius_note = "No public-domain source gives a minimum bend radius for galvanized steel; use the base steel's guidance. The zinc coating can flake or crack on tight bends."
+
+[[material]]
+key = "cs:a1011"
+label = "Hot-rolled steel, pickled and oiled (ASTM A1011)"
+group = "Carbon steel"
+name = "hot-rolled pickled and oiled steel (A1011)"
+gauges = ["msg", "uss"]
+radius_note = "No public-domain source gives a minimum bend radius for hot-rolled pickled and oiled steel; use the base steel's guidance, and bend a test piece first."
+
+[[material]]
+key = "ss:304"
+label = "304, annealed (2B finish)"
+group = "Stainless steel"
+gauges = ["uss"]
+tempers = [{ key = "temper:annealed", label = "Annealed", name = "304 stainless, annealed (2B finish)" }]
+
+# --- Minimum inside radius. Values are multiples of T (times_t: one value, or a range's
+# lower and upper bounds) or radii in the row's unit (radius), one per listed thickness or
+# band. angle is the bend angle the source states, or "not_stated".
+
+[[min_radius]]
+material = "al:5052"
+temper = "temper:h32"
+source = "ac_radii_aluminum"
+trust = "spec_guidance"
+angle = "90"
+unit = "in"
+thicknesses = ["0.016", "0.032", "0.064", "0.128", "0.182", "0.258"]
+times_t = [["0"], ["0"], ["1/2", "1"], ["1/2", "3/2"], ["1/2", "3/2"], ["1/2", "3/2"]]
+
+[[min_radius]]
+material = "al:6061"
+temper = "temper:t6"
+source = "ac_radii_aluminum"
+trust = "spec_guidance"
+angle = "90"
+unit = "in"
+thicknesses = ["0.016", "0.032", "0.064", "0.128", "0.182", "0.258"]
+times_t = [["0", "1"], ["1/2", "3/2"], ["1", "2"], ["3/2", "3"], ["2", "4"], ["3", "4"]]
+
+[[min_radius]]
+material = "al:6061"
+temper = "temper:t6"
+source = "to_standard_radii_aluminum"
+trust = "spec_guidance"
+angle = "90"
+unit = "in"
+thicknesses = [
+  "0.012", "0.016", "0.020", "0.025", "0.032", "0.040", "0.050", "0.063",
+  "0.071", "0.080", "0.090", "0.100", "0.125", "0.160", "0.190", "0.250",
+]
+radius = [
+  "0.03", "0.03", "0.03", "0.06", "0.09", "0.09", "0.12", "0.16",
+  "0.19", "0.22", "0.25", "0.31", "0.38", "0.44", "0.69", "1.00",
+]
+label = "TO's group with 2014-T4, 2024-T3, 2024-T4, 7075-W, and 7178-W"
+
+[[min_radius]]
+material = "cs:a1008"
+source = "to_radii_carbon_steel"
+trust = "spec_guidance"
+angle = "not_stated"
+unit = "in"
+thicknesses = ["0.016", "0.020", "0.025", "0.032", "0.040", "0.050", "0.063", "0.125", "0.187"]
+times_t = [["2"], ["2"], ["2"], ["2"], ["2"], ["2"], ["2"], ["2"], ["2"]]
+label = "TO's 1020/1025 row, a conservative stand-in for A1008 CS"
+
+[[min_radius]]
+material = "ss:304"
+temper = "temper:annealed"
+source = "to_radii_stainless"
+trust = "spec_guidance"
+angle = "not_stated"
+unit = "in"
+bands = [
+  { min = "0.012", max = "0.051" },
+  { min = "0.051", max = "0.090", min_inclusive = false },
+  { min = "0.190", max = "0.250" },
+]
+times_t = [["2"], ["2"], ["2"]]
+label = "TO's only 304 row, for ½ Hard; a conservative stand-in for annealed 2B sheet"
+note = "TO's 2015 edition gives about 1T for generic annealed corrosion-resistant steel."
+see_also = ["to_2015_annealed_stainless"]
+
+# --- Strengths, stated as the source gives them, longitudinal (L) and long transverse
+# (LT). Stored with their basis for later use; tonnage would need an upper value.
+
+[[strength]]
+material = "al:5052"
+temper = "temper:h32"
+source = "hdbk5j_5052"
+basis = "spec_minimum"
+trust = "handbook_rule"
+unit = "in"
+thickness = { min = "0.017", max = "2.000" }
+f_tu = { l = "31 ksi", lt = "31 ksi" }
+f_ty = { l = "23 ksi", lt = "22 ksi" }
+
+[[strength]]
+material = "al:6061"
+temper = "temper:t6"
+source = "hdbk5j_6061"
+basis = "a_basis"
+trust = "handbook_rule"
+unit = "in"
+thickness = { min = "0.010", max = "0.249" }
+f_tu = { l = "42 ksi", lt = "42 ksi" }
+f_ty = { l = "36 ksi", lt = "35 ksi" }
+note = "Strengths may be lower in material formed or cold-worked in the annealed temper before solution heat treatment."
+
+[[strength]]
+material = "cs:a1008"
+source = "hdbk5j_1025"
+basis = "spec_minimum"
+trust = "handbook_rule"
+f_tu = { l = "55 ksi", lt = "55 ksi" }
+f_ty = { l = "36 ksi", lt = "36 ksi" }
+note = "AISI 1025 annealed, a stand-in for A1008 CS; the source states no thickness range."
+
+[[strength]]
+material = "ss:304"
+temper = "temper:annealed"
+source = "hdbk5j_304"
+basis = "spec_minimum"
+trust = "handbook_rule"
+unit = "in"
+thickness = { max = "0.187" }
+f_tu = { l = "73 ksi", lt = "75 ksi" }
+f_ty = { l = "26 ksi", lt = "30 ksi" }
+note = "For AMS 5513 material. 2B sheet is commonly bought to ASTM A240/A480, which wasn't checked against these values."
+
+# --- K-factor starting values: labelled rules of thumb, applied only on request (M2).
+
+[[k_start]]
+value = "0.445"
+source = "faa_neutral_axis"
+materials = ["al:5052", "al:6061"]
+note = "Stated outright; the handbook's bend-allowance formula implies 0.4475."
+
+[[k_start]]
+value = "0.4"
+source = "edd5_k"
+materials = ["al:5052", "al:6061", "cs:a1008", "ss:304"]
+note = "The textbook's instructional value."

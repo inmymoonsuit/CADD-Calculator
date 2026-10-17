@@ -76,6 +76,10 @@ class Basis(Enum):
     RULE_OF_THUMB = "rule_of_thumb"
     NOMINAL_DEFINITION = "nominal_definition"
     """A nominal value from a published definition, such as a gauge system's thickness."""
+    RECOMMENDED_MINIMUM = "recommended_minimum"
+    """A least value that published practice recommends, such as a minimum bend radius.
+
+    Unlike ``SPEC_MINIMUM``, it isn't a property a material specification guarantees."""
 
 
 class TrustLevel(Enum):

@@ -26,8 +26,9 @@ the material in this app.
 **Inside radius (R)**: the radius of the inside surface of the bend.
 
 **K-factor (K)**: where the neutral axis sits, as a fraction of the thickness measured from
-the inside surface. Cited starting values are about 0.35 to 0.45 (FAA, Machinery's
-Handbook, and the textbook's 0.4), approaching 0.5 for large R/T; see
+the inside surface. Cited starting values are 0.445 for aircraft aluminum (FAA), about
+0.408 to 0.452 by material (*Machinery's Handbook*), and the textbook's 0.4, approaching
+0.5 for large R/T; see
 [materials-data-sources.md](../dev/research/materials-data-sources.md#4-neutral-axis-k-factor),
 §4. It is best measured from a test bend in your own shop.
 
