@@ -7,12 +7,15 @@ import math
 import pytest
 
 from caddcalc.calculators.sheet_metal import (
+    CALCULATORS,
     BendAllowance,
     FormedSegmentFlatLength,
     TruncatedConeLayout,
     VDieOpening,
 )
-from caddcalc.core import InputError
+from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
+from caddcalc.core import DomainValues, InputError, SourceKind
+from caddcalc.core.units import from_base, to_base
 from tests.helpers import run_inches
 
 
@@ -114,3 +117,71 @@ def test_each_warning_appears_once_with_two_steep_bends() -> None:
     angle_warnings = [w for w in result.warnings if "past 90°" in w]
     assert len(radius_warnings) == 1
     assert [w[:2] for w in angle_warnings] == ["A1", "A2"]
+
+
+# --- shared sheet-metal settings (ADR-0013, decision A) -----------------------------------
+
+
+def sheet_metal_settings(**inches: float) -> DomainValues:
+    """Sheet Metal settings with lengths given in inches (ratios as plain numbers)."""
+    values = {
+        key: to_base(value, "in") if key != "k_factor" else value for key, value in inches.items()
+    }
+    return DomainValues(SHEET_METAL.id, "Sheet Metal settings", values)
+
+
+def test_sheet_metal_shares_thickness_inside_radius_and_k_factor() -> None:
+    assert [s.key for s in SHEET_METAL.settings] == ["thickness", "inside_radius", "k_factor"]
+    shared = {p.key for calc in CALCULATORS for p in calc.params if p.shared}
+    assert shared == {"thickness", "inside_radius", "k_factor"}
+    assert not any(p.shared for p in VDieOpening.params if p.key == "radius_ratio")
+
+
+def test_every_parameter_with_a_setting_key_is_shared() -> None:
+    keys = {s.key for s in SHEET_METAL.settings}
+    for calc in CALCULATORS:
+        for p in calc.params:
+            if p.key in keys:
+                assert p.shared, f"{calc.id}: {p.key} should inherit the Sheet Metal setting"
+
+
+def test_the_cone_keeps_its_own_thickness_until_the_setting_is_set() -> None:
+    cone = TruncatedConeLayout()
+    plain = cone.run(method="course")
+    assert from_base(plain.inputs["thickness"], "in") == pytest.approx(0.0747)
+    assert plain.source_of("thickness").kind is SourceKind.DEFAULT
+
+    shared = cone.run(method="course", settings=sheet_metal_settings(thickness=0.1046))
+    assert shared.source_of("thickness").kind is SourceKind.DOMAIN
+    # ADR-0013 decision D: Lesson 4's cone at Lesson 2's thickness.
+    assert shared.outputs["sweep_angle"] == pytest.approx(132.30, abs=0.005)
+
+
+def test_v_die_methods_read_only_their_own_shared_setting() -> None:
+    settings = sheet_metal_settings(thickness=0.25, inside_radius=0.3)
+    eight_t = VDieOpening().run(method="eight_t", settings=settings)
+    assert from_base(eight_t.outputs["die_opening"], "in") == pytest.approx(2.0)
+    assert "inside_radius" not in eight_t.inputs
+
+    ratio = VDieOpening().run(method="radius_ratio", settings=settings)
+    assert from_base(ratio.outputs["die_opening"], "in") == pytest.approx(0.3 / 0.156)
+    assert "thickness" not in ratio.inputs
+    assert ratio.source_of("radius_ratio").kind is SourceKind.DEFAULT
+
+
+def test_only_k_factor_methods_read_the_shared_k_factor() -> None:
+    settings = sheet_metal_settings(k_factor=0.44)
+    course = BendAllowance().run(method="course", settings=settings)
+    assert "k_factor" not in course.inputs
+    k = BendAllowance().run(method="k_factor", settings=settings)
+    assert k.inputs["k_factor"] == pytest.approx(0.44)
+    assert k.source_of("k_factor").kind is SourceKind.DOMAIN
+
+
+def test_an_entered_value_still_beats_the_shared_setting() -> None:
+    settings = sheet_metal_settings(thickness=0.25)
+    out = FormedSegmentFlatLength().run(
+        {"thickness": to_base(0.1046, "in")}, method="course", settings=settings
+    )
+    assert out.source_of("thickness").kind is SourceKind.EXPLICIT
+    assert from_base(out.outputs["flat_length"], "in") == pytest.approx(1.015332, rel=1e-9)

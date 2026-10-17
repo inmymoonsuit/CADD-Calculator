@@ -55,6 +55,11 @@ All notable changes are recorded here. The format follows
   another domain are refused. `Result.input_sources` records each input's `InputSource`,
   which `to_dict()` includes. The CLI prints each input's source, e.g. `(entered)` or
   `(default)`.
+- The Sheet Metal domain shares thickness, inside radius, and K-factor (ADR-0013, decision A).
+  Its calculators build these parameters from the domain settings, keeping their own
+  defaults: the cone keeps 0.0747 in, the V-die calculator shares R and T only in the
+  method that uses each, and K is shared only by K-factor methods. The die ratio P stays
+  per calculator.
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A

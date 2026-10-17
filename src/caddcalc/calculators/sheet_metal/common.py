@@ -10,6 +10,13 @@ Conventions (see docs/user/glossary.md):
 
 from __future__ import annotations
 
+from dataclasses import replace
+
+from caddcalc.calculators.sheet_metal.domain import (
+    INSIDE_RADIUS_SETTING,
+    K_FACTOR_SETTING,
+    THICKNESS_SETTING,
+)
 from caddcalc.core import Dimension, Method, Param, Reference, Verification
 
 LEGACY_LESSON_2 = Reference(
@@ -41,34 +48,25 @@ EDD5_CONE = Reference(
     "Ch. 23, Developing a Cone, step 3, printed p. 1051",
 )
 
-THICKNESS = Param(
-    "thickness",
-    "T",
-    "Material thickness",
-    Dimension.LENGTH,
+# Shared parameters (ADR-0013): each is its domain setting plus this calculator family's
+# default and help, so key, dimension, and range always match the setting.
+THICKNESS = replace(
+    THICKNESS_SETTING,
+    shared=True,
     default="0.1046 in",
-    minimum=0.0,
-    min_inclusive=False,
     help="Sheet thickness. 0.1046 in is 12 ga (Manufacturers' Standard Gauge for steel sheet), "
     "the course example.",
 )
-INSIDE_RADIUS = Param(
-    "inside_radius",
-    "R",
-    "Inside bend radius",
-    Dimension.LENGTH,
+INSIDE_RADIUS = replace(
+    INSIDE_RADIUS_SETTING,
+    shared=True,
     default="0.156 in",
-    minimum=0.0,
     help="Radius on the inside surface of the bend.",
 )
-K_FACTOR = Param(
-    "k_factor",
-    "K",
-    "K-factor",
-    Dimension.RATIO,
+K_FACTOR = replace(
+    K_FACTOR_SETTING,
+    shared=True,
     default="0.4",
-    minimum=0.0,
-    maximum=1.0,
     help=(
         "Neutral-axis position as a fraction of thickness, measured from the inside surface. "
         "Typically 0.3 to 0.5. The default, 0.4, is the instructional value in Engineering "
