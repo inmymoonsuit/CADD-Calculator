@@ -11,6 +11,7 @@ from caddcalc.core import expr
 from caddcalc.core.choices import OPTION_KEY, Choice, ChoiceResolver, DerivedValue, Option
 from caddcalc.core.errors import InputError, SpecError, UsageError
 from caddcalc.core.notes import Note
+from caddcalc.core.refdata import ReferenceTable, ReferenceValue, TableSpec
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Param
 
@@ -36,6 +37,9 @@ class Domain:
     """Selections the domain offers, such as a gauge, that derive setting values."""
     resolver: ChoiceResolver | None = field(default=None, compare=False)
     """Supplies the choices' options and derived values; required when there are choices."""
+    tables: tuple[TableSpec, ...] = field(default=(), compare=False)
+    """The reference tables the domain draws on. A value the user applies, rather than
+    types, must be an entry of one of them (``DomainSettings.set``)."""
 
     @property
     def settings_label(self) -> str:
@@ -108,6 +112,30 @@ class Domain:
                 f"default, {marked}; at most one may be"
             )
         return options
+
+    def check_origin(self, origin: ValueOrigin, value: float) -> None:
+        """Check that ``origin`` is an entry of one of this domain's tables, giving ``value``.
+
+        So nothing can be applied without a table entry (ADR-0014 §5.1, decision D7).
+
+        Raises:
+            UsageError: No table of the domain defines ``origin``'s value at its name and
+                version, the origin cites another source than the entry's, or ``value``
+                isn't the entry's value.
+        """
+        found = (spec.source_of(origin.table, origin.version, origin.value) for spec in self.tables)
+        source = next((s for s in found if s is not None), None)
+        if source is None:
+            raise UsageError(
+                f"Domain {self.id!r} has no table entry {origin.value.key} in "
+                f"{origin.table!r}, version {origin.version}, to apply"
+            )
+        if source.reference != origin.reference:
+            raise UsageError(f"An applied value must cite its entry's source, {source.reference}")
+        if value != origin.value.value:
+            raise UsageError(
+                f"An applied value is its entry's {origin.value.value!r}, not {value!r}"
+            )
 
     def ordered_choices(self) -> tuple[Choice, ...]:
         """Return the choices with each one after the choices it depends on."""
@@ -244,19 +272,24 @@ class Domain:
 
 @dataclass(frozen=True)
 class ValueOrigin:
-    """The citation of a set value the user applied rather than typed (ADR-0014 M2).
+    """The table entry a set value was applied from, rather than typed (ADR-0014 M2).
 
     A cited starting value, such as a K-factor applied with a click, becomes the user's own
-    domain value but keeps its citation, and results show both while it's in use. Typing
-    over the value drops its origin.
+    domain value but keeps its table entry and citation, and results show the citation
+    while it's in use. Typing over the value drops its origin. Build one with ``of``.
 
     Raises:
         UsageError: The note already has subjects; ``Calculator.run`` names the inputs
             that take the value.
     """
 
+    table: str
+    """The name of the table the entry is in, e.g. ``"Sheet-metal materials"``."""
+    version: int
+    value: ReferenceValue
+    """The entry; its ``key`` identifies it in its table."""
     reference: Reference
-    """The source the value was applied from."""
+    """The citation of the entry's source, which results show."""
     note: Note | None = None
     """A note results carry while the value is in use, such as a test-bend prompt."""
 
@@ -265,6 +298,20 @@ class ValueOrigin:
             raise UsageError(
                 "The note of an applied value has subjects; run() names the inputs that take it"
             )
+
+    @classmethod
+    def of(
+        cls, table: ReferenceTable, value: ReferenceValue, note: Note | None = None
+    ) -> ValueOrigin:
+        """Return the origin of ``value``, an entry of ``table``, with an optional note.
+
+        Raises:
+            UsageError: ``table`` doesn't declare ``value``'s source.
+        """
+        source = table.sources.get(value.source)
+        if source is None:
+            raise UsageError(f"Table {table.name!r} has no source {value.source!r}")
+        return cls(table.name, table.version, value, source.reference, note)
 
 
 @dataclass(frozen=True)

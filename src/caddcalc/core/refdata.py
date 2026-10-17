@@ -10,6 +10,7 @@ and the release-checklist rules that can be checked mechanically (ADR-0014 §5).
 from __future__ import annotations
 
 import datetime
+import functools
 import hashlib
 import json
 import math
@@ -210,6 +211,12 @@ def _reaches(low: float, low_included: bool, high: float, high_included: bool) -
     return low < high or (low == high and low_included and high_included)
 
 
+SeriesKey = tuple[str, str, tuple[tuple[str, str], ...], Basis]
+"""A series: a quantity, a source id, the conditions as sorted pairs, and a basis."""
+ValueKey = tuple[str, str, tuple[tuple[str, str], ...], Basis, Band | None]
+"""A value's identity in its table: its series and its band."""
+
+
 @dataclass(frozen=True)
 class ReferenceValue:
     """One value from a reference table, with its sources and how far to trust it.
@@ -252,6 +259,20 @@ class ReferenceValue:
                 raise SpecError(f"Condition {key!r} needs a value")
         object.__setattr__(self, "conditions", MappingProxyType(dict(self.conditions)))
 
+    @property
+    def series(self) -> SeriesKey:
+        """The series the value belongs to: its quantity, source, conditions, and basis.
+
+        Within one series bands don't overlap, and a value without a band is the series'
+        only value (ADR-0014 §1).
+        """
+        return (self.quantity, self.source, tuple(sorted(self.conditions.items())), self.basis)
+
+    @property
+    def key(self) -> ValueKey:
+        """The value's identity in its table: its series and its band."""
+        return (*self.series, self.band)
+
 
 @dataclass(frozen=True)
 class ReferenceTable:
@@ -265,6 +286,8 @@ class ReferenceTable:
     """The content keys its domain module declared, for that module to read."""
     digest: str = ""
     """A hash of the table's parsed content, which tests pin to its name and version."""
+    quantities: frozenset[str] = frozenset()
+    """The quantities its values may be, as its domain module declares them."""
 
     @property
     def reference(self) -> Reference:
@@ -279,6 +302,11 @@ class ReferenceTable:
             f"{dict(value.conditions)}"
         )
         for other in others:
+            if band is None and other is None:
+                raise SpecError(
+                    f"{what} twice without a band; an unbanded value covers every thickness, "
+                    "so it is its series' only value"
+                )
             if (band is None) != (other is None):
                 raise SpecError(f"{what} both with and without a band")
             if band is not None and other is not None:
@@ -294,26 +322,41 @@ class ReferenceTable:
         Whether a value's defining source really states it can't be checked here; the
         release checklist covers that (ADR-0014 §5).
 
-        Bands are checked per series: the values of one quantity, from one source, under
-        one set of conditions. Within a series, bands must not overlap, so a lookup finds
-        at most one value. Different sources may overlap, because where sources disagree
-        every one is shown (ADR-0014 M4).
+        Every value is of a quantity the table declares, and every value of one quantity
+        names the same condition keys, so a lookup can match conditions exactly. Bands are
+        checked per series (``ReferenceValue.series``): within one, bands must not overlap
+        and an unbanded value is the only value, so a lookup finds at most one. Different
+        sources may overlap, because where sources disagree every one is shown (M4).
 
         Raises:
-            SpecError: A value cites a source the table doesn't declare; a cite-only
-                publication defines more values, through any of its sources, than its
-                cap (ADR-0014 §5.1); or a series mixes banded and unbanded values, mixes
-                dimensions, or has overlapping bands (ADR-0014 §1).
+            SpecError: A value's quantity isn't declared, or its condition keys differ from
+                another value's of the same quantity; it cites a source the table doesn't
+                declare; a cite-only publication defines more values, through any of its
+                sources, than its cap (ADR-0014 §5.1); or a series has overlapping bands,
+                more than one unbanded value, a mix of both, or bands of different
+                dimensions (ADR-0014 §1).
         """
         defined: Counter[str] = Counter()
-        series: dict[tuple[str, str, tuple[tuple[str, str], ...]], list[Band | None]] = {}
+        series: dict[SeriesKey, list[Band | None]] = {}
+        condition_keys: dict[str, frozenset[str]] = {}
         for value in values:
+            if value.quantity not in self.quantities:
+                raise SpecError(
+                    f"{self.name}: quantity {value.quantity!r} isn't declared; the table "
+                    f"declares {sorted(self.quantities)}"
+                )
+            keys = frozenset(value.conditions)
+            expected = condition_keys.setdefault(value.quantity, keys)
+            if keys != expected:
+                raise SpecError(
+                    f"{self.name}: {value.quantity!r} values name conditions {sorted(expected)} "
+                    f"and {sorted(keys)}; every value of a quantity names the same ones"
+                )
             unknown = [s for s in (value.source, *value.corroborating) if s not in self.sources]
             if unknown:
                 raise SpecError(f"{self.name}: a value cites unknown sources {unknown}")
             defined[self.sources[value.source].publication.id] += 1
-            key = (value.quantity, value.source, tuple(sorted(value.conditions.items())))
-            self._check_band(value, series.setdefault(key, []))
+            self._check_band(value, series.setdefault(value.series, []))
         for publication_id, count in defined.items():
             publication = self.publications[publication_id]
             if publication.license is License.CITE_ONLY_FACT and count > publication.cite_only_cap:
@@ -337,13 +380,36 @@ class TableSpec:
     values: Callable[[ReferenceTable], Iterable[ReferenceValue]]
     """Builds the table's values as its domain module does, so tests can hold the cite-only
     cap across every shipped table, not just within one."""
+    quantities: frozenset[str]
+    """The quantities its values may be (``ReferenceValue.quantity``)."""
 
     def load(self) -> ReferenceTable:
         """Load and check the table."""
-        return load_table(self.package, self.filename, self.content_keys)
+        return load_table(self.package, self.filename, self.content_keys, self.quantities)
+
+    def source_of(self, name: str, version: int, value: ReferenceValue) -> TableSource | None:
+        """Return ``value``'s source if this table is ``name`` at ``version`` and defines it.
+
+        The value must be one the domain module builds from the table, exactly, so an
+        applied value always has its table entry (ADR-0014, amendments). The table is
+        loaded and its values built once per process.
+        """
+        table, entries = _entries(self)
+        if (table.name, table.version) != (name, version) or entries.get(value.key) != value:
+            return None
+        return table.sources[value.source]
 
 
-def load_table(package: str, filename: str, content_keys: Iterable[str]) -> ReferenceTable:
+@functools.cache
+def _entries(spec: TableSpec) -> tuple[ReferenceTable, Mapping[ValueKey, ReferenceValue]]:
+    """Load ``spec``'s table and build its values, once, keyed by their identity."""
+    table = spec.load()
+    return table, MappingProxyType({value.key: value for value in spec.values(table)})
+
+
+def load_table(
+    package: str, filename: str, content_keys: Iterable[str], quantities: Iterable[str] = ()
+) -> ReferenceTable:
     """Load and check a reference table shipped in ``package``.
 
     Args:
@@ -352,6 +418,7 @@ def load_table(package: str, filename: str, content_keys: Iterable[str]) -> Refe
         content_keys: The top-level keys the domain module reads, besides the header,
             publications, and sources. Any other key is refused, so a misspelled key can't
             pass silently.
+        quantities: The quantities its values may be.
 
     Raises:
         SpecError: The file is missing, isn't valid TOML, or breaks the table schema.
@@ -360,10 +427,12 @@ def load_table(package: str, filename: str, content_keys: Iterable[str]) -> Refe
         text = resources.files(package).joinpath(filename).read_text(encoding="utf-8")
     except (OSError, ModuleNotFoundError) as exc:
         raise SpecError(f"Reference table {package}/{filename} can't be read: {exc}") from exc
-    return parse_table(text, f"{package}/{filename}", content_keys)
+    return parse_table(text, f"{package}/{filename}", content_keys, quantities)
 
 
-def parse_table(text: str, origin: str, content_keys: Iterable[str]) -> ReferenceTable:
+def parse_table(
+    text: str, origin: str, content_keys: Iterable[str], quantities: Iterable[str] = ()
+) -> ReferenceTable:
     """Parse and check a reference table's TOML text.
 
     Args:
@@ -371,6 +440,7 @@ def parse_table(text: str, origin: str, content_keys: Iterable[str]) -> Referenc
         origin: Where the text came from, for error messages.
         content_keys: The top-level keys allowed besides ``table``, ``publication``, and
             ``source``.
+        quantities: The quantities its values may be (``ReferenceTable.check_values``).
 
     Raises:
         SpecError: The text isn't valid TOML, or breaks the table schema.
@@ -413,6 +483,7 @@ def parse_table(text: str, origin: str, content_keys: Iterable[str]) -> Referenc
         MappingProxyType(sources),
         MappingProxyType(raw),
         digest,
+        frozenset(quantities),
     )
 
 

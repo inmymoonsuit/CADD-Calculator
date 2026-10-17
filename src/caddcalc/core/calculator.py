@@ -363,13 +363,33 @@ class Calculator(ABC):
         )
 
     def _run_checks(self, ctx: Context, settings: DomainValues | None) -> None:
-        """Run the declared result checks, which may add notes and nothing else."""
+        """Run the declared result checks, which may append notes and change nothing else.
+
+        The run's inputs, outputs, steps, and symbols are compared with copies taken before
+        the checks, and its notes must keep their order and gain only new notes. A note
+        the run already has is refused too: repeating one is a check's bug.
+
+        Raises:
+            SpecError: A check raised, changed the run, or repeated a note.
+        """
         selections = MappingProxyType({}) if settings is None else settings.selections
-        work = (dict(ctx.inputs), len(ctx.steps), dict(ctx.outputs))
+        work = (dict(ctx.inputs), dict(ctx.outputs), tuple(ctx.steps), dict(ctx.symbols))
+        notes = tuple(ctx.notes)
         for check in self.checks:
-            check(ctx, selections)
-        if (ctx.inputs, len(ctx.steps), ctx.outputs) != work:
-            raise SpecError(f"{self.id}: a result check changed the work; checks only add notes")
+            name = getattr(check, "__name__", type(check).__name__)
+            try:
+                check(ctx, selections)
+            except Exception as exc:
+                raise SpecError(f"{self.id}: check {name} failed: {exc}") from exc
+            after = (dict(ctx.inputs), dict(ctx.outputs), tuple(ctx.steps), dict(ctx.symbols))
+            if after != work or tuple(ctx.notes[: len(notes)]) != notes:
+                raise SpecError(f"{self.id}: check {name} changed the run; checks only add notes")
+            seen = set(notes)
+            for note in ctx.notes[len(notes) :]:
+                if note in seen:
+                    raise SpecError(f"{self.id}: check {name} repeated the note {note.text!r}")
+                seen.add(note)
+            notes = tuple(ctx.notes)
 
     # --- definition checks ----------------------------------------------------------------
 

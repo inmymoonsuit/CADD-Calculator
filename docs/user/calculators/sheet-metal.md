@@ -82,8 +82,10 @@ until you pick one, so by default you type the decimal thickness.
 The **Material** row picks a group, then a material: aluminum 5052 or 6061; mild
 cold-rolled (ASTM A1008 CS), galvanized (ASTM A653), or hot-rolled pickled and oiled
 (ASTM A1011) carbon steel; or 304 stainless, annealed (2B finish). The **Temper** row
-then offers that material's tempers: 5052 comes in H32, 6061 in T6, and 304 annealed,
-each selected as soon as you pick the material. The carbon steels have no temper.
+then offers that material's tempers: 5052 comes in H32, 6061 in T6, 304 annealed, and
+each carbon steel as supplied, each selected as soon as you pick the material. If you
+change the material, its own temper is selected, and a temper you chose that the new
+material doesn't come in is reset, with a notice.
 
 * **A material sets no value.** The thickness, inside radius, and K-factor stay as you
   set them; nothing about a result's numbers changes when you pick one.
@@ -110,8 +112,8 @@ note names its sources and how far each applies.
   says the check uses it alone.
 * **Stand-ins are labelled.** Mild steel uses TO's 2T for 1020/1025, and 304 annealed uses
   TO's 2T for 304 ½ Hard, its only 304 row; both are conservative.
-* Whenever the check applies, a note repeats TO's bending practice: form across the
-  grain where possible, and bend a test piece first.
+* When the inside radius is below the minimum, a second note gives TO's bending
+  practice: form across the grain where possible, and bend a test piece first.
 * **The rule of thumb.** Without a material, or where no source applies, an inside radius
   below the thickness still gets the warning "Inside radius is smaller than the material
   thickness". A cited check replaces it, so the two never disagree.

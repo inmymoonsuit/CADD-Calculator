@@ -39,11 +39,33 @@ from caddcalc.core.refdata import MAX_CITE_ONLY_PER_PUBLICATION
 
 ACCESSED = datetime.date(2026, 10, 17)
 SAMPLE_KEYS = {"system"}
+SAMPLE_QUANTITIES = frozenset({"constant", "min_radius", "f_tu"})
+
+
+def sample_table() -> ReferenceTable:
+    """The sample table, with the quantities these tests' values are."""
+    return load_table("tests", "data/refdata_sample.toml", SAMPLE_KEYS, SAMPLE_QUANTITIES)
+
+
+def constant(
+    value: float,
+    source: str,
+    name: str,
+    *,
+    corroborating: tuple[str, ...] = (),
+    basis: Basis = Basis.TYPICAL,
+    trust: TrustLevel = TrustLevel.HANDBOOK_RULE,
+) -> ReferenceValue:
+    """A named, cited constant, as the gauge table holds them; the values are invented."""
+    return ReferenceValue(
+        value, source, basis, trust, corroborating, quantity="constant", conditions={"name": name}
+    )
+
 
 TABLE_DIGESTS: dict[tuple[str, int], str] = {
     ("Gauge systems", 1): "ed6163290ce1b92eb929efa905c5fcb7a7e9eeaacd83990a8e7cad1e32f51d0d",
     ("Sheet-metal materials", 1): (
-        "88d7828fdbc1197f308e5a3ee6aa061e66b4af56935d6c6c8511f3158aed52d5"
+        "89668b302c8c962c3c69c5ce2ffc0136c33a3bc9e7300f64cc42f2f6474abf36"
     ),
 }
 """The content hash of every shipped table, by (name, version). Changing a table's data
@@ -368,15 +390,13 @@ def test_a_work_split_across_tables_is_counted_once() -> None:
 
 def test_a_book_split_into_several_entries_stays_under_its_cap() -> None:
     """The reviewer's probe: one handbook cited five ways, each with its own cap of 1."""
-    values = [
-        ReferenceValue(float(n), f"s{n}", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE) for n in range(5)
-    ]
+    values = [constant(float(n), f"s{n}", f"c{n}") for n in range(5)]
     one_work = table(
         publication(**BOOK, title='"Machinery\'s Handbook"', cite_only_cap="1"),
         *(source(id=f'"s{n}"', locator=f'"p. {n}"') for n in range(5)),
     )
     with pytest.raises(SpecError, match="publication 'p' defines 5 values; its cap is 1"):
-        parse_table(one_work, "test", SAMPLE_KEYS).check_values(values)
+        parse_table(one_work, "test", SAMPLE_KEYS, SAMPLE_QUANTITIES).check_values(values)
 
     spellings = ("Machinery's Handbook", "MACHINERY’S  HANDBOOK", "Machinerys Handbook")
     editions = ("29th ed.", "29th Ed", "29TH ED.")
@@ -425,24 +445,31 @@ def test_public_domain_states_its_basis_and_own_measurements_are_their_own_kind(
 
 
 def test_a_cite_only_publication_may_define_only_its_capped_number_of_values() -> None:
-    sample = load_table("tests", "data/refdata_sample.toml", SAMPLE_KEYS)
-    computed = ReferenceValue(
-        2.657, "statute", Basis.NOMINAL_DEFINITION, TrustLevel.VERIFIED_DERIVATION, ("handbook",)
-    )
-    basis = ReferenceValue(41.82, "handbook", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE)
-    sample.check_values([computed, computed, basis])
+    sample = sample_table()
+
+    def computed(name: str) -> ReferenceValue:
+        return constant(
+            2.657,
+            "statute",
+            name,
+            corroborating=("handbook",),
+            basis=Basis.NOMINAL_DEFINITION,
+            trust=TrustLevel.VERIFIED_DERIVATION,
+        )
+
+    basis = constant(41.82, "handbook", "basis")
+    # A corroborating source defines nothing, so the handbook defines only the basis.
+    sample.check_values([computed("12"), computed("14"), basis])
 
     with pytest.raises(SpecError, match="'handbook' defines 2 values; its cap is 1"):
-        sample.check_values([computed, basis, basis])
-    appendix = ReferenceValue(9.0, "handbook_appendix", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE)
+        sample.check_values([computed("12"), basis, constant(41.0, "handbook", "basis_2")])
+    appendix = constant(9.0, "handbook_appendix", "appendix")
     with pytest.raises(SpecError, match="'handbook' defines 2 values; its cap is 1"):
         sample.check_values([basis, appendix])
-    stray = ReferenceValue(1.0, "vendor_page", Basis.TYPICAL, TrustLevel.RULE_OF_THUMB)
     with pytest.raises(SpecError, match="unknown sources"):
-        sample.check_values([stray])
-    hidden = ReferenceValue(1.0, "statute", Basis.TYPICAL, TrustLevel.RULE_OF_THUMB, ("nowhere",))
+        sample.check_values([constant(1.0, "vendor_page", "stray")])
     with pytest.raises(SpecError, match="unknown sources"):
-        sample.check_values([hidden])
+        sample.check_values([constant(1.0, "statute", "hidden", corroborating=("nowhere",))])
 
 
 def test_a_reference_value_agrees_with_its_stated_text() -> None:
@@ -530,14 +557,16 @@ def radius(source: str, thickness: Band | None, material: str = "al:6061") -> Re
 
 
 def test_bands_in_one_series_must_not_overlap() -> None:
-    """A series is one quantity, from one source, under one set of conditions."""
-    sample = load_table("tests", "data/refdata_sample.toml", SAMPLE_KEYS)
+    """A series is one quantity, from one source, under one set of conditions, at one basis."""
+    sample = sample_table()
     low, high = band(0.012, 0.051), band(0.051, 0.090, low_in=False)
     sample.check_values([radius("statute", low), radius("statute", high)])
     with pytest.raises(SpecError, match="overlapping bands"):
         sample.check_values([radius("statute", low), radius("statute", band(0.051, 0.090))])
     with pytest.raises(SpecError, match="both with and without a band"):
         sample.check_values([radius("statute", low), radius("statute", None)])
+    with pytest.raises(SpecError, match="twice without a band"):
+        sample.check_values([radius("statute", None), radius("statute", None)])
     angle = Band(0.0, 90.0, Dimension.ANGLE)
     with pytest.raises(SpecError, match="bands of different dimensions"):
         sample.check_values([radius("statute", low), radius("statute", angle)])
@@ -545,7 +574,7 @@ def test_bands_in_one_series_must_not_overlap() -> None:
 
 def test_other_sources_quantities_and_conditions_are_other_series() -> None:
     """Sources may overlap: where they disagree, every one is shown (ADR-0014 M4)."""
-    sample = load_table("tests", "data/refdata_sample.toml", SAMPLE_KEYS)
+    sample = sample_table()
     low = band(0.012, 0.051)
     sample.check_values(
         [
@@ -553,10 +582,37 @@ def test_other_sources_quantities_and_conditions_are_other_series() -> None:
             radius("handbook", low),
             replace(radius("statute", low), quantity="f_tu"),
             radius("statute", low, material="al:5052"),
+            replace(radius("statute", low), basis=Basis.A_BASIS),
         ]
     )
-    unbanded = ReferenceValue(1.0, "statute", Basis.TYPICAL, TrustLevel.HANDBOOK_RULE)
-    sample.check_values([unbanded, unbanded])
+    sample.check_values([constant(1.0, "statute", "a"), constant(2.0, "statute", "b")])
+
+
+def test_a_tables_values_are_its_declared_quantities_with_the_same_conditions() -> None:
+    """Lookups match conditions exactly, so a quantity names the same keys throughout."""
+    sample = sample_table()
+    low, high = band(0.012, 0.051), band(0.051, 0.090, low_in=False)
+    with pytest.raises(SpecError, match="quantity 'tonnage' isn't declared"):
+        sample.check_values([replace(radius("statute", low), quantity="tonnage")])
+    tempered = replace(
+        radius("statute", high), conditions={"material": "al:6061", "temper": "temper:6061_t6"}
+    )
+    with pytest.raises(
+        SpecError, match=r"name conditions \['material'\] and \['material', 'temper'\]"
+    ):
+        sample.check_values([radius("statute", low), tempered])
+
+
+def test_a_values_key_is_its_series_and_band() -> None:
+    value = radius("statute", band(0.012, 0.051))
+    assert value.series == (
+        "min_radius",
+        "statute",
+        (("material", "al:6061"),),
+        Basis.RULE_OF_THUMB,
+    )
+    assert value.key == (*value.series, band(0.012, 0.051))
+    assert replace(value, value=3.0).key == value.key, "the key names the entry, not its number"
 
 
 def test_every_shipped_table_loads_within_the_ceiling_and_is_pinned_to_its_version() -> None:

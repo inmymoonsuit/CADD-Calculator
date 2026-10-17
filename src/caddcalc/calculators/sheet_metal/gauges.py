@@ -295,7 +295,14 @@ def _constants(table: ReferenceTable) -> tuple[dict[str, Decimal], list[Referenc
         source = _source(table, where, entry["source"])
         trust = _trust(where, entry["trust"])
         values.append(
-            ReferenceValue(float(constants[name]), source, Basis.NOMINAL_DEFINITION, trust)
+            ReferenceValue(
+                float(constants[name]),
+                source,
+                Basis.NOMINAL_DEFINITION,
+                trust,
+                quantity="constant",
+                conditions={"name": name},
+            )
         )
     return constants, values
 
@@ -384,6 +391,8 @@ def _system(
                 TrustLevel.VERIFIED_DERIVATION,
                 checked,
                 stated,
+                quantity="thickness",
+                conditions={GAUGE.key: f"{system_id}:{size}"},
             )
         )
     scope = str(entry.get("scope", ""))
@@ -496,6 +505,7 @@ GAUGE_TABLE = TableSpec(
     "data/gauges.toml",
     frozenset({"constant", "weights", "system"}),
     lambda table: load_gauges(table).values,
+    frozenset({"constant", "thickness"}),
 )
 """The gauge table, as ``caddcalc.calculators.REFERENCE_TABLES`` lists it."""
 

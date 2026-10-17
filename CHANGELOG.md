@@ -10,16 +10,17 @@ All notable changes are recorded here. The format follows
 - **The minimum-radius check (ADR-0014, amendments).** With a material chosen, *Bend
   allowance & deduction* and *Flat length of a formed segment* check the inside radius
   against its cited minimum (`sheet_metal.checks.BendCheck`, a result check): the larger
-  source governs, a range at its upper bound, with every source and its scope shown, and a
-  bending-practice note from TO 1-1A-9. A thickness no source lists, a bend past 90°, a
+  source governs, a range at its upper bound, with every source and its scope shown, and
+  TO 1-1A-9's bending practice beside a limit. A thickness no source lists, a bend past 90°, a
   hem, and a material with no source each get a no-applicable-value note. A gauge
   thickness from a system the material isn't ordered by gets a warning. The materials
   table gains its `[practice]` entry.
 - Material and temper choices on the Sheet Metal page (ADR-0014, amendments): a grouped
   **Material** row (aluminum, carbon steel, stainless) and a **Temper** row that depends
-  on it, with a material's only temper selected for it. A material derives no value
-  (M2). `sheet_metal.domain.SheetMetalResolver` combines the gauge and material
-  resolvers.
+  on it, with a material's only temper selected for it. Tempers are keyed by their
+  material, e.g. `temper:6061_t6`, and the carbon steels come "as supplied". A material
+  derives no value (M2). `sheet_metal.domain.SheetMetalResolver` combines the gauge and
+  material resolvers.
 - **Phase 2b: the materials table (ADR-0014, amendments).**
   `sheet_metal/data/materials.toml` (version 1) defines the starter materials, keyed
   `al:5052`, `al:6061`, `cs:a1008`, `cs:a653`, `cs:a1011`, and `ss:304`, with their
@@ -33,15 +34,20 @@ All notable changes are recorded here. The format follows
 - Result checks, selections, and applied values for phase 2b (ADR-0014, amendments):
   `Calculator.checks` declares `ResultCheck`s that run after compute and add notes, never
   work, seeing the domain's choice selections (`DomainValues.selections`), which compute
-  never sees. `DomainSettings.set()` takes an `origin` and a `note` for a cited value the
-  user applied rather than typed (`ValueOrigin`): results name it, e.g. "Sheet Metal
-  settings, starting value from FAA-H-8083-31B, p. 4-63", and carry the note while it's
-  in use. Typing over the value drops both.
+  never sees; a check that changes the run or repeats a note is a `SpecError`.
+  `DomainSettings.set(origin=…)` takes a `ValueOrigin`, the table entry of a cited value
+  the user applied rather than typed, with any note it carries; it must be an entry of
+  one of the domain's tables (`Domain.tables`). Results name its source, e.g. "Sheet
+  Metal settings, starting value from FAA-H-8083-31B, …", and carry the note while it's
+  in use, also through a calculator's copy of it. Typing over the value drops both.
 - Bands, conditions, and per-parent defaults for phase 2b (ADR-0014, amendments):
   `core.Band`, a range with included or excluded ends that a reference value applies
-  across, never interpolated; `ReferenceValue.band`, `conditions`, and `quantity`; and
+  across, never interpolated; `ReferenceValue.band`, `conditions`, `quantity`, `series`,
+  and `key`; `TableSpec.quantities`, the quantities a table declares; and
   `ReferenceTable.check_values()` refuses overlapping bands within a series (one
-  quantity, from one source, under one set of conditions). `Option.default` lets a
+  quantity, from one source, under one set of conditions, at one basis), a second value
+  in a series without a band, a quantity the table doesn't declare, and values of one
+  quantity that name different condition keys. `Option.default` lets a
   resolver mark the option a choice falls back to, so each material can default to its
   own temper.
 - A stress dimension for phase 2b's material strengths (ADR-0005 and ADR-0014,

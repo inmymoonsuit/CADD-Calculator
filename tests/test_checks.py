@@ -91,7 +91,8 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
     limits = notes(result, LIMIT)
     assert bool(limits) == exceeded
     assert not rule_of_thumb(result), "a referenced check replaces the rule of thumb"
-    assert any(n.text.startswith(PRACTICE) for n in notes(result, WARNING))
+    practice = any(n.text.startswith(PRACTICE) for n in notes(result, WARNING))
+    assert practice == exceeded, "bending practice only beside a limit"
     if exceeded:
         (limit,) = limits
         assert [r.title.split(",")[0] for r in limit.references] == [

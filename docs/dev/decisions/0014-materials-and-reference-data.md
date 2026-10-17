@@ -542,8 +542,8 @@ stated basis. The schema changed before any table shipped, so it stays `schema =
   Both stay with the release checklist (§5).
 * **Correction to the identifiers above.** Phase 2b's material options name the
   designation without a temper, e.g. `al:6061` and `ss:304`. The temper is its own
-  dependent choice, e.g. `temper:t6` or `temper:h32`. The example `al:6061_t6` was
-  wrong.
+  dependent choice, keyed by its material, e.g. `temper:6061_t6` or `temper:5052_h32`.
+  The example `al:6061_t6` was wrong.
 
 ### 2026-10-17: declared parents and derived-note subjects (maintainer, phase 2a)
 
@@ -838,8 +838,9 @@ decisions D1–D10 and the 2b plan's flags.
   cold-rolled, CS), `cs:a653` (galvanized), `cs:a1011` (hot-rolled, pickled and oiled),
   and `ss:304`, labelled "304, annealed (2B finish)": the finish is part of the material,
   not a choice. The carbon steels are named by their specification, as names only. Each
-  temper is an option key (`temper:h32`, `temper:t6`, `temper:annealed`), so a second
-  temper can be added without renaming; the carbon steels have none. Each material lists
+  temper is an option key keyed by its material (`temper:5052_h32`, `temper:6061_t6`,
+  `temper:304_annealed`), so a second temper can be added without renaming; the carbon
+  steels each have one, "As supplied" (2b.3b, below). Each material lists
   the gauge systems it is ordered by, for 2b.6's gauge-and-material warning.
 * **Minimum radii are stated as their sources state them:** a multiple of T, a range of
   multiples, or a radius in inches, at the source's own listed thicknesses or bands.
@@ -930,3 +931,57 @@ length of a formed segment* declare (flag 4). V-die opening and the cone declare
   `gauges` per material), a warning names both and suggests the decimal thickness. A
   thickness typed over the gauge doesn't depend on its system, so it isn't warned
   about. It is a warning, never a block.
+
+### 2026-10-17: review fixes to the core and the materials data (maintainer, phase 2b.3b)
+
+Support & Review's review of 2b.1–2b.3 found three Mediums and two Lows. The maintainer's
+decisions on them, and on the 2b.4–2b.6 questions, are built here. Where they differ from
+the entries above, these replace them.
+
+* **An overridden applied value (M1).** A calculator field that overrides a family value
+  drops its key from the settings' origins, as from its values and derived values; the
+  page showed "has origins of unset" before. A copy made by unticking "Use Sheet Metal
+  value" keeps the applied value's origin, as a copy of a derived value keeps its
+  caution: results credit it as "copied from Sheet Metal settings, starting value from
+  …" and carry its note until the user types over it.
+* **A check changes nothing in place (M2).** Before the checks run, `run()` copies the
+  inputs, outputs, steps, notes, and symbols. After each check they must be equal, except
+  that notes may gain new ones at the end; a note the run already has is refused as a
+  check's bug. A check that raises becomes `SpecError("<id>: check <name> failed: …")`
+  from its exception. Notes come in a fixed order: those carried by the inputs, then
+  compute's, then the checks'.
+* **Series and lookups (M3).** A series is now a quantity, a source, the conditions, and
+  the basis (`ReferenceValue.series`), so A-basis and B-basis values could coexist; D5
+  ships A-basis only. An unbanded value covers every thickness, so it is its series' only
+  value. `ReferenceValue.key`, the series and the band, identifies a value in its table.
+  Lookups match conditions exactly, so within a table every value of a quantity names the
+  same condition keys, or the table is refused. Each table declares its quantities
+  (`TableSpec.quantities`, passed to `load_table` and `parse_table`), and a value of an
+  undeclared one is refused. A shipped-table test checks that every condition naming a
+  choice, such as a material or temper, names an option the domain offers. The gauge
+  table's values gain quantities and conditions to match: `constant`, by name, and
+  `thickness`, by gauge. Its data and digest are unchanged.
+* **Tempers are keyed by their material (L1),** with Q3's rule: `temper:5052_h32`,
+  `temper:6061_t6`, `temper:304_annealed`. A material change can't carry a temper across:
+  a chosen temper the new material doesn't offer is cleared, the new material's default
+  is selected, and the change is announced. Every material now has a temper, so every
+  radius and strength value names one: the carbon steels each have one, "As supplied"
+  (`temper:a1008_as_supplied`, `temper:a653_as_supplied`, `temper:a1011_as_supplied`),
+  the brief's alternative to no temper. The examples in the entries above now use these
+  keys.
+* **D7 in code (L2).** A `ValueOrigin` names its table entry: the table's name and
+  version and the `ReferenceValue` itself, whose `key` identifies it, with the citation of
+  its source. `ValueOrigin.of(table, value, note)` builds one. `DomainSettings.set()` takes
+  it as `origin` and accepts it only when the entry is a value of one of the domain's
+  tables (`Domain.tables`, checked by `Domain.check_origin`), cites that entry's source,
+  and gives the value being set. So nothing can be applied without a table entry. This
+  replaces 2b.3's `origin` and `note` arguments. `KStart.entry` is the entry the K
+  buttons will apply.
+* **Bending practice appears only beside a limit-exceeded note,** not on passing bends,
+  so results don't carry a standing warning. The Sheet Metal page's material facts (2b.7)
+  will show it whenever the chosen material has a referenced check.
+* **Accepted as built:** the rule of thumb now follows compute's notes; the gauge warning
+  fires only while the thickness in use is the gauge's, with the table's mapping (msg:
+  A1008 and A1011; galv: A653; uss: A1008, A1011, and 304; awg: the aluminums); and the
+  `[practice]` entry at version 1. The materials table stays version 1, unreleased, with
+  its digest re-pinned.

@@ -49,7 +49,7 @@ class Temper:
     """One temper a material is offered in."""
 
     key: str
-    """The option key, e.g. ``"temper:t6"``."""
+    """The option key, keyed per material, e.g. ``"temper:6061_t6"``."""
     label: str
     """How the option reads, e.g. ``"T6"``."""
     name: str
@@ -58,7 +58,11 @@ class Temper:
 
 @dataclass(frozen=True)
 class Material:
-    """A material the domain offers: its tempers and the gauge systems it's ordered by."""
+    """A material the domain offers: its tempers and the gauge systems it's ordered by.
+
+    Every material has at least one temper, so every value of a quantity names the same
+    conditions (ADR-0014, amendments).
+    """
 
     key: str
     """The option key, e.g. ``"al:6061"``."""
@@ -67,14 +71,12 @@ class Material:
     tempers: tuple[Temper, ...]
     gauges: frozenset[str]
     """The ids of the gauge systems it is ordered by, e.g. ``{"awg"}``."""
-    name: str = ""
-    """Its name for notes, when it has no tempers."""
     radius_note: str = ""
     """Why no minimum radius is given, when no source gives one."""
 
     def name_in(self, temper: str | None) -> str:
         """Return the material's name in ``temper``, e.g. ``"6061-T6 aluminum"``."""
-        return next((t.name for t in self.tempers if t.key == temper), self.name or self.label)
+        return next((t.name for t in self.tempers if t.key == temper), self.label)
 
 
 Multiple = tuple[Fraction, Fraction]
@@ -185,6 +187,8 @@ class KStart:
     source: TableSource
     materials: frozenset[str]
     """The keys of the materials it is offered for."""
+    entry: ReferenceValue
+    """Its table entry, which a ``ValueOrigin`` names when the value is applied."""
     note: str = ""
 
 
@@ -267,10 +271,18 @@ def load_materials(table: ReferenceTable) -> Materials:
     reader = _Reader(table)
     materials = tuple(reader.material(entry) for entry in reader.entries("material"))
     by_key: dict[str, Material] = {}
+    tempers: dict[str, str] = {}
     for material in materials:
         if material.key in by_key:
             raise SpecError(f"{table.name}: material {material.key!r} is declared twice")
         by_key[material.key] = material
+        for temper in material.tempers:
+            if temper.key in tempers:
+                raise SpecError(
+                    f"{table.name}: temper {temper.key!r} belongs to {tempers[temper.key]!r} "
+                    f"and {material.key!r}; key each temper by its material"
+                )
+            tempers[temper.key] = material.key
     values: list[ReferenceValue] = []
     radii = tuple(reader.radius(e, by_key, values) for e in reader.entries("min_radius"))
     strengths = tuple(reader.strength(e, by_key, values) for e in reader.entries("strength"))
@@ -317,16 +329,14 @@ class _Reader:
 
     def material(self, entry: Any) -> Material:
         where = self._where("material", entry, "key")
-        _check_keys(
-            where, entry, {"key", "label", "group", "gauges"}, {"tempers", "name", "radius_note"}
-        )
+        _check_keys(where, entry, {"key", "label", "group", "gauges", "tempers"}, {"radius_note"})
         key = _key(where, entry["key"])
-        tempers = tuple(self._temper(where, t) for t in entry.get("tempers", []))
+        listed = entry["tempers"]
+        if not isinstance(listed, list) or not listed:
+            raise SpecError(f"{where} needs at least one temper, each with its name")
+        tempers = tuple(self._temper(where, t) for t in listed)
         if len({t.key for t in tempers}) != len(tempers):
             raise SpecError(f"{where}: a temper repeats")
-        name = str(entry.get("name", ""))
-        if bool(tempers) == bool(name.strip()):
-            raise SpecError(f"{where} needs tempers, each with its name, or a name; not both")
         gauges = entry["gauges"]
         if (
             not isinstance(gauges, list)
@@ -340,7 +350,6 @@ class _Reader:
             _text(where, entry, "group"),
             tempers,
             frozenset(gauges),
-            name,
             str(entry.get("radius_note", "")),
         )
 
@@ -529,17 +538,16 @@ class _Reader:
         if unknown:
             raise SpecError(f"{where}: unknown materials {unknown}")
         # K is never trusted beyond a rule of thumb, whatever the table says (ADR-0014 §1).
-        values.append(
-            ReferenceValue(
-                stated.value,
-                source.id,
-                Basis.RULE_OF_THUMB,
-                TrustLevel.RULE_OF_THUMB,
-                stated=stated,
-                quantity="k_start",
-            )
+        value = ReferenceValue(
+            stated.value,
+            source.id,
+            Basis.RULE_OF_THUMB,
+            TrustLevel.RULE_OF_THUMB,
+            stated=stated,
+            quantity="k_start",
         )
-        return KStart(stated, source, frozenset(offered), str(entry.get("note", "")))
+        values.append(value)
+        return KStart(stated, source, frozenset(offered), value, str(entry.get("note", "")))
 
     def _case(
         self, where: str, entry: Mapping[str, Any], materials: Mapping[str, Material]
@@ -668,6 +676,10 @@ MATERIAL_TABLE = TableSpec(
     "data/materials.toml",
     frozenset({"material", "min_radius", "practice", "strength", "k_start"}),
     lambda table: load_materials(table).values,
+    frozenset(
+        {"min_radius", "min_radius_t", "min_radius_t_low", "min_radius_t_high", "k_start"}
+        | {"f_tu_l", "f_tu_lt", "f_ty_l", "f_ty_lt"}
+    ),
 )
 """The materials table, as ``caddcalc.calculators.REFERENCE_TABLES`` lists it."""
 

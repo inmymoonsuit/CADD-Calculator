@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import replace
 from decimal import Decimal
 from fractions import Fraction
 
@@ -26,6 +27,7 @@ from caddcalc.core import (
     Param,
     Reference,
     Registry,
+    Result,
     SpecError,
     UnknownCalculatorError,
     UsageError,
@@ -319,23 +321,91 @@ def test_result_checks_run_after_compute_and_see_the_selections() -> None:
     )
 
 
-def test_a_result_check_only_adds_notes() -> None:
-    def recompute(ctx: Context, _selections: Mapping[str, str]) -> None:
-        ctx.calc("Z", "X", label="Again", dimension=L)
+CARRIED = Note(NoteKind.WARNING, "Carried with the input.")
+
+
+def _checked_by(check: Callable[[Context, Mapping[str, str]], None]) -> Result:
+    """Run the demo with one result check, and a note carried by its explicit input."""
+
+    class Checked(_Demo):
+        checks = (check,)
+
+    return Checked().run({"length": 25.4}, explicit_notes={"length": CARRIED})
+
+
+def _recompute(ctx: Context, _selections: Mapping[str, str]) -> None:
+    ctx.calc("Z", "X", label="Again", dimension=L)
+
+
+def _replace_step(ctx: Context, _selections: Mapping[str, str]) -> None:
+    ctx.steps[0] = replace(ctx.steps[0], value=0.0)
+
+
+def _clear_notes(ctx: Context, _selections: Mapping[str, str]) -> None:
+    ctx.notes.clear()
+
+
+def _add_symbol(ctx: Context, _selections: Mapping[str, str]) -> None:
+    ctx.symbols["Q"] = (1.0, L)
+
+
+def _change_output(ctx: Context, _selections: Mapping[str, str]) -> None:
+    ctx.outputs["doubled"] = 0.0
+
+
+@pytest.mark.parametrize(
+    "check", [_recompute, _replace_step, _clear_notes, _add_symbol, _change_output]
+)
+def test_a_result_check_changes_nothing_in_place(
+    check: Callable[[Context, Mapping[str, str]], None],
+) -> None:
+    """Steps, symbols, outputs, and earlier notes, the carried caution among them."""
+    with pytest.raises(SpecError, match=f"check {check.__name__} changed the run"):
+        _checked_by(check)
+
+
+def test_a_result_check_may_not_repeat_a_note() -> None:
+    def twice(ctx: Context, _selections: Mapping[str, str]) -> None:
+        ctx.warn("Once is enough.")
+        ctx.warn("Once is enough.")
+
+    def again(ctx: Context, _selections: Mapping[str, str]) -> None:
+        ctx.notes.append(replace(CARRIED, subjects=("length",)))
+
+    with pytest.raises(SpecError, match=r"check twice repeated the note 'Once is enough\.'"):
+        _checked_by(twice)
+    with pytest.raises(SpecError, match="check again repeated the note"):
+        _checked_by(again)
+
+
+def test_a_failing_check_is_a_definition_error() -> None:
+    def lookup(_ctx: Context, selections: Mapping[str, str]) -> None:
+        if selections["material"]:
+            return
 
     def stray(ctx: Context, _selections: Mapping[str, str]) -> None:
         ctx.warn("Odd.", subjects=("width",))
 
-    class Meddling(_Demo):
-        checks = (recompute,)
+    with pytest.raises(SpecError, match=r"demo\.double: check lookup failed") as raised:
+        _checked_by(lookup)
+    assert isinstance(raised.value.__cause__, KeyError)
+    with pytest.raises(SpecError, match=r"check stray failed: .*note subjects \['width'\]"):
+        _checked_by(stray)
 
-    class Stray(_Demo):
-        checks = (stray,)
 
-    with pytest.raises(SpecError, match="a result check changed the work"):
-        Meddling().run()
-    with pytest.raises(SpecError, match=r"note subjects \['width'\]"):
-        Stray().run()
+def test_notes_are_carried_then_computed_then_checked() -> None:
+    def checked(ctx: Context, _selections: Mapping[str, str]) -> None:
+        ctx.warn("From the check.")
+
+    class Ordered(_Demo):
+        checks = (checked,)
+
+        def compute(self, ctx: Context) -> None:
+            super().compute(ctx)
+            ctx.warn("From compute.")
+
+    result = Ordered().run({"length": 25.4}, explicit_notes={"length": CARRIED})
+    assert [n.text for n in result.notes] == [CARRIED.text, "From compute.", "From the check."]
 
 
 def test_checks_are_a_tuple_of_callables() -> None:

@@ -42,7 +42,7 @@ class BendCheck:
     * A gauge thickness from a system the material isn't ordered by gets a warning (flag 9).
     * With a material whose sources cover the case, the inside radius is checked against
       the larger of their minimums (D1), each range at its upper bound (D2), and every
-      source is shown. Bending practice is noted whenever this check applies.
+      source is shown. A radius below it also gets the sources' bending practice.
     * Where no source covers the case, a no-applicable-value note says why: no source for
       the material, a bend past 90° (D10), or a thickness no source lists (D4). Then, as
       with no material chosen, an inside radius below the thickness gets the rule of thumb.
@@ -155,12 +155,13 @@ class BendCheck:
                 references=_references(covering),
                 subjects=_RADIUS,
             )
-        practice = self.materials.materials.practice
-        ctx.note(
-            practice.note,
-            references=(practice.source.reference,),
-            subjects=("inside_radius",),
-        )
+            # Only beside a limit: a standing note on every passing bend would be ignored.
+            practice = self.materials.materials.practice
+            ctx.note(
+                practice.note,
+                references=(practice.source.reference,),
+                subjects=("inside_radius",),
+            )
         return True
 
 

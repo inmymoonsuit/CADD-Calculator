@@ -13,8 +13,6 @@ from typing import Literal, NamedTuple
 
 from caddcalc.core.domain import Domain, DomainValues, ValueOrigin
 from caddcalc.core.errors import SpecError, UsageError
-from caddcalc.core.notes import Note
-from caddcalc.core.reference import Reference
 from caddcalc.core.units import TypedValue
 
 
@@ -91,8 +89,7 @@ class DomainSettings:
         key: str,
         entry: TypedValue,
         *,
-        origin: Reference | None = None,
-        note: Note | None = None,
+        origin: ValueOrigin | None = None,
     ) -> DomainSettings:
         """Return a copy with ``key`` set to ``entry``.
 
@@ -100,21 +97,20 @@ class DomainSettings:
             domain: The domain the setting belongs to.
             key: The setting key, e.g. ``"k_factor"``.
             entry: The value.
-            origin: The source of a cited value the user applied rather than typed, such
-                as a K-factor starting value (ADR-0014 M2). The value becomes the user's
-                own and keeps this citation in results. Without one, any earlier origin
-                of ``key`` is dropped.
-            note: A note results carry while the value is in use, such as a test-bend
-                prompt. It needs an ``origin``.
+            origin: The table entry of a cited value the user applied rather than typed,
+                such as a K-factor starting value (ADR-0014 M2), with any note it carries.
+                The value becomes the user's own and keeps the entry's citation in
+                results. Without one, any earlier origin of ``key`` is dropped.
 
         Raises:
             UsageError: ``domain`` has no setting with that key, ``entry`` measures
-                something else, or a note is given without an origin or with subjects.
+                something else, or ``origin`` isn't an entry of one of the domain's
+                tables that gives ``entry``'s value (``Domain.check_origin``).
             OutOfRangeError: The value is outside the setting's range.
         """
         setting = domain.setting(key)
-        if note is not None and origin is None:
-            raise UsageError(f"The note of setting {key!r} needs the origin it comes with")
+        if origin is not None:
+            domain.check_origin(origin, entry.value)
         if entry.dimension is not setting.dimension:
             raise UsageError(
                 f"Setting {key!r} of domain {domain.id!r} is {setting.dimension.with_article}, "
@@ -123,7 +119,7 @@ class DomainSettings:
         setting.check(entry.value)
         origins = _without(self._origins.get(domain.id, {}), key)
         if origin is not None:
-            origins[key] = ValueOrigin(origin, note)
+            origins[key] = origin
         return self._with(
             domain.id, values={**self._values.get(domain.id, {}), key: entry}, origins=origins
         )

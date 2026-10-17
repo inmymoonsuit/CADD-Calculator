@@ -211,7 +211,7 @@ def test_the_handbook_defines_only_the_steel_basis() -> None:
     """The cite-only cap: Machinery's Handbook defines one value, the 41.82 basis."""
     over = TEXT.replace('defined_by = "galvanized_rule"', 'defined_by = "steel_basis"')
     with pytest.raises(SpecError, match="'machinerys_handbook' defines 28 values; its cap is 1"):
-        load_gauges(parse_table(over, "test", GAUGE_TABLE.content_keys))
+        load_gauges(parse_table(over, "test", GAUGE_TABLE.content_keys, GAUGE_TABLE.quantities))
 
 
 @pytest.mark.parametrize(
@@ -230,7 +230,11 @@ def test_the_handbook_defines_only_the_steel_basis() -> None:
 def test_malformed_gauge_content_is_refused(old: str, new: str, message: str) -> None:
     assert TEXT.count(old) == 1, old
     with pytest.raises(SpecError, match=message):
-        load_gauges(parse_table(TEXT.replace(old, new), "test", GAUGE_TABLE.content_keys))
+        load_gauges(
+            parse_table(
+                TEXT.replace(old, new), "test", GAUGE_TABLE.content_keys, GAUGE_TABLE.quantities
+            )
+        )
 
 
 @pytest.mark.parametrize(

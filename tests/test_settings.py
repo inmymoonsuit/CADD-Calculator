@@ -9,6 +9,7 @@ import pytest
 
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
 from caddcalc.calculators.sheet_metal import BendAllowance
+from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE
 from caddcalc.core import (
     Dimension,
     Domain,
@@ -34,6 +35,12 @@ OTHER = Domain(
     "Other",
     "A second domain.",
     settings=(Param("thickness", "T", "Thickness", Dimension.LENGTH),),
+)
+OTHER_K = Domain(
+    "other_k",
+    "Other K",
+    "A domain with a K-factor and no tables.",
+    settings=(Param("k_factor", "K", "K-factor", Dimension.RATIO),),
 )
 
 
@@ -242,28 +249,61 @@ def test_a_calculator_runs_with_the_session_settings() -> None:
     assert result.inputs["k_factor"] == pytest.approx(0.44)
 
 
-FAA = Reference("FAA-H-8083-31B", locator="p. 4-63")
+TABLE = MATERIAL_TABLE.load()
+FAA_K = next(v for v in MATERIAL_TABLE.values(TABLE) if v.source == "faa_neutral_axis")
+"""The materials table's K starting value from FAA-H-8083-31B, an entry to apply."""
+FAA = TABLE.sources["faa_neutral_axis"].reference
 TEST_BEND = Note(NoteKind.WARNING, "A starting value: confirm K with a test bend.", (FAA,))
+K = TypedValue.parse("0.445", Dimension.RATIO)
 
 
 def applied_k() -> DomainSettings:
-    """Settings with a K-factor the user applied from a citation, as a click would."""
-    entry = TypedValue.parse("0.445", Dimension.RATIO)
-    return DomainSettings().set(SHEET_METAL, "k_factor", entry, origin=FAA, note=TEST_BEND)
+    """Settings with a K-factor the user applied from its table entry, as a click would."""
+    origin = ValueOrigin.of(TABLE, FAA_K, TEST_BEND)
+    return DomainSettings().set(SHEET_METAL, "k_factor", K, origin=origin)
 
 
-def test_an_applied_value_keeps_its_citation_in_results() -> None:
+def test_an_applied_value_keeps_its_entry_and_citation_in_results() -> None:
     settings = applied_k()
-    assert settings.origin(SHEET_METAL, "k_factor") == ValueOrigin(FAA, TEST_BEND)
+    origin = settings.origin(SHEET_METAL, "k_factor")
+    assert origin is not None
+    assert (origin.table, origin.version, origin.value, origin.note) == (
+        "Sheet-metal materials",
+        1,
+        FAA_K,
+        TEST_BEND,
+    )
     result = BendAllowance().run(method="k_factor", settings=settings.for_domain(SHEET_METAL))
     source = result.source_of("k_factor")
     assert (source.kind, source.reference) == (SourceKind.DOMAIN, FAA)
-    assert describe_source(source) == (
-        "Sheet Metal settings, starting value from FAA-H-8083-31B, p. 4-63"
-    )
+    assert describe_source(source) == f"Sheet Metal settings, starting value from {FAA}"
+    assert str(FAA).startswith("FAA-H-8083-31B") and "p. 4-63" in str(FAA)
     assert replace(TEST_BEND, subjects=("k_factor",)) in result.notes
     reference = result.to_dict()["inputs"]["k_factor"]["source"]["reference"]
-    assert (reference["title"], reference["locator"]) == ("FAA-H-8083-31B", "p. 4-63")
+    assert reference["scope"] == FAA.scope
+
+
+def test_only_a_table_entry_can_be_applied() -> None:
+    """Decision D7, in code: nothing is applied without its table entry."""
+    with pytest.raises(UsageError, match="no table entry"):
+        DomainSettings().set(
+            SHEET_METAL, "k_factor", K, origin=replace(ValueOrigin.of(TABLE, FAA_K), version=2)
+        )
+    made_up = replace(FAA_K, value=0.41, stated=TypedValue.parse("0.41", Dimension.RATIO))
+    with pytest.raises(UsageError, match="no table entry"):
+        DomainSettings().set(SHEET_METAL, "k_factor", K, origin=ValueOrigin.of(TABLE, made_up))
+    other = replace(ValueOrigin.of(TABLE, FAA_K), reference=Reference("Elsewhere"))
+    with pytest.raises(UsageError, match="must cite its entry's source"):
+        DomainSettings().set(SHEET_METAL, "k_factor", K, origin=other)
+    with pytest.raises(UsageError, match=r"is its entry's 0\.445, not 0\.44"):
+        DomainSettings().set(
+            SHEET_METAL,
+            "k_factor",
+            TypedValue.parse("0.44", Dimension.RATIO),
+            origin=ValueOrigin.of(TABLE, FAA_K),
+        )
+    with pytest.raises(UsageError, match="no table entry"):
+        DomainSettings().set(OTHER_K, "k_factor", K, origin=ValueOrigin.of(TABLE, FAA_K))
 
 
 def test_typing_over_an_applied_value_drops_its_citation() -> None:
@@ -277,16 +317,16 @@ def test_typing_over_an_applied_value_drops_its_citation() -> None:
     assert applied_k().clear_domain(SHEET_METAL) == DomainSettings()
 
 
-def test_an_applied_values_note_needs_its_origin_and_no_subjects() -> None:
-    entry = TypedValue.parse("0.445", Dimension.RATIO)
-    with pytest.raises(UsageError, match="needs the origin"):
-        DomainSettings().set(SHEET_METAL, "k_factor", entry, note=TEST_BEND)
+def test_an_applied_values_note_has_no_subjects_and_its_key_is_set() -> None:
     about_k = replace(TEST_BEND, subjects=("k_factor",))
     with pytest.raises(UsageError, match="has subjects"):
-        DomainSettings().set(SHEET_METAL, "k_factor", entry, origin=FAA, note=about_k)
+        ValueOrigin.of(TABLE, FAA_K, about_k)
     with pytest.raises(UsageError, match="origins of unset"):
         DomainValues(
-            "sheet_metal", "Sheet Metal settings", {}, origins={"k_factor": ValueOrigin(FAA)}
+            "sheet_metal",
+            "Sheet Metal settings",
+            {},
+            origins={"k_factor": ValueOrigin.of(TABLE, FAA_K)},
         )
 
 

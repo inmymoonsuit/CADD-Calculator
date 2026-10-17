@@ -50,6 +50,7 @@ from caddcalc.core import (
     Result,
     SourceKind,
     TypedValue,
+    ValueOrigin,
 )
 from caddcalc.core.formatting import (
     DISCLAIMER,
@@ -117,6 +118,9 @@ class FieldEntry:
     origin: EntryOrigin = EntryOrigin.TYPED
     copied_from: DerivedValue | None = None
     """The derived value a family copy was made from; its note stays with the copy."""
+    applied: ValueOrigin | None = None
+    """The origin of the applied family value a copy was made from; its citation and its
+    note stay with the copy, as a derived value's do (ADR-0014 M2)."""
 
     @property
     def base_value(self) -> float:
@@ -699,8 +703,9 @@ class MainWindow(QMainWindow):
         else:
             inherited = self._family_value(calc, p)
             if inherited is not None:
+                applied = self.domain_settings.origin(self.registry.domain(calc.domain), key)
                 self.entries.setdefault(calc.id, {})[key] = FieldEntry(
-                    inherited, EntryOrigin.FAMILY_COPY, self._derived_value(calc, p)
+                    inherited, EntryOrigin.FAMILY_COPY, self._derived_value(calc, p), applied
                 )
             overrides.add(key)
         self.pending_fields.pop((calc.id, key), None)
@@ -759,9 +764,19 @@ class MainWindow(QMainWindow):
                     entry.base_value,
                 )
             else:
-                name = domain.settings_label
+                family = InputSource(
+                    SourceKind.DOMAIN,
+                    domain.settings_label,
+                    domain=domain.id,
+                    reference=None if entry.applied is None else entry.applied.reference,
+                )
+                name = describe_source(family)
                 inherited = self.domain_settings.get(domain, p.key)
-                same = inherited is not None and inherited.value == entry.base_value
+                same = (
+                    inherited is not None
+                    and inherited.value == entry.base_value
+                    and self.domain_settings.origin(domain, p.key) == entry.applied
+                )
             return f"copied from {name}" if same else f"copied earlier from {name}"
         return ""
 
@@ -772,8 +787,9 @@ class MainWindow(QMainWindow):
 
         An inheriting field passes nothing, so the run takes the family value, set or
         derived, or else the default. An overriding field passes its own value, or nothing
-        for its default, and its key is left out of the settings, set and derived alike, so
-        the family value can't take its place. A copy of a derived value carries its note.
+        for its default, and its key is left out of the settings, set, derived, and applied
+        alike, so the family value can't take its place. A copy of a derived or applied
+        value carries its note.
         """
         own = self.entries.get(calc.id, {})
         inputs: dict[str, float] = {}
@@ -785,9 +801,10 @@ class MainWindow(QMainWindow):
                 inputs[p.key] = entry.base_value
                 if label := self._entry_label(calc, p, entry):
                     labels[p.key] = InputSource(SourceKind.EXPLICIT, label)
-                copied = entry.copied_from
-                if entry.origin is EntryOrigin.FAMILY_COPY and copied and copied.note:
-                    notes[p.key] = copied.note
+                if entry.origin is EntryOrigin.FAMILY_COPY:
+                    source = entry.copied_from or entry.applied
+                    if source is not None and source.note is not None:
+                        notes[p.key] = source.note
         domain = self.registry.domain(calc.domain)
         overridden = self.overrides.get(calc.id, set())
         family = self.domain_settings.for_domain(domain)
@@ -795,6 +812,7 @@ class MainWindow(QMainWindow):
             family,
             values={k: v for k, v in family.values.items() if k not in overridden},
             derived={k: v for k, v in family.derived.items() if k not in overridden},
+            origins={k: v for k, v in family.origins.items() if k not in overridden},
         )
         return inputs, labels, notes, settings
 

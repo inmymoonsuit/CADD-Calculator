@@ -11,8 +11,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from caddcalc.calculators.sheet_metal.gauges import GAUGE, GaugeResolver
-from caddcalc.calculators.sheet_metal.materials import MATERIAL, TEMPER, MaterialResolver
+from caddcalc.calculators.sheet_metal.gauges import GAUGE, GAUGE_TABLE, GaugeResolver
+from caddcalc.calculators.sheet_metal.materials import (
+    MATERIAL,
+    MATERIAL_TABLE,
+    TEMPER,
+    MaterialResolver,
+)
 from caddcalc.core import DerivedValue, Dimension, Domain, Option, Param, SpecError
 
 DOMAIN_ID = "sheet_metal"
@@ -95,4 +100,5 @@ DOMAIN = Domain(
     settings=(THICKNESS_SETTING, INSIDE_RADIUS_SETTING, K_FACTOR_SETTING),
     choices=(GAUGE, MATERIAL, TEMPER),
     resolver=SheetMetalResolver(GAUGES, MATERIALS),
+    tables=(GAUGE_TABLE, MATERIAL_TABLE),
 )

@@ -156,44 +156,49 @@ locator = "Ch. 19, Fig 19.11, printed p. 784"
 accessed = 2026-10-17
 scope = "instructional neutral-axis position, 0.4 t"
 
-# --- Materials: option keys are public. A material has tempers, each with its full name,
-# or a name of its own. gauges lists the gauge systems it is ordered by (gauges.toml ids).
+# --- Materials: option keys are public. Each material has at least one temper, keyed by
+# the material and named in full. gauges lists the gauge systems it is ordered by
+# (gauges.toml ids).
 
 [[material]]
 key = "al:5052"
 label = "5052"
 group = "Aluminum"
 gauges = ["awg"]
-tempers = [{ key = "temper:h32", label = "H32", name = "5052-H32 aluminum" }]
+tempers = [{ key = "temper:5052_h32", label = "H32", name = "5052-H32 aluminum" }]
 
 [[material]]
 key = "al:6061"
 label = "6061"
 group = "Aluminum"
 gauges = ["awg"]
-tempers = [{ key = "temper:t6", label = "T6", name = "6061-T6 aluminum" }]
+tempers = [{ key = "temper:6061_t6", label = "T6", name = "6061-T6 aluminum" }]
 
 [[material]]
 key = "cs:a1008"
 label = "Mild steel, cold-rolled (ASTM A1008 CS)"
 group = "Carbon steel"
-name = "mild cold-rolled steel (A1008 CS)"
 gauges = ["msg", "uss"]
+tempers = [
+  { key = "temper:a1008_as_supplied", label = "As supplied", name = "mild cold-rolled steel (A1008 CS)" },
+]
 
 [[material]]
 key = "cs:a653"
 label = "Galvanized steel (ASTM A653)"
 group = "Carbon steel"
-name = "galvanized steel (A653)"
 gauges = ["galv"]
+tempers = [{ key = "temper:a653_as_supplied", label = "As supplied", name = "galvanized steel (A653)" }]
 radius_note = "No public-domain source gives a minimum bend radius for galvanized steel; use the base steel's guidance. The zinc coating can flake or crack on tight bends."
 
 [[material]]
 key = "cs:a1011"
 label = "Hot-rolled steel, pickled and oiled (ASTM A1011)"
 group = "Carbon steel"
-name = "hot-rolled pickled and oiled steel (A1011)"
 gauges = ["msg", "uss"]
+tempers = [
+  { key = "temper:a1011_as_supplied", label = "As supplied", name = "hot-rolled pickled and oiled steel (A1011)" },
+]
 radius_note = "No public-domain source gives a minimum bend radius for hot-rolled pickled and oiled steel; use the base steel's guidance, and bend a test piece first."
 
 [[material]]
@@ -201,7 +206,9 @@ key = "ss:304"
 label = "304, annealed (2B finish)"
 group = "Stainless steel"
 gauges = ["uss"]
-tempers = [{ key = "temper:annealed", label = "Annealed", name = "304 stainless, annealed (2B finish)" }]
+tempers = [
+  { key = "temper:304_annealed", label = "Annealed", name = "304 stainless, annealed (2B finish)" },
+]
 
 # --- Minimum inside radius. Values are multiples of T (times_t: one value, or a range's
 # lower and upper bounds) or radii in the row's unit (radius), one per listed thickness or
@@ -209,7 +216,7 @@ tempers = [{ key = "temper:annealed", label = "Annealed", name = "304 stainless,
 
 [[min_radius]]
 material = "al:5052"
-temper = "temper:h32"
+temper = "temper:5052_h32"
 source = "ac_radii_aluminum"
 trust = "spec_guidance"
 angle = "90"
@@ -219,7 +226,7 @@ times_t = [["0"], ["0"], ["1/2", "1"], ["1/2", "3/2"], ["1/2", "3/2"], ["1/2", "
 
 [[min_radius]]
 material = "al:6061"
-temper = "temper:t6"
+temper = "temper:6061_t6"
 source = "ac_radii_aluminum"
 trust = "spec_guidance"
 angle = "90"
@@ -229,7 +236,7 @@ times_t = [["0", "1"], ["1/2", "3/2"], ["1", "2"], ["3/2", "3"], ["2", "4"], ["3
 
 [[min_radius]]
 material = "al:6061"
-temper = "temper:t6"
+temper = "temper:6061_t6"
 source = "to_standard_radii_aluminum"
 trust = "spec_guidance"
 angle = "90"
@@ -246,6 +253,7 @@ label = "TO's group with 2014-T4, 2024-T3, 2024-T4, 7075-W, and 7178-W"
 
 [[min_radius]]
 material = "cs:a1008"
+temper = "temper:a1008_as_supplied"
 source = "to_radii_carbon_steel"
 trust = "spec_guidance"
 angle = "not_stated"
@@ -256,7 +264,7 @@ label = "TO's 1020/1025 row, a conservative stand-in for A1008 CS"
 
 [[min_radius]]
 material = "ss:304"
-temper = "temper:annealed"
+temper = "temper:304_annealed"
 source = "to_radii_stainless"
 trust = "spec_guidance"
 angle = "not_stated"
@@ -282,7 +290,7 @@ note = "Form across the grain where possible, and bend a test piece first; if it
 
 [[strength]]
 material = "al:5052"
-temper = "temper:h32"
+temper = "temper:5052_h32"
 source = "hdbk5j_5052"
 basis = "spec_minimum"
 trust = "handbook_rule"
@@ -293,7 +301,7 @@ f_ty = { l = "23 ksi", lt = "22 ksi" }
 
 [[strength]]
 material = "al:6061"
-temper = "temper:t6"
+temper = "temper:6061_t6"
 source = "hdbk5j_6061"
 basis = "a_basis"
 trust = "handbook_rule"
@@ -305,6 +313,7 @@ note = "Strengths may be lower in material formed or cold-worked in the annealed
 
 [[strength]]
 material = "cs:a1008"
+temper = "temper:a1008_as_supplied"
 source = "hdbk5j_1025"
 basis = "spec_minimum"
 trust = "handbook_rule"
@@ -314,7 +323,7 @@ note = "AISI 1025 annealed, a stand-in for A1008 CS; the source states no thickn
 
 [[strength]]
 material = "ss:304"
-temper = "temper:annealed"
+temper = "temper:304_annealed"
 source = "hdbk5j_304"
 basis = "spec_minimum"
 trust = "handbook_rule"
