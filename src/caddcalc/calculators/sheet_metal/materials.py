@@ -1,9 +1,10 @@
-"""Sheet-metal materials: tempers, minimum bend radii, strengths, and K starting values.
+"""Sheet-metal materials: the material and temper choices, and each material's cited data.
 
-``data/materials.toml`` states each value as its source does (ADR-0014 §3). This module
-reads it: ``listed_bands`` turns a source's listed thicknesses into bands (the
-maintainer's decision D4), and ``load_materials`` builds the cited ``ReferenceValue`` of
-every value and checks them. The minimum-radius check that uses them is in ``checks.py``.
+``data/materials.toml`` states each value as its source does (ADR-0014 §3): minimum bend
+radii, strengths, and K-factor starting values. This module reads it: ``listed_bands``
+turns a source's listed thicknesses into bands (the maintainer's decision D4),
+``load_materials`` builds the cited ``ReferenceValue`` of every value and checks them, and
+``MaterialResolver`` offers the materials and tempers. A material sets no value (M2).
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
+from functools import cached_property
 from itertools import pairwise
 from types import MappingProxyType
 from typing import Any
@@ -18,7 +20,10 @@ from typing import Any
 from caddcalc.core import (
     Band,
     Basis,
+    Choice,
+    DerivedValue,
     Dimension,
+    Option,
     ReferenceTable,
     ReferenceValue,
     SpecError,
@@ -644,3 +649,53 @@ MATERIAL_TABLE = TableSpec(
     lambda table: load_materials(table).values,
 )
 """The materials table, as ``caddcalc.calculators.REFERENCE_TABLES`` lists it."""
+
+MATERIAL = Choice(
+    "material",
+    "Material",
+    help="The sheet's material. It sets no value: the thickness and K-factor stay as you set them.",
+)
+"""The sheet-metal domain's material choice. Its option keys, e.g. ``"al:6061"``, are public."""
+
+TEMPER = Choice(
+    "temper",
+    "Temper",
+    help="The material's temper. A material offered in one temper has it selected.",
+    depends_on=(MATERIAL.key,),
+)
+"""The temper choice, which depends on the material. Its keys, e.g. ``"temper:t6"``, are public."""
+
+
+class MaterialResolver:
+    """The material and temper choices' options, from the materials table.
+
+    A material derives no setting value (ADR-0014 M2): it informs result checks and offers
+    cited starting values, and the user's own values stay in charge. The table loads on
+    first use and is kept for the life of the process.
+    """
+
+    def __init__(self, spec: TableSpec = MATERIAL_TABLE) -> None:
+        """Offer the materials of the table ``spec`` names."""
+        self._spec = spec
+
+    @cached_property
+    def materials(self) -> Materials:
+        """Every material, loaded and checked."""
+        return load_materials(self._spec.load())
+
+    def options(self, choice: str, parents: Mapping[str, str]) -> Sequence[Option]:
+        """Return the materials, grouped, or the chosen material's tempers.
+
+        A material with one temper marks it as the default, so choosing the material
+        selects it.
+        """
+        if choice == MATERIAL.key:
+            return tuple(Option(m.key, m.label, m.group) for m in self.materials.materials)
+        if choice != TEMPER.key or MATERIAL.key not in parents:
+            return ()
+        tempers = self.materials.by_key[parents[MATERIAL.key]].tempers
+        return tuple(Option(t.key, t.label, default=len(tempers) == 1) for t in tempers)
+
+    def derive(self, _selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
+        """Return nothing: a material sets no value (ADR-0014 M2)."""
+        return MappingProxyType({})

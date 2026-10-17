@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Material and temper choices on the Sheet Metal page (ADR-0014, amendments): a grouped
+  **Material** row (aluminum, carbon steel, stainless) and a **Temper** row that depends
+  on it, with a material's only temper selected for it. A material derives no value
+  (M2). `sheet_metal.domain.SheetMetalResolver` combines the gauge and material
+  resolvers.
 - **Phase 2b: the materials table (ADR-0014, amendments).**
   `sheet_metal/data/materials.toml` (version 1) defines the starter materials, keyed
   `al:5052`, `al:6061`, `cs:a1008`, `cs:a653`, `cs:a1011`, and `ss:304`, with their

@@ -1,13 +1,19 @@
-"""The sheet-metal domain, the settings its calculators share, and its gauge choice.
+"""The sheet-metal domain, the settings its calculators share, and its choices.
 
 Each setting declares the shared quantity: its key, symbol, label, dimension, and range
 (ADR-0013). The calculators' parameters in ``common.py`` are built from these settings,
 adding their own defaults, help, and method scoping, so a shared key can't drift from its
-setting. The gauge choice derives the thickness (ADR-0014 §2; ``gauges.py``).
+setting. The gauge choice derives the thickness (ADR-0014 §2; ``gauges.py``). The material
+and temper choices derive nothing; result checks read them (§3; ``materials.py``).
 """
 
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+
 from caddcalc.calculators.sheet_metal.gauges import GAUGE, GaugeResolver
-from caddcalc.core import Dimension, Domain, Param
+from caddcalc.calculators.sheet_metal.materials import MATERIAL, TEMPER, MaterialResolver
+from caddcalc.core import DerivedValue, Dimension, Domain, Option, Param, SpecError
 
 DOMAIN_ID = "sheet_metal"
 
@@ -49,11 +55,44 @@ K_FACTOR_SETTING = Param(
     ),
 )
 
+
+class SheetMetalResolver:
+    """The domain's resolver: the gauge choice, then the material and temper choices.
+
+    Each part resolves its own choices from its own table, and only the gauge derives a
+    value.
+    """
+
+    def __init__(self, gauges: GaugeResolver, materials: MaterialResolver) -> None:
+        """Combine the gauge resolver and the material resolver."""
+        self.gauges = gauges
+        self.materials = materials
+
+    def options(self, choice: str, parents: Mapping[str, str]) -> Sequence[Option]:
+        """Return the options of ``choice`` from the part that owns it."""
+        if choice == GAUGE.key:
+            return self.gauges.options(choice, parents)
+        return self.materials.options(choice, parents)
+
+    def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
+        """Return what the parts derive from ``selections``; they never derive the same key."""
+        gauge, material = self.gauges.derive(selections), self.materials.derive(selections)
+        both = sorted(set(gauge) & set(material))
+        if both:
+            raise SpecError(f"The gauge and the material both derive {both}")
+        return {**gauge, **material}
+
+
+GAUGES = GaugeResolver(DOMAIN_ID, THICKNESS_SETTING)
+"""The gauge part of the resolver, which result checks also read."""
+MATERIALS = MaterialResolver()
+"""The material part of the resolver, which result checks also read."""
+
 DOMAIN = Domain(
     id=DOMAIN_ID,
     name="Sheet Metal",
     summary="Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts.",
     settings=(THICKNESS_SETTING, INSIDE_RADIUS_SETTING, K_FACTOR_SETTING),
-    choices=(GAUGE,),
-    resolver=GaugeResolver(DOMAIN_ID, THICKNESS_SETTING),
+    choices=(GAUGE, MATERIAL, TEMPER),
+    resolver=SheetMetalResolver(GAUGES, MATERIALS),
 )

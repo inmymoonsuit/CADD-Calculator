@@ -881,3 +881,15 @@ decisions D1–D10 and the 2b plan's flags.
   says. MH29's values are cited only in the K-factor help (D7, D8).
 * **The 2015 edition of TO 1-1A-9** is declared for its notes only, its generic annealed
   stainless row and its bending practice, and defines no value.
+
+### 2026-10-17: the material and temper choices (maintainer, phase 2b.5)
+
+* The domain's choices are the gauge, the material, and the temper, which depends on the
+  material. `SheetMetalResolver` combines the gauge resolver and `MaterialResolver`;
+  each answers its own choices from its own table, and only the gauge derives a value.
+* A material with one temper marks it as the default (`Option.default`, flag 2), so
+  choosing the material selects it, and a material change moves it to the new
+  material's temper without announcing a cleared choice. A temper the user chose, which
+  the new material doesn't offer, is cleared and announced.
+* A material derives no setting value (M2). It reaches results only through
+  `DomainValues.selections`, for 2b.6's check.

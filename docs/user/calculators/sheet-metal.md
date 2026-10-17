@@ -77,6 +77,19 @@ until you pick one, so by default you type the decimal thickness.
   "Gauge systems, version 1". To report a value that looks wrong, see
   [Reporting a wrong value](#reporting-a-wrong-value).
 
+### Choosing a material
+
+The **Material** row picks a group, then a material: aluminum 5052 or 6061; mild
+cold-rolled (ASTM A1008 CS), galvanized (ASTM A653), or hot-rolled pickled and oiled
+(ASTM A1011) carbon steel; or 304 stainless, annealed (2B finish). The **Temper** row
+then offers that material's tempers: 5052 comes in H32, 6061 in T6, and 304 annealed,
+each selected as soon as you pick the material. The carbon steels have no temper.
+
+* **A material sets no value.** The thickness, inside radius, and K-factor stay as you
+  set them; nothing about a result's numbers changes when you pick one.
+* The material's data, with every value cited, is in the table "Sheet-metal materials,
+  version 1".
+
 ### Using a family value in a calculator
 
 * Once a Sheet Metal value is set, each calculator field that shares it shows the value

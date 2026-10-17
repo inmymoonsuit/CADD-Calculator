@@ -13,6 +13,7 @@ from itertools import pairwise
 import pytest
 
 from caddcalc.calculators import REFERENCE_TABLES
+from caddcalc.calculators.sheet_metal import DOMAIN, BendAllowance
 from caddcalc.calculators.sheet_metal.gauges import GAUGE_TABLE, load_gauges
 from caddcalc.calculators.sheet_metal.materials import (
     LISTED_TOLERANCE,
@@ -22,7 +23,14 @@ from caddcalc.calculators.sheet_metal.materials import (
     listed_bands,
     load_materials,
 )
-from caddcalc.core import Basis, SpecError, TrustLevel, parse_table
+from caddcalc.core import (
+    Basis,
+    ClearedChoice,
+    DomainSettings,
+    SpecError,
+    TrustLevel,
+    parse_table,
+)
 from caddcalc.core.units import get_unit
 
 IN = 25.4
@@ -225,6 +233,51 @@ def test_every_materials_gauge_systems_are_in_the_gauge_table() -> None:
 def test_the_loader_refuses_malformed_rows(old: str, new: str, message: str) -> None:
     with pytest.raises(SpecError, match=message):
         edited(old, new)
+
+
+# --- The material and temper choices (2b.5) -----------------------------------------------
+
+
+def test_the_domain_offers_material_then_its_temper() -> None:
+    assert [c.key for c in DOMAIN.ordered_choices()] == ["gauge", "material", "temper"]
+    options = DOMAIN.options("material")
+    assert [o.key for o in options] == list(MATERIAL_KEYS)
+    assert list(dict.fromkeys(o.group for o in options)) == [
+        "Aluminum",
+        "Carbon steel",
+        "Stainless steel",
+    ]
+    assert DOMAIN.options("temper") == ()
+    (t6,) = DOMAIN.options("temper", {"material": "al:6061"})
+    assert (t6.key, t6.label, t6.default) == ("temper:t6", "T6", True)
+    assert DOMAIN.options("temper", {"material": "cs:a1008"}) == ()
+
+
+def test_a_material_selects_its_only_temper_and_follows_a_change() -> None:
+    fresh = DomainSettings()
+    assert fresh.choice(DOMAIN, "material") is None and fresh.choice(DOMAIN, "temper") is None
+    aluminum = fresh.set_choice(DOMAIN, "material", "al:6061")
+    assert aluminum.choice(DOMAIN, "temper") == "temper:t6"
+    stainless = aluminum.set_choice(DOMAIN, "material", "ss:304")
+    assert stainless.choice(DOMAIN, "temper") == "temper:annealed"
+    assert stainless.cleared_choices(DOMAIN, aluminum) == ()
+    chosen = aluminum.set_choice(DOMAIN, "temper", "temper:t6")
+    steel = chosen.set_choice(DOMAIN, "material", "cs:a1008")
+    assert steel.choice(DOMAIN, "temper") is None
+    assert steel.cleared_choices(DOMAIN, chosen) == (ClearedChoice("temper", "none"),)
+
+
+def test_a_material_sets_no_value() -> None:
+    """ADR-0014 M2: the material informs checks; the user's values stay in charge."""
+    settings = DomainSettings().set_choice(DOMAIN, "material", "al:6061")
+    values = settings.for_domain(DOMAIN)
+    assert dict(values.derived) == {}
+    assert dict(values.selections) == {"material": "al:6061", "temper": "temper:t6"}
+    plain = BendAllowance().run(method="k_factor")
+    chosen = BendAllowance().run(method="k_factor", settings=values)
+    assert chosen.inputs == plain.inputs and chosen.outputs == plain.outputs
+    gauged = settings.set_choice(DOMAIN, "gauge", "awg:16").for_domain(DOMAIN)
+    assert set(gauged.derived) == {"thickness"}
 
 
 def test_a_material_without_rows_must_say_why() -> None:
