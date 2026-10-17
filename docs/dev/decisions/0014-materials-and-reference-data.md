@@ -750,3 +750,11 @@ These refine the bounded-evaluation entry above.
   work.
 * The gauge table is unchanged; its digest is the same.
 
+
+### 2026-10-17: the stress dimension (maintainer, phase 2b.1)
+
+* §1's stress dimension is built as ADR-0005's amendment describes: base unit MPa, display
+  in ksi with inch lengths and MPa with metric ones (the maintainer's decision on flag 7
+  of the 2b plan), with no separate stress control.
+* The coverage tests that already ran over every `Dimension` now also check that a bare
+  number reads in the display unit.

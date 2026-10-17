@@ -39,7 +39,7 @@ class Param:
     default: str | None = None
     """Default value as text with units, e.g. ``"0.1046 in"``. Parsed with ``parse_quantity``."""
     minimum: float | None = None
-    """Lower bound in base units (mm, deg, ratio)."""
+    """Lower bound in base units (mm, deg, ratio, MPa)."""
     maximum: float | None = None
     min_inclusive: bool = True
     max_inclusive: bool = True

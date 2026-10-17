@@ -36,13 +36,17 @@ from caddcalc.core.formatting import (
     DisplayPrefs,
     describe_note,
     display_unit,
+    entry_unit,
     format_value,
     render_step,
     to_fraction,
+    unit_suffix,
 )
-from caddcalc.core.units import BASE_UNITS, get_unit, units_for
+from caddcalc.core.units import BASE_UNITS, get_unit, to_base, units_for
 
-L, A, R = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO
+L, A, R, S = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO, Dimension.STRESS
+KSI_IN_MPA = 6.894757293168361
+"""1 ksi in MPa: 1000 lbf (0.45359237 kg × 9.80665 m/s², exact) over 0.0254² m² (exact)."""
 
 
 # --- units --------------------------------------------------------------------------------
@@ -63,6 +67,12 @@ L, A, R = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO
         ("90°", A, None, 90.0),
         ("90", A, None, 90.0),
         ("44%", R, None, 0.44),
+        ("36 ksi", S, None, 36 * KSI_IN_MPA),
+        ("36000 psi", S, None, 36 * KSI_IN_MPA),
+        ("250", S, None, 250.0),
+        ("250 MPa", S, "ksi", 250.0),
+        ("0.2 GPa", S, None, 200.0),
+        ("500 kPa", S, None, 0.5),
     ],
 )
 def test_parse_quantity(text: str, dim: Dimension, default: str | None, expected: float) -> None:
@@ -83,6 +93,34 @@ def test_every_dimension_has_its_units_and_wording(dimension: Dimension) -> None
     for unit in ("in", "mm"):
         assert display_unit(dimension, DisplayPrefs(length_unit=unit)).dimension is dimension
     assert dimension.with_article.endswith(dimension.value)
+    for unit in ("in", "mm"):
+        prefs = DisplayPrefs(length_unit=unit)
+        assert entry_unit(dimension, prefs) == display_unit(dimension, prefs).symbol
+
+
+def test_stress_units_come_from_the_exact_pound_and_inch() -> None:
+    assert to_base(1, "ksi") == pytest.approx(KSI_IN_MPA, rel=1e-15)
+    assert get_unit("ksi").factor == 1000 * get_unit("psi").factor
+    assert get_unit("megapascals").symbol == "MPa"
+
+
+@pytest.mark.parametrize(
+    ("length_unit", "shown", "suffix"),
+    [("in", "42.0 ksi", " ksi"), ("ft", "42.0 ksi", " ksi"), ("mm", "289.6 MPa", " MPa")],
+)
+def test_stress_follows_the_length_preference(length_unit: str, shown: str, suffix: str) -> None:
+    """One choice sets both: inch-pound lengths show ksi, metric lengths MPa."""
+    prefs = DisplayPrefs(length_unit=length_unit)
+    assert format_value(to_base(42, "ksi"), S, prefs) == shown
+    assert unit_suffix(S, prefs) == suffix
+
+
+def test_a_bare_number_is_read_in_the_display_unit() -> None:
+    """A field labelled ksi reads "36" as 36 ksi, not 36 of the base unit (MPa)."""
+    prefs = DisplayPrefs(length_unit="in")
+    assert parse_quantity("36", S, entry_unit(S, prefs)) == pytest.approx(36 * KSI_IN_MPA)
+    assert parse_quantity("0.5", L, entry_unit(L, prefs)) == pytest.approx(12.7)
+    assert parse_quantity("90", A, entry_unit(A, prefs)) == 90.0
 
 
 def test_fraction_display() -> None:
@@ -309,7 +347,7 @@ def test_parameter_symbols_must_be_usable_in_formulas(symbol: str) -> None:
         (
             "5 in",
             "'length' has a bad default '5 in' (= 127 mm), which must be at most 10 mm. "
-            "Minimum and maximum are in base units (mm, deg, ratio).",
+            "Minimum and maximum are in base units (mm, deg, ratio, MPa).",
         ),
         ("-1 in", "bad default '-1 in' (= -25.4 mm), which must be at least 0 mm."),
         ("abc", "bad default 'abc': Cannot read a value from 'abc'"),

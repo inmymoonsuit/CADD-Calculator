@@ -61,6 +61,7 @@ from caddcalc.core.formatting import (
     describe_source,
     display_unit,
     entry_text,
+    entry_unit,
     field_text,
     format_value,
     render_step,
@@ -590,7 +591,7 @@ class MainWindow(QMainWindow):
 
     def _field_problem(self, p: Param, text: str) -> str | None:
         """Return why ``text`` can't be read as a value of ``p``, or ``None`` if it can."""
-        default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
+        default_unit = entry_unit(p.dimension, self.prefs)
         try:
             TypedValue.parse(text, p.dimension, default_unit)
         except InputError as exc:
@@ -625,7 +626,7 @@ class MainWindow(QMainWindow):
             self.pending_fields[calc.id, key] = text
         else:
             self.pending_fields.pop((calc.id, key), None)
-            default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
+            default_unit = entry_unit(p.dimension, self.prefs)
             own[key] = FieldEntry(TypedValue.parse(text, p.dimension, default_unit))
             if p.shared:
                 overrides.add(key)
@@ -652,7 +653,7 @@ class MainWindow(QMainWindow):
         elif self._field_problem(p, text) is not None:
             unchanged = True
         else:
-            default_unit = self.prefs.length_unit if p.dimension is Dimension.LENGTH else None
+            default_unit = entry_unit(p.dimension, self.prefs)
             value = TypedValue.parse(text, p.dimension, default_unit).value
             unchanged = text.strip() == start.shown or value == start.in_use
         if unchanged:
@@ -1069,7 +1070,7 @@ class MainWindow(QMainWindow):
         domain = self.domain
         if domain is None or not text.strip():
             return None
-        default_unit = self.prefs.length_unit if setting.dimension is Dimension.LENGTH else None
+        default_unit = entry_unit(setting.dimension, self.prefs)
         try:
             self.domain_settings.set_text(domain, setting.key, text, default_unit)
         except InputError as exc:
@@ -1096,9 +1097,7 @@ class MainWindow(QMainWindow):
         text = edit.text()
         if self._setting_problem(setting, text) is None:
             if text.strip():
-                default_unit = (
-                    self.prefs.length_unit if setting.dimension is Dimension.LENGTH else None
-                )
+                default_unit = entry_unit(setting.dimension, self.prefs)
                 updated = self.domain_settings.set_text(domain, key, text, default_unit)
             else:
                 updated = self.domain_settings.clear(domain, key)

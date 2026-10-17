@@ -23,10 +23,11 @@ from caddcalc.core.formatting import (
     describe_error,
     describe_note,
     describe_source,
+    entry_unit,
     format_value,
     render_step,
 )
-from caddcalc.core.units import Dimension, parse_quantity
+from caddcalc.core.units import parse_quantity
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -170,7 +171,7 @@ def parse_inputs(calc: Calculator, items: Sequence[str], length_unit: str) -> di
         if not sep:
             raise InputError(f"Expected NAME=VALUE, got {item!r}")
         p = _resolve_param(calc, name.strip())
-        default_unit = length_unit if p.dimension is Dimension.LENGTH else None
+        default_unit = entry_unit(p.dimension, DisplayPrefs(length_unit=length_unit))
         values[p.key] = parse_quantity(text, p.dimension, default_unit)
     return values
 

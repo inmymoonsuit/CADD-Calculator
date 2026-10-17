@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- A stress dimension for phase 2b's material strengths (ADR-0005 and ADR-0014,
+  amendments): `Dimension.STRESS`, in MPa, with kPa, GPa, psi, and ksi. Stresses show
+  in ksi when lengths are in inches or feet and in MPa when they're metric, to
+  `DisplayPrefs.stress_decimals` (1) places. `formatting.entry_unit()` gives the unit a
+  bare number is read in.
 - Welcome-screen docs: the art specification (docs/dev/design/welcome-screen.md), the
   `[welcome]` pack keys in packaging.md, the welcome screen in the user guide, and
   KI-020, the platform checks CI can't run on Wayland and macOS.

@@ -69,3 +69,22 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
 * Doubles stay: there is no float32 tier, and the formulas are transcendental.
 * A test checks that every `Dimension` has its base unit, display unit, and wording, so
   adding one (such as stress, ADR-0014) can't miss a table.
+
+### 2026-10-17: a stress dimension (ADR-0014, phase 2b)
+
+* **`Dimension.STRESS`**, for material strengths. The base unit is the **megapascal**
+  (N/mm², consistent with the millimetre base). Units: MPa, kPa, GPa, psi, and ksi.
+  The psi factor comes from the exact pound (0.453 592 37 kg), standard gravity
+  (9.806 65 m/s²), and inch (25.4 mm), per NIST SP 811, Appendix B, so it isn't a
+  rounded constant.
+* **The display unit follows the length preference:** ksi with inches or feet, MPa with
+  metric lengths. Drafters who work in inches read strengths in ksi, and metric
+  handbooks give MPa, so one choice sets both, and there's no separate stress control.
+  `DisplayPrefs.stress_decimals` (1) keeps a converted strength from showing false
+  precision.
+* **A bare number is read in its field's display unit, in every dimension**
+  (`formatting.entry_unit`). Before this, only lengths used the preference and every
+  other dimension used its base unit, which matched only because angle and ratio display
+  in their base units. A stress field labelled ksi would have read "36" as 36 MPa.
+* `unit_suffix` names the display unit for every dimension but angle, which keeps its
+  "°".

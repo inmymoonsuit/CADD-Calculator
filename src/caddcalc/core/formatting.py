@@ -24,34 +24,65 @@ DISCLAIMER = (
 
 @dataclass(frozen=True)
 class DisplayPrefs:
-    """How values are shown: length unit, decimals, and optional inch fractions."""
+    """How values are shown: length unit, decimals, and optional inch fractions.
+
+    Stresses follow the length unit (``display_unit``), so there is no stress unit here.
+    """
 
     length_unit: str = "in"
     decimals: int = 4
     angle_decimals: int = 2
+    stress_decimals: int = 1
     fraction_denominator: int | None = None
     """When set (e.g. 64) and the length unit is inches, also show the nearest fraction."""
 
 
 def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
-    """Return the unit text shown after a value, e.g. ``" in"`` or ``"°"``."""
-    if dimension is Dimension.LENGTH:
-        return f" {prefs.length_unit}"
+    """Return the unit text shown after a value, e.g. ``" in"``, ``" ksi"``, or ``"°"``."""
     if dimension is Dimension.ANGLE:
         return "°"
-    return ""
+    symbol = display_unit(dimension, prefs).symbol
+    return f" {symbol}" if symbol else ""
 
 
 _SHOWN_IN = {Dimension.ANGLE: "deg", Dimension.RATIO: ""}
-"""Display units of the dimensions whose unit isn't a preference."""
+"""Display units of the dimensions whose unit doesn't follow the length preference."""
+
+_STRESS_WITH_LENGTH = {"in": "ksi", "ft": "ksi"}
+"""The stress unit shown with each inch-pound length unit; metric lengths show MPa."""
 
 
 def display_unit(dimension: Dimension, prefs: DisplayPrefs) -> Unit:
     """Return the unit values of ``dimension`` are shown in.
 
-    Lengths use the preferred unit, angles degrees, and ratios plain numbers.
+    Lengths use the preferred unit. Stresses follow it: ksi with inches or feet, MPa
+    with metric lengths, so one choice sets both (ADR-0005, amendments). Angles show in
+    degrees, and ratios as plain numbers.
     """
-    return get_unit(prefs.length_unit if dimension is Dimension.LENGTH else _SHOWN_IN[dimension])
+    if dimension is Dimension.LENGTH:
+        return get_unit(prefs.length_unit)
+    if dimension is Dimension.STRESS:
+        length = get_unit(prefs.length_unit).symbol
+        return get_unit(_STRESS_WITH_LENGTH.get(length, "MPa"))
+    return get_unit(_SHOWN_IN[dimension])
+
+
+def entry_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
+    """Return the unit a value typed without one is read in: its display unit's symbol.
+
+    A bare number in a field then means what the field's unit label says, in every
+    dimension.
+    """
+    return display_unit(dimension, prefs).symbol
+
+
+def _decimals(dimension: Dimension, prefs: DisplayPrefs) -> int:
+    """Return the decimal places ``dimension`` is shown with."""
+    if dimension is Dimension.ANGLE:
+        return prefs.angle_decimals
+    if dimension is Dimension.STRESS:
+        return prefs.stress_decimals
+    return prefs.decimals
 
 
 def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> float:
@@ -77,8 +108,7 @@ def format_value(
         unit: Append the unit (and the nearest fraction, when enabled).
     """
     shown = display_value(value, dimension, prefs)
-    decimals = prefs.angle_decimals if dimension is Dimension.ANGLE else prefs.decimals
-    text = format_number(shown, decimals)
+    text = format_number(shown, _decimals(dimension, prefs))
     if unit:
         text += unit_suffix(dimension, prefs)
     if (
@@ -153,7 +183,7 @@ def render_step(
         unit = get_unit(step.expression_unit)
         yielded = step.stated
         if yielded is None:
-            decimals = prefs.angle_decimals if step.dimension is Dimension.ANGLE else prefs.decimals
+            decimals = _decimals(step.dimension, prefs)
             yielded = f"{format_number(from_base(step.value, unit), decimals)} {unit.symbol}"
         if unit.symbol != display_unit(step.dimension, prefs).symbol:
             value_text = f"{yielded} = {value_text}"

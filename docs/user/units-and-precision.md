@@ -11,15 +11,19 @@
 | `2'` | 2 feet |
 | `90`, `90°`, `90 deg` | 90 degrees (angles are always degrees unless you type `rad`) |
 | `44%`, `0.44` | the ratio 0.44 (e.g. a K-factor) |
+| `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is ksi when the system is `in`, MPa when it's `mm` |
 
 Not supported yet: combined feet and inches such as `3'-4 1/2"`.
 
 ## Precision and rounding
 
 * Calculations use full double precision, the same as Excel.
-* **Rounding happens only for display.** Results show 4 decimals by default (angles show 2).
+* **Rounding happens only for display.** Results show 4 decimals by default (angles show 2,
+  stresses 1).
   The CLI's `--decimals` changes this, and `--fraction 64` adds the nearest 1/64".
-* JSON output (`--json`) is unrounded, in millimetres and degrees, and each value names its unit.
+* Stresses follow the unit system: ksi when it's `in`, MPa when it's `mm`.
+* JSON output (`--json`) is unrounded, in millimetres, degrees, and megapascals, and each
+  value names its unit.
   Each step also gives `substitution`, a map from its formula's symbols to the text shown
   for them (not numbers), `expression_unit`, the unit its formula yields, and `stated`,
   the value as its source states it, e.g. `"0.109375 in"`; all three are `null` for an

@@ -1,8 +1,8 @@
 """Dimensions, units, and parsing of user-entered quantities.
 
 Every calculation runs in canonical *base units*: millimetres for length, degrees for
-angle, and plain numbers for ratios. Values are converted only at the edges, when
-input is parsed and when output is formatted (ADR-0005).
+angle, plain numbers for ratios, and megapascals for stress. Values are converted only
+at the edges, when input is parsed and when output is formatted (ADR-0005).
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ class Dimension(Enum):
     LENGTH = "length"
     ANGLE = "angle"
     RATIO = "ratio"
+    STRESS = "stress"
 
     @property
     def with_article(self) -> str:
@@ -33,6 +34,7 @@ _WITH_ARTICLE = {
     Dimension.LENGTH: "a length",
     Dimension.ANGLE: "an angle",
     Dimension.RATIO: "a ratio",
+    Dimension.STRESS: "a stress",
 }
 
 
@@ -48,6 +50,10 @@ class Unit:
     aliases: tuple[str, ...] = ()
 
 
+_PSI_IN_MPA = 0.45359237 * 9.80665 / 25.4**2
+"""One pound-force per square inch in N/mm², from the exact pound, standard gravity, and
+inch (NIST SP 811, Appendix B)."""
+
 UNITS: tuple[Unit, ...] = (
     Unit("mm", "millimetre", Dimension.LENGTH, 1.0, ("millimeter", "millimeters", "millimetres")),
     Unit("cm", "centimetre", Dimension.LENGTH, 10.0, ("centimeter", "centimeters", "centimetres")),
@@ -58,12 +64,18 @@ UNITS: tuple[Unit, ...] = (
     Unit("rad", "radian", Dimension.ANGLE, 180.0 / math.pi, ("radian", "radians")),
     Unit("", "ratio", Dimension.RATIO, 1.0),
     Unit("%", "percent", Dimension.RATIO, 0.01, ("percent",)),
+    Unit("MPa", "megapascal", Dimension.STRESS, 1.0, ("megapascal", "megapascals")),
+    Unit("kPa", "kilopascal", Dimension.STRESS, 0.001, ("kilopascal", "kilopascals")),
+    Unit("GPa", "gigapascal", Dimension.STRESS, 1000.0, ("gigapascal", "gigapascals")),
+    Unit("psi", "pound per square inch", Dimension.STRESS, _PSI_IN_MPA),
+    Unit("ksi", "kip per square inch", Dimension.STRESS, 1000 * _PSI_IN_MPA),
 )
 
 BASE_UNITS: dict[Dimension, str] = {
     Dimension.LENGTH: "mm",
     Dimension.ANGLE: "deg",
     Dimension.RATIO: "",
+    Dimension.STRESS: "MPa",
 }
 
 
@@ -76,7 +88,7 @@ def base_text(value: float, dimension: Dimension) -> str:
 
 
 def base_unit_names() -> str:
-    """Name every base unit, e.g. ``"mm, deg, ratio"``, for messages about base units."""
+    """Name every base unit, e.g. ``"mm, deg, ratio, MPa"``, for messages about base units."""
     return ", ".join(unit or dimension.value for dimension, unit in BASE_UNITS.items())
 
 
