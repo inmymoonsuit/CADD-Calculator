@@ -1,7 +1,9 @@
 # Materials data sources for sheet metal (research for ADR-0014)
 
 * **Prepared:** 2026-10-17, by the Support & Review session, for
-  [ADR-0014](../decisions/0014-materials-and-reference-data.md).
+  [ADR-0014](../decisions/0014-materials-and-reference-data.md). **Updated** 2026-10-17
+  for phase 2b, from Support & Review's materials data brief and reviews: §3, §6, §7, and
+  §10 record what was resolved, and §11 what was newly found.
 * **Accessed:** every source below was accessed on 2026-10-17 unless noted otherwise.
 * **Not legal advice.** This summarizes research so the project can plan. The project has
   no budget for a legal review, so it ships only what needs no legal defense. See
@@ -95,10 +97,11 @@ gauge number can produce a wrong part.
 
 | Material | Source | Status | Notes |
 |---|---|---|---|
-| 2024, 5052, 6061, 7075 aluminum | FAA AC 43.13-1B with Change 1 (2001), Ch. 4, Table 4-6, p. 4-14: radii for 90° bends, 0.016–0.258 in, as ranges in multiples of t. https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_43.13-1B_w-chg1.pdf | Public domain | Spot value: 5052-H32 at 0.064 in = ½t–1t. Aerospace bench practice. |
-| Aluminum | FAA-H-8083-31B, *AMT Handbook – Airframe* (2023), Ch. 4, Fig 4-124, p. 4-61. https://www.faa.gov/sites/faa.gov/files/FAA-H-8083-31B_Aviation_Maintenance_Technician_Handbook.pdf | Public-domain document, but the figure credits a Raytheon manual, so treat it as cite-only (ADR-0014 §5.3) | **Conflict:** for 6061-T6 at 0.064 in it reads about 2.5t, against 1–2t in AC 43.13. Which column belongs to which alloy is still to be checked visually. |
-| 1020/1025 carbon steel | USAF TO 1-1A-9 / NAVAIR 01-1A-9 (basic 1999, Change 14, 2015), Table 2-34, p. 2-128: 2T for 0.016–0.187 in. https://everyspec.com/USAF/USAF-Tech-Manuals/TO_1-1A-9_CHG-14_53433/ | Public domain (Distribution A) | A conservative stand-in for mild cold-rolled sheet. Newer revisions couldn't be fetched. |
-| Stainless | TO 1-1A-9 Table A-16 (and Table 2-35) | Public domain | The text extraction is garbled, so the values need a manual reading. |
+| 2024, 5052, 6061, 7075 aluminum | FAA AC 43.13-1B with Change 1, editorial update (May 2024), Ch. 4, par 4-56, Table 4-6, p. 4-17 (p. 4-14 in the earlier file, values identical): radii for 90° bends, 0.016–0.258 in, as ranges in multiples of t. https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_43.13-1B_CHG_1_Ed_Upd_FAA.pdf | Public domain | Spot values: 5052-H32 at 0.064 in = ½t–1t; 6061-T6 at 0.064 in = 1t–2t. Aircraft repair practice. **Shipped** for 5052-H32 and 6061-T6. |
+| 6061-T6, and its group | USAF TO 1-1A-9 / NAVAIR 01-1A-9 (17 Nov 2016, Change 3, 24 Jan 2020), Tables A-31 and A-32, pp. A-45 and A-47, aluminum rows (Table A-16 in the 2015 edition, aluminum values identical): standard bend radii for 90° cold forming, as radii in inches. https://everyspec.com/USAF/USAF-Tech-Manuals/TO_1-1A-9_CHG-3_24JAN2020_56694/ | Public domain (Distribution A) | Spot value: 6061-T6 at 0.063 in = 0.16 in, about 2.5t, above AC 43.13's 1t–2t. **Shipped**; the check takes the larger of TO and AC's upper bound at each thickness (D1). |
+| Aluminum | FAA-H-8083-31B, *AMT Handbook – Airframe* (2023), Ch. 4, Fig 4-124, p. 4-61. https://www.faa.gov/sites/faa.gov/files/FAA-H-8083-31B_Aviation_Maintenance_Technician_Handbook.pdf | Public-domain document, but the figure credits a Raytheon manual, so it is cite-only (ADR-0014 §5.3) | **Resolved:** the alloy-to-column mapping was checked visually, and the chart agrees with TO 1-1A-9 for 6061-T6 at 0.063 in. TO, a public-domain source, carries that value, so the chart isn't shipped (D1). |
+| 1020/1025 carbon steel | TO 1-1A-9 (2016, Change 3), Table 2-15, p. 2-88 (Table 2-34, p. 2-128 in the 2015 edition; identical): 2T for 0.016–0.187 in | Public domain (Distribution A) | **Shipped** as a labelled, conservative stand-in for mild cold-rolled sheet (A1008 CS), stopping at 0.187 in (D4). |
+| Stainless | TO 1-1A-9 (2016, Change 3), Table 2-16, p. 2-88 (Table 2-35 in 2015; identical); and the 2015 edition's Table A-16 | Public domain | **Read manually.** Table 2-16 lists 304 only for ½ Hard, at 2T, in bands 0.012–0.051, 0.051–0.090, and 0.190–0.250 in. **Shipped** for 304 annealed (2B) as a labelled, conservative stand-in (D3). Table A-16's generic "Corrosion Resistant, Annealed" row, about 1t and naming no alloy, is cited in the note only. |
 | Hot-rolled steel | ASTM A1011, Appendix X1 (suggested minimum inside radius by grade) | Cite-only | Check the current edition. |
 | Galvanized | No public-domain source found | Gap | A653 has a bend *test*, which is acceptance, not fabrication guidance. |
 | Aluminum (industry) | Aluminum Association, *Aluminum Standards and Data* | Cite-only | One supplier catalog reproduces this kind of table without credit. That is one more reason not to source from catalogs. |
@@ -156,10 +159,10 @@ gauge number can produce a wrong part.
 | 5052-H32 sheet | MIL-HDBK-5J (31 Jan 2003), Table 3.5.1.0(b1), p. 3-220: Ftu/Fty 31/23 ksi | Public domain (Distribution A) | — |
 | 6061-T6 sheet | MIL-HDBK-5J Table 3.6.2.0(b1), p. 3-264: A-basis (L) 42/36 ksi | Public domain | A-basis is a statistical allowable, not a specification minimum or typical value. |
 | AISI 1025, annealed sheet | MIL-HDBK-5J Table 2.2.1.0(b), p. 2-8: 55/36 ksi | Public domain | — |
-| 304 | MIL-HDBK-5J covers 304 in a footnote to the AISI 301 table (Table 2.7.1.0(b), p. 2-223) | Public domain | To verify. |
+| 304, annealed | MIL-HDBK-5J Table 2.7.1.0(b), p. 2-223: its footnote b applies the AISI 301 table to 304 bought to AMS 5513 (annealed), so 304 annealed takes the Annealed column: S-basis, ≤ 0.187 in, Ftu 73 (L) and 75 (LT) ksi, Fty 26 (L) and 30 (LT) ksi | Public domain | **Resolved and shipped.** The values attach to AMS 5513 material; 2B sheet is commonly bought to ASTM A240/A480, which wasn't checked against them, and the table says so. |
 | 304 | ASTM A240 specification minimums | Cite-only | Seen only through vendor pages, so not carried here. |
 | 304 | Mills' typical values | Vendor | Well above the specification minimum. Not carried. |
-| ASTM A1008 CS | The specification sets no minimum strength | Gap | — |
+| ASTM A1008 CS | The specification sets no minimum strength | Gap | **Shipped** with MIL-HDBK-5J's AISI 1025 annealed row (S-basis, 55/36 ksi) as a labelled stand-in, which the maintainer accepted. |
 
 MIL-HDBK-5J is at https://everyspec.com/MIL-HDBK/MIL-HDBK-0001-0099/MIL_HDBK_5J_139/.
 It was cancelled in 2003. Its successor, MMPDS (mmpds.org), is copyrighted and is not
@@ -182,7 +185,7 @@ These are paraphrased; no terms are quoted.
 | DS SolidWorks, Autodesk | Bundled content, including sample gauge tables, may be used only with the product |
 | ASTM (store.astm.org/restricted_copyright-and-permissions) | All content copyrighted; reproduction by paid permission |
 | Aluminum Association | Copyrighted |
-| *The Fabricator* (FMA Communications) | Terms couldn't be read (pages refused automated access) |
+| *The Fabricator* (FMA Communications) | **Read** (fmamfg.org/terms-of-use, undated; read in a browser on 2026-10-17): personal, non-commercial use only; republishing or reuse for public or commercial purposes needs written permission. That doesn't fit Apache-2.0, so nothing from the series is used. |
 
 ## 8. Legal framing (not legal advice)
 
@@ -254,17 +257,30 @@ project therefore ships only an original compilation that needs no defense, as A
 
 ## 10. Open verification items
 
-Open (phase 2b needs the first four):
+Open:
 
-* FAA-H-8083-31B Fig 4-124: confirm the alloy-to-column mapping visually.
-* TO 1-1A-9 Tables 2-35 and A-16: read the stainless values manually.
-* MIL-HDBK-5J Table 2.7.1.0(b): confirm 304's coverage and its values.
-* TO 1-1A-9 Table A-19: re-read the 20 ga value in its "USSG (Revised)" column before
-  using it as a test value.
 * ASTM B209 → ANSI H35.2: confirmed from referenced-document listings only; read
   ASTM's own B209 page.
-* The Fabricator's terms of use: read them before anything from the series is
-  considered (ADR-0014 §5.2, M3).
+* TO 1-1A-9's current edition: the 2016 basic with Change 3 is the newest everyspec
+  lists. The official TO index (ETIMS) isn't public, so whether a later change exists
+  can't be checked.
+
+Resolved for phase 2b (2026-10-17; the materials data brief, ADR-0014 amendments):
+
+* **FAA-H-8083-31B Fig 4-124's mapping** was checked visually: its columns are as the
+  chart prints them, and for 6061-T6 at 0.063 in it agrees with TO 1-1A-9. The chart
+  credits a Raytheon manual, so it stays cite-only and isn't shipped (D1).
+* **TO 1-1A-9's radius tables were read by eye, in both editions** (2015 Change 14, and
+  2016 with Change 3): carbon steel (Table 2-34 = 2-15), stainless (Table 2-35 = 2-16),
+  and the standard bend radii (Table A-16 = A-31 and A-32). Their aluminum and Chapter 2
+  values match between editions.
+* **MIL-HDBK-5J covers 304** through footnote b of Table 2.7.1.0(b), for AMS 5513
+  (annealed) material; §6 carries its values.
+* **TO 1-1A-9 Table A-19's 20 ga** reads .0359 in at 24 oz/ft² in both editions (A-34 in
+  2020). Its "US Standard (Revised)" column holds the 41.82-basis Manufacturers' Standard
+  values, so a test citing it compares against `msg`, not `uss`.
+* **The Fabricator's terms** were read: non-commercial use only, so the series is
+  excluded (§7).
 
 Resolved for phase 2a (2026-10-17; ADR-0014 amendments):
 
@@ -277,3 +293,31 @@ Resolved for phase 2a (2026-10-17; ADR-0014 amendments):
   is the same value truncated.
 * **ASTM A480's position on gauge numbers** couldn't be confirmed, so the claim was
   withdrawn rather than resolved.
+
+## 11. Findings from phase 2b (2026-10-17)
+
+* **AC 43.13-1B has a May 2024 editorial update** of the full document with Change 1,
+  which the FAA's advisory-circular index lists as Active. Table 4-6 moved to p. 4-17;
+  its 5052-H32 and 6061-T6 rows are the same, value for value, as the earlier file's
+  p. 4-14, and the update corrects only a typo elsewhere in the table. The materials
+  table cites the update.
+* **TO 1-1A-9 has a 17 Nov 2016 basic with Change 3 (24 Jan 2020),** a complete
+  publication under Distribution A, which renumbers the tables the 2015 edition (Change
+  14) had: Tables 2-34 and 2-35 became 2-15 and 2-16 (p. 2-88), and Table A-16 became
+  A-31 and A-32. The materials table cites the 2016 edition; the 2015 edition is cited
+  only for its generic annealed corrosion-resistant row, which the 2016 tables carry with
+  the error below. Its bending practice, to form across the grain where possible and to
+  check a practice bend, adding a thickness or more to the radius if it cracks, is on
+  p. 2-80 of the 2016 edition (¶2.18.1.2c and ¶¶2.19.1–2.19.1.1).
+* **The 2020 Tables A-31 and A-32 carry an apparent column error in their steel rows.**
+  The steel, stainless, and titanium rows sit under the aluminum thickness headings,
+  which drop two thicknesses and add two, so their values are shifted one column against
+  the 2015 Table A-16 and against the same edition's Table 2-15. The aluminum rows match
+  between editions. By the maintainer's decision D9, the error isn't reported, and no
+  steel or stainless value is taken from those tables: Tables 2-15 and 2-16 supply them.
+* **304 has no applicable minimum radius from about 0.094 to 0.1875 in.** Table 2-16 has
+  no band between 0.090 and 0.190 in, so common 304 sheet from 13 ga US Standard
+  (0.09375 in) to 3/16 in gets a no-applicable-value note rather than a stretched value.
+* **MIL-HDBK-5J was cancelled in 2003** and superseded by the copyrighted MMPDS. It is
+  used deliberately, since no public-domain successor exists (D6), and the materials
+  release record says so.

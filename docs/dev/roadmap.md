@@ -40,16 +40,19 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [x] Gauge systems computed from their definitions, with sources (ADR-0014 phase 2a,
       built 2026-10-17): Manufacturers' Standard, galvanized, US Standard 1893, and AWG,
       chosen on the Sheet Metal page. Each gauge names its gauge system.
-- [ ] **Next:** material library with cited data (ADR-0014 phase 2b). User or
-      shop-editable tables need a separate decision, outside the session-only model.
-      Before it starts, close the open verification items in the research notes
-      (research §10):
-      - FAA-H-8083-31B Fig 4-124: confirm the alloy-to-column mapping
-      - TO 1-1A-9 Tables 2-35 and A-16: read the stainless values
-      - MIL-HDBK-5J Table 2.7.1.0(b): confirm 304's coverage and values
-      - TO 1-1A-9 Table A-19: re-check the 20 ga value
-- [ ] Minimum inside bend radius checks per material and temper, as result notes that say
+- [x] Material library with cited data (ADR-0014 phase 2b, built 2026-10-17): 5052-H32,
+      6061-T6, mild cold-rolled, galvanized, HR P&O, and 304 annealed (2B), with their
+      tempers, cited minimum radii, MIL-HDBK-5J strengths with their basis, and K-factor
+      starting values applied on request. Its release record awaits sign-off.
+- [x] Minimum inside bend radius checks per material and temper, as result notes that say
       so when no source covers the case (ADR-0014 phase 2b)
+- [ ] **Next for materials:**
+      - sign off the materials release record, and re-verify the gauge table's version 2
+      - more tempers and alloys, such as 6061-O and 5052-H34, as public-domain sources allow
+      - a public-domain minimum radius for galvanized and HR P&O, which have none
+      - press-brake tonnage, once an upper strength value passes ADR-0014 §5
+      - user or shop-editable tables, which need their own decision, outside the
+        session-only model
 - [ ] Feet-and-inches input (KI-009). Fraction display toggle in the GUI.
 - [ ] 1:1 printable SVG templates for cone layouts (annular sector) and flat blanks, to
       cut a paper template and check a first part (see KI-001). Use the conventions of the

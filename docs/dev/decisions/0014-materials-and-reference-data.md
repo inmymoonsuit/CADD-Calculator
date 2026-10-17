@@ -1,8 +1,8 @@
 # ADR-0014: Materials and reference data for sheet metal (ADR-0013 phase 2)
 
-* **Status:** **Accepted**; **phase 2a built** (gauge systems, 2026-10-17), phase 2b under
-  way. The design as built is in the [Amendments](#amendments), which refine §1,
-  §2, §3, and §5. The maintainer approved M1–M7 as
+* **Status:** **Accepted**; **phase 2a built** (gauge systems, 2026-10-17); **phase 2b
+  built** (materials, 2026-10-17), its release sign-offs pending. The design as built is
+  in the [Amendments](#amendments), which refine §1, §2, §3, and §5. The maintainer approved M1–M7 as
   recommended on 2026-10-17. This ADR supersedes parts of ADR-0013: decision A's "P
   derived from material" (M3), decision E for K and P (M2), and §11's phase-2 list (see
   Consequences).
@@ -1100,3 +1100,25 @@ differ.
   explicit source carries the applied value's citation as its `reference`, so the bend
   check's warning for a K starting value given for other materials (2b.7c, L3) fires for
   the copy too. `InputSource.reference` may now be set on an explicit source for this.
+
+### 2026-10-17: phase 2b as built (maintainer, phase 2b.8)
+
+Phase 2b is built: the materials table, the material and temper choices, the
+minimum-radius check, and the Sheet Metal page's facts and K starting values. The
+release record is `docs/dev/research/release-checklist-materials-v1.md`, awaiting its
+two sign-offs; the gauge table's version 2 awaits the review session's re-verification.
+The maintainer's decisions, and where each is built:
+
+| Decision | As built |
+|---|---|
+| D1. 6061-T6: the larger of TO's radius and AC's upper bound, both shown; Raytheon cited at most | Both rows ship; `BendCheck` takes the larger at each thickness and cites both. Fig 4-124 isn't shipped. |
+| D2. A range warns below its upper bound and shows whole | `RadiusValue.minimum` uses the upper bound; the note and the facts show the range. |
+| D3. 304 annealed takes Table 2-16's ½ Hard 2T, labelled, with A-16's ≈1t in the note | Shipped with its stand-in label; the 2015 edition is cited in the note only. |
+| D4. Within ±2% of a listing, that listing; else the next one up; outside, no value; mild steel stops at 0.187 in | `listed_bands`, with every row held non-decreasing. |
+| D5. No B-basis; 6061-T6 at A-basis only | `Basis` has no B-basis; a series includes its basis, so one could be added. |
+| D6. MIL-HDBK-5J used deliberately though cancelled | Recorded in the release record, item 6. |
+| D7. The cap counts reference-data values; MH29's K in help only | The 2b.2 amendment; `Domain.check_origin` means only a table entry can be applied. |
+| D8. Both MH29 K values cited in help | In the K-factor help, to type. |
+| D9. Don't report TO's 2020 column error; never source steel from A-31/A-32 | Steel and stainless come from Tables 2-15 and 2-16 only. |
+| D10. Past 90° and hems: no value; up to 90°, the 90° value | `MAX_ANGLE`, and a no-applicable-value note naming the angle. |
+| Flags 1–10 of the 2b plan | Keys `cs:a1008`, `cs:a653`, `cs:a1011`, `al:5052`, `al:6061`, `ss:304`; `Option.default`; calculator-declared result checks on the two bend calculators; one-source coverage noted; Table 2-16's bands; stress in ksi or MPa by the length unit; applied values with their origin; the gauge-and-material warning by source; both stand-ins disclosed. |

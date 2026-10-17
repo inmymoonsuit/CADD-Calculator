@@ -26,5 +26,5 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed**; its `splash` key is replaced by 0015 |
 | [0012](0012-engineering-standards-enforced-by-tooling.md) | Write down the engineering standards, and enforce them with tooling | Accepted |
 | [0013](0013-domains-with-shared-settings.md) | Domains with shared settings that their calculators inherit | Accepted (phase 1 built); superseded in part by 0014 |
-| [0014](0014-materials-and-reference-data.md) | Materials and reference data for sheet metal (ADR-0013 phase 2) | Accepted (phase 2a built; 2b not started) |
+| [0014](0014-materials-and-reference-data.md) | Materials and reference data for sheet metal (ADR-0013 phase 2) | Accepted (phases 2a and 2b built; 2b's release sign-offs pending) |
 | [0015](0015-welcome-screen.md) | A welcome screen composed from branding-pack parts | Accepted (built) |

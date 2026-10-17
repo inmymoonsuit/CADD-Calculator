@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Phase 2b close-out (ADR-0014, amendments): the materials release record,
+  `docs/dev/research/release-checklist-materials-v1.md`, with all seven items and the
+  stand-ins disclosed, awaiting its sign-offs; the research notes' resolved items and
+  phase 2b findings (§10, §11); and ADR-0014's status, phase 2b built. A packaged build
+  bundles and loads both tables.
 - **Materials on the Sheet Metal page (ADR-0014, amendments).** A **Facts** row shows the
   chosen material's minimum-radius rule with its sources and their scope, its bending
   practice, and its strengths with their basis, in ksi or MPa as the unit system sets.
