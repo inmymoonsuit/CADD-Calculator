@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+import weakref
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
-from functools import partial
 from html import escape
 from typing import Any, cast, override
 
@@ -131,6 +131,25 @@ class _EditStart:
     overridden: bool
     shown: str
     in_use: float | None
+
+
+def _slot(method: Callable[..., object], *args: object) -> Callable[..., None]:
+    """Return a slot that calls the bound ``method`` with ``args`` first, holding it weakly.
+
+    A ``functools.partial`` of a bound method, connected to a signal of the window's own
+    widget, kept the window alive from its children: Qt holds the slot and the slot holds
+    the window, a cycle through C++ that Python's collector can't see. The window then
+    outlived the code that made it and was torn down during interpreter exit, re-entrantly,
+    which crashed (KI-019). This slot does nothing once the window is gone.
+    """
+    owner = weakref.WeakMethod(method)
+
+    def call(*signal_args: object) -> None:
+        bound = owner()
+        if bound is not None:
+            bound(*args, *signal_args)
+
+    return call
 
 
 class _WheelGuard(QObject):
@@ -471,8 +490,8 @@ class MainWindow(QMainWindow):
             if default is not None:
                 edit.setPlaceholderText(f"default {field_text(default, p.dimension, self.prefs)}")
             edit.setToolTip(p.help)
-            edit.textEdited.connect(partial(self._on_field_edited, p.key))
-            edit.editingFinished.connect(partial(self._finish_field_edit, p.key))
+            edit.textEdited.connect(_slot(self._on_field_edited, p.key))
+            edit.editingFinished.connect(_slot(self._finish_field_edit, p.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
             field.addWidget(QLabel(unit_suffix(p.dimension, self.prefs).strip()))
@@ -484,7 +503,7 @@ class MainWindow(QMainWindow):
                     f"Use the {domain.name} settings' value. Untick to give this calculator "
                     "its own value."
                 )
-                box.toggled.connect(partial(self._on_inherit_toggled, p.key))
+                box.toggled.connect(_slot(self._on_inherit_toggled, p.key))
                 field.addWidget(box)
                 note = QLabel()
                 note.setWordWrap(True)
@@ -857,8 +876,8 @@ class MainWindow(QMainWindow):
             elif (entry := self.domain_settings.get(domain, setting.key)) is not None:
                 edit.setText(entry_text(entry, self.prefs))
             edit.setToolTip(setting.help)
-            edit.textEdited.connect(partial(self._on_setting_edited, setting.key))
-            edit.editingFinished.connect(partial(self._apply_setting, setting.key))
+            edit.textEdited.connect(_slot(self._on_setting_edited, setting.key))
+            edit.editingFinished.connect(_slot(self._apply_setting, setting.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
             field.addWidget(QLabel(unit_suffix(setting.dimension, self.prefs).strip()))
@@ -890,12 +909,10 @@ class MainWindow(QMainWindow):
         boxes = QHBoxLayout()
         if group_box is not None:
             group_box.setToolTip(choice.help)
-            group_box.currentIndexChanged.connect(
-                partial(self._on_choice_group_changed, choice.key)
-            )
+            group_box.currentIndexChanged.connect(_slot(self._on_choice_group_changed, choice.key))
             boxes.addWidget(group_box, 2)
         option_box.setToolTip(choice.help)
-        option_box.currentIndexChanged.connect(partial(self._on_choice_option_changed, choice.key))
+        option_box.currentIndexChanged.connect(_slot(self._on_choice_option_changed, choice.key))
         boxes.addWidget(option_box, 1)
         about = QLabel(f"<small>{escape(choice.help)}</small>")
         about.setTextFormat(Qt.TextFormat.RichText)

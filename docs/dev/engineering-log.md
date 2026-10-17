@@ -16,6 +16,16 @@ Template:
 
 ---
 
+## 2026-10-17: Reading pytest's summary line as the result
+**Tried:** reporting the checks as passing from pytest's last line, e.g. "496 passed",
+through every slice from phase 1 to 2a.5.
+**Outcome:** missed KI-019. The interpreter crashed after that line, so the runs failed,
+on CI every time; Project Management found it from the failing jobs.
+**Why:** the summary is printed before interpreter exit, so a crash at exit can't change
+it. Only the exit status shows it.
+**Instead / next time:** confirm the exit status of every check, and repeat a GUI run
+several times, since a crash at exit can be intermittent.
+
 ## 2026-10-17: Substituting a derived value's work in the display unit
 **Tried:** a gauge's work showed its substituted line, then the value in the display
 unit, e.g. "(70 + 0) / 16 / 41.82 = 2.6568 mm" (d03afe0).

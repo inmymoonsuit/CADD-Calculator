@@ -186,12 +186,19 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- The app, and the test suite, could crash on exit after the window closed (KI-019): the
+  window's own widgets held it through their signal connections, so it was torn down
+  during interpreter exit. Every CI job failed from it. The `caddcalc-gui` command also
+  ignored its command-line arguments, `--smoke-test` included.
 - KI-017: switching the GUI between in and mm no longer rounds the values in calculator
   fields. Typed text is kept and shown verbatim while its unit is the display unit, and
   other values are re-expressed from their base value; nothing is read back from the
   display.
 
 ### Changed
+- CI and release workflows use action versions that run on Node.js 24: checkout v7,
+  setup-uv v10.3.0 (pinned by commit, as setup-uv no longer publishes major tags),
+  cache v6, upload-artifact v7, and download-artifact v8.
 - `Reference` gains optional `edition`, `locator`, `accessed`, and `scope` fields
   (ADR-0014). Its text adds the edition and locator when given, and `to_dict()` (so the
   JSON of each note's references) gains the four keys. A note shows each source's scope

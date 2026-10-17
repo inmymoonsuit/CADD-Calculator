@@ -5,11 +5,11 @@ from __future__ import annotations
 import ast
 import importlib
 import json
-import os
 import sys
 from html import escape
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 
@@ -180,12 +180,10 @@ def test_smoke_test_flag_is_removed_before_qt_sees_the_arguments(tmp_path: Path)
 
 
 @pytest.fixture
-def build_script(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
-    widgets = pytest.importorskip("PySide6.QtWidgets")
-    # A full QApplication first: the packaging helpers would otherwise create a bare
-    # QGuiApplication, and later widget tests can't run on that.
-    monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
-    widgets.QApplication.instance() or widgets.QApplication([])
+def build_script(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    # The qt fixture's full QApplication comes first: the packaging helpers would otherwise
+    # create a bare QGuiApplication, and later widget tests can't run on that.
+    request.getfixturevalue("qt")
     monkeypatch.syspath_prepend(str(ROOT / "packaging"))
     return importlib.import_module("build")
 
@@ -278,15 +276,11 @@ def test_placeholder_pack_is_a_valid_pack(tmp_path: Path) -> None:
 
 
 @pytest.mark.gui
-def test_window_shows_the_brand_and_keeps_the_disclaimer(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
-    widgets = pytest.importorskip("PySide6.QtWidgets")
+def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path) -> None:
     from caddcalc.core.formatting import DISCLAIMER
     from caddcalc.gui.window import GENERIC_ABOUT, MainWindow, about_html
 
-    app = widgets.QApplication.instance() or widgets.QApplication([])
+    app = qt.QApplication.instance()
     b = load_branding(make_pack(tmp_path / "pack"))
     window = MainWindow(branding=b)
     assert window.windowTitle() == b.name
@@ -300,14 +294,12 @@ def test_window_shows_the_brand_and_keeps_the_disclaimer(
 
 @pytest.mark.gui
 def test_app_smoke_test_applies_a_pack_from_the_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    qt: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
     gui = pytest.importorskip("PySide6.QtGui")
-    widgets = pytest.importorskip("PySide6.QtWidgets")
     from caddcalc.gui.app import main
 
-    app = widgets.QApplication.instance() or widgets.QApplication([])
+    app = qt.QApplication.instance()
     pack = make_pack(tmp_path / "pack")
     image = gui.QImage(32, 32, gui.QImage.Format.Format_ARGB32)
     image.fill(0xFF1F5F99)
@@ -327,3 +319,19 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert not report["packaged"]
     assert report["reference_tables"] == len(REFERENCE_TABLES) == 1, "the gauge table"
     assert (report_dir / "window.png").stat().st_size > 0
+
+
+@pytest.mark.gui
+def test_the_entry_point_reads_the_command_line(
+    qt: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``caddcalc-gui`` calls ``main()`` with no arguments; it must still see --smoke-test."""
+    from caddcalc.gui.app import main
+
+    monkeypatch.delenv(ENV_VAR, raising=False)
+    monkeypatch.setattr("sys.argv", ["caddcalc-gui", f"--smoke-test={tmp_path}"])
+    try:
+        assert main() == 0
+    finally:
+        qt.QApplication.instance().setApplicationDisplayName("")
+    assert (tmp_path / "smoke-test.json").is_file()

@@ -151,6 +151,28 @@ points here (`MainWindow._finish_field_edit`).
 
 ## Resolved
 
+### KI-019: The app and the tests could crash on exit (resolved 2026-10-17)
+
+* **Symptom.** After the window closed, the interpreter could abort or crash on exit:
+  "QObject: shared QObject was deleted directly", then exit status 134 or 139 on Linux and
+  macOS, and 127 or 139 on Windows. In a Linux container, the app's own `--smoke-test`
+  crashed on 13 of 15 runs, and a normal close after visiting pages on 14 of 15. The test
+  suite crashed after "496 passed", which failed every CI job from the phase 1 push on.
+* **Cause.** Slice 6 (a2f23d0) connected each field's signals to
+  `functools.partial(self._handler, key)`. Qt holds a connected callable strongly, so the
+  window's own child widgets held the window: a cycle through C++ that Python's collector
+  can't see. The window outlived the code that made it and was torn down during
+  interpreter exit, re-entrantly: deleting a child dropped the last slot holding the
+  window, which deleted the window's widget tree from inside its own teardown.
+* **Fix.** The window connects through `_slot`, which holds the window weakly, so a window
+  is freed when its last reference goes
+  (`test_a_window_is_freed_when_the_last_reference_goes`). `main()` closes and deletes the
+  window while the application still runs. The `qt` test fixture closes and deletes each
+  test's windows, then delivers the deferred deletes, as pytest-qt's `qtbot` does, and
+  every GUI test uses it.
+* **Also found.** The `caddcalc-gui` entry point called `main()` with no arguments, so it
+  ignored the command line, `--smoke-test` included. `main()` now reads `sys.argv`.
+
 ### KI-017: Switching units in the GUI rounded the typed value (resolved 2026-10-17)
 
 Changing the GUI between in and mm rewrote each field as six-decimal text and read it

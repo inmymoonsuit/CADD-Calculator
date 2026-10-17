@@ -27,8 +27,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Start the desktop app and return its exit status.
 
     Args:
-        argv: Command-line arguments without the program name. ``--smoke-test[=DIR]``
-            is handled here (see ``SMOKE_TEST_FLAG``); the rest go to Qt.
+        argv: Command-line arguments without the program name; ``None`` reads
+            ``sys.argv``, as the ``caddcalc-gui`` entry point calls it.
+            ``--smoke-test[=DIR]`` is handled here (see ``SMOKE_TEST_FLAG``); the rest go
+            to Qt.
     """
     started = time.perf_counter()
     try:
@@ -47,7 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     from caddcalc.gui.branding import active_branding
     from caddcalc.gui.window import MainWindow
 
-    args, smoke_test, report_dir = _split_smoke_test(list(argv or []))
+    args, smoke_test, report_dir = _split_smoke_test(list(sys.argv[1:] if argv is None else argv))
     branding = active_branding()
 
     app = QApplication.instance() or QApplication([sys.argv[0], *args])
@@ -78,9 +80,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     if smoke_test:
         ready = time.perf_counter() - started
         _write_smoke_report(report_dir, app, window, branding, splash, ready)
-        window.close()
-        return 0
-    return int(app.exec())
+        status = 0
+    else:
+        status = int(app.exec())
+    _dispose(app, window)
+    return status
+
+
+def _dispose(app: QApplication, window: MainWindow) -> None:
+    """Close and delete the window while the application still runs.
+
+    Left to interpreter exit, the window would be torn down after or during Qt's own
+    teardown, in no set order (KI-019).
+    """
+    from PySide6.QtCore import QEvent
+
+    window.close()
+    window.deleteLater()
+    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _split_smoke_test(args: list[str]) -> tuple[list[str], bool, Path | None]:

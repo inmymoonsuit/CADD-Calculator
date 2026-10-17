@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
+from typing import Any
 
 import pytest
 
@@ -95,12 +95,10 @@ def test_gui_results_mark_each_kind_of_note() -> None:
 
 
 @pytest.mark.gui
-def test_gui_window_computes(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
-    widgets = pytest.importorskip("PySide6.QtWidgets")
+def test_gui_window_computes(qt: Any) -> None:
     from caddcalc.gui.window import MainWindow
 
-    app = widgets.QApplication.instance() or widgets.QApplication([])
+    app = qt.QApplication.instance()
     window = MainWindow()
     window.select_calculator("sheet_metal.bend_allowance")
     window.method_box.setCurrentIndex(0)  # course
@@ -117,3 +115,23 @@ def test_gui_window_computes(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "must be greater than 0 mm" in window.output.toPlainText()
     window.close()
     app.processEvents()
+
+
+@pytest.mark.gui
+@pytest.mark.usefixtures("qt")
+def test_a_window_is_freed_when_the_last_reference_goes() -> None:
+    """KI-019: no slot may hold the window, or it outlives its code and crashes at exit."""
+    import gc
+    import weakref
+
+    from caddcalc.gui.window import MainWindow
+
+    window = MainWindow()
+    window.select_calculator("sheet_metal.bend_allowance")
+    window.select_domain("sheet_metal")
+    window.select_calculator("sheet_metal.v_die_opening")
+    alive = weakref.ref(window)
+    window.close()
+    del window
+    gc.collect()
+    assert alive() is None, "a cycle through the window's connections keeps it alive"

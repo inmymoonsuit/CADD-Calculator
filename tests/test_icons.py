@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import tomllib
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -51,12 +51,10 @@ def test_notices_credit_the_pinned_version() -> None:
 
 
 @pytest.mark.gui
-def test_icons_render_in_the_palette_color(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
-    widgets = pytest.importorskip("PySide6.QtWidgets")
+def test_icons_render_in_the_palette_color(qt: Any) -> None:
     from caddcalc.gui import icons
 
-    app = widgets.QApplication.instance() or widgets.QApplication([])
+    app = qt.QApplication.instance()
     assert app is not None
     crimson = icons.role_color("icon_error", "light")
     assert crimson == "#A3122F"
