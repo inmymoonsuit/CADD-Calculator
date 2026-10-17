@@ -42,6 +42,13 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [ ] Gauge tables (manufacturer's standard steel gauge, aluminum, stainless), with sources.
       **Each table must name its gauge system.** MH29 Table 13 lists 12 ga as 0.1093, not 0.1046.
 - [ ] Feet-and-inches input (KI-009). Fraction display toggle in the GUI.
+- [ ] 1:1 printable SVG templates for cone layouts (annular sector) and flat blanks, to
+      cut a paper template and check a first part (see KI-001). Use the conventions of the
+      maintainer's parametric_CADD SVG writer: the user unit is the paper millimetre
+      (`width`/`height` in mm with a matching `viewBox`), Y is flipped because model Y
+      points up and SVG Y points down, and numbers have fixed precision. Any code reused
+      from that GPL project is contributed by its author under Apache-2.0; say so in the
+      commit. Include a printed scale check (e.g. a 100 mm / 4 in bar) on every sheet.
 
 ### 0.3: Installable
 - [x] Packaging spike, then accept ADR-0009: pyside6-deploy + Nuitka (pinned to 4.1.1),
