@@ -371,8 +371,6 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
         problems.append("did not detect that it is packaged")
     if not report["icon_loaded"]:
         problems.append("window icon did not load")
-    if report["splash_shown"] != (branding.splash is not None):
-        problems.append("splash screen shown/not shown unexpectedly")
     if report.get("reference_tables") != len(REFERENCE_TABLES):
         problems.append(
             f"loaded {report.get('reference_tables')} reference tables, "

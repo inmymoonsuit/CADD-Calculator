@@ -17,6 +17,7 @@ from pathlib import Path
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
+from caddcalc.gui.welcome_layout import ART_SUPPLIED
 from icons import ROOT, ensure_qt_app
 
 TOML = """\
@@ -26,8 +27,22 @@ schema = 1
 edition = "placeholder"
 name = "CADD Calculator: Placeholder Edition"
 icon = "icon.png"
-splash = "splash.png"
 about = "about.html"
+
+[welcome]
+art = "welcome-art.png"
+art_focus = [0.4, 0.5]
+logo = "logo-vertical.svg"
+"""
+
+LOGO_SVG = """\
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="540" viewBox="0 0 72 540">
+  <rect width="72" height="540" fill="#202020"/>
+  <rect x="8" y="8" width="56" height="524" fill="none" stroke="#ff00ff" stroke-width="4"/>
+  <text x="36" y="270" fill="#ff00ff" font-family="sans-serif" font-size="22"
+        font-weight="bold" text-anchor="middle" dominant-baseline="middle"
+        transform="rotate(-90 36 270)">TEST LOGO</text>
+</svg>
 """
 
 ABOUT = """\
@@ -71,10 +86,11 @@ def write_pack(dest: Path) -> Path:
     _label(icon, "TEST", 40)
     icon.save(str(dest / "icon.png"))
 
-    splash = QImage(560, 315, QImage.Format.Format_ARGB32)
-    _checker(splash, 35, "#ff00ff", "#202020")
-    _label(splash, "PLACEHOLDER BRANDING\nnot for distribution", 22)
-    splash.save(str(dest / "splash.png"))
+    art = QImage(int(ART_SUPPLIED.width), int(ART_SUPPLIED.height), QImage.Format.Format_ARGB32)
+    _checker(art, 120, "#ff00ff", "#202020")
+    _label(art, "PLACEHOLDER WELCOME ART\nnot for distribution", 64)
+    art.save(str(dest / "welcome-art.png"))
+    (dest / "logo-vertical.svg").write_text(LOGO_SVG, encoding="utf-8")
 
     (dest / "about.html").write_text(ABOUT, encoding="utf-8")
     (dest / "branding.toml").write_text(TOML, encoding="utf-8")

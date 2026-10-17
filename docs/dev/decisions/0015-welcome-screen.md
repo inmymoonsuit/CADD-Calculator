@@ -31,8 +31,9 @@ pack's art, without any edition-specific code.
 ### 1. One screen does both jobs: the startup splash and the welcome
 
 `WelcomeScreen` appears as soon as the `QApplication` exists, before the main window is
-built and the reference tables load, so it covers startup time. It stays until the user
-closes it, and blocks the main window meanwhile (W5). Help > Welcome Screen reopens
+built and the reference tables load: it paints during startup, and responds once the
+main window is built. It stays until the user closes it, and blocks the main window
+meanwhile (W5). Help > Welcome Screen reopens
 it. The `QSplashScreen` goes away, so there's one screen, not two.
 
 ### 2. Composed from parts, never baked into the art
@@ -166,3 +167,25 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   accessibility, and theme handling that widgets provide.
 * **A web view (QtWebEngine):** far too heavy for one screen, and it isn't part of
   PySide6-Essentials.
+
+## Amendments
+
+### 2026-10-17: decisions on the build plan's questions (maintainer)
+
+* **Blocking (W5).** The screen is application-modal: unparented when it opens at startup,
+  before the main window exists, and parented to the main window when Help > Welcome
+  Screen reopens it. That blocks the main window until it's closed, as W5 intends,
+  without reparenting a shown window, and it avoids macOS's sheets, which window-modal
+  dialogs become.
+* **Startup.** The main window is built from `QTimer.singleShot(0, …)` once the screen has
+  painted, so the screen is never blank. It responds once the main window is built (§1).
+* **The pixel budget is checked in two places.** The pack loader, standard library only,
+  checks each file's suffix, path, and size in bytes. The screen reads the art's pixel
+  size through `QImageReader` before decoding it, and falls back to the generic art if
+  it's too large.
+* **Pack schema.** The pack format stays `schema = 1`: ADR-0011 is still Proposed, so its
+  contract isn't settled. A pack that still names `splash` is refused with a message
+  that names its replacement, `[welcome]`.
+* **Size.** 1032 × 572 is the preferred size. On a smaller screen the whole card scales
+  down to fit the available area, keeping the art slot at 16:9 (`welcome_layout.fit_scale`).
+

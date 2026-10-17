@@ -7,8 +7,12 @@ with a ``branding.toml`` file and the files it names::
     edition = "example"                          # short slug: build folder names
     name = "CADD Calculator: Example Edition"    # window title, About heading
     icon = "icon.png"                            # optional window icon (.png or .ico)
-    splash = "splash.png"                        # optional, shown while the app starts
     about = "about.html"                         # optional About text (.html or .txt)
+
+    [welcome]                                    # optional welcome-screen parts (ADR-0015)
+    art = "welcome-art.png"                      # 16:9, supplied at 1920 x 1080
+    art_focus = [0.35, 0.5]                      # the point kept in view when cropping
+    logo = "logo-vertical.svg"                   # the vertical logo strip (.svg or .png)
 
 Where the app looks for a pack (first match wins):
 
@@ -36,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from caddcalc.core.errors import CaddCalcError
+from caddcalc.gui.welcome_layout import ART_FORMATS, LOGO_FORMATS, MAX_ART_BYTES
 
 ENV_VAR = "CADDCALC_BRANDING"
 PACK_FILE = "branding.toml"
@@ -47,9 +52,9 @@ ASSETS = Path(__file__).parent / "assets"
 GENERIC_ICON = ASSETS / "app-icon.png"
 
 ICON_SUFFIXES = frozenset({".png", ".ico"})
-SPLASH_SUFFIXES = frozenset({".png", ".jpg", ".jpeg"})
 ABOUT_SUFFIXES = frozenset({".html", ".htm", ".txt"})
-_KEYS = frozenset({"schema", "edition", "name", "icon", "splash", "about"})
+_KEYS = frozenset({"schema", "edition", "name", "icon", "about", "welcome"})
+_WELCOME_KEYS = frozenset({"art", "art_focus", "logo"})
 _EDITION_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 
 
@@ -64,7 +69,12 @@ class Branding:
     name: str = "CADD Calculator"
     edition: str = "generic"
     icon: Path | None = GENERIC_ICON
-    splash: Path | None = None
+    welcome_art: Path | None = None
+    """The welcome screen's art; ``None`` means the generic art (ADR-0015)."""
+    welcome_focus: tuple[float, float] = (0.5, 0.5)
+    """The point of the art kept in view when it is cropped, as fractions of its size."""
+    welcome_logo: Path | None = None
+    """The welcome screen's vertical logo; ``None`` means the app icon and name."""
     about_html: str | None = None
     """Rich-text fragment for Help > About. ``None`` means the generic description."""
     source: Path | None = None
@@ -96,6 +106,11 @@ def load_branding(pack_dir: Path | str) -> Branding:
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise BrandingError(f"{toml_path}: {exc}") from exc
 
+    if "splash" in data:
+        raise BrandingError(
+            f"{toml_path}: 'splash' was replaced by the [welcome] table (art, art_focus, "
+            "logo); see ADR-0015"
+        )
     unknown = sorted(set(data) - _KEYS)
     if unknown:
         raise BrandingError(
@@ -115,17 +130,19 @@ def load_branding(pack_dir: Path | str) -> Branding:
         )
 
     icon = _pack_file(data, "icon", root, ICON_SUFFIXES)
-    splash = _pack_file(data, "splash", root, SPLASH_SUFFIXES)
     about = _pack_file(data, "about", root, ABOUT_SUFFIXES)
     about_html = _read_about(about) if about is not None else None
+    art, focus, logo = _welcome(data.get("welcome", {}), root)
     return Branding(
         name=name,
         edition=edition,
         icon=icon if icon is not None else GENERIC_ICON,
-        splash=splash,
+        welcome_art=art,
+        welcome_focus=focus,
+        welcome_logo=logo,
         about_html=about_html,
         source=root,
-        files=(toml_path, *(f for f in (icon, splash, about) if f is not None)),
+        files=(toml_path, *(f for f in (icon, about, art, logo) if f is not None)),
     )
 
 
@@ -175,25 +192,66 @@ def _required_text(data: Mapping[str, Any], key: str, toml_path: Path) -> str:
     return value.strip()
 
 
+def _welcome(table: Any, root: Path) -> tuple[Path | None, tuple[float, float], Path | None]:
+    """Read the ``[welcome]`` table: the art, its focal point, and the logo.
+
+    Only the suffix, the path, and the size in bytes are checked here, without Qt. The
+    welcome screen checks the art's pixel size before decoding it (ADR-0015, amendments).
+    """
+    toml_path = root / PACK_FILE
+    if not isinstance(table, Mapping):
+        raise BrandingError(f"{toml_path}: 'welcome' must be a table, [welcome]")
+    unknown = sorted(set(table) - _WELCOME_KEYS)
+    if unknown:
+        raise BrandingError(
+            f"{toml_path}: unknown [welcome] key(s) {', '.join(unknown)}; "
+            f"expected some of {', '.join(sorted(_WELCOME_KEYS))}"
+        )
+    art = _pack_file(table, "art", root, frozenset(ART_FORMATS), label="welcome.art")
+    logo = _pack_file(table, "logo", root, frozenset(LOGO_FORMATS), label="welcome.logo")
+    for path, label in ((art, "welcome.art"), (logo, "welcome.logo")):
+        if path is not None and path.stat().st_size > MAX_ART_BYTES:
+            raise BrandingError(
+                f"{toml_path}: {label} {path.name!r} is larger than {MAX_ART_BYTES // 1_000_000} MB"
+            )
+    focus = table.get("art_focus", [0.5, 0.5])
+    if (
+        not isinstance(focus, list)
+        or len(focus) != 2
+        or not all(isinstance(v, int | float) and not isinstance(v, bool) for v in focus)
+        or not all(0 <= v <= 1 for v in focus)
+    ):
+        raise BrandingError(
+            f"{toml_path}: welcome.art_focus must be two numbers from 0 to 1, e.g. [0.35, 0.5]"
+        )
+    return art, (float(focus[0]), float(focus[1])), logo
+
+
 def _pack_file(
-    data: Mapping[str, Any], key: str, root: Path, suffixes: frozenset[str]
+    data: Mapping[str, Any],
+    key: str,
+    root: Path,
+    suffixes: frozenset[str],
+    *,
+    label: str | None = None,
 ) -> Path | None:
     value = data.get(key)
     if value is None:
         return None
     toml_path = root / PACK_FILE
+    label = label or key
     if not isinstance(value, str) or not value.strip():
-        raise BrandingError(f"{toml_path}: {key!r} must be a file name")
+        raise BrandingError(f"{toml_path}: {label!r} must be a file name")
     path = root / value
     # The build copies only the pack folder, so a file outside it would go missing.
     if not path.resolve().is_relative_to(root.resolve()):
-        raise BrandingError(f"{toml_path}: {key} {value!r} must be inside the pack folder")
+        raise BrandingError(f"{toml_path}: {label} {value!r} must be inside the pack folder")
     if path.suffix.lower() not in suffixes:
         raise BrandingError(
-            f"{toml_path}: {key} {value!r} must be one of {', '.join(sorted(suffixes))}"
+            f"{toml_path}: {label} {value!r} must be one of {', '.join(sorted(suffixes))}"
         )
     if not path.is_file():
-        raise BrandingError(f"{toml_path}: {key} file {value!r} does not exist")
+        raise BrandingError(f"{toml_path}: {label} file {value!r} does not exist")
     return path
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from PySide6.QtWidgets import QApplication, QSplashScreen
+    from PySide6.QtWidgets import QApplication
 
     from caddcalc.gui.branding import Branding
     from caddcalc.gui.window import MainWindow
@@ -34,8 +34,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     started = time.perf_counter()
     try:
-        from PySide6.QtGui import QIcon, QPixmap
-        from PySide6.QtWidgets import QApplication, QSplashScreen
+        from PySide6.QtGui import QIcon
+        from PySide6.QtWidgets import QApplication
     except ImportError:
         print(
             "The desktop app needs PySide6. Install it with:\n"
@@ -64,22 +64,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if branding.icon is not None:
         app.setWindowIcon(QIcon(str(branding.icon)))
 
-    splash = None
-    if branding.splash is not None:
-        pixmap = QPixmap(str(branding.splash))
-        if not pixmap.isNull():
-            splash = QSplashScreen(pixmap)
-            splash.show()
-            app.processEvents()
-
     window = MainWindow(branding=branding)
     window.show()
-    if splash is not None:
-        splash.finish(window)
 
     if smoke_test:
         ready = time.perf_counter() - started
-        _write_smoke_report(report_dir, app, window, branding, splash, ready)
+        _write_smoke_report(report_dir, app, window, branding, ready)
         status = 0
     else:
         status = int(app.exec())
@@ -120,7 +110,6 @@ def _write_smoke_report(
     app: QApplication,
     window: MainWindow,
     branding: Branding,
-    splash: QSplashScreen | None,
     ready_seconds: float,
 ) -> None:
     from caddcalc import __version__
@@ -137,7 +126,6 @@ def _write_smoke_report(
         "version": __version__,
         "window_title": window.windowTitle(),
         "icon_loaded": not app.windowIcon().isNull(),
-        "splash_shown": splash is not None,
         "about_custom": branding.about_html is not None,
         "calculators": len(window.registry),
         "reference_tables": _load_reference_tables(),

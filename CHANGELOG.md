@@ -196,6 +196,11 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- Branding packs: a `[welcome]` table (`art`, `art_focus`, `logo`) replaces the `splash`
+  key (ADR-0015), and the splash screen and the smoke report's `splash_shown` are gone
+  until the welcome screen replaces them. A pack that still names `splash` is refused
+  with a message naming `[welcome]`. `packaging/make_welcome_template.py` draws a guide
+  for the art, and the placeholder pack gains welcome parts.
 - CI and release workflows use action versions that run on Node.js 24: checkout v7,
   setup-uv v10.3.0 (pinned by commit, as setup-uv no longer publishes major tags),
   cache v6, upload-artifact v7, and download-artifact v8.

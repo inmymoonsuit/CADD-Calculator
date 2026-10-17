@@ -66,8 +66,12 @@ schema = 1                                    # pack format version (optional)
 edition = "example"                           # slug for folder names: a-z, 0-9, -
 name = "CADD Calculator: Example Edition"     # window title and About heading
 icon = "icon.png"                             # optional; .png (256 px or more) or .ico
-splash = "splash.png"                         # optional; .png or .jpg
 about = "about.html"                          # optional; .html fragment or .txt
+
+[welcome]                                     # optional welcome screen parts (ADR-0015)
+art = "welcome-art.png"                       # 16:9, supplied at 1920 x 1080; .png or .jpg
+art_focus = [0.35, 0.5]                       # the point kept in view when cropping
+logo = "logo-vertical.svg"                    # the vertical logo strip; .svg or .png
 ```
 
 * Paths are relative to the pack folder and must stay inside it.

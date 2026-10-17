@@ -35,8 +35,12 @@ schema = 1
 edition = "test-edition"
 name = "CADD Calculator: Test Edition"
 icon = "icon.png"
-splash = "splash.png"
 about = "about.html"
+
+[welcome]
+art = "welcome-art.png"
+art_focus = [0.35, 0.5]
+logo = "logo-vertical.svg"
 """
 
 
@@ -44,7 +48,8 @@ def make_pack(folder: Path, toml: str = PACK_TOML, *, images: bytes = b"not chec
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "branding.toml").write_text(toml, encoding="utf-8")
     (folder / "icon.png").write_bytes(images)
-    (folder / "splash.png").write_bytes(images)
+    (folder / "welcome-art.png").write_bytes(images)
+    (folder / "logo-vertical.svg").write_bytes(images)
     (folder / "about.html").write_text("<p>Made for <b>testing</b>.</p>\n", encoding="utf-8")
     return folder
 
@@ -56,7 +61,8 @@ def test_generic_branding_is_the_unbranded_public_build() -> None:
     assert GENERIC.is_generic
     assert GENERIC.name == "CADD Calculator"
     assert GENERIC.edition == "generic"
-    assert GENERIC.splash is None
+    assert (GENERIC.welcome_art, GENERIC.welcome_logo) == (None, None)
+    assert GENERIC.welcome_focus == (0.5, 0.5)
     assert GENERIC.about_html is None
     assert GENERIC.icon == GENERIC_ICON
     assert GENERIC_ICON.is_file(), "the generic icon ships inside the package"
@@ -89,7 +95,10 @@ def test_load_branding_reads_a_complete_pack(tmp_path: Path) -> None:
     assert b.name == "CADD Calculator: Test Edition"
     assert b.edition == "test-edition"
     assert b.icon == pack / "icon.png"
-    assert b.splash == pack / "splash.png"
+    assert b.welcome_art == pack / "welcome-art.png"
+    assert b.welcome_focus == (0.35, 0.5)
+    assert b.welcome_logo == pack / "logo-vertical.svg"
+    assert set(b.files) >= {b.welcome_art, b.welcome_logo}, "the build stages them"
     assert b.about_html == "<p>Made for <b>testing</b>.</p>"
 
 
@@ -97,7 +106,7 @@ def test_optional_files_fall_back_to_generic(tmp_path: Path) -> None:
     pack = make_pack(tmp_path / "pack", 'edition = "minimal"\nname = "Minimal"\n')
     b = load_branding(pack)
     assert b.icon == GENERIC_ICON
-    assert b.splash is None
+    assert (b.welcome_art, b.welcome_focus, b.welcome_logo) == (None, (0.5, 0.5), None)
     assert b.about_html is None
 
 
@@ -123,6 +132,32 @@ def test_plain_text_about_is_escaped_into_paragraphs(tmp_path: Path) -> None:
         ('edition = "x"\nname = "X"\nicon = "../outside.png"\n', "inside the pack folder"),
         ('edition = "x"\nname = "X"\nicon = 3\n', "must be a file name"),
         ("edition = \n", "branding.toml"),
+        ('edition = "x"\nname = "X"\nsplash = "s.png"\n', r"replaced by the \[welcome\] table"),
+        ('edition = "x"\nname = "X"\nwelcome = "art.png"\n', "must be a table"),
+        (
+            'edition = "x"\nname = "X"\n[welcome]\nart_fokus = [0.5, 0.5]\n',
+            r"unknown \[welcome\] key",
+        ),
+        (
+            'edition = "x"\nname = "X"\n[welcome]\nart = "welcome-art.gif"\n',
+            "must be one of .jpeg, .jpg, .png",
+        ),
+        ('edition = "x"\nname = "X"\n[welcome]\nlogo = "logo.jpg"\n', "must be one of .png, .svg"),
+        ('edition = "x"\nname = "X"\n[welcome]\nart = "missing.png"\n', "does not exist"),
+        (
+            'edition = "x"\nname = "X"\n[welcome]\nart = "../outside.png"\n',
+            "inside the pack folder",
+        ),
+        (
+            'edition = "x"\nname = "X"\n[welcome]\nart_focus = [0.5, 1.5]\n',
+            "two numbers from 0 to 1",
+        ),
+        ('edition = "x"\nname = "X"\n[welcome]\nart_focus = [0.5]\n', "two numbers from 0 to 1"),
+        (
+            'edition = "x"\nname = "X"\n[welcome]\nart_focus = [true, 0.5]\n',
+            "two numbers from 0 to 1",
+        ),
+        ('edition = "x"\nname = "X"\n[welcome]\nart_focus = "centre"\n', "two numbers from 0 to 1"),
     ],
 )
 def test_invalid_packs_are_rejected_with_a_reason(tmp_path: Path, toml: str, message: str) -> None:
@@ -130,6 +165,16 @@ def test_invalid_packs_are_rejected_with_a_reason(tmp_path: Path, toml: str, mes
     (tmp_path / "outside.png").write_bytes(b"x")
     (pack / "icon.bmp").write_bytes(b"x")
     with pytest.raises(BrandingError, match=message):
+        load_branding(pack)
+
+
+def test_welcome_files_over_the_byte_budget_are_refused(tmp_path: Path) -> None:
+    from caddcalc.gui.welcome_layout import MAX_ART_BYTES
+
+    pack = make_pack(tmp_path / "pack")
+    with (pack / "welcome-art.png").open("r+b") as art:
+        art.truncate(MAX_ART_BYTES + 1)
+    with pytest.raises(BrandingError, match=r"welcome\.art 'welcome-art\.png' is larger than 8 MB"):
         load_branding(pack)
 
 
@@ -236,7 +281,8 @@ def test_build_stages_only_the_named_files_and_notices(
         "about.html",
         "branding.toml",
         "icon.png",
-        "splash.png",
+        "logo-vertical.svg",
+        "welcome-art.png",
     ]
 
 
@@ -267,12 +313,30 @@ def test_placeholder_pack_is_a_valid_pack(tmp_path: Path) -> None:
     pack = importlib.import_module("make_placeholder_pack").write_pack(tmp_path / "pack")
     b = load_branding(pack)
     assert b.edition == "placeholder"
-    assert b.splash is not None and not gui.QImage(str(b.splash)).isNull()
+    art = gui.QImage(str(b.welcome_art))
+    assert (art.width(), art.height()) == (1920, 1080), "supplied at 2x, per the art spec"
+    svg = pytest.importorskip("PySide6.QtSvg")
+    assert svg.QSvgRenderer(str(b.welcome_logo)).isValid()
+    assert b.welcome_focus == (0.4, 0.5)
     assert b.icon is not None and not gui.QImage(str(b.icon)).isNull()
     assert "not for distribution" in (b.about_html or "")
 
 
 # --- the GUI applies the branding -------------------------------------------------------
+
+
+@pytest.mark.gui
+@pytest.mark.usefixtures("build_script")
+def test_the_welcome_template_marks_the_safe_areas() -> None:
+    from caddcalc.gui.welcome_layout import ART_SCALE, NAME_PANEL, VERSION_LINE
+
+    template = importlib.import_module("make_welcome_template")
+    image = template.draw_template()
+    assert (image.width(), image.height()) == (1920, 1080)
+    background = image.pixelColor(5, 5).name()
+    for area in (NAME_PANEL, VERSION_LINE):
+        inside = image.pixelColor(int((area.x + 4) * ART_SCALE), int((area.y + 4) * ART_SCALE))
+        assert inside.name() != background, "the safe area is marked"
 
 
 @pytest.mark.gui
@@ -304,7 +368,7 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     image = gui.QImage(32, 32, gui.QImage.Format.Format_ARGB32)
     image.fill(0xFF1F5F99)
     assert image.save(str(pack / "icon.png"), "PNG")
-    assert image.save(str(pack / "splash.png"), "PNG")
+    assert image.save(str(pack / "welcome-art.png"), "PNG")
     monkeypatch.setenv(ENV_VAR, str(pack))
     report_dir = tmp_path / "report"
     try:
@@ -315,7 +379,8 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert report["name"] == "CADD Calculator: Test Edition"
     assert report["edition"] == "test-edition"
     assert report["window_title"] == report["name"]
-    assert report["icon_loaded"] and report["splash_shown"] and report["about_custom"]
+    assert report["icon_loaded"] and report["about_custom"]
+    assert "splash_shown" not in report, "the splash screen is gone (ADR-0015)"
     assert not report["packaged"]
     assert report["reference_tables"] == len(REFERENCE_TABLES) == 1, "the gauge table"
     assert (report_dir / "window.png").stat().st_size > 0
