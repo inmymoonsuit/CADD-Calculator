@@ -175,13 +175,16 @@ _NOTE_HEADINGS = {
 def describe_note(note: Note) -> str:
     """Return a note as one line for users: its kind, its text, and its sources.
 
-    The GUI and the CLI both use this, so a note reads the same in both.
+    Each source is followed by its scope, when it has one, so a note says how far its
+    source applies, e.g. "(AC 43.13-1B, Table 4-6: aerospace bench practice)". The GUI
+    and the CLI both use this, so a note reads the same in both.
     """
     heading = _NOTE_HEADINGS[note.kind]
     text = f"{heading}: {note.text}" if heading else note.text
     if not note.references:
         return text
-    return f"{text} ({'; '.join(str(reference) for reference in note.references)})"
+    cited = "; ".join(f"{r}: {r.scope}" if r.scope else str(r) for r in note.references)
+    return f"{text} ({cited})"
 
 
 def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> list[str]:

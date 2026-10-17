@@ -66,7 +66,10 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
 7. **Engineering values.**
    * Formulas go through `ctx.calc`, so the displayed work can't drift from the computed
      value (ADR-0004).
-   * Calculations work in base units, and only `core.formatting` rounds (ADR-0005).
+   * Calculations work in base units, and only `core.formatting` rounds (ADR-0005). The
+     one exception is a standard's own stated precision, such as a gauge thickness
+     published to four decimals: that is data, applied only by
+     `core.refdata.nominal()` (ADR-0014, amendments).
    * Display text is never read back as a value. Keep what the user typed as a
      `TypedValue`, and show values through `entry_text` and `field_text` (ADR-0013 §9).
    * Every method cites its source.

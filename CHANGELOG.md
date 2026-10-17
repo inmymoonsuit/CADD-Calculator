@@ -7,6 +7,13 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
+  `load_table()` reads a cited TOML table shipped in a package and checks its header and
+  sources (kind, title, locator, access date, license, edition for books and standards,
+  third-party sources as cite-only); `ReferenceTable.check_values()` checks that values
+  cite declared sources and stay within the table's cite-only cap; `ReferenceValue`,
+  the `License`, `PublicationKind`, `Basis`, and `TrustLevel` enums, and `nominal()`,
+  the one place a standard's stated precision is applied. No data ships yet.
 - Project skeleton: a layered `caddcalc` package (core, calculators, CLI, PySide6 GUI).
 - Core framework: units and drafting-fraction parsing, a safe formula evaluator with
   show-work rendering, declarative calculators with references and verification status,
@@ -125,6 +132,10 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- `Reference` gains optional `edition`, `locator`, `accessed`, and `scope` fields
+  (ADR-0014). Its text adds the edition and locator when given, and `to_dict()` (so the
+  JSON of each note's references) gains the four keys. A note shows each source's scope
+  after it, e.g. "(AC 43.13-1B, Table 4-6: aerospace bench practice)".
 - The GUI's coloured text and field outlines (errors, the Notes heading, fields a note
   concerns) come from new palette roles, so they follow the light and dark themes; a
   test keeps hex colours out of the GUI code.

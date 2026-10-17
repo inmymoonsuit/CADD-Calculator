@@ -1,0 +1,29 @@
+# A reference table for tests of caddcalc.core.refdata. The values are invented.
+
+[table]
+name = "Sample table"
+version = 2
+cite_only_cap = 1
+
+[[source]]
+id = "statute"
+kind = "statute"
+title = "A public-domain statute"
+locator = "section 1"
+url = "https://example.org/statute"
+accessed = 2026-10-17
+license = "public_domain"
+
+[[source]]
+id = "handbook"
+kind = "book"
+title = "A handbook"
+edition = "3rd ed."
+locator = "Table 7, p. 12"
+accessed = 2026-10-17
+license = "cite_only_fact"
+scope = "bench practice"
+
+[[system]]
+id = "sample"
+weights = { "12" = "4.375" }

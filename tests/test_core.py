@@ -160,8 +160,24 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
         "kind": "limit_exceeded",
         "text": "Past the bench limit.",
         "references": [
-            {"title": "Shop handbook", "detail": "Table 4", "url": "https://example.org/t4"},
-            {"title": "Second source", "detail": "", "url": ""},
+            {
+                "title": "Shop handbook",
+                "detail": "Table 4",
+                "url": "https://example.org/t4",
+                "edition": "",
+                "locator": "",
+                "accessed": None,
+                "scope": "",
+            },
+            {
+                "title": "Second source",
+                "detail": "",
+                "url": "",
+                "edition": "",
+                "locator": "",
+                "accessed": None,
+                "scope": "",
+            },
         ],
         "subjects": ["length"],
     }
@@ -218,7 +234,17 @@ def test_ctx_note_records_kinds_references_and_subjects() -> None:
     assert result.to_dict()["notes"][1] == {
         "kind": "no_applicable_value",
         "text": "No data.",
-        "references": [{"title": "Table", "detail": "", "url": ""}],
+        "references": [
+            {
+                "title": "Table",
+                "detail": "",
+                "url": "",
+                "edition": "",
+                "locator": "",
+                "accessed": None,
+                "scope": "",
+            }
+        ],
         "subjects": ["doubled"],
     }
 

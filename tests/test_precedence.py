@@ -252,4 +252,8 @@ def test_a_reference_serialises_as_its_fields() -> None:
         "title": "Materials table",
         "detail": "version 1",
         "url": "https://example.org/materials",
+        "edition": "",
+        "locator": "",
+        "accessed": None,
+        "scope": "",
     }

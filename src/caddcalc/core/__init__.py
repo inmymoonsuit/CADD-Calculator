@@ -17,6 +17,18 @@ from caddcalc.core.errors import (
 )
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
+from caddcalc.core.refdata import (
+    Basis,
+    License,
+    PublicationKind,
+    ReferenceTable,
+    ReferenceValue,
+    TableSource,
+    TrustLevel,
+    load_table,
+    nominal,
+    parse_table,
+)
 from caddcalc.core.reference import Reference
 from caddcalc.core.registry import Registry
 from caddcalc.core.settings import DomainSettings
@@ -30,6 +42,7 @@ from caddcalc.core.units import (
 )
 
 __all__ = [
+    "Basis",
     "CaddCalcError",
     "CalculationError",
     "Calculator",
@@ -40,6 +53,7 @@ __all__ = [
     "DomainValues",
     "InputError",
     "InputSource",
+    "License",
     "Method",
     "Note",
     "NoteKind",
@@ -47,17 +61,25 @@ __all__ = [
     "Output",
     "Param",
     "ParsedQuantity",
+    "PublicationKind",
     "Reference",
+    "ReferenceTable",
+    "ReferenceValue",
     "Registry",
     "Result",
     "SourceKind",
     "SpecError",
     "Step",
+    "TableSource",
+    "TrustLevel",
     "TypedValue",
     "UnknownCalculatorError",
     "UnknownDomainError",
     "UsageError",
     "Verification",
+    "load_table",
+    "nominal",
     "parse_quantity",
     "parse_quantity_detailed",
+    "parse_table",
 ]

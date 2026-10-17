@@ -372,3 +372,39 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   supports (M2).
 * **Strength-scaled P for all materials** (the first draft's M3): it doesn't match the
   published aluminum figures, and the rule hadn't been read first-hand (Context 4).
+
+## Amendments
+
+### 2026-10-17: implementation clarifications for phase 2a
+
+Accepted with the phase 2a plan; the decisions above are unchanged.
+
+* **Source kind (§1, §5).** Each source declares its `kind`: book, standard, statute,
+  government document, article, or website (`PublicationKind`). A book or a standard
+  must name its edition, which makes that rule mechanically checkable. A source that
+  credits its content to a third party (`third_party = true`) must be licensed as a
+  cite-only fact (§5.3).
+* **Bands and conditions wait for phase 2b (§1).** Thickness bands and conditions
+  (temper, finish, bend axis, and so on) arrive with the data that needs them, so 2a
+  adds no code for them. `ReferenceValue` holds a value in base units, its sources, its
+  basis, its trust level, and the stated `TypedValue` when a source states the value.
+* **Nominal precision (§2).** A standard's stated precision, such as Manufacturers'
+  Standard 12 ga published as 0.1046 in, is data, not display rounding. It is applied in
+  one place, `core.refdata.nominal()`, which takes the value in the unit the standard
+  states and a `decimal` rounding mode, because systems differ (half-up, or truncation).
+  This is the one exception to ADR-0005's display-only rounding, recorded in the
+  guidelines (§2.7).
+* **A basis for nominal values (§1).** `Basis` gains `nominal_definition`, for a value
+  taken from a published definition, such as a gauge thickness.
+* **Formulas live in code (§1).** Derivation expressions, such as weight ÷ density
+  basis, live in the domain module and are reviewed and tested like calculator formulas
+  (AGENTS rule 3). The TOML holds constants and definitions only.
+* **No gauge by default in 2a (§2).** In phase 2a no gauge is selected by default, so
+  thickness is entered as a decimal. The aluminum rule needs a material choice and
+  moves to phase 2b.
+* **The cite-only cap is per table (§1, §5.1).** Each table's `[table]` header sets
+  `cite_only_cap`. For the 2a gauge table it is 1: the 41.82 density basis. Phase 2b
+  sets its own with the maintainer.
+* **Table schema.** A table has a `[table]` header (`name`, `version`,
+  `cite_only_cap`), its `[[source]]` list, and domain content that its module reads.
+  Unknown keys are refused, so a typo can't pass as an omission.
