@@ -68,13 +68,13 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [ ] Third-party license notices in the app folder (KI-016)
 - [ ] Light and dark Qt themes built from the UI palette (`gui/assets/palette.toml`,
       [design/palette.md](design/palette.md)), replacing the ad-hoc HTML colors in `gui/window.py`
-- [ ] Welcome screen at startup, replacing the splash screen (ADR-0015): composed from a
+- [x] Welcome screen at startup, replacing the splash screen (ADR-0015): composed from a
       pack's parts (art, focal point, vertical logo) with live name and version text,
       shared File and Help commands, and generated generic art until the item below lands.
 - [ ] Generic art for the public build: logo/app icon (Windows `.ico`, macOS `.icns`,
       Linux PNG sizes) and welcome-screen art to the art specification
       ([ADR-0015 §3](decisions/0015-welcome-screen.md); 16:9, supplied at 1920 × 1080, in
-      `docs/dev/design/welcome-screen.md` once written). Use original work, released
+      [design/welcome-screen.md](design/welcome-screen.md)). Use original work, released
       permissively (see ADR-0008, item 4), with the source files (SVG or `.blend`)
       committed so others can edit them. Build it only from assets whose licenses allow that: your own models,
       CC0 assets, or OFL fonts. Not purchased stock assets whose licenses forbid relicensing.

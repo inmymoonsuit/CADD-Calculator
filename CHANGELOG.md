@@ -7,6 +7,9 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Welcome-screen docs: the art specification (docs/dev/design/welcome-screen.md), the
+  `[welcome]` pack keys in packaging.md, the welcome screen in the user guide, and
+  KI-020, the platform checks CI can't run on Wayland and macOS.
 - `caddcalc.gui.welcome.WelcomeScreen` (ADR-0015): a frameless, application-modal card
   with the app's File and Help menus and an X, a vertical logo strip, and 16:9 art with
   the name and version as live text on theme-coloured scrims (new palette roles

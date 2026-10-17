@@ -149,6 +149,25 @@ field's override note and the settings page's "Overridden in N" count show it, a
 ticking "Use … value" undoes it. Accepted for now; the code that judges an edit
 points here (`MainWindow._finish_field_edit`).
 
+### KI-020: The welcome screen is unchecked on Wayland and macOS (Low)
+
+The welcome screen (ADR-0015) is frameless and application-modal. CI runs Qt's offscreen
+platform, which can't show how real windowing systems treat it, so these need checking
+by hand before a release on each platform:
+
+* **Wayland (Linux):** the compositor places windows, so the card may not open centred;
+  dragging the top bar must still move it (`startSystemMove`). Stay-on-top hints are
+  ignored, but the card still blocks the main window.
+* **macOS:** the card's File and Help menus must stay inside the card, not in the global
+  menu bar, while About and Exit (Quit) appear in the application menu for the main
+  window. The card must open as a window, not as a sheet attached to the main window.
+* **Frameless windows everywhere:** check whether the system draws a shadow and rounded
+  corners, and that the X, Esc, and dragging work.
+* **Displays:** check 100%, 150%, and 200% scaling, and a small screen (e.g. 1366 × 768 at
+  150%), where the card should shrink to fit.
+
+The art specification (docs/dev/design/welcome-screen.md) points here.
+
 ## Resolved
 
 ### KI-019: The app and the tests could crash on exit (resolved 2026-10-17)

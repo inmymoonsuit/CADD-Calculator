@@ -17,6 +17,10 @@ uv run caddcalc-gui
 
 ## The desktop app
 
+* The **welcome screen** opens first, while the app starts. Close it with **Esc** or
+  the **✕** at its upper right to use the calculators; drag its top bar to move it.
+  **Help > Welcome Screen** shows it again, and **Help > About** shows the version and
+  the disclaimer. **File > Exit** closes the app.
 * Pick a calculator on the left, or pick a family, such as **Sheet Metal**, to see the
   settings its calculators share.
 * Choose a **Method** (the status shows in brackets) and **Units** (`in` or `mm`).

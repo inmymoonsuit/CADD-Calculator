@@ -62,3 +62,28 @@ def test_the_screen_shrinks_to_fit_a_small_screen_and_never_grows() -> None:
     small = fit_scale(Size(911, 512))  # 1366 x 768 at 150%, less a taskbar
     assert small == pytest.approx(911 / 1032)
     assert WINDOW.width * small <= 911 and WINDOW.height * small <= 512
+
+
+def test_the_art_specification_quotes_the_code() -> None:
+    """docs/dev/design/welcome-screen.md is written by hand; this keeps it in step."""
+    from pathlib import Path
+
+    from caddcalc.gui.welcome_layout import MAX_ART_BYTES, MAX_ART_PX
+
+    spec = (Path(__file__).parents[1] / "docs/dev/design/welcome-screen.md").read_text(
+        encoding="utf-8"
+    )
+    quoted = [
+        f"**{int(WINDOW.width)} × {int(WINDOW.height)}**",
+        f"**{int(ART_SIZE.width)} × {int(ART_SIZE.height)}**",
+        f"**{int(ART_SUPPLIED.width)} × {int(ART_SUPPLIED.height)}**",
+        f"{LOGO_STRIP} px logo strip",
+        f"{TOP_BAR} px bar",
+        f"**{MAX_ART_BYTES // 1_000_000} MB**",
+        f"**{MAX_ART_PX} px**",
+    ]
+    for area, name in ((NAME_PANEL, "Name panel"), (VERSION_LINE, "Version line")):
+        cells = " | ".join(str(int(v)) for v in area)
+        quoted.append(f"| {name} | {cells} |")
+    missing = [text for text in quoted if text not in spec]
+    assert missing == [], missing

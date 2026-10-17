@@ -1,7 +1,7 @@
 # ADR-0015: A welcome screen composed from branding-pack parts
 
-* **Status:** **Accepted** (not built). The maintainer approved W1–W5 as recommended on
-  2026-10-17.
+* **Status:** **Accepted** and **built** (2026-10-17; see the as-built amendment). The
+  maintainer approved W1–W5 as recommended on 2026-10-17.
 * **Date:** 2026-10-17
 * **Builds on:** ADR-0011 (branding packs; amends its `splash` key), ADR-0008 (generic
   public build, third-party art outside the repo), ADR-0003 (layers), ADR-0013 decision B
@@ -188,4 +188,18 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   that names its replacement, `[welcome]`.
 * **Size.** 1032 × 572 is the preferred size. On a smaller screen the whole card scales
   down to fit the available area, keeping the art slot at 16:9 (`welcome_layout.fit_scale`).
+
+### 2026-10-17: as built
+
+* **Modules:** `gui/welcome.py` (`WelcomeScreen`), `gui/actions.py` (`AppActions`), and
+  `gui/welcome_layout.py`, the specification's constants, which the widget, the tests, the
+  template generator, and docs/dev/design/welcome-screen.md share.
+* **Connections:** the welcome screen uses bound methods only, so KI-019's weak slot
+  helper stays private to `gui/window.py`; nothing needed to move.
+* **Commands:** File (Exit) and Help (Welcome Screen; About). Exit closes every window
+  and carries `QuitRole` and the platform's Quit shortcut; About carries `AboutRole`.
+* **Fallbacks:** art that's unreadable, missing, or over 4096 px, and a logo that isn't
+  a valid SVG or a usable PNG, are replaced by the generic parts with a warning. The smoke
+  report's `welcome_art` and `welcome_logo` say which was shown.
+* **Platform checks** that CI can't run are listed in KI-020.
 

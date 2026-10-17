@@ -50,7 +50,7 @@ uv run python packaging/build.py --branding builds/placeholder-pack --smoke-test
 ```
 
 The placeholder pack is a magenta test pattern that says "not for distribution", with
-the edition `placeholder`. To try any pack from a source checkout without building, set
+the edition `placeholder`, and generated welcome art and a vertical logo. To try any pack from a source checkout without building, set
 `CADDCALC_BRANDING`:
 
 ```bash
@@ -79,6 +79,11 @@ logo = "logo-vertical.svg"                    # the vertical logo strip; .svg or
   multi-size `.ico` (Windows) or `.icns` (macOS) at build time.
 * `about` replaces the one-line description in Help > About. The version, the
   disclaimer, and the link to the source code are always shown.
+* `[welcome]` supplies the welcome screen's parts: 16:9 art, supplied at 1920 × 1080,
+  its focal point, and a vertical logo. The sizes, safe areas, budgets, and the art's
+  notice are in the [art specification](design/welcome-screen.md), and
+  `packaging/make_welcome_template.py` writes a guide for the art. A pack that still
+  names the old `splash` key is refused, with a message naming `[welcome]`.
 * The build copies only `branding.toml`, the files it names, and any file at the top of
   the pack whose name contains `NOTICE`, `LICENSE`, `LICENCE`, or `COPYING` (such as
   `ART-NOTICE.md` for the pack's art). Source art, drafts, and planning notes in the pack
@@ -111,9 +116,10 @@ with the package data. See KI-016 for what the notices still lack.
    in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
    bundled (`--include-package-data=caddcalc` carries them).
 5. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
-   run opens the window, loads every reference table, writes the report, and exits. The
-   script checks the reported name, edition, icon, splash, the number of reference
-   tables loaded, and that the app knew it was packaged.
+   run opens the welcome screen and the window, loads every reference table, writes the
+   report, and exits. The script checks the reported name, edition, icon, that the
+   welcome screen showed with the pack's art and logo (or the generic ones), the number
+   of reference tables loaded, and that the app knew it was packaged.
 
 `--mode onefile` builds a single self-extracting executable instead. It works, branded too,
 but starts about 0.9 s slower and unpacks to a temp folder on every start, which
