@@ -7,6 +7,15 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Materials on the Sheet Metal page (ADR-0014, amendments).** A **Facts** row shows the
+  chosen material's minimum-radius rule with its sources and their scope, its bending
+  practice, and its strengths with their basis, in ksi or MPa as the unit system sets.
+  Buttons under the K-factor field apply its cited starting values (FAA's 0.445 for the
+  aluminums, the textbook's 0.4 for four materials), which keep their citation and a
+  test-bend note until you type over them. On calculator pages, a limit-exceeded note
+  shows in red with red outlines on its fields, and a field no source could check gets a
+  dashed outline (new palette roles `outline_limit`, `text_limit`, `outline_no_value`).
+  A temper its material always selects offers no "None".
 - What a domain tells about its selections (ADR-0014, amendments): `Domain.details`, a
   `SelectionDetails`, gives `facts()` to show (`Fact`: a heading, text with quantities in
   base units, and references) and `starting_values()` to offer (`StartingValue`: a
@@ -267,6 +276,7 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- The family settings page scrolls when its contents outgrow the window.
 - The "inside radius is smaller than the material thickness" warning is now part of the
   bend check: it is dropped wherever a cited minimum applies, and otherwise reads as
   before, after the calculator's other notes rather than before them.

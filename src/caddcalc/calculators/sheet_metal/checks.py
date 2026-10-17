@@ -10,7 +10,7 @@ and the rule of thumb still speaks.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from caddcalc.calculators.sheet_metal.gauges import GAUGE, GaugeResolver
 from caddcalc.calculators.sheet_metal.materials import (
@@ -20,6 +20,8 @@ from caddcalc.calculators.sheet_metal.materials import (
     MaterialResolver,
     RadiusSource,
     RadiusValue,
+    and_list,
+    short,
 )
 from caddcalc.core import Context, NoteKind, Reference
 
@@ -117,7 +119,7 @@ class BendCheck:
         if past:
             ctx.note(
                 f"The minimum radii for {name} are for bends up to 90°, and "
-                f"{_and(_symbol(ctx, k) for k in past)} {'is' if len(past) == 1 else 'are'} "
+                f"{and_list(_symbol(ctx, k) for k in past)} {'is' if len(past) == 1 else 'are'} "
                 "past 90°. No source covers larger bends or hems.",
                 NoteKind.NO_APPLICABLE_VALUE,
                 references=cited,
@@ -128,7 +130,7 @@ class BendCheck:
         found = [(source, source.at(thickness)) for source in sources]
         covering = [(source, value) for source, value in found if value is not None]
         if not covering:
-            listed = _and(f"{_short(s)} lists {s.coverage}" for s in sources)
+            listed = and_list(f"{_short(s)} lists {s.coverage}" for s in sources)
             ctx.note(
                 f"The minimum-radius sources for {name} don't cover this thickness: {listed}.",
                 NoteKind.NO_APPLICABLE_VALUE,
@@ -136,7 +138,7 @@ class BendCheck:
                 subjects=("thickness",),
             )
             return False
-        alone = _and(_short(s) for s, _ in covering)
+        alone = and_list(_short(s) for s, _ in covering)
         for source, value in found:
             if value is None:
                 ctx.note(
@@ -172,7 +174,9 @@ def _limit(name: str, covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> s
         where = f"at {value.column}" if source.listed else f"for sheet {value.column}"
         label = f" ({source.label})" if source.label else ""
         given.append(f"{_short(source)} gives {value.stated} {where}{label}")
-    text = f"The inside radius is below the minimum for {name} at this thickness: {_and(given)}."
+    text = (
+        f"The inside radius is below the minimum for {name} at this thickness: {and_list(given)}."
+    )
     if len(covering) > 1:
         text += " The check uses the larger."
     if any(isinstance(v.value, tuple) and v.value[0] != v.value[1] for _, v in covering):
@@ -190,17 +194,8 @@ def _references(covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> tuple[R
 
 def _short(source: RadiusSource) -> str:
     """Return a source's publication as note texts name it, e.g. ``"AC 43.13-1B"``."""
-    publication = source.source.publication
-    return publication.short_title or publication.title
+    return short(source.source)
 
 
 def _symbol(ctx: Context, key: str) -> str:
     return next(p.symbol for p in ctx.calculator.params if p.key == key)
-
-
-def _and(items: Iterable[str]) -> str:
-    """Join phrases as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
-    words = list(items)
-    if len(words) < 3:
-        return " and ".join(words)
-    return f"{', '.join(words[:-1])}, and {words[-1]}"

@@ -92,6 +92,28 @@ material doesn't come in is reset, with a notice.
 * The material's data, with every value cited, is in the table "Sheet-metal materials,
   version 1".
 
+### What the page shows about a material
+
+Under the Temper row, **Facts** shows, for the chosen material and temper:
+
+* **Minimum inside radius:** which sources its bends are checked against, the thicknesses
+  each lists, any stand-in label, and each source's scope. Galvanized and hot-rolled steel
+  say why they have none.
+* **Bending practice:** form across the grain where possible, and bend a test piece first.
+* **Strength:** the tensile strengths, ultimate (F_tu) and yield (F_ty), along (L) and
+  across (LT) the rolling direction, with their basis and source. They show in ksi when
+  the unit system is `in`, and MPa when it's `mm`.
+
+### K-factor starting values
+
+For a material with a cited K-factor, buttons under the **K-factor** field offer it:
+FAA-H-8083-31B's 0.445 for the aluminums, and *Engineering Drawing and Design*'s 0.4 for
+aluminum, mild steel, and 304. Clicking one sets the family K-factor to that value, as
+your own setting, but keeps its source: the field's help names it, results list K as a
+"starting value from …", and every result that uses it carries a note to confirm it with
+a test bend. Typing your own K-factor drops the citation and the note. *Machinery's
+Handbook*'s values are given in the field's help, to type yourself.
+
 ### The minimum-radius check
 
 With a material chosen, *Bend allowance & deduction* and *Flat length of a formed
@@ -121,6 +143,9 @@ note names its sources and how far each applies.
   such as Manufacturers' Standard (steel sheet) with aluminum, gets a warning that names
   both and suggests entering the decimal thickness. It applies only while the thickness
   in use is the gauge's.
+* **On a calculator's page,** a limit-exceeded note shows in red, and the fields it
+  concerns are outlined in red; a field no source could check gets a dashed grey
+  outline. A field several notes concern takes the strongest outline.
 
 ### Using a family value in a calculator
 

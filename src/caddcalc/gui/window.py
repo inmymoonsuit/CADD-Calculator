@@ -15,12 +15,14 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QStackedWidget,
     QTextBrowser,
@@ -39,6 +41,7 @@ from caddcalc.core import (
     Domain,
     DomainSettings,
     DomainValues,
+    Fact,
     InputError,
     InputSource,
     Method,
@@ -49,6 +52,7 @@ from caddcalc.core import (
     Registry,
     Result,
     SourceKind,
+    StartingValue,
     TypedValue,
     ValueOrigin,
 )
@@ -253,8 +257,14 @@ class MainWindow(QMainWindow):
         self.choice_groups: dict[tuple[str, str], str] = {}
         """The group picked for a choice with no option chosen yet, by (domain id, key)."""
         self.domain_notices: list[str] = []
-        self._wheel_guard = _WheelGuard(self)
         """Choices the last change cleared, announced on the settings page until the next."""
+        self._wheel_guard = _WheelGuard(self)
+        self.facts_label: QLabel | None = None
+        """What the domain tells about its selections, when it tells anything."""
+        self.start_rows: dict[str, QHBoxLayout] = {}
+        """The row under each settings field that holds its starting-value buttons."""
+        self.start_buttons: dict[str, list[QPushButton]] = {}
+        """The buttons offering each setting's cited starting values (ADR-0014 M2)."""
         self.pending_settings: dict[tuple[str, str], str] = {}
         """Text typed in a settings field but not applied, by (domain id, setting key).
 
@@ -351,8 +361,13 @@ class MainWindow(QMainWindow):
         buttons = QHBoxLayout()
         buttons.addWidget(self.clear_settings_button)
         buttons.addStretch(1)
-        self.domain_page = QWidget()
-        domain_col = QVBoxLayout(self.domain_page)
+        # The page scrolls: a material's facts and a setting's help can outgrow the window.
+        self.domain_page = QScrollArea()
+        self.domain_page.setWidgetResizable(True)
+        self.domain_page.setFrameShape(QFrame.Shape.NoFrame)
+        domain_content = QWidget()
+        self.domain_page.setWidget(domain_content)
+        domain_col = QVBoxLayout(domain_content)
         domain_col.setContentsMargins(0, 0, 0, 0)
         domain_col.addWidget(self.settings_box)
         domain_col.addLayout(buttons)
@@ -872,10 +887,16 @@ class MainWindow(QMainWindow):
         except CaddCalcError as exc:
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
+        outlines: dict[str, tuple[str, str]] = {}
         for note in self.result.notes:
+            outline = _NOTE_OUTLINES[note.kind]
             for key in note.subjects:
-                if key in self.fields:
-                    self.fields[key][1].setStyleSheet(_outline("outline_note"))
+                if key in self.fields and _OUTLINE_RANK[outline] > _OUTLINE_RANK.get(
+                    outlines.get(key, ("", "")), 0
+                ):
+                    outlines[key] = outline
+        for key, (role, style) in outlines.items():
+            self.fields[key][1].setStyleSheet(_outline(role, style))
         self.output.setHtml(result_html(calc, self.result, self.prefs, scheme))
 
     # --- domain settings page -------------------------------------------------------------
@@ -903,8 +924,16 @@ class MainWindow(QMainWindow):
         self.setting_fields.clear()
         self.setting_abouts.clear()
         self.choice_rows.clear()
+        self.start_rows.clear()
+        self.start_buttons.clear()
+        self.facts_label = None
         for choice in domain.choices:
             self._add_choice_row(domain, choice)
+        if domain.details is not None:
+            self.facts_label = QLabel()
+            self.facts_label.setTextFormat(Qt.TextFormat.RichText)
+            self.facts_label.setWordWrap(True)
+            self.settings_form.addRow("Facts", self.facts_label)
         for setting in domain.settings:
             edit = QLineEdit()
             edit.setPlaceholderText("not set")
@@ -923,9 +952,13 @@ class MainWindow(QMainWindow):
             about = QLabel()
             about.setTextFormat(Qt.TextFormat.RichText)
             about.setWordWrap(True)
+            starts = QHBoxLayout()
+            starts.addStretch(1)
             row = QVBoxLayout()
             row.addLayout(field)
+            row.addLayout(starts)
             row.addWidget(about)
+            self.start_rows[setting.key] = starts
             self.settings_form.addRow(f"{setting.label} ({setting.symbol})", row)
             self.setting_fields[setting.key] = (setting, edit)
             self.setting_abouts[setting.key] = about
@@ -999,7 +1032,13 @@ class MainWindow(QMainWindow):
             group = group_box.currentData()
             shown = [o for o in options if o.group == group] if group else []
         option_box.clear()
-        option_box.addItem(CHOOSE if group_box is not None else NO_CHOICE, None)
+        # A choice that always has an option, such as a temper its material marks as its
+        # default, offers no "None": choosing it would only select the default again.
+        always = any(o.default for o in options) or (
+            choice.default is not None and any(o.key == choice.default for o in options)
+        )
+        if group_box is not None or not always:
+            option_box.addItem(CHOOSE if group_box is not None else NO_CHOICE, None)
         for option in shown:
             option_box.addItem(option.label, option.key)
         option_box.setCurrentIndex(max(option_box.findData(current), 0) if chosen else 0)
@@ -1060,6 +1099,7 @@ class MainWindow(QMainWindow):
         if domain is None:
             return
         family = self.domain_settings.for_domain(domain)
+        self._refresh_selection_details(domain)
         for key, (setting, edit) in self.setting_fields.items():
             derived = family.derived.get(key)
             if derived is None:
@@ -1080,8 +1120,52 @@ class MainWindow(QMainWindow):
                     derived=_derived_html(
                         setting, derived, overridden=key in family.values, prefs=self.prefs
                     ),
+                    applied=self.domain_settings.origin(domain, key),
                 )
             )
+
+    def _refresh_selection_details(self, domain: Domain) -> None:
+        """Show the domain's facts about the selections, and its starting-value buttons."""
+        selections = self._selections(domain)
+        if self.facts_label is not None:
+            facts = domain.facts(selections)
+            self.facts_label.setText(_facts_html(facts, self.prefs))
+            self.settings_form.setRowVisible(self.facts_label, bool(facts))
+        offered = domain.starting_values(selections)
+        for key, row in self.start_rows.items():
+            for button in self.start_buttons.pop(key, []):
+                # Hidden now: deletion waits for the event loop, and a removed button
+                # would show meanwhile at a child's default size, over the form.
+                row.removeWidget(button)
+                button.hide()
+                button.deleteLater()
+            buttons = []
+            for start in (s for s in offered if s.setting == key):
+                button = QPushButton(f"Use {start.label}")
+                button.setToolTip(_start_tooltip(start))
+                button.clicked.connect(_slot(self._apply_starting_value, start))
+                row.insertWidget(row.count() - 1, button)
+                buttons.append(button)
+            self.start_buttons[key] = buttons
+
+    def _apply_starting_value(self, start: StartingValue, *_checked: object) -> None:
+        """Set a cited starting value as the user's own, keeping its citation and prompt.
+
+        It is applied exactly as offered, with its table entry (ADR-0014 M2); typing over
+        the field afterwards drops the citation.
+        """
+        domain = self.domain
+        if domain is None or start.setting not in self.setting_fields:
+            return
+        self.domain_settings = self.domain_settings.set(
+            domain, start.setting, start.entry, origin=start.origin
+        )
+        self.pending_settings.pop((domain.id, start.setting), None)
+        _setting, edit = self.setting_fields[start.setting]
+        edit.setText(entry_text(start.entry, self.prefs))
+        edit.setModified(False)
+        self._refresh_domain_details()
+        self._show_setting_problems()
 
     def _setting_problem(self, setting: Param, text: str) -> str | None:
         """Return why ``text`` can't be applied to ``setting``, or ``None`` if it can."""
@@ -1203,10 +1287,29 @@ _NOTE_ICONS = {
 }
 """The icon and palette role that mark each kind of note in the results pane."""
 
+_NOTE_OUTLINES = {
+    NoteKind.WARNING: ("outline_note", "solid"),
+    NoteKind.INFEASIBLE: ("outline_note", "solid"),
+    NoteKind.LIMIT_EXCEEDED: ("outline_limit", "solid"),
+    NoteKind.NO_APPLICABLE_VALUE: ("outline_no_value", "dashed"),
+}
+"""How a field a note concerns is outlined: a palette role and a border style.
 
-def _outline(role: str) -> str:
+A field several notes concern takes the strongest (``_OUTLINE_RANK``): a cited limit over
+a warning over a check that couldn't be made, whose dashed border reads as "unchecked".
+"""
+_OUTLINE_RANK = {
+    ("outline_no_value", "dashed"): 1,
+    ("outline_note", "solid"): 2,
+    ("outline_limit", "solid"): 3,
+}
+_NOTE_TEXT = {NoteKind.LIMIT_EXCEEDED: "text_limit"}
+"""The palette role of a note's text in the results pane, where it isn't the body text's."""
+
+
+def _outline(role: str, style: str = "solid") -> str:
     """Return a style sheet outlining a field in a palette role's colour for the scheme."""
-    return f"QLineEdit {{ border: 1px solid {role_color(role, current_scheme())}; }}"
+    return f"QLineEdit {{ border: 1px {style} {role_color(role, current_scheme())}; }}"
 
 
 def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
@@ -1263,14 +1366,39 @@ def _derived_html(
     return "<br>".join(lines)
 
 
+def _facts_html(facts: Sequence[Fact], prefs: DisplayPrefs) -> str:
+    """Return a domain's facts about its selections, quantities in display units."""
+    lines = []
+    for fact in facts:
+        text = fact.text.format(*(format_value(v, d, prefs) for v, d in fact.quantities))
+        cited = "; ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in fact.references)
+        source = f"<br><small>{escape(cited)}</small>" if cited else ""
+        lines.append(f"<b>{escape(fact.heading)}:</b> {escape(text)}{source}")
+    return "<br>".join(lines)
+
+
+def _start_tooltip(start: StartingValue) -> str:
+    """Say where a starting value comes from and that applying it needs a test bend."""
+    reference = start.origin.reference
+    scope = f": {reference.scope}" if reference.scope else ""
+    prompt = f" {start.origin.note.text}" if start.origin.note else ""
+    return (
+        f"Sets {start.entry.text} as the family value, cited to {reference.short}{scope}.{prompt}"
+    )
+
+
 def _setting_about_html(
     setting: Param,
     uses: Sequence[tuple[Calculator, Sequence[Method]]],
     *,
     overridden_in: Sequence[str],
     derived: str = "",
+    applied: ValueOrigin | None = None,
 ) -> str:
-    """Return a setting's help, what a choice derives for it, and who uses or overrides it."""
+    """Return a setting's help, what a choice derives for it, and who uses or overrides it.
+
+    A value applied from a citation names it and repeats its prompt, such as a test bend.
+    """
     lines = describe_setting_uses(uses)
     used = "".join(f"<br>&nbsp;&nbsp;• {escape(line)}" for line in lines)
     overridden = (
@@ -1279,6 +1407,9 @@ def _setting_about_html(
         else ""
     )
     derived_text = f"<br>{derived}" if derived else ""
+    if applied is not None:
+        prompt = f" {escape(applied.note.text)}" if applied.note else ""
+        derived_text += f"<br><b>Starting value from {escape(applied.reference.short)}.</b>{prompt}"
     return (
         f"<small>{escape(setting.help)}{derived_text}"
         f"<br><b>Used by:</b>{used or ' no loaded calculator'}{overridden}</small>"
@@ -1310,6 +1441,12 @@ def _domain_note_html(
     return "".join(parts)
 
 
+def _text_style(kind: NoteKind, scheme: Scheme) -> str:
+    """Return the style attribute that colours a note's text, if its kind has a colour."""
+    role = _NOTE_TEXT.get(kind)
+    return "" if role is None else f" style='color:{role_color(role, scheme)}'"
+
+
 def result_html(
     calc: Calculator, result: Result, prefs: DisplayPrefs, scheme: Scheme = "light"
 ) -> str:
@@ -1324,7 +1461,8 @@ def result_html(
     parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"]
     if result.notes:
         warn = "".join(
-            f"<li>{_img(*_NOTE_ICONS[note.kind], scheme)}{escape(describe_note(note))}</li>"
+            f"<li{_text_style(note.kind, scheme)}>{_img(*_NOTE_ICONS[note.kind], scheme)}"
+            f"{escape(describe_note(note))}</li>"
             for note in result.notes
         )
         parts.append(

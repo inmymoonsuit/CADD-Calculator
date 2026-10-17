@@ -1018,3 +1018,32 @@ the entries above, these replace them.
   offers it by. `Domain.starting_values()` checks each against the domain's settings and,
   through `check_origin`, its tables, so a starting value that couldn't be applied is a
   domain bug, found when it is offered.
+
+### 2026-10-17: the materials GUI as built (maintainer, phase 2b.7)
+
+* **Facts and starting values come from the domain** (`Domain.details`, 2b.7b): the
+  sheet-metal resolver gives the chosen material's facts and K starting values, and the
+  window shows any domain's the same way. The settings page shows a **Facts** row under
+  the choices, hidden while there are none, with each fact's sources by their short
+  form and scope. Strengths are quantities, so they show in ksi or MPa as the length
+  preference sets.
+* **The bending practice shows in the facts** whenever the chosen material has a
+  referenced check, and in results only beside a limit-exceeded note (2b.3b).
+* **K starting values are buttons under the K-factor field,** offered per material:
+  FAA-H-8083-31B's 0.445 for the aluminums and EDD5's 0.4 for the four named materials.
+  A click sets the value with its `ValueOrigin`, so the field's help names the starting
+  value's source and repeats its test-bend prompt, and results carry the prompt as a
+  warning while the value is in use. The prompt's text is the materials module's
+  (`starting_value_note`), not the window's. Typing over the value drops both. MH29's values
+  stay in the help text (D7).
+* **The temper box offers no "None"** when the material marks a default: choosing
+  "None" would only select the default again. A choice whose own default is offered
+  behaves the same way.
+* **Notes are styled by kind on calculator pages.** A limit-exceeded note's text uses
+  the new `text_limit` role, and the fields it concerns get an `outline_limit` border; a
+  no-applicable-value note's fields get a dashed `outline_no_value` border, which reads as
+  "unchecked". Warnings and "Not makeable" keep `outline_note`. A field several notes
+  concern takes the strongest: limit, then note, then unchecked. The palette test holds
+  the new roles to the contrast minimums.
+* **The settings page scrolls,** since a material's facts and the settings' help can
+  outgrow the window.

@@ -23,14 +23,21 @@ from caddcalc.core import (
     Choice,
     DerivedValue,
     Dimension,
+    Fact,
+    Note,
+    NoteKind,
     Option,
+    Param,
+    Reference,
     ReferenceTable,
     ReferenceValue,
     SpecError,
+    StartingValue,
     TableSource,
     TableSpec,
     TrustLevel,
     TypedValue,
+    ValueOrigin,
 )
 from caddcalc.core.choices import OPTION_KEY
 from caddcalc.core.units import Unit, get_unit
@@ -157,6 +164,11 @@ class Practice:
     source: TableSource
     note: str
 
+    @property
+    def reference(self) -> Reference:
+        """The citation of its source."""
+        return self.source.reference
+
 
 @dataclass(frozen=True)
 class Strength:
@@ -172,6 +184,9 @@ class Strength:
     basis: Basis
     band: Band | None
     """The thicknesses the source states them for; ``None`` when it states none."""
+    thicknesses: str
+    """Those thicknesses as the source states them, e.g. ``"0.010–0.249 in"``; empty for
+    none."""
     ultimate: tuple[TypedValue, TypedValue]
     """F_tu, longitudinal and long transverse."""
     tensile_yield: tuple[TypedValue, TypedValue]
@@ -481,13 +496,19 @@ class _Reader:
         if basis not in (Basis.SPEC_MINIMUM, Basis.A_BASIS):
             raise SpecError(f"{where}: a strength's basis is a specification minimum or A-basis")
         trust = _enum(where, TrustLevel, entry["trust"])
-        band = None
+        band, thicknesses = None, ""
         if "thickness" in entry:
             _check_keys(f"{where} thickness", entry["thickness"], {"max"}, {"min"})
             unit = _unit(where, entry.get("unit"))
             low = _fraction(where, entry["thickness"].get("min", "0"))
             high = _fraction(where, entry["thickness"]["max"])
             band = Band(_base(low, unit), _base(high, unit), _LENGTH)
+            stated = entry["thickness"]
+            thicknesses = (
+                f"{stated['min']}–{stated['max']} {unit.symbol}"
+                if "min" in stated
+                else f"up to {stated['max']} {unit.symbol}"
+            )
         elif "unit" in entry:
             raise SpecError(f"{where}: unit goes with thickness")
         pairs = {k: self._pair(where, entry[k]) for k in ("f_tu", "f_ty")}
@@ -514,6 +535,7 @@ class _Reader:
             source,
             basis,
             band,
+            thicknesses,
             pairs["f_tu"],
             pairs["f_ty"],
             str(entry.get("note", "")),
@@ -710,8 +732,9 @@ class MaterialResolver:
     first use and is kept for the life of the process.
     """
 
-    def __init__(self, spec: TableSpec = MATERIAL_TABLE) -> None:
-        """Offer the materials of the table ``spec`` names."""
+    def __init__(self, k_setting: Param, spec: TableSpec = MATERIAL_TABLE) -> None:
+        """Offer the materials of ``spec``'s table, and their K starting values for a setting."""
+        self._k_setting = k_setting
         self._spec = spec
 
     @cached_property
@@ -735,3 +758,106 @@ class MaterialResolver:
     def derive(self, _selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
         """Return nothing: a material sets no value (ADR-0014 M2)."""
         return MappingProxyType({})
+
+    def facts(self, selections: Mapping[str, str]) -> Sequence[Fact]:
+        """Return the chosen material's facts: its minimum-radius rule, practice, strengths.
+
+        Bending practice shows here whenever a referenced check applies to the material,
+        though results carry it only beside a limit-exceeded note (ADR-0014, amendments).
+        """
+        if MATERIAL.key not in selections:
+            return ()
+        data = self.materials
+        material = data.by_key[selections[MATERIAL.key]]
+        temper = selections.get(TEMPER.key)
+        name = material.name_in(temper)
+        facts: list[Fact] = []
+        sources = data.radius_sources(material.key, temper)
+        if material.radius_note:
+            facts.append(Fact("Minimum inside radius", material.radius_note))
+        elif sources:
+            facts.append(_radius_fact(name, sources))
+            facts.append(
+                Fact("Bending practice", data.practice.note, references=(data.practice.reference,))
+            )
+        facts.extend(
+            _strength_fact(strength) for strength in data.strengths_of(material.key, temper)
+        )
+        return tuple(facts)
+
+    def starting_values(self, selections: Mapping[str, str]) -> Sequence[StartingValue]:
+        """Return the K-factor starting values cited for the chosen material."""
+        if MATERIAL.key not in selections:
+            return ()
+        table = self.materials.table
+        return tuple(
+            StartingValue(
+                self._k_setting.key,
+                k.value,
+                ValueOrigin.of(table, k.entry, starting_value_note(k)),
+                f"{k.value.text}, {short(k.source)}",
+            )
+            for k in self.materials.k_starts_for(selections[MATERIAL.key])
+        )
+
+
+def short(source: TableSource) -> str:
+    """Return how labels and note texts name a source's publication, e.g. ``"AC 43.13-1B"``."""
+    return source.publication.short_title or source.publication.title
+
+
+def and_list(items: Iterable[str]) -> str:
+    """Join phrases as prose: ``"a"``, ``"a and b"``, or ``"a, b, and c"``."""
+    words = list(items)
+    if len(words) < 3:
+        return " and ".join(words)
+    return f"{', '.join(words[:-1])}, and {words[-1]}"
+
+
+def starting_value_note(k: KStart) -> Note:
+    """Return the prompt results carry while an applied K starting value is in use (M2)."""
+    return Note(
+        NoteKind.WARNING,
+        f"K = {k.value.text} is a starting value from {short(k.source)}. Confirm it with a "
+        "test bend in your material and tooling before production.",
+        references=(k.source.reference,),
+    )
+
+
+def _radius_fact(name: str, sources: Sequence[RadiusSource]) -> Fact:
+    """Say how a material's bends are checked, and what each source lists."""
+    cited = and_list(short(s.source) for s in sources)
+    rule = f"Bends up to 90° in {name} are checked against {cited}"
+    if len(sources) > 1:
+        rule += "; where they differ, the larger governs"
+    parts = [f"{rule}."]
+    if any(
+        isinstance(v.value, tuple) and v.value[0] != v.value[1] for s in sources for v in s.values
+    ):
+        parts.append("A range is checked at its upper bound.")
+    for source in sources:
+        label = f" ({source.label})" if source.label else ""
+        parts.append(f"{short(source.source)} lists {source.coverage}{label}.")
+        if source.note:
+            parts.append(source.note)
+    references = [s.source.reference for s in sources]
+    references += [extra.reference for s in sources for extra in s.see_also]
+    return Fact("Minimum inside radius", " ".join(parts), references=tuple(references))
+
+
+_BASIS_WORDS = {Basis.SPEC_MINIMUM: "specification minimums", Basis.A_BASIS: "A-basis allowables"}
+
+
+def _strength_fact(strength: Strength) -> Fact:
+    """State a material's strengths with their basis, in the display's stress unit."""
+    where = f", for sheet {strength.thicknesses}" if strength.thicknesses else ""
+    text = (
+        "F_tu {} (L) and {} (LT); F_ty {} (L) and {} (LT): "
+        f"{_BASIS_WORDS[strength.basis]}, {short(strength.source)}{where}."
+    )
+    if strength.note:
+        text += f" {strength.note}"
+    quantities = tuple(
+        (value.value, Dimension.STRESS) for value in (*strength.ultimate, *strength.tensile_yield)
+    )
+    return Fact("Strength", text, quantities, (strength.source.reference,))

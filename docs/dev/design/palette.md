@@ -65,6 +65,9 @@ and dark themes. A test keeps hex colors out of the GUI code except the palette 
 | `text_warning` | ink (amber on white is too faint) | amber | the Notes heading in results |
 | `outline_error` | crimson | white | the border of a field whose text can't be used |
 | `outline_note` | ink (amber on white is too faint) | amber | the border of a field a result note concerns |
+| `outline_limit` | crimson | white | the border of a field a limit-exceeded note concerns |
+| `outline_no_value` | slate | slate | the dashed border of a field no reference value could check |
+| `text_limit` | crimson | white | a limit-exceeded note in results, with its icon and heading |
 | `welcome_scrim` | white | ink | the welcome screen's name panel and version line, opaque over the art |
 | `on_welcome_scrim` | ink | white | their text (4.5:1 or more, tested) |
 

@@ -18,7 +18,16 @@ from caddcalc.calculators.sheet_metal.materials import (
     TEMPER,
     MaterialResolver,
 )
-from caddcalc.core import DerivedValue, Dimension, Domain, Option, Param, SpecError
+from caddcalc.core import (
+    DerivedValue,
+    Dimension,
+    Domain,
+    Fact,
+    Option,
+    Param,
+    SpecError,
+    StartingValue,
+)
 
 DOMAIN_ID = "sheet_metal"
 
@@ -79,6 +88,14 @@ class SheetMetalResolver:
             return self.gauges.options(choice, parents)
         return self.materials.options(choice, parents)
 
+    def facts(self, selections: Mapping[str, str]) -> Sequence[Fact]:
+        """Return the chosen material's facts (``SelectionDetails``)."""
+        return self.materials.facts(selections)
+
+    def starting_values(self, selections: Mapping[str, str]) -> Sequence[StartingValue]:
+        """Return the chosen material's K starting values (``SelectionDetails``)."""
+        return self.materials.starting_values(selections)
+
     def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
         """Return what the parts derive from ``selections``; they never derive the same key."""
         gauge, material = self.gauges.derive(selections), self.materials.derive(selections)
@@ -90,8 +107,10 @@ class SheetMetalResolver:
 
 GAUGES = GaugeResolver(DOMAIN_ID, THICKNESS_SETTING)
 """The gauge part of the resolver, which result checks also read."""
-MATERIALS = MaterialResolver()
+MATERIALS = MaterialResolver(K_FACTOR_SETTING)
 """The material part of the resolver, which result checks also read."""
+RESOLVER = SheetMetalResolver(GAUGES, MATERIALS)
+"""The domain's resolver, which also tells what its selections mean."""
 
 DOMAIN = Domain(
     id=DOMAIN_ID,
@@ -99,6 +118,7 @@ DOMAIN = Domain(
     summary="Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts.",
     settings=(THICKNESS_SETTING, INSIDE_RADIUS_SETTING, K_FACTOR_SETTING),
     choices=(GAUGE, MATERIAL, TEMPER),
-    resolver=SheetMetalResolver(GAUGES, MATERIALS),
+    resolver=RESOLVER,
     tables=(GAUGE_TABLE, MATERIAL_TABLE),
+    details=RESOLVER,
 )
