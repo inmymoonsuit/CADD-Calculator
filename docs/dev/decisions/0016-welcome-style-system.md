@@ -303,3 +303,40 @@ four Lows; the rest of its checklist passed. The project decided the fixes.
   name.
 * L3, the art's rim under the version's safe area, goes to the maintainer; L4, the
   live-window, focus-ring, and font-fallback checks, stays in KI-020.
+
+### 2026-10-17: the exact contrast rule (slice i)
+
+A review of the style system's commits found that the contrast guarantee didn't hold for
+saturated art, and that a test helper read freed memory on Linux. The project decided
+the fixes.
+
+* **The rule.** The panes' fills blend per sRGB channel, so the pixels at the 5th and
+  95th percentiles of luminance don't bound the pixels between them. Over 6% grey, 88%
+  pure blue, and 6% white, the old rule measured 3.01:1 and 4.51:1 at those two
+  percentiles while the blue got 2.54:1 and 3.64:1. The rule is now exact:
+  * Under each pane, the art as drawn is sampled on a fixed grid of at least
+    `panes.min_samples` (4096) nearest pixels, or every pixel if there are fewer.
+    Nothing is averaged, because averaging hides extremes.
+  * For a candidate opacity, every sample is blended under the fill, through per-channel
+    tables of linear light, rounded down and up, and its contrast with the text is taken.
+  * The opacity is enough when the contrast at the `panes.percentile` (5th) percentile of
+    the samples meets the pane's threshold.
+  * For a fill on the far side of its text, contrast rises with opacity, so the least
+    opacity is found by bisection from the floor. Only an opacity that was checked is
+    returned.
+
+  The token `panes.percentiles` becomes `panes.percentile` and `panes.min_samples`.
+* **WCAG floors.** `LARGE_TEXT_CONTRAST` (3.0) and `NORMAL_TEXT_CONTRAST` (4.5) are
+  constants. The loader refuses a pane's `min_contrast` below its floor. Text of 24 px
+  (18 points) or more counts as large, so the name needs at least 3 and the version at
+  least 4.5.
+* **The Linux failure.** A test helper read `constBits()` from a temporary copy of an
+  image. Nothing kept the copy alive, so on Linux its buffer could be freed and reused
+  before the bytes were copied. The helper now holds the copy in a name, and a test
+  refuses `constBits()` or `bits()` on a call's result anywhere in `src/` or `tests/`.
+  The screen's own measuring already held its image.
+* **Superseded wording.** The amendments supersede the text above them where they
+  differ. Slice g's replaces §1's `fill_role` and `border_role` for the panes (each text
+  has its own fill, and the border follows the text) and slice f's `panes.min_contrast`
+  (each pane has its own). This one replaces slice e's two-percentile measurement. The
+  earlier text stays as the record.

@@ -65,7 +65,7 @@ from caddcalc.gui.welcome_style import (
     opaque_fill,
     pane_fill,
     pane_pairs,
-    percentile_colors,
+    sample_grid,
     style,
 )
 
@@ -282,9 +282,9 @@ class _Pane(QWidget):
 
     It hugs its text and sits at its anchor corner. Each text role has its own fill, dark
     text on a light fill and light text on a dark one; the fill starts at the minimum
-    opacity and rises only as far as its text needs to reach the pane's contrast against
-    the art beneath, measured at the art's luminance percentiles. The pair that needs the
-    least wins.
+    opacity and rises only as far as its text needs to reach the pane's contrast over all
+    but a small share of the art beneath, every sampled pixel blended as the screen
+    blends it. The pair that needs the least wins.
 
     The display face is drawn at a whole multiple of its pixel grid, and centred on its
     capitals: the padding is the space around the caps (ADR-0016, amendments). The text
@@ -301,8 +301,8 @@ class _Pane(QWidget):
         """Where this pane sits, its text, and its contrast."""
         self.text = text
         self.scale = 1.0
-        self.art: tuple[RGB, RGB] | None = None
-        """The art's colours under the pane, at its luminance percentiles, once measured."""
+        self.art: list[RGB] | None = None
+        """The art's colours under the pane, sampled, once measured."""
         self.text_font = QFont()
         """The font its text is drawn in, at its size in device pixels."""
         self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
@@ -322,7 +322,7 @@ class _Pane(QWidget):
                 index, alpha = opaque_fill(pairs)
             else:
                 floor, needed = self.panes.fill_opacity_min, self.tokens.min_contrast
-                index, alpha = pane_fill(self.art, pairs, floor, needed)
+                index, alpha = pane_fill(self.art, pairs, floor, needed, self.panes.percentile)
             self._fills[scheme] = self.panes.text_roles[index], self.panes.fill_roles[index], alpha
         return self._fills[scheme]
 
@@ -360,7 +360,8 @@ class _Pane(QWidget):
     def measure(self, art: QImage) -> None:
         """Measure the art under the pane, from ``art`` as the slot shows it."""
         under = art.copy(self.geometry()).convertToFormat(QImage.Format.Format_RGBX8888)
-        self.art = percentile_colors(bytes(under.constBits()), self.panes.percentiles)
+        pixels = bytes(under.constBits())  # under stays alive while its pixels are read
+        self.art = sample_grid(pixels, under.width(), under.height(), self.panes.min_samples)
         self._fills.clear()
         self.update()
 

@@ -315,6 +315,10 @@ All notable changes are recorded here. The format follows
     logo it holds the app icon alone, in an 80 px square.
   * Both panes' text is drawn as its outline, grey antialiased, so the name and the
     version match on every platform. The title's grid size rounds ties down.
+  * The panes' contrast is exact: each pane samples at least 4096 pixels of the art
+    beneath, blends each under its fill, and holds 95% of them to the pane's
+    contrast, which the loader keeps at or above WCAG 2's floor. Saturated art, such
+    as pure blue, is now held to the contrast too.
   * The corner radius is 5 px, and the card's border takes a new role, `card_border`,
     white in the dark theme.
   * Insets, margins, and paddings follow a spacing scale, and the loader refuses

@@ -182,13 +182,17 @@ uv run python packaging/fetch_fonts.py --commit SHA
   roadmap's commissioned generic art replaces it.
 * **The panes stay quiet, and readable** (ADR-0016, S3). Each text has its own fill:
   ink text on a white fill, white text on an ink fill. The fill starts at 15% opacity.
-  When the screen opens, it measures the art under each pane, as it's drawn, at the
-  5th and 95th percentiles of luminance. For each pair it raises the fill's opacity
-  only as far as the text needs against the fill over both: 3:1 for the name, which
-  is large text, and 4.5:1 for the version (WCAG 2). The pair that needs less opacity
-  wins, and the pane's border follows its text. On calm art the panes stay at 15%;
-  on dark art the text turns white; on busy art the fill rises. The screen blends in
-  8 bits, so the contrast is checked a level either side of each blend.
+  When the screen opens, it samples the art under each pane, as it's drawn: at least
+  4096 pixels on a fixed grid, each the nearest pixel and none averaged, or every
+  pixel of a smaller pane. For each pair it raises the fill's opacity only as far as
+  the text needs to read over 95% of those pixels, each blended under the fill as the
+  screen blends it: 3:1 for the name, which is large text, and 4.5:1 for the version
+  (WCAG 2; the loader refuses less). The pair that needs less opacity wins, and the
+  pane's border follows its text. On calm art the panes stay at 15%; on dark art the
+  text turns white; on busy or saturated art the fill rises. The screen blends in 8
+  bits, so each blend is checked a level either side. Measuring every pixel, not two
+  luminance percentiles, matters for saturated art: a pane mostly over pure blue
+  between grey and white would otherwise be held only to its grey and white.
 * **Corners and platforms.** The card is frameless with its own bar on every platform.
   It's drawn in a translucent window, so its rounded corners show the desktop. Where
   the windowing system may not composite (X11, and other platforms but Windows, macOS,
@@ -232,7 +236,8 @@ hex values, so both themes and the palette's contrast tests apply.
 | `panes.fill_roles` | welcome_paper, welcome_ink | Each text role's own fill: light under the dark text, dark under the light |
 | `panes.fill_opacity_min` | 0.15 | The fill's least opacity |
 | `panes.border_width` | 1 | The panes' border, in the text's role |
-| `panes.percentiles` | 5 × 95 | The percentiles of the art's luminance measured under a pane |
+| `panes.percentile` | 5 | The share of the art under a pane, in percent, that may fall short of the contrast |
+| `panes.min_samples` | 4096 | The least number of art pixels sampled under a pane, on a fixed grid |
 | `name_pane.anchor` | top_right | The corner the name pane hugs |
 | `name_pane.inset` | 24 | Its distance from that corner's edges (spacing scale) |
 | `name_pane.padding` | 8 × 16 | Around its capitals: vertical × horizontal (spacing scale) |

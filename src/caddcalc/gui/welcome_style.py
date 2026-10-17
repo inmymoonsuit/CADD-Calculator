@@ -53,6 +53,12 @@ SPACING = (2, 4, 6, 8, 12, 16, 24, 32)
 """The spacing scale: every inset, margin, and padding is one of these (ADR-0016,
 amendments). Sizes, such as the logo region's width, are free."""
 WEIGHTS = frozenset({"regular", "bold"})
+LARGE_TEXT_PX = 24
+"""WCAG 2's large text: 18 points, 24 px at 96 dpi, or more."""
+LARGE_TEXT_CONTRAST = 3.0
+"""WCAG 2's least contrast for large text (success criterion 1.4.3, AA)."""
+NORMAL_TEXT_CONTRAST = 4.5
+"""WCAG 2's least contrast for other text (success criterion 1.4.3, AA)."""
 ANCHORS = frozenset({"top_left", "top_right", "bottom_left", "bottom_right"})
 FONTS = frozenset({"display", "body"})
 
@@ -135,8 +141,11 @@ class PaneStyle:
     """The fill's least opacity; it rises only as far as the text's contrast needs."""
     border_width: float
     """The border's width; it takes the text's role."""
-    percentiles: tuple[float, float]
-    """The art's luminance under a pane is measured at these two percentiles."""
+    percentile: float
+    """The share of the art under a pane, in percent, that may fall short of the
+    contrast: the contrast is held at this percentile of the pixels."""
+    min_samples: int
+    """The least number of art pixels sampled under a pane, on a fixed grid."""
 
 
 @dataclass(frozen=True)
@@ -315,13 +324,6 @@ def _spacing_pair(where: str, value: Any) -> tuple[float, float]:
     return _spacing(where, value[0]), _spacing(where, value[1])
 
 
-def _percentiles(where: str, value: Any) -> tuple[float, float]:
-    low, high = _pair(0, 100)(where, value)
-    if low >= high:
-        raise StyleError(f"{where} must rise, e.g. [5, 95]")
-    return low, high
-
-
 _WIDTH = _number(0, 8)
 _LENGTH = _number(0, 1024)
 _PANE: dict[str, Check] = {
@@ -382,7 +384,8 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "fill_roles": _roles,
             "fill_opacity_min": _number(0, 1),
             "border_width": _WIDTH,
-            "percentiles": _percentiles,
+            "percentile": _number(0, 50),
+            "min_samples": _number(1, 1_000_000, whole=True),
         },
     ),
     "name_pane": (PaneTokens, _PANE),
@@ -499,6 +502,15 @@ def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
             f"{origin}: logo.padding {logo.padding:g} leaves no room for the logo in a box "
             f"{logo.min_short_side:g} px across"
         )
+    for name in ("name_pane", "version_pane"):
+        pane = getattr(tokens, name)
+        large = pane.font_size >= LARGE_TEXT_PX
+        floor = LARGE_TEXT_CONTRAST if large else NORMAL_TEXT_CONTRAST
+        if pane.min_contrast < floor:
+            raise StyleError(
+                f"{origin}: {name}.min_contrast {pane.min_contrast:g} is below WCAG 2's "
+                f"{floor:g}:1 for {'large' if large else 'normal'} text"
+            )
     corner = tokens.card.corner_radius + tokens.card.border_width
     for name in ("name_pane", "version_pane"):
         inset = getattr(tokens, name).inset
@@ -601,80 +613,139 @@ def contrast(first: float, second: float) -> float:
 # --- the panes' contrast guarantee (ADR-0016 §5) -------------------------------------------
 
 
-def percentile_colors(rgbx: bytes, percentiles: tuple[float, float]) -> tuple[RGB, RGB]:
-    """Return the pixels at two percentiles of luminance, by nearest rank.
+def sample_grid(rgbx: bytes, width: int, height: int, minimum: int) -> list[RGB]:
+    """Return the pixels on a fixed grid of at least ``minimum`` points, or every pixel.
+
+    Each point takes its nearest pixel, and nothing is averaged, so the art's extremes
+    survive the sampling.
 
     Args:
-        rgbx: Pixels as red, green, blue, and one unused byte each, as Qt's RGBX8888
-            images store them.
-        percentiles: The two percentiles, each from 0 to 100.
+        rgbx: Pixels as red, green, blue, and one unused byte each, row by row, as Qt's
+            RGBX8888 images store them.
+        width: The image's width, in pixels.
+        height: The image's height, in pixels.
+        minimum: The least number of samples.
     """
-    pixels = sorted(zip(rgbx[0::4], rgbx[1::4], rgbx[2::4], strict=True), key=rgb_luminance)
-    if not pixels:
-        raise ValueError("no pixels to measure")
+    if width * height <= minimum:
+        xs, ys = list(range(width)), list(range(height))
+    else:
+        columns = min(width, math.ceil(math.sqrt(minimum * width / height)))
+        rows = min(height, math.ceil(minimum / columns))
+        xs = [int((i + 0.5) * width / columns) for i in range(columns)]
+        ys = [int((j + 0.5) * height / rows) for j in range(rows)]
+    stride = 4 * width
+    return [
+        (rgbx[y * stride + 4 * x], rgbx[y * stride + 4 * x + 1], rgbx[y * stride + 4 * x + 2])
+        for y in ys
+        for x in xs
+    ]
 
-    def rank(percentile: float) -> RGB:
-        return pixels[max(math.ceil(percentile / 100 * len(pixels)), 1) - 1]
 
-    return rank(percentiles[0]), rank(percentiles[1])
+_WEIGHTS = (0.2126, 0.7152, 0.0722)
+"""Each channel's share of relative luminance (WCAG 2)."""
 
 
-def _over(fill: RGB, art: RGB, alpha: int, rounding: Callable[[float], int]) -> RGB:
-    """Return ``fill`` at ``alpha`` (0 to 255) over ``art``, each channel rounded."""
-    return (
-        rounding((fill[0] * alpha + art[0] * (_LEVELS - alpha)) / _LEVELS),
-        rounding((fill[1] * alpha + art[1] * (_LEVELS - alpha)) / _LEVELS),
-        rounding((fill[2] * alpha + art[2] * (_LEVELS - alpha)) / _LEVELS),
+def _blend_tables(fill: RGB, alpha: int) -> tuple[list[list[float]], list[list[float]]]:
+    """Return, per channel, each art level's weighted linear light under ``fill`` at ``alpha``.
+
+    The screen blends each 8-bit channel and lands on a whole level, so the blend is taken
+    rounded down and rounded up: the darker and the lighter result.
+    """
+    darker, lighter = [], []
+    for level, weight in zip(fill, _WEIGHTS, strict=True):
+        blends = [level * alpha + art * (_LEVELS - alpha) for art in range(_LEVELS + 1)]
+        darker.append([weight * _LINEAR[blend // _LEVELS] for blend in blends])
+        lighter.append([weight * _LINEAR[-(-blend // _LEVELS)] for blend in blends])
+    return darker, lighter
+
+
+def short_of(art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, needed: float) -> int:
+    """Return how many ``art`` colours leave ``text`` short of ``needed`` contrast.
+
+    Each colour is blended under ``fill`` at ``alpha`` (0 to 255), as the screen blends it,
+    and its luminance is compared with the text's. Either rounding of the blend must read.
+    """
+    luminance = rgb_luminance(text)
+    light_enough = needed * (luminance + 0.05) - 0.05
+    dark_enough = (luminance + 0.05) / needed - 0.05
+    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
+    return sum(
+        1
+        for r, g, b in art
+        if not (dr[r] + dg[g] + db[b] >= light_enough or lr[r] + lg[g] + lb[b] <= dark_enough)
     )
 
 
-def worst_contrast(text: RGB, fill: RGB, alpha: int, art: Sequence[RGB]) -> float:
-    """Return the text's least contrast against ``fill`` at ``alpha`` over each colour.
+def art_contrast(art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, percentile: float) -> float:
+    """Return the text's contrast at ``percentile`` of the ``art`` colours, by nearest rank.
 
-    The screen blends in 8 bits, so each channel may land a level either side of the
-    exact blend; both are measured, and the lower contrast counts.
+    Each colour is blended under ``fill`` at ``alpha``, and the worse rounding counts.
     """
-    text_luminance = rgb_luminance(text)
-    return min(
-        contrast(text_luminance, rgb_luminance(_over(fill, colour, alpha, rounding)))
-        for colour in art
-        for rounding in (math.floor, math.ceil)
+    luminance = rgb_luminance(text)
+    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
+    values = sorted(
+        min(
+            contrast(luminance, dr[r] + dg[g] + db[b]),
+            contrast(luminance, lr[r] + lg[g] + lb[b]),
+        )
+        for r, g, b in art
     )
+    return values[max(math.ceil(percentile / 100 * len(values)), 1) - 1]
 
 
 def pane_fill(
-    art: Sequence[RGB], pairs: Sequence[Pair], floor_opacity: float, min_contrast: float
+    art: Sequence[RGB],
+    pairs: Sequence[Pair],
+    floor_opacity: float,
+    needed: float,
+    percentile: float,
 ) -> tuple[int, int]:
     """Choose a pane's text and fill, and the fill's opacity over the art (ADR-0016 §5, S3).
 
     Each pair is a text colour and its own fill: dark text on a light fill, light text on
-    a dark fill. A pair's fill starts at ``floor_opacity`` and rises only as far as its
-    text needs to reach ``min_contrast`` against the fill over each of the ``art``
-    colours, the art's luminance percentiles under the pane. The pair that needs the
-    least opacity wins; at the same opacity, the one with more contrast.
+    a dark fill. A pair's fill starts at ``floor_opacity`` and rises only as far as the
+    text needs to reach ``needed`` contrast over all but ``percentile`` percent of the art
+    beneath, every art colour blended as the screen blends it (ADR-0016, amendments).
+    Contrast rises with opacity for a fill on the far side of its text, so the least
+    opacity is found by bisection; any opacity returned has been checked. The pair that
+    needs the least opacity wins; at the same opacity, the one with more contrast.
 
     Args:
-        art: The art's colours under the pane, at its luminance percentiles.
+        art: The art's colours under the pane, sampled.
         pairs: Each text colour, with its fill's colour.
         floor_opacity: The fill's least opacity, from 0 to 1.
-        min_contrast: The contrast the text must reach.
+        needed: The contrast the text must reach.
+        percentile: The share of the art, in percent, that may fall short.
 
     Returns:
         The index of the pair in ``pairs``, and the fill's alpha, 0 to 255. If no pair
-        reaches the contrast, the fill is opaque, in the pair that contrasts most.
+        reaches the contrast even opaque, the fill is opaque, in the pair that contrasts
+        most.
     """
+    allowed = max(math.ceil(percentile / 100 * len(art)), 1) - 1
     floor = math.ceil(floor_opacity * _LEVELS)
-    best: tuple[int, float, int] | None = None
+    candidates = []
     for index, (text, fill) in enumerate(pairs):
-        for alpha in range(floor, _LEVELS + 1):
-            worst = worst_contrast(text, fill, alpha, art)
-            if worst >= min_contrast:
-                if best is None or (alpha, -worst) < (best[0], -best[1]):
-                    best = (alpha, worst, index)
-                break
-    if best is not None:
-        return best[2], best[0]
-    return opaque_fill(pairs)
+
+        def reads(alpha: int, text: RGB = text, fill: RGB = fill) -> bool:
+            return short_of(art, text, fill, alpha, needed) <= allowed
+
+        if not reads(_LEVELS):
+            continue
+        low, high = floor - 1, _LEVELS  # low is too faint (or below the floor); high reads
+        if reads(floor):
+            high = floor
+        else:
+            low = floor
+            while high - low > 1:
+                middle = (low + high) // 2
+                low, high = (low, middle) if reads(middle) else (middle, high)
+        reached = art_contrast(art, text, fill, high, percentile)
+        candidates.append((high, -reached, index))
+    if not candidates:
+        return opaque_fill(pairs)
+    alpha, _contrast, index = min(candidates)
+    return index, alpha
 
 
 def opaque_fill(pairs: Sequence[Pair]) -> tuple[int, int]:

@@ -19,15 +19,15 @@ from caddcalc.gui.welcome_style import (
     Size,
     StyleError,
     WelcomeStyle,
+    art_contrast,
     contrast,
     luminance,
     pane_fill,
     parse_style,
-    percentile_colors,
     rgb,
+    sample_grid,
     style,
     with_overrides,
-    worst_contrast,
 )
 
 ROOT = Path(__file__).parents[1]
@@ -96,7 +96,9 @@ def edited(table: str, key: str, value: Any) -> dict[str, Any]:
         (edited("panes", "fill_opacity_min", True), "fill_opacity_min must be a number"),
         (edited("logo", "border_role", "ink"), "'ink' isn't a palette role in both themes"),
         (edited("name_pane", "anchor", "middle"), "name_pane.anchor must be one of"),
-        (edited("panes", "percentiles", [95, 5]), "percentiles must rise"),
+        (edited("panes", "percentile", 60), "panes.percentile must be a number from 0 to 50"),
+        (edited("name_pane", "min_contrast", 2.9), "below WCAG 2's 3:1 for large text"),
+        (edited("version_pane", "min_contrast", 3), "below WCAG 2's 4.5:1 for normal text"),
         (edited("logo", "formats", ["PNG"]), "lowercase file suffixes"),
     ],
 )
@@ -206,50 +208,79 @@ PAIRS = [(INK, WHITE), (WHITE, INK)]
 """Ink text on a white fill, white text on an ink fill: the shipped pairs."""
 
 
-def test_percentiles_are_taken_by_nearest_rank() -> None:
-    pixels = bytes([0, 0, 0, 0] * 5 + [128, 128, 128, 0] * 90 + [255, 255, 255, 0] * 5)
-    assert percentile_colors(pixels, (5, 95)) == (BLACK, (128, 128, 128))
-    assert percentile_colors(pixels, (6, 96)) == ((128, 128, 128), (255, 255, 255))
-    with pytest.raises(ValueError, match="no pixels"):
-        percentile_colors(b"", (5, 95))
+GREY: RGB = (60, 60, 60)
+
+
+def mixed(*parts: tuple[RGB, float], count: int = 4096) -> list[RGB]:
+    """Art samples: each colour in its share of ``count``."""
+    return [colour for colour, share in parts for _ in range(round(share * count))]
+
+
+def test_the_sample_grid_keeps_real_pixels_and_enough_of_them() -> None:
+    small = bytes([10, 20, 30, 0] * 6)
+    assert sample_grid(small, 3, 2, 4096) == [(10, 20, 30)] * 6, "every pixel when few"
+    width, height = 400, 50
+    pixels = bytearray()
+    for y in range(height):
+        for x in range(width):
+            pixels += bytes([255 if (x + y) % 2 else 0] * 3 + [0])  # a one-pixel check
+    samples = sample_grid(bytes(pixels), width, height, 4096)
+    assert 4096 <= len(samples) < width * height
+    assert set(samples) <= {BLACK, WHITE}, "nearest pixels: nothing is averaged to grey"
 
 
 @pytest.mark.parametrize("needed", [3, 4.5], ids=["title", "version"])
 @pytest.mark.parametrize(
     ("art", "pair", "raised"),
     [
-        ([(244, 241, 234), WHITE], 0, False),  # calm, light art: ink on white, at the floor
-        ([BLACK, (16, 20, 24)], 1, False),  # dark art: white on ink, at the floor
-        ([BLACK, WHITE], None, True),  # busy art: a fill rises until its text reads
+        (mixed(((244, 241, 234), 1.0)), 0, False),  # calm, light art: ink on white, the floor
+        (mixed((BLACK, 0.5), ((16, 20, 24), 0.5)), 1, False),  # dark art: white on ink
+        (mixed((BLACK, 0.5), (WHITE, 0.5)), None, True),  # busy art: a fill rises
+        (mixed((GREY, 0.06), ((0, 0, 255), 0.88), (WHITE, 0.06)), None, True),  # saturated
+        (mixed((GREY, 0.06), ((255, 0, 0), 0.88), (WHITE, 0.06)), None, True),
+        (mixed((GREY, 0.06), ((0, 255, 0), 0.88), (WHITE, 0.06)), None, True),
     ],
+    ids=["light", "dark", "busy", "blue", "red", "green"],
 )
 def test_a_pane_stays_quiet_unless_the_art_would_hide_its_text(
     art: list[RGB], pair: int | None, raised: bool, needed: float
 ) -> None:
-    floor_opacity = style().panes.fill_opacity_min
-    floor = math.ceil(floor_opacity * 255)
-    index, alpha = pane_fill(art, PAIRS, floor_opacity, needed)
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    index, alpha = pane_fill(art, PAIRS, panes.fill_opacity_min, needed, panes.percentile)
     if pair is not None:
         assert index == pair
     text, fill = PAIRS[index]
     assert (alpha > floor) == raised and alpha >= floor
-    assert worst_contrast(text, fill, alpha, art) >= needed
+    assert art_contrast(art, text, fill, alpha, panes.percentile) >= needed
     if raised:
-        assert worst_contrast(text, fill, alpha - 1, art) < needed, "the least opacity"
+        assert art_contrast(art, text, fill, alpha - 1, panes.percentile) < needed, "the least"
+
+
+def test_saturated_art_is_held_to_the_contrast_where_two_percentiles_were_not() -> None:
+    """Grey 6%, blue 88%, white 6%: every blue pixel, the bulk of the pane, must read."""
+    blue = (0, 0, 255)
+    art = mixed((GREY, 0.06), (blue, 0.88), (WHITE, 0.06))
+    panes = style().panes
+    for needed in (3, 4.5):
+        index, alpha = pane_fill(art, PAIRS, panes.fill_opacity_min, needed, panes.percentile)
+        text, fill = PAIRS[index]
+        assert art_contrast([blue], text, fill, alpha, 0) >= needed
 
 
 def test_the_title_needs_less_fill_than_the_version() -> None:
     """Large text needs 3:1, other text 4.5:1 (WCAG 2), so busy art lifts it less."""
-    floor_opacity = style().panes.fill_opacity_min
-    _pair, title = pane_fill([BLACK, WHITE], PAIRS, floor_opacity, 3)
-    _pair, version = pane_fill([BLACK, WHITE], PAIRS, floor_opacity, 4.5)
+    panes, art = style().panes, mixed((BLACK, 0.5), (WHITE, 0.5))
+    _pair, title = pane_fill(art, PAIRS, panes.fill_opacity_min, 3, panes.percentile)
+    _pair, version = pane_fill(art, PAIRS, panes.fill_opacity_min, 4.5, panes.percentile)
     assert title < version
 
 
 def test_an_unreadable_pair_becomes_opaque_in_the_pair_that_reads_best() -> None:
     mid = (119, 119, 119)
     pairs = [(INK, mid), (WHITE, mid)]
-    assert pane_fill([BLACK, WHITE], pairs, 0.15, 4.5) == (1, 255), "white on grey: 4.48"
+    art = mixed((BLACK, 0.5), (WHITE, 0.5))
+    assert pane_fill(art, pairs, 0.15, 4.5, 5) == (1, 255), "white on grey: 4.48"
 
 
 def test_a_pack_may_override_its_whitelist() -> None:

@@ -44,6 +44,15 @@ def generated_art(kind: str, size: tuple[int, int]) -> Any:
 
     art = QImage(*size, QImage.Format.Format_RGB32)
     art.fill(QColor({"blue": "#336699", "light": "#F4F1EA", "dark": "#101418"}.get(kind, "white")))
+    if kind.startswith("saturated"):
+        # A saturated colour between neutral extremes: grey and white stripes, 1 px in 17.
+        saturated = {"blue": "#0000FF", "red": "#FF0000", "green": "#00FF00"}[kind.split("-")[1]]
+        art.fill(QColor(saturated))
+        p = QPainter(art)
+        for x in range(0, size[0], 17 * 2):
+            p.fillRect(x, 0, 2, size[1], QColor("#3C3C3C"))
+            p.fillRect(x + 2, 0, 2, size[1], QColor("white"))
+        p.end()
     if kind == "busy":
         p = QPainter(art)
         square = 24
@@ -251,10 +260,10 @@ def test_the_about_button_shows_the_version_and_the_license(
 
 
 def measured_contrast(welcome: Any, pane: Any) -> float:
-    """The text's least contrast over the art as Qt shows it, at the art's percentiles.
+    """The text's contrast over the art as Qt shows it, at the style's percentile.
 
     The art is grabbed with the pane hidden, the pane's fill is blended over it by Qt
-    itself, and the luminance under the pane is measured at the style's percentiles.
+    itself, and every pixel under the pane counts.
     """
     import math
 
@@ -273,16 +282,27 @@ def measured_contrast(welcome: Any, pane: Any) -> float:
     p = QPainter(shown)
     p.fillRect(pane.geometry(), fill)
     p.end()
-    data = bytes(shown.copy(pane.geometry()).constBits())
-    levels = sorted(rgb_luminance(c) for c in zip(data[0::4], data[1::4], data[2::4], strict=True))
+    under = shown.copy(pane.geometry())  # kept alive while its pixels are read
+    data = bytes(under.constBits())
     text = luminance(role_color(text_role, scheme))
-    return min(
-        contrast(text, levels[max(math.ceil(q / 100 * len(levels)), 1) - 1])
-        for q in panes.percentiles
+    values = sorted(
+        contrast(text, rgb_luminance(c))
+        for c in zip(data[0::4], data[1::4], data[2::4], strict=True)
     )
+    return values[max(math.ceil(panes.percentile / 100 * len(values)), 1) - 1]
 
 
-@pytest.mark.parametrize(("art", "raised"), [("light", False), ("dark", False), ("busy", True)])
+@pytest.mark.parametrize(
+    ("art", "raised"),
+    [
+        ("light", False),
+        ("dark", False),
+        ("busy", True),
+        ("saturated-blue", True),
+        ("saturated-red", True),
+        ("saturated-green", True),
+    ],
+)
 def test_the_panes_stay_quiet_and_readable_over_any_art(
     tmp_path: Path, art: str, raised: bool
 ) -> None:
@@ -299,7 +319,8 @@ def test_the_panes_stay_quiet_and_readable_over_any_art(
         text_role, fill_role, alpha = pane.fill(current_scheme())
         dark_text = text_role == panes.text_roles[0]
         assert fill_role == panes.fill_roles[0 if dark_text else 1], "each text has its fill"
-        assert (alpha > floor) == raised, (pane.text, alpha)
+        if not art.startswith("saturated"):  # how far those rise depends on the blend
+            assert (alpha > floor) == raised, (pane.text, alpha)
         assert alpha >= floor
         assert measured_contrast(welcome, pane) >= needed, pane.text
     welcome.close()
