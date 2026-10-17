@@ -7,13 +7,21 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Domain choices and derived values (ADR-0014 §2, phase 2a): a `Domain` can offer
+  `choices`, whose `options` come from its `resolver`; option keys such as `"msg:12"` are
+  public. `DomainSettings.set_choice()`, `clear_choice()`, and `choice()` keep the user's
+  selections, and `for_domain()` fills `DomainValues.derived` with the `DerivedValue`s
+  they give. A calculator takes a derived value after a typed or explicit one and before
+  its default, names it as a derived source, and adds the value's note, such as a
+  nominal caution, once whenever the value is used. No domain offers a choice yet.
 - Reference-data machinery for phase 2 (ADR-0014 §1), in `caddcalc.core.refdata`:
   `load_table()` reads a cited TOML table shipped in a package and checks its header and
   sources (kind, title, locator, access date, license, edition for books and standards,
   third-party sources as cite-only); `ReferenceTable.check_values()` checks that values
   cite declared sources and stay within the table's cite-only cap; `ReferenceValue`,
   the `License`, `PublicationKind`, `Basis`, and `TrustLevel` enums, and `nominal()`,
-  the one place a standard's stated precision is applied. No data ships yet.
+  the one place a standard's stated precision is applied, rounding exactly from a
+  `Fraction`. No data ships yet.
 - Project skeleton: a layered `caddcalc` package (core, calculators, CLI, PySide6 GUI).
 - Core framework: units and drafting-fraction parsing, a safe formula evaluator with
   show-work rendering, declarative calculators with references and verification status,

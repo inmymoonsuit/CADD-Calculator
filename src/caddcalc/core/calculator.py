@@ -247,8 +247,9 @@ class Calculator(ABC):
         """Run the calculator and record the work.
 
         Each input the method uses comes from the first of: ``inputs``, a shared
-        parameter's domain setting in ``settings``, or the parameter's default
-        (ADR-0013 §4).
+        parameter's set domain value in ``settings``, its derived value there, or the
+        parameter's default (ADR-0013 §4). A derived value's note, such as a nominal
+        caution, is added to the result once whenever that value is used.
 
         Args:
             inputs: Values given for this run, by parameter key, in base units.
@@ -284,13 +285,18 @@ class Calculator(ABC):
 
         values: dict[str, float] = {}
         sources: dict[str, InputSource] = {}
+        derived_notes: list[Note] = []
         for p in self.params_for(m.key):
             value, source = _resolve(p, inputs, settings, labels)
             p.check(value, source)
             values[p.key] = value
             sources[p.key] = source
+            note = _derived_note(p, source, settings)
+            if note is not None and note not in derived_notes:
+                derived_notes.append(note)
 
         ctx = Context(self, m, values)
+        ctx.notes.extend(derived_notes)  # one note per derived value used (ADR-0014)
         self.compute(ctx)
 
         missing = [o.key for o in self.outputs if o.key not in ctx.outputs]
@@ -374,10 +380,21 @@ def _resolve(
     if p.shared and settings is not None and p.key in settings.values:
         source = InputSource(SourceKind.DOMAIN, settings.label, domain=settings.domain_id)
         return float(settings.values[p.key]), source
+    if p.shared and settings is not None and p.key in settings.derived:
+        derived = settings.derived[p.key]
+        return derived.value, derived.source
     default = p.default_value()
     if default is None:
         raise InputError(f"Missing input: {p.label} ({p.symbol})")
     return default, DEFAULT
+
+
+def _derived_note(p: Param, source: InputSource, settings: DomainValues | None) -> Note | None:
+    """The note a derived value carries, when ``p`` took that value."""
+    if source.kind is not SourceKind.DERIVED or settings is None:
+        return None
+    derived = settings.derived.get(p.key)
+    return None if derived is None else derived.note
 
 
 def _unique(owner: str, what: str, items: list[str]) -> None:

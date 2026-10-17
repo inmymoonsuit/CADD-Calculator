@@ -5,6 +5,7 @@ or any third-party package (ADR-0003).
 """
 
 from caddcalc.core.calculator import Calculator, Context, Result, Step
+from caddcalc.core.choices import Choice, ChoiceResolver, DerivedValue, Option
 from caddcalc.core.domain import Domain, DomainValues
 from caddcalc.core.errors import (
     CaddCalcError,
@@ -46,7 +47,10 @@ __all__ = [
     "CaddCalcError",
     "CalculationError",
     "Calculator",
+    "Choice",
+    "ChoiceResolver",
     "Context",
+    "DerivedValue",
     "Dimension",
     "Domain",
     "DomainSettings",
@@ -57,6 +61,7 @@ __all__ = [
     "Method",
     "Note",
     "NoteKind",
+    "Option",
     "OutOfRangeError",
     "Output",
     "Param",

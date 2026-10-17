@@ -12,13 +12,14 @@ import datetime
 import tomllib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP
 from enum import Enum
+from fractions import Fraction
 from importlib import resources
 from types import MappingProxyType
 from typing import Any
 
-from caddcalc.core.errors import SpecError
+from caddcalc.core.errors import SpecError, UsageError
 from caddcalc.core.reference import Reference
 from caddcalc.core.units import TypedValue, get_unit
 
@@ -258,19 +259,44 @@ def _enum[E: Enum](origin: str, where: str, enum: type[E], value: Any) -> E:
         raise SpecError(f"{origin}: {where} has {value!r}; allowed: {allowed}") from None
 
 
-def nominal(value: float, unit: str, decimals: int, rounding: str = ROUND_HALF_UP) -> TypedValue:
+def nominal(
+    value: Fraction | float, unit: str, decimals: int, rounding: str = ROUND_HALF_UP
+) -> TypedValue:
     """Return a standard's stated value: ``value`` at the precision the standard publishes.
 
     This is the one place a value is rounded outside display: a gauge system's published
     thickness is part of its definition, not a display choice (guidelines §2.7,
-    ADR-0014 amendments). The result is exact text, so it parses to the published value.
+    ADR-0014 amendments). The rounding is exact rational arithmetic, so a value exactly
+    halfway, such as 7/64 in at four decimals, rounds as the standard says rather than as
+    a binary approximation happens to fall. The result is exact text, so it parses to the
+    published value.
 
     Args:
-        value: The value in ``unit``, e.g. inches computed from a gauge definition.
+        value: The value in ``unit``, e.g. inches from a gauge definition. Pass a
+            ``Fraction`` for an exact definition; a float is taken at its exact binary value.
         unit: The unit the standard states it in, e.g. ``"in"``; ``""`` for a ratio.
         decimals: How many decimal places the standard publishes.
-        rounding: A ``decimal`` rounding mode, e.g. ``ROUND_HALF_UP`` or ``ROUND_DOWN``.
+        rounding: ``decimal.ROUND_HALF_UP``, ``ROUND_HALF_EVEN``, or ``ROUND_DOWN``.
+
+    Raises:
+        UsageError: Another rounding mode, or negative ``decimals``.
     """
-    exact = Decimal(value).quantize(Decimal(1).scaleb(-decimals), rounding=rounding)
-    text = f"{exact} {unit}".rstrip()
-    return TypedValue.parse(text, get_unit(unit).dimension)
+    if decimals < 0:
+        raise UsageError(f"nominal() needs decimals of 0 or more, not {decimals}")
+    exact = Fraction(value)
+    scaled = abs(exact) * 10**decimals
+    whole, rest = divmod(scaled.numerator, scaled.denominator)
+    remainder = Fraction(rest, scaled.denominator)
+    half = Fraction(1, 2)
+    if rounding == ROUND_DOWN:
+        units = whole
+    elif rounding == ROUND_HALF_UP:
+        units = whole + (remainder >= half)
+    elif rounding == ROUND_HALF_EVEN:
+        units = whole + (remainder > half or (remainder == half and whole % 2 == 1))
+    else:
+        raise UsageError(f"nominal() doesn't support the rounding mode {rounding!r}")
+    sign = "-" if exact < 0 and units else ""
+    digits = str(units).rjust(decimals + 1, "0")
+    number = f"{digits[:-decimals]}.{digits[-decimals:]}" if decimals else digits
+    return TypedValue.parse(f"{sign}{number} {unit}".rstrip(), get_unit(unit).dimension)

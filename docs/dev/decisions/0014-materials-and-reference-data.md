@@ -408,3 +408,32 @@ Accepted with the phase 2a plan; the decisions above are unchanged.
 * **Table schema.** A table has a `[table]` header (`name`, `version`,
   `cite_only_cap`), its `[[source]]` list, and domain content that its module reads.
   Unknown keys are refused, so a typo can't pass as an omission.
+
+### 2026-10-17: the gauge choice and the nominal caution (maintainer, phase 2a)
+
+* **D1: one compound gauge choice (§2).** The gauge is one `Choice` whose option keys
+  name the system and the number, e.g. `"msg:12"`, so a bare gauge number can't be
+  expressed. Each `Option` carries a `group`, the system, so a front end can show two
+  levels. Truly dependent choices (`depends_on`) arrive in phase 2b, with material →
+  temper.
+* **D5: results carry the nominal caution (§5.5).** A `DerivedValue` may carry a `Note`,
+  and `run()` adds it to the result whenever that derived value is actually used, not
+  when a typed or explicit value overrides it. It is a warning whose subjects are the
+  parameter keys and whose reference is the table. One note is added however many
+  inputs derive from the same choice.
+* **As built in `core.choices` and `core.domain`:**
+  * `Choice(key, label, help, default)`: a choice may have a default option, which is
+    why choices have their own check (`Domain.validate_choices`).
+  * `Option(key, label, group)`. Option keys are public and stable, and follow
+    `group:item` in lowercase letters, digits, and underscores.
+  * `ChoiceResolver`, a protocol on `Domain.resolver`: `options(choice)` and
+    `derive(selections)`.
+  * `DerivedValue(value, source, stated, note)`, whose source must be a derived one.
+  * `DomainValues.derived`, empty by default. `DomainSettings.set_choice()`,
+    `clear_choice()`, and `choice()`, and `for_domain()` fills `derived` through
+    `Domain.derived()`, which refuses a value for a key that isn't a setting or one
+    outside the setting's range.
+  * Precedence: explicit, then a set domain value, then a derived value, then the
+    default. A range error names a derived source the way it names a domain one.
+  * `nominal()` takes a `Fraction` (or a float at its exact binary value) and rounds by
+    exact rational arithmetic, so a value exactly halfway rounds as the standard says.

@@ -75,9 +75,11 @@ class Registry:
         """Check a domain's definition and add it.
 
         Raises:
-            SpecError: The definition is invalid, or its ID is already registered.
+            SpecError: The definition or its choices are invalid, or its ID is already
+                registered.
         """
         domain.validate()
+        domain.validate_choices()
         if domain.id in self._domains:
             raise SpecError(f"Domain id {domain.id!r} is registered twice")
         self._domains[domain.id] = domain

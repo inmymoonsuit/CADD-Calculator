@@ -120,7 +120,7 @@ class OutOfRangeError(InputError):
         """Return the message, with ``show`` writing each base-unit value as text."""
         p = self.param
         need = f"{self.relation} {show(self.bound)}"
-        if self.source.kind is SourceKind.DOMAIN:
+        if self.source.kind in (SourceKind.DOMAIN, SourceKind.DERIVED):
             return (
                 f"{p.label} ({p.symbol}) from {self.source.label} is {show(self.value)}, "
                 f"but this calculator needs {need}. Override it in this calculator."

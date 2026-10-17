@@ -26,6 +26,7 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  notes.py       Note, NoteKind: notes a result carries, with sources     │
 │  refdata.py     ReferenceTable, sources, load_table, nominal (ADR-0014)  │
 │  domain.py      Domain: a calculator family and its shared settings      │
+│  choices.py     Choice, Option, DerivedValue: selections that derive     │
 │  registry.py    Registry of domains and calculators; plugin loading      │
 │  settings.py    DomainSettings: domain settings for the session          │
 │  formatting.py  DisplayPrefs, rounding, fractions, render_step           │

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import datetime
-from decimal import ROUND_DOWN, ROUND_HALF_UP
+from decimal import ROUND_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP
+from fractions import Fraction
 
 import pytest
 
@@ -19,6 +20,7 @@ from caddcalc.core import (
     SpecError,
     TrustLevel,
     TypedValue,
+    UsageError,
     Verification,
     load_table,
     nominal,
@@ -144,6 +146,18 @@ def test_nominal_states_a_value_at_its_published_precision() -> None:
     assert nominal(exact, "in", 4, ROUND_HALF_UP).text == "0.1094 in"
     assert nominal(exact, "in", 4, ROUND_DOWN).text == "0.1093 in"
     assert nominal(0.4471, "", 2).text == "0.45"
+
+
+def test_nominal_rounds_exact_fractions_exactly() -> None:
+    msg_12 = Fraction(70, 16) / Fraction("41.82")  # the statute's 70 oz/ft², 41.82 basis
+    assert nominal(msg_12, "in", 4).text == "0.1046 in"
+    tie = Fraction(1, 20000)  # 0.00005 exactly; as a float it is a hair above
+    assert nominal(tie, "in", 4, ROUND_HALF_EVEN).text == "0.0000 in"
+    assert nominal(0.00005, "in", 4, ROUND_HALF_EVEN).text == "0.0001 in"
+    assert nominal(Fraction(-7, 64), "in", 4).text == "-0.1094 in"
+    assert nominal(Fraction(5, 2), "", 0).text == "3"
+    with pytest.raises(UsageError, match="rounding mode"):
+        nominal(1.0, "in", 2, "ROUND_CEILING")
 
 
 def test_trust_levels_are_named_apart_from_method_verification() -> None:
