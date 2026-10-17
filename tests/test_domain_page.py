@@ -38,8 +38,8 @@ def open_window(registry: Registry | None = None) -> Any:
     return MainWindow(registry or default_registry(load_plugins=False))
 
 
-def type_into(edit: Any, text: str) -> None:
-    """Replace a field's text the way a user does, so its edit signal fires."""
+def type_into(edit: Any, text: str, *, enter: bool = True) -> None:
+    """Replace a field's text the way a user does, then press Enter unless told not to."""
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
 
@@ -48,6 +48,17 @@ def type_into(edit: Any, text: str) -> None:
         QTest.keyClicks(edit, text)
     else:
         QTest.keyClick(edit, Qt.Key.Key_Backspace)
+    if enter:
+        QTest.keyClick(edit, Qt.Key.Key_Return)
+
+
+def leave(edit: Any) -> None:
+    """Take the focus away from a field, as clicking elsewhere does."""
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QFocusEvent
+    from PySide6.QtWidgets import QApplication
+
+    QApplication.sendEvent(edit, QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.TabFocusReason))
 
 
 def plain(html: str) -> str:
@@ -61,6 +72,11 @@ def plain(html: str) -> str:
 
 def page_text(widget: Any, qt: Any) -> str:
     return "\n".join(plain(label.text()) for label in widget.findChildren(qt.QLabel))
+
+
+def k_factor(window: Any) -> TypedValue | None:
+    value: TypedValue | None = window.domain_settings.get(SHEET_METAL, "k_factor")
+    return value
 
 
 def test_a_family_row_opens_its_settings_page(qt: Any) -> None:
@@ -90,42 +106,91 @@ def test_a_family_row_opens_its_settings_page(qt: Any) -> None:
 
 
 @pytest.mark.usefixtures("qt")
+def test_a_setting_applies_on_enter_or_when_the_field_is_left() -> None:
+    window = open_window()
+    window.select_domain("sheet_metal")
+    _setting, field = window.setting_fields["k_factor"]
+    type_into(field, "0.44", enter=False)
+    assert k_factor(window) is None, "typing alone applies nothing"
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    QTest.keyClick(field, Qt.Key.Key_Return)
+    assert k_factor(window) == TypedValue.parse("0.44", Dimension.RATIO)
+
+    _setting, thickness = window.setting_fields["thickness"]
+    type_into(thickness, "0.1046", enter=False)
+    leave(thickness)
+    assert window.domain_settings.get(SHEET_METAL, "thickness") == TypedValue.parse(
+        "0.1046", Dimension.LENGTH, "in"
+    )
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_a_typo_never_applies_a_passing_prefix_and_stays_visible() -> None:
+    """Typing "15" for ".15" must not leave K = 1 from the "1" that passed on the way."""
+    window = open_window()
+    window.select_domain("sheet_metal")
+    type_into(window.setting_fields["k_factor"][1], "0.4")
+    before = TypedValue.parse("0.4", Dimension.RATIO)
+
+    _setting, field = window.setting_fields["k_factor"]
+    type_into(field, "15", enter=False)
+    assert "K-factor (K) must be at most 1" in plain(window.domain_note.text()), "checked live"
+    assert k_factor(window) == before
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    QTest.keyClick(field, Qt.Key.Key_Return)
+    assert k_factor(window) == before, "refused text applies nothing"
+
+    for leave_and_return in (
+        lambda: (
+            window.select_calculator("sheet_metal.bend_allowance"),
+            window.select_domain("sheet_metal"),
+        ),
+        lambda: window.units_box.setCurrentText("mm"),
+        lambda: window.units_box.setCurrentText("in"),
+    ):
+        leave_and_return()
+        _setting, field = window.setting_fields["k_factor"]
+        assert field.text() == "15"
+        assert "border" in field.styleSheet()
+        assert "K-factor (K) must be at most 1" in plain(window.domain_note.text())
+        assert k_factor(window) == before
+
+    type_into(field, "0.15")
+    assert k_factor(window) == TypedValue.parse("0.15", Dimension.RATIO)
+    assert window.domain_note.text() == ""
+    assert field.styleSheet() == ""
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_unreadable_text_is_explained_with_the_setting_name() -> None:
+    window = open_window()
+    window.select_domain("sheet_metal")
+    type_into(window.setting_fields["k_factor"][1], "abc")
+    assert "K-factor (K): Cannot read a value from 'abc'" in plain(window.domain_note.text())
+    assert k_factor(window) is None
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
 def test_a_typed_setting_keeps_the_users_text_across_unit_switches() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
-    _setting, thickness = window.setting_fields["thickness"]
-    type_into(thickness, "0.1046")
+    type_into(window.setting_fields["thickness"][1], "0.1046")
     typed = TypedValue.parse("0.1046", Dimension.LENGTH, "in")
     assert window.domain_settings.get(SHEET_METAL, "thickness") == typed
 
-    _setting, radius = window.setting_fields["inside_radius"]
-    type_into(radius, "3 mm")
+    type_into(window.setting_fields["inside_radius"][1], "3 mm")
     for unit, shown in (("mm", "2.65684"), ("in", "0.1046"), ("mm", "2.65684"), ("in", "0.1046")):
         window.units_box.setCurrentText(unit)
         assert window.setting_fields["thickness"][1].text() == shown
         assert window.setting_fields["inside_radius"][1].text() == "3 mm"
     assert window.domain_settings.get(SHEET_METAL, "thickness") == typed, "display never re-read"
-    window.close()
-
-
-@pytest.mark.usefixtures("qt")
-def test_a_refused_setting_is_explained_and_keeps_its_last_value() -> None:
-    window = open_window()
-    window.select_domain("sheet_metal")
-    _setting, k_factor = window.setting_fields["k_factor"]
-    type_into(k_factor, "0.44")
-    type_into(k_factor, "2")  # refused from its first keystroke
-    assert "K-factor (K) must be at most 1" in plain(window.domain_note.text())
-    assert "border" in k_factor.styleSheet()
-    assert window.domain_settings.get(SHEET_METAL, "k_factor") == TypedValue.parse(
-        "0.44", Dimension.RATIO
-    )
-
-    type_into(k_factor, "abc")
-    assert "K-factor (K): Cannot read a value from 'abc'" in plain(window.domain_note.text())
-    type_into(k_factor, "0.42")
-    assert window.domain_note.text() == ""
-    assert k_factor.styleSheet() == ""
     window.close()
 
 
@@ -137,21 +202,24 @@ def test_settings_can_be_unset_one_at_a_time_or_all_at_once() -> None:
     type_into(window.setting_fields["k_factor"][1], "0.44")
 
     type_into(window.setting_fields["k_factor"][1], "")
-    assert window.domain_settings.get(SHEET_METAL, "k_factor") is None
+    assert k_factor(window) is None
     assert window.domain_settings.get(SHEET_METAL, "thickness") is not None
 
+    type_into(window.setting_fields["inside_radius"][1], "-1")
     window.clear_settings_button.click()
     assert dict(window.domain_settings.values(SHEET_METAL)) == {}
     assert all(edit.text() == "" for _s, edit in window.setting_fields.values())
+    assert window.domain_note.text() == "", "clearing also drops refused text"
     window.close()
 
 
 @pytest.mark.usefixtures("qt")
-def test_settings_last_while_the_user_moves_between_pages() -> None:
+def test_leaving_the_page_applies_text_typed_without_enter() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
-    type_into(window.setting_fields["k_factor"][1], "0.44")
+    type_into(window.setting_fields["k_factor"][1], "0.44", enter=False)
     window.select_calculator("sheet_metal.v_die_opening")
+    assert k_factor(window) == TypedValue.parse("0.44", Dimension.RATIO)
     window.select_domain("sheet_metal")
     assert window.setting_fields["k_factor"][1].text() == "0.44"
     window.close()

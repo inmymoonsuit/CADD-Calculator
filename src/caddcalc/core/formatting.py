@@ -90,7 +90,11 @@ def format_value(
 
 
 FIELD_DECIMALS = 6
-"""Decimal places a form field shows for a value it converted, before trailing zeros go."""
+"""Decimal places a form field shows for a value it converted, before trailing zeros go.
+
+Values under about 5e-7 of a display unit show as 0. That is far finer than any drafting
+dimension, and more places would make every converted field long.
+"""
 
 
 def field_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> str:
@@ -106,7 +110,7 @@ def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:
     """Return the text a form field shows for a value the user typed (ADR-0013 §9).
 
     The user's own text is shown when it named its unit, or when its unit is still the
-    display unit. Otherwise the value is shown converted, so a field never shows a
+    display unit. Otherwise the value is shown converted, so a field never shows a bare
     number in a unit other than the one it labels. The value itself never changes.
     """
     if entry.explicit_unit or entry.unit == display_unit(entry.dimension, prefs):

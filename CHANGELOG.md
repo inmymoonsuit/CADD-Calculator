@@ -80,8 +80,10 @@ All notable changes are recorded here. The format follows
   "Sheet Metal settings". Building `DomainValues` directly checks only that it has a label.
 - The GUI's family rows open a settings page (ADR-0013 §8), generated from the domain's
   settings. An empty field means unset. Under each field are the setting's help and the
-  calculators and methods that use it. **Clear all** unsets the family, and refused
-  text is outlined in red and explained while the last valid value is kept. A family
+  calculators and methods that use it. **Clear all** unsets the family. A field applies
+  on Enter or when focus leaves it, and is checked as you type. Refused text applies
+  nothing, so the setting keeps its previous value, and it stays outlined in red and
+  explained across page and unit switches until it is fixed. A family
   with no loaded calculator is still listed, marked "No calculators loaded". Values set
   here are kept for the session; calculators don't use them until the per-field
   inherit/override step (ADR-0013 phase 1, slice 6).

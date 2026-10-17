@@ -121,8 +121,12 @@ class MainWindow(QMainWindow):
         self.domain_settings = DomainSettings()
         """The domain settings the user has set; kept for the life of the window (§7)."""
         self.setting_fields: dict[str, tuple[Param, QLineEdit]] = {}
-        self.setting_errors: dict[str, str] = {}
-        """Why each setting field's text was refused, by setting key."""
+        self.pending_settings: dict[tuple[str, str], str] = {}
+        """Text typed in a settings field but not applied, by (domain id, setting key).
+
+        It outlives the page, so refused text and its explanation are still there when the
+        user comes back.
+        """
 
         self.setWindowTitle(branding.name)
         self.resize(1100, 720)
@@ -273,6 +277,7 @@ class MainWindow(QMainWindow):
     def select_calculator(self, calc_id: str) -> None:
         """Show the calculator with ``calc_id`` and build its input form."""
         calc = self.registry.get(calc_id)
+        self._apply_setting_edits()
         self.calculator = calc
         self.domain = None
         self.title.setText(calc.name)
@@ -293,6 +298,7 @@ class MainWindow(QMainWindow):
     def select_domain(self, domain_id: str) -> None:
         """Show the settings page of the domain with ``domain_id``."""
         domain = self.registry.domain(domain_id)
+        self._apply_setting_edits()
         self.domain = domain
         self.calculator = None
         self.title.setText(domain.name)
@@ -312,6 +318,7 @@ class MainWindow(QMainWindow):
 
     def _on_units_changed(self, unit: str) -> None:
         self._read_fields()  # keep any valid edits made in the old unit
+        self._apply_setting_edits()
         self.prefs = DisplayPrefs(length_unit=unit)
         if self.domain is not None:
             self._rebuild_domain_form()
@@ -375,24 +382,32 @@ class MainWindow(QMainWindow):
         self.output.setHtml(result_html(calc, result, self.prefs, scheme))
 
     # --- domain settings page -------------------------------------------------------------
+    # Fields apply on Enter or when focus leaves them, and are checked as the user types.
+    # Applying every keystroke would store passing prefixes ("1" on the way to "15") in
+    # values that calculators the user can't see from here will use.
 
     def _rebuild_domain_form(self) -> None:
-        """Build one field per setting of ``self.domain``, showing what the user has set."""
+        """Build one field per setting of ``self.domain``: unapplied text, or the set value."""
         domain = self.domain
         if domain is None:
             return
+        for _setting, old in self.setting_fields.values():
+            old.blockSignals(True)  # removing a focused field mustn't apply it mid-rebuild
         while self.settings_form.rowCount():
             self.settings_form.removeRow(0)
         self.setting_fields.clear()
-        self.setting_errors.clear()
         for setting in domain.settings:
             edit = QLineEdit()
             edit.setPlaceholderText("not set")
-            entry = self.domain_settings.get(domain, setting.key)
-            if entry is not None:
+            pending = self.pending_settings.get((domain.id, setting.key))
+            if pending is not None:
+                edit.setText(pending)
+                edit.setModified(True)
+            elif (entry := self.domain_settings.get(domain, setting.key)) is not None:
                 edit.setText(entry_text(entry, self.prefs))
             edit.setToolTip(setting.help)
             edit.textEdited.connect(partial(self._on_setting_edited, setting.key))
+            edit.editingFinished.connect(partial(self._apply_setting, setting.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
             field.addWidget(QLabel(unit_suffix(setting.dimension, self.prefs).strip()))
@@ -408,47 +423,83 @@ class MainWindow(QMainWindow):
             self.setting_fields[setting.key] = (setting, edit)
         self.settings_box.setVisible(bool(domain.settings))
         self.clear_settings_button.setEnabled(bool(domain.settings))
-        self._show_domain_note()
+        self._show_setting_problems()
 
-    def _on_setting_edited(self, key: str, text: str) -> None:
-        """Set, or with empty text unset, one domain setting from what the user typed."""
+    def _setting_problem(self, setting: Param, text: str) -> str | None:
+        """Return why ``text`` can't be applied to ``setting``, or ``None`` if it can."""
         domain = self.domain
-        if domain is None:
-            return
-        setting, edit = self.setting_fields[key]
+        if domain is None or not text.strip():
+            return None
         default_unit = self.prefs.length_unit if setting.dimension is Dimension.LENGTH else None
         try:
+            self.domain_settings.set_text(domain, setting.key, text, default_unit)
+        except InputError as exc:
+            message = describe_error(exc, self.prefs)
+            if isinstance(exc, OutOfRangeError):  # a range error already names the setting
+                return message
+            return f"{setting.label} ({setting.symbol}): {message}"
+        return None
+
+    def _on_setting_edited(self, key: str, text: str) -> None:
+        """Check what the user is typing, without applying it."""
+        if self.domain is not None:
+            self.pending_settings[self.domain.id, key] = text
+            self._show_setting_problems()
+
+    def _apply_setting(self, key: str) -> None:
+        """Apply a field's edited text; empty text unsets, and refused text applies nothing."""
+        domain = self.domain
+        if domain is None or key not in self.setting_fields:
+            return
+        setting, edit = self.setting_fields[key]
+        if not edit.isModified():
+            return  # shown text, never re-read as a value (ADR-0013 §9)
+        text = edit.text()
+        if self._setting_problem(setting, text) is None:
             if text.strip():
+                default_unit = (
+                    self.prefs.length_unit if setting.dimension is Dimension.LENGTH else None
+                )
                 updated = self.domain_settings.set_text(domain, key, text, default_unit)
             else:
                 updated = self.domain_settings.clear(domain, key)
-        except InputError as exc:
-            edit.setStyleSheet(ERROR_STYLE)
-            message = describe_error(exc, self.prefs)
-            if not isinstance(exc, OutOfRangeError):  # a range error already names the setting
-                message = f"{setting.label} ({setting.symbol}): {message}"
-            self.setting_errors[key] = message
-        else:
             self.domain_settings = updated
-            edit.setStyleSheet("")
-            self.setting_errors.pop(key, None)
-        self._show_domain_note()
+            self.pending_settings.pop((domain.id, key), None)
+            edit.setModified(False)
+        else:
+            self.pending_settings[domain.id, key] = text
+        self._show_setting_problems()
+
+    def _apply_setting_edits(self) -> None:
+        """Apply every field's unapplied text, as leaving each field would."""
+        for key in list(self.setting_fields):
+            self._apply_setting(key)
 
     def _clear_domain_settings(self) -> None:
-        if self.domain is not None:
-            self.domain_settings = self.domain_settings.clear_domain(self.domain)
+        domain = self.domain
+        if domain is not None:
+            self.domain_settings = self.domain_settings.clear_domain(domain)
+            for key in [k for k in self.pending_settings if k[0] == domain.id]:
+                del self.pending_settings[key]
             self._rebuild_domain_form()
 
-    def _show_domain_note(self) -> None:
-        """Show whether the family has calculators, and why any field's text was refused."""
+    def _show_setting_problems(self) -> None:
+        """Outline each field whose text is refused, and explain why under the form."""
         domain = self.domain
         if domain is None:
             return
+        problems = []
+        for key, (setting, edit) in self.setting_fields.items():
+            pending = self.pending_settings.get((domain.id, key))
+            problem = None if pending is None else self._setting_problem(setting, pending)
+            edit.setStyleSheet(ERROR_STYLE if problem else "")
+            if problem:
+                problems.append(problem)
         self.domain_note.setText(
             _domain_note_html(
                 domain,
                 has_calculators=bool(self.registry.by_domain().get(domain)),
-                errors=list(self.setting_errors.values()),
+                errors=problems,
             )
         )
 
@@ -509,8 +560,8 @@ def _domain_note_html(domain: Domain, *, has_calculators: bool, errors: Sequence
     if errors:
         items = "".join(f"<li>{escape(e)}</li>" for e in errors)
         parts.append(
-            "<p style='color:#c0392b'><b>Check these settings.</b> Each keeps its last "
-            f"valid value until it is fixed:</p><ul>{items}</ul>"
+            "<p style='color:#c0392b'><b>Not applied.</b> Each of these settings keeps its "
+            f"previous value until its text is fixed:</p><ul>{items}</ul>"
         )
     return "".join(parts)
 

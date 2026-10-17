@@ -17,11 +17,18 @@ family. An empty field means the setting is unset, and each calculator uses its 
 default. **Clear all** unsets every one. Settings last until you close the app; nothing
 is saved.
 
+A value applies when you press Enter or leave the field. As you type, text that can't be
+used is outlined in red and explained. It isn't applied, so the setting keeps the value
+it had, and the text stays, with its explanation, until you fix it or clear the field.
+
+In the table, a calculator named alone uses the setting in every method; otherwise the
+methods that use it follow the colon.
+
 | Setting | Used by |
 |---|---|
-| Material thickness (T) | Bend allowance & deduction; Flat length of a formed segment; Truncated cone flat pattern; V-die opening, 8 × thickness method |
-| Inside bend radius (R) | Bend allowance & deduction; Flat length of a formed segment; V-die opening, inside-radius percentage method |
-| K-factor (K) | The K-factor methods of Bend allowance & deduction and Flat length of a formed segment |
+| Material thickness (T) | Bend allowance & deduction; Flat length of a formed segment; Truncated cone flat pattern; V-die opening (air bending): 8 × thickness rule of thumb |
+| Inside bend radius (R) | Bend allowance & deduction; Flat length of a formed segment; V-die opening (air bending): Inside-radius percentage rule |
+| K-factor (K) | Bend allowance & deduction: K-factor (neutral axis); Flat length of a formed segment: K-factor (neutral axis) |
 
 * **Thickness:** enter the decimal thickness. Gauge numbers mean different thicknesses in
   different gauge systems (see *Thickness* in the [glossary](../glossary.md)).

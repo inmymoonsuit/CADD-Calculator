@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, override
 
 import pytest
@@ -165,6 +166,25 @@ def test_each_sheet_metal_setting_lists_the_calculators_that_use_it(
 ) -> None:
     registry = default_registry(load_plugins=False)
     assert describe_setting_uses(registry.setting_uses("sheet_metal", key)) == users
+
+
+def test_the_family_settings_doc_lists_who_uses_each_setting() -> None:
+    """The user guide's table is written by hand; this keeps it from drifting."""
+    doc = Path(__file__).parents[1] / "docs" / "user" / "calculators" / "sheet-metal.md"
+    section = doc.read_text(encoding="utf-8").split("## Family settings", 1)[1]
+    section = section.split("\n## ", 1)[0]
+    rows = {}
+    for line in section.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if line.startswith("|") and cells[0] not in ("Setting", "---"):
+            rows[cells[0]] = cells[1]
+    registry = default_registry(load_plugins=False)
+    assert rows == {
+        f"{s.label} ({s.symbol})": "; ".join(
+            describe_setting_uses(registry.setting_uses("sheet_metal", s.key))
+        )
+        for s in BUILTIN_DOMAINS[0].settings
+    }
 
 
 def test_setting_uses_need_a_known_domain_and_setting() -> None:
