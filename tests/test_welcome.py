@@ -60,6 +60,7 @@ def flush() -> None:
 
 def test_the_generic_screen_shows_live_name_and_version_over_generated_art() -> None:
     from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QMenuBar
 
     welcome = screen()
     assert (welcome.art_source, welcome.logo_source) == ("generic", "generic")
@@ -67,8 +68,7 @@ def test_the_generic_screen_shows_live_name_and_version_over_generated_art() -> 
     assert welcome.art.version_label.text() == f"Version {__version__}"
     assert welcome.windowModality() is Qt.WindowModality.ApplicationModal
     assert welcome.windowFlags() & Qt.WindowType.FramelessWindowHint
-    assert not welcome.menu_bar.isNativeMenuBar(), "macOS must not take the card's menus"
-    assert [a.text() for a in welcome.menu_bar.actions()] == ["&File", "&Help"]
+    assert welcome.findChildren(QMenuBar) == [], "the app's menus live in the main window"
     welcome.show()
     image = welcome.grab().toImage()
     assert not image.isNull()
@@ -187,3 +187,24 @@ def test_help_reopens_it_over_the_main_window() -> None:
     flush()
     assert window.findChildren(WelcomeScreen) == [], "deleted when closed"
     window.close()
+
+
+def test_the_about_button_shows_the_version_and_the_license(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QMessageBox
+
+    shown: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        QMessageBox, "about", lambda _parent, title, text: shown.append((title, text))
+    )
+    welcome = screen()
+    welcome.show()
+    assert welcome.about_button.accessibleName() == "About"
+    QTest.mouseClick(welcome.about_button, Qt.MouseButton.LeftButton)
+    ((title, text),) = shown
+    assert title == "About CADD Calculator"
+    assert __version__ in text and "Apache License, Version 2.0" in text
+    welcome.close()

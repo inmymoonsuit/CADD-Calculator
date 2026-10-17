@@ -12,7 +12,6 @@ from typing import Any, cast, override
 from PySide6.QtCore import QEvent, QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QFormLayout,
@@ -21,7 +20,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QSplitter,
     QStackedWidget,
@@ -32,7 +30,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from caddcalc import __version__
 from caddcalc.calculators import default_registry
 from caddcalc.core import (
     CaddCalcError,
@@ -386,7 +383,6 @@ class MainWindow(QMainWindow):
 
     def _build_menu(self) -> None:
         self.app_actions.fill(self.menuBar())
-        self.app_actions.about.triggered.connect(self._show_about)
         self.app_actions.welcome.triggered.connect(self.show_welcome)
 
     def _apply_icons(self) -> None:
@@ -414,11 +410,6 @@ class MainWindow(QMainWindow):
         welcome = WelcomeScreen(self.branding, self.app_actions, self)
         welcome.show()
         return welcome
-
-    def _show_about(self) -> None:
-        # Over whichever window is active, such as the welcome screen.
-        parent = QApplication.activeWindow() or self
-        QMessageBox.about(parent, f"About {self.branding.name}", about_html(self.branding))
 
     # --- selection ------------------------------------------------------------------------
 
@@ -1177,26 +1168,6 @@ class MainWindow(QMainWindow):
                 scheme=current_scheme(),
             )
         )
-
-
-GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
-
-
-def about_html(branding: Branding) -> str:
-    """Return the Help > About text.
-
-    A branding pack replaces the description. The version, the disclaimer, the link to
-    the source code, and the third-party credits are always shown.
-    """
-    return (
-        f"<h3>{escape(branding.name)} {escape(__version__)}</h3>"
-        + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
-        + f"<p>{escape(DISCLAIMER)}</p>"
-        '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
-        "github.com/inmymoonsuit/CADD-Calculator</a></p>"
-        '<p>Icons: <a href="https://tabler.io/icons">Tabler Icons</a>, MIT License. '
-        "Third-party notices are in THIRD_PARTY_NOTICES.md.</p>"
-    )
 
 
 def _img(name: str, role: str, scheme: Scheme) -> str:

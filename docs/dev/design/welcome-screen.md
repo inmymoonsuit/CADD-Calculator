@@ -8,7 +8,7 @@ quotes them, so the specification can't drift from the code.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ File  Help                                            ✕ │  top bar, 32 px
+│                                                    ⓘ  ✕ │  top bar, 32 px
 ├──────┬───────────────────────────────────────────────────┤
 │      │                              ┌──────────────────┐ │
 │  L   │                              │   name panel     │ │
@@ -21,8 +21,8 @@ quotes them, so the specification can't drift from the code.
 ```
 
 All sizes are logical pixels (a 100% display scale). The whole screen is **1032 × 572**:
-a 72 px logo strip at the left, a 32 px bar across the top, and the **960 × 540** art
-slot, which is exactly 16:9.
+a 72 px logo strip at the left, a 32 px bar across the top, with the About button (ⓘ)
+and the X, and the **960 × 540** art slot, which is exactly 16:9.
 
 ## The art
 

@@ -1,7 +1,8 @@
 """The welcome screen, composed from a branding pack's parts (ADR-0015).
 
-A frameless card: a top bar with the app's menus and an X, a vertical logo strip, and an
-art slot with the name and version as live text over it. The art and the logo come from
+A frameless card: a top bar with an About button (ⓘ) and an X, a vertical logo strip,
+and an art slot with the name and version as live text over it. The app's menus live in
+the main window (ADR-0015, amendments). The art and the logo come from
 the pack, or are drawn here from the palette. Everything is laid out from
 ``welcome_layout``, the art specification's one source.
 """
@@ -28,7 +29,7 @@ from PySide6.QtGui import (
     QResizeEvent,
 )
 from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QMenuBar, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
 
 from caddcalc import __version__
 from caddcalc.gui.actions import AppActions
@@ -112,7 +113,7 @@ def _color(name: str) -> str:
 
 
 class _TopBar(QWidget):
-    """The bar across the top: the app's menus, the X, and a handle to drag the card by."""
+    """The bar across the top: the About button, the X, and a handle to drag the card by."""
 
     @override
     def mousePressEvent(self, event: QMouseEvent) -> None:
@@ -261,7 +262,7 @@ def _scaled(area: Rect, scale: float) -> tuple[int, int, int, int]:
 
 
 class WelcomeScreen(QWidget):
-    """The welcome screen: art, logo, name, and version, with the app's menus and an X.
+    """The welcome screen: art, logo, name, and version, with an About button and an X.
 
     It is application-modal, so it blocks the main window until it's closed (ADR-0015 W5,
     amendments). Esc or the X closes it, and it's deleted when closed. Connections use
@@ -271,7 +272,7 @@ class WelcomeScreen(QWidget):
     def __init__(
         self, branding: Branding, actions: AppActions, parent: QWidget | None = None
     ) -> None:
-        """Compose the screen for ``branding``, with ``actions`` in its menus."""
+        """Compose the screen for ``branding``; its About button triggers ``actions.about``."""
         super().__init__(parent, Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -284,10 +285,13 @@ class WelcomeScreen(QWidget):
         self.top_bar = _TopBar(self)
         self.top_bar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         self.top_bar.setFixedHeight(round(TOP_BAR * scale))
-        self.menu_bar = QMenuBar(self.top_bar)
-        # Inside the card, never merged into macOS's global menu bar (ADR-0015, amendments).
-        self.menu_bar.setNativeMenuBar(False)
-        actions.fill(self.menu_bar)
+        self.about_button = QToolButton(self.top_bar)
+        self.about_button.setAutoRaise(True)
+        self.about_button.setToolTip(f"About {branding.name}: version, license, and terms")
+        self.about_button.setAccessibleName("About")
+        self.about_button.clicked.connect(actions.about.trigger)
+        self.app_actions = actions
+        """The commands its About button triggers; kept, so they live as long as it does."""
         self.close_button = QToolButton(self.top_bar)
         self.close_button.setAutoRaise(True)
         self.close_button.setToolTip("Close (Esc)")
@@ -295,8 +299,8 @@ class WelcomeScreen(QWidget):
         self.close_button.clicked.connect(self.close)
         bar = QHBoxLayout(self.top_bar)
         bar.setContentsMargins(4, 0, 4, 0)
-        bar.addWidget(self.menu_bar)
         bar.addStretch(1)
+        bar.addWidget(self.about_button)
         bar.addWidget(self.close_button)
 
         self.logo = _LogoStrip(branding, self)
@@ -338,6 +342,7 @@ class WelcomeScreen(QWidget):
         scheme = current_scheme()
         background, text = role_color("background", scheme), role_color("text", scheme)
         self.top_bar.setStyleSheet(f"background: {background}; color: {text};")
+        self.about_button.setIcon(icon("info-circle", "icon_active", scheme))
         self.close_button.setIcon(icon("x", "icon_active", scheme))
         self.art.apply_theme()
 

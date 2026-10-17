@@ -71,9 +71,10 @@ def test_exit_closes_every_window(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_about_shows_over_the_active_window(monkeypatch: pytest.MonkeyPatch) -> None:
-    from PySide6.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QApplication, QMessageBox
 
     window = open_window()
+    monkeypatch.setattr(QApplication, "activeWindow", lambda: window)
     shown: list[tuple[Any, str]] = []
     monkeypatch.setattr(
         QMessageBox, "about", lambda parent, title, _text: shown.append((parent, title))

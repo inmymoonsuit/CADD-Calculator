@@ -342,7 +342,8 @@ def test_the_welcome_template_marks_the_safe_areas() -> None:
 @pytest.mark.gui
 def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path) -> None:
     from caddcalc.core.formatting import DISCLAIMER
-    from caddcalc.gui.window import GENERIC_ABOUT, MainWindow, about_html
+    from caddcalc.gui.actions import GENERIC_ABOUT, about_html
+    from caddcalc.gui.window import MainWindow
 
     app = qt.QApplication.instance()
     b = load_branding(make_pack(tmp_path / "pack"))
@@ -352,6 +353,7 @@ def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path
     assert b.name in html and "<b>testing</b>" in html and escape(DISCLAIMER) in html
     assert GENERIC_ABOUT not in html
     assert GENERIC_ABOUT in about_html(GENERIC)
+    assert "Licensed under the Apache License, Version 2.0" in html, "always shown"
     window.close()
     app.processEvents()
 

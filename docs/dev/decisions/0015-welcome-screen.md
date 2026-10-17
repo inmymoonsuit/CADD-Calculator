@@ -203,3 +203,17 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   report's `welcome_art` and `welcome_logo` say which was shown.
 * **Platform checks** that CI can't run are listed in KI-020.
 
+### 2026-10-17: an About button on the welcome screen, not menus (maintainer)
+
+This replaces, for the welcome screen, W3 and §5's shared top bar.
+
+* **The welcome screen has no menus.** Its top bar holds an About button (ⓘ) and the X.
+  The File and Help menus live only in the main window, where they belong.
+* **The About button opens About,** the same box as Help > About: the name and version,
+  the description, the license (Apache-2.0), the disclaimer, the link to the source
+  code, and the third-party notices. About now names the license.
+* **About is one command.** `AppActions` shows it over whichever window is active, so the
+  button and Help > About share it, and it works before the main window exists.
+* With no menus in the card, nothing there can reach macOS's global menu bar; About and
+  Exit still carry their menu roles in the main window.
+

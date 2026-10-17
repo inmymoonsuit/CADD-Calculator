@@ -11,7 +11,7 @@ All notable changes are recorded here. The format follows
   `[welcome]` pack keys in packaging.md, the welcome screen in the user guide, and
   KI-020, the platform checks CI can't run on Wayland and macOS.
 - `caddcalc.gui.welcome.WelcomeScreen` (ADR-0015): a frameless, application-modal card
-  with the app's File and Help menus and an X, a vertical logo strip, and 16:9 art with
+  with an About button (ⓘ) and an X, a vertical logo strip, and 16:9 art with
   the name and version as live text on theme-coloured scrims (new palette roles
   `welcome_scrim` and `on_welcome_scrim`). Pack art and logos that can't be used,
   including art over 4096 px, fall back to generated art with a warning. Esc or the X
@@ -208,6 +208,7 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- About names the license (Apache-2.0), and opens over whichever window is active.
 - The main window gains a File menu with Exit, beside Help > About. Both come from
   `caddcalc.gui.actions.AppActions`, the app's shared commands, which carry Qt's menu
   roles so macOS puts About and Quit in the application menu (ADR-0015 §5).

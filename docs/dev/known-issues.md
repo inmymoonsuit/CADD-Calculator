@@ -158,11 +158,11 @@ by hand before a release on each platform:
 * **Wayland (Linux):** the compositor places windows, so the card may not open centred;
   dragging the top bar must still move it (`startSystemMove`). Stay-on-top hints are
   ignored, but the card still blocks the main window.
-* **macOS:** the card's File and Help menus must stay inside the card, not in the global
-  menu bar, while About and Exit (Quit) appear in the application menu for the main
-  window. The card must open as a window, not as a sheet attached to the main window.
+* **macOS:** About and Exit (Quit) must appear in the application menu for the main
+  window, and the card must open as a window, not as a sheet attached to the main
+  window.
 * **Frameless windows everywhere:** check whether the system draws a shadow and rounded
-  corners, and that the X, Esc, and dragging work.
+  corners, and that the ⓘ, the X, Esc, and dragging work.
 * **Displays:** check 100%, 150%, and 200% scaling, and a small screen (e.g. 1366 × 768 at
   150%), where the card should shrink to fit.
 
