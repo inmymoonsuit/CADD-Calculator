@@ -180,6 +180,26 @@ def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -
     return lines
 
 
+def describe_override(
+    family: str, inherited: float, own: float, dimension: Dimension, prefs: DisplayPrefs
+) -> str:
+    """Return the note under a field that overrides a set family value, with both values.
+
+    For example: ``"Sheet Metal value is 0.2500 in; this calculator uses 0.1046 in."``
+
+    Args:
+        family: The domain's display name.
+        inherited: The family value, in base units.
+        own: The calculator's value, in base units.
+        dimension: What the values measure.
+        prefs: The display unit and decimals.
+    """
+    return (
+        f"{family} value is {format_value(inherited, dimension, prefs)}; "
+        f"this calculator uses {format_value(own, dimension, prefs)}."
+    )
+
+
 def describe_error(error: CaddCalcError, prefs: DisplayPrefs) -> str:
     """Return an error's message for users, with any values in display units.
 

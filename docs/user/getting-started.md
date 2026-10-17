@@ -22,7 +22,11 @@ uv run caddcalc-gui
 * Choose a **Method** (the status shows in brackets) and **Units** (`in` or `mm`).
 * Type the inputs. Results update as you type, and invalid fields are outlined in red.
   You can type units and fractions: `1/8`, `1-1/2"`, `3 mm`.
-* Switching units re-expresses the values you've entered. The part doesn't change.
+* Switching units re-expresses the values you've entered. The part doesn't change, and
+  what you typed comes back exactly when you switch back.
+* **Load course example** fills a calculator's inputs with the course's example values.
+* Family settings, such as Sheet Metal thickness, fill the fields that share them until
+  you type over them; see [Family settings](calculators/sheet-metal.md#family-settings).
 
 ## The command line
 

@@ -78,10 +78,10 @@ def test_gui_window_computes(monkeypatch: pytest.MonkeyPatch) -> None:
     _param, thickness = window.fields["thickness"]
     assert thickness.text() == "2.65684"  # 0.1046 in, re-expressed
 
-    thickness.setText("-1")
-    window.recompute()
-    assert "Check the inputs" in window.output.toPlainText() or "greater than" in (
-        window.output.toPlainText()
-    )
+    from PySide6.QtTest import QTest
+
+    thickness.selectAll()
+    QTest.keyClicks(thickness, "-1")  # typed, so it is the user's intent (ADR-0013 §9)
+    assert "must be greater than 0 mm" in window.output.toPlainText()
     window.close()
     app.processEvents()

@@ -137,17 +137,16 @@ components, and the note on replacing the Qt libraries. **Still needed before a 
 release:** the full license texts for those runtime components (LGPL-3.0 and the GPL-3.0
 it builds on, the PSF license, Apache-2.0, libffi's MIT text, and the MSVC runtime terms).
 
-### KI-017: Switching units in the GUI rounds the typed value (Low)
-
-Changing the GUI between in and mm rewrites each field as six-decimal text and then reads
-that text back as the user's value. Measured on 2026-10-17: thickness typed as `1/3` in
-(8.466666… mm) becomes `0.333333` in (8.4666582 mm) after one switch to mm and back, a
-loss of 8.5e-6 mm that never recovers. The amount is tiny, but it breaks the rule that
-displayed text is never re-read as user input (ADR-0013, "Numeric intent"). The fix keeps
-each field's base value and typed text, so a unit switch changes only the display. It is
-planned for the inherit/override slice of ADR-0013 phase 1.
-
 ## Resolved
+
+### KI-017: Switching units in the GUI rounded the typed value (resolved 2026-10-17)
+
+Changing the GUI between in and mm rewrote each field as six-decimal text and read it
+back as the user's value: `1/3` in became `0.333333` in after one round trip, a loss of
+8.5e-6 mm. Calculator fields now keep what the user typed as a `TypedValue`, and other
+values (defaults, inherited family values, the course example) as base values. A unit
+switch changes only the display, through `core.formatting.entry_text` (ADR-0013 §9).
+Tested by `tests/test_calculator_page.py::test_a_units_round_trip_never_changes_a_calculator_value`.
 
 ### KI-011: K-factor method had no page citation (resolved 2026-10-16)
 

@@ -38,9 +38,25 @@ methods that use it follow the colon.
   The course methods have their factor built in, so they don't use this setting.
 * The V-die calculator's die ratio P is not shared; each calculation sets its own.
 
-The settings page shows the same list under each field. In this build it keeps the
-values for the session, but the calculators don't use them yet; that comes with each
-field's *Use Sheet Metal value* switch.
+The settings page shows the same list under each field.
+
+### Using a family value in a calculator
+
+* Once a Sheet Metal value is set, each calculator field that shares it shows the value
+  and a ticked **Use Sheet Metal value** box. The result lists it as *Sheet Metal
+  settings*.
+* Typing in such a field **overrides** the family value in that calculator, and the box
+  clears. The override lasts for the session, even if the family value changes later.
+  The result lists the value as *entered*.
+* While a field overrides a set value, a note under it shows both values, e.g.
+  "Sheet Metal value is 0.2500 in; this calculator uses 0.1046 in." Tick the box to
+  use the family value again. The settings page shows how many calculators override
+  each setting, and which.
+* A value that's unset in the family leaves each calculator its own default.
+* **Load course example** fills every input with the course example and overrides the
+  family values, so the lesson's numbers come out exactly. For example, with thickness
+  set to 0.1046 in, the cone's course method gives a 132.30° sweep. Loading the course
+  example restores its 0.0747 in and the lesson's 132.70°.
 
 ---
 

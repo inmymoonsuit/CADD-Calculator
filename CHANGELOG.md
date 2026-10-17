@@ -86,13 +86,26 @@ All notable changes are recorded here. The format follows
   explained across page and unit switches until it is fixed. On a unit switch, such text
   typed without a unit gains the unit it was typed in ("5" becomes "5 in"). A family
   with no loaded calculator is still listed, marked "No calculators loaded". Values set
-  here are kept for the session; calculators don't use them until the per-field
-  inherit/override step (ADR-0013 phase 1, slice 6).
+  here are kept for the session.
+- Calculators inherit family settings (ADR-0013 §8, decisions C and D). Once a family
+  value is set, each field that shares it shows the value with a ticked "Use Sheet Metal
+  value" box. Typing overrides it for the session, and only overridden or edited values
+  are passed to `run()` as inputs. A note under an overriding field shows both values,
+  recomputed on every render. The settings page shows "Overridden in N" with the
+  calculators' names. "Load course example" fills every input with the course example,
+  overriding family values, for calculators with a legacy method. Results in the GUI
+  list each input with its source, as the CLI does.
 - `core.formatting.entry_text()` is the one display rule for typed values (ADR-0013
   §9.3): a field shows the user's own text while it names its unit or its unit is the
   display unit, and otherwise the value converted, without re-reading any display text.
   `field_text()`, `display_unit()`, `describe_setting_uses()`, and
   `Registry.setting_uses()` support the settings page.
+
+### Fixed
+- KI-017: switching the GUI between in and mm no longer rounds the values in calculator
+  fields. Typed text is kept and shown verbatim while its unit is the display unit, and
+  other values are re-expressed from their base value; nothing is read back from the
+  display.
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A

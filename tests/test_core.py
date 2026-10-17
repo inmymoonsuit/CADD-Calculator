@@ -25,7 +25,14 @@ from caddcalc.core import (
     expr,
     parse_quantity,
 )
-from caddcalc.core.formatting import DisplayPrefs, format_value, render_step, to_fraction
+from caddcalc.core.formatting import (
+    DisplayPrefs,
+    display_unit,
+    format_value,
+    render_step,
+    to_fraction,
+)
+from caddcalc.core.units import BASE_UNITS, get_unit, units_for
 
 L, A, R = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO
 
@@ -58,6 +65,16 @@ def test_parse_quantity(text: str, dim: Dimension, default: str | None, expected
 def test_parse_quantity_rejects(text: str) -> None:
     with pytest.raises(InputError):
         parse_quantity(text, L, "in")
+
+
+@pytest.mark.parametrize("dimension", list(Dimension))
+def test_every_dimension_has_its_units_and_wording(dimension: Dimension) -> None:
+    """A new Dimension needs an entry in every unit table, or display fails at run time."""
+    assert get_unit(BASE_UNITS[dimension]).dimension is dimension
+    assert units_for(dimension)
+    for unit in ("in", "mm"):
+        assert display_unit(dimension, DisplayPrefs(length_unit=unit)).dimension is dimension
+    assert dimension.with_article.endswith(dimension.value)
 
 
 def test_fraction_display() -> None:

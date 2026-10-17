@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
 
 from caddcalc.calculators import default_registry
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
-from caddcalc.core import Dimension, Domain, Param, Registry, TypedValue
+from caddcalc.core import Dimension, Domain, Param, TypedValue
+from tests.qt_helpers import open_window, page_text, plain, type_into
 
-pytestmark = pytest.mark.gui
+pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
 PLATE = Domain(
     "plate",
@@ -32,36 +31,6 @@ ACME = Domain(
 )
 
 
-@pytest.fixture
-def qt(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
-    """The Qt widgets module, with an application running offscreen."""
-    monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
-    widgets = pytest.importorskip("PySide6.QtWidgets")
-    app = widgets.QApplication.instance() or widgets.QApplication([])
-    yield widgets
-    app.processEvents()
-
-
-def open_window(registry: Registry | None = None) -> Any:
-    from caddcalc.gui.window import MainWindow
-
-    return MainWindow(registry or default_registry(load_plugins=False))
-
-
-def type_into(edit: Any, text: str, *, enter: bool = True) -> None:
-    """Replace a field's text the way a user does, then press Enter unless told not to."""
-    from PySide6.QtCore import Qt
-    from PySide6.QtTest import QTest
-
-    edit.selectAll()
-    if text:
-        QTest.keyClicks(edit, text)
-    else:
-        QTest.keyClick(edit, Qt.Key.Key_Backspace)
-    if enter:
-        QTest.keyClick(edit, Qt.Key.Key_Return)
-
-
 def leave(edit: Any) -> None:
     """Take the focus away from a field, as clicking elsewhere does."""
     from PySide6.QtCore import QEvent, Qt
@@ -71,25 +40,12 @@ def leave(edit: Any) -> None:
     QApplication.sendEvent(edit, QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.TabFocusReason))
 
 
-def plain(html: str) -> str:
-    """The text a rich-text label shows."""
-    from PySide6.QtGui import QTextDocument
-
-    document = QTextDocument()
-    document.setHtml(html)
-    return document.toPlainText()
-
-
-def page_text(widget: Any, qt: Any) -> str:
-    return "\n".join(plain(label.text()) for label in widget.findChildren(qt.QLabel))
-
-
 def k_factor(window: Any) -> TypedValue | None:
     value: TypedValue | None = window.domain_settings.get(SHEET_METAL, "k_factor")
     return value
 
 
-def test_a_family_row_opens_its_settings_page(qt: Any) -> None:
+def test_a_family_row_opens_its_settings_page() -> None:
     window = open_window()
     assert window.calculator is not None, "a calculator is shown at first"
     family = window.tree.topLevelItem(0)
@@ -104,7 +60,7 @@ def test_a_family_row_opens_its_settings_page(qt: Any) -> None:
     for _setting, edit in window.setting_fields.values():
         assert (edit.text(), edit.placeholderText()) == ("", "not set")
 
-    text = page_text(window.settings_box, qt)
+    text = page_text(window.settings_box)
     assert "Gauge numbers mean different thicknesses" in text
     assert "V-die opening (air bending): 8 × thickness rule of thumb" in text
     assert "Bend allowance & deduction: K-factor (neutral axis)" in text
@@ -115,7 +71,6 @@ def test_a_family_row_opens_its_settings_page(qt: Any) -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_a_setting_applies_on_enter_or_when_the_field_is_left() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
@@ -137,7 +92,6 @@ def test_a_setting_applies_on_enter_or_when_the_field_is_left() -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_a_typo_never_applies_a_passing_prefix_and_stays_visible() -> None:
     """Typing "15" for ".15" must not leave K = 1 from the "1" that passed on the way."""
     window = open_window()
@@ -177,7 +131,6 @@ def test_a_typo_never_applies_a_passing_prefix_and_stays_visible() -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_unreadable_text_is_explained_with_the_setting_name() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
@@ -187,7 +140,6 @@ def test_unreadable_text_is_explained_with_the_setting_name() -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_a_typed_setting_keeps_the_users_text_across_unit_switches() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
@@ -204,7 +156,6 @@ def test_a_typed_setting_keeps_the_users_text_across_unit_switches() -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_settings_can_be_unset_one_at_a_time_or_all_at_once() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
@@ -223,7 +174,6 @@ def test_settings_can_be_unset_one_at_a_time_or_all_at_once() -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_leaving_the_page_applies_text_typed_without_enter() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
@@ -235,7 +185,6 @@ def test_leaving_the_page_applies_text_typed_without_enter() -> None:
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
 def test_refused_unitless_text_keeps_the_unit_it_was_typed_in() -> None:
     """A refused "5" in inches must not become an accepted 5 mm after a switch to mm."""
     registry = default_registry(load_plugins=False)
@@ -264,7 +213,7 @@ def test_refused_unitless_text_keeps_the_unit_it_was_typed_in() -> None:
     window.close()
 
 
-def test_a_family_with_no_calculators_is_listed_and_marked(qt: Any) -> None:
+def test_a_family_with_no_calculators_is_listed_and_marked() -> None:
     from PySide6.QtCore import Qt
 
     registry = default_registry(load_plugins=False)
@@ -280,5 +229,5 @@ def test_a_family_with_no_calculators_is_listed_and_marked(qt: Any) -> None:
     window.tree.setCurrentItem(family)
     assert window.domain is ACME
     assert "No calculators loaded." in plain(window.domain_note.text())
-    assert "Used by: no loaded calculator" in page_text(window.settings_box, qt)
+    assert "Used by: no loaded calculator" in page_text(window.settings_box)
     window.close()
