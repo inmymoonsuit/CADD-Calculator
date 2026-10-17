@@ -171,3 +171,48 @@ def test_broken_plugins_are_recorded_and_never_crash(monkeypatch: pytest.MonkeyP
     assert "not a Domain" in messages[1]
     assert "unknown domain 'orphan'" in messages[2]
     assert len(registry) == len(BUILTIN_CALCULATORS)
+
+
+# --- shared parameters --------------------------------------------------------------------
+
+GAUGED = Domain(
+    "gauged",
+    "Gauged",
+    "A domain with one length setting.",
+    settings=(Param("length", "X", "Length", L),),
+)
+
+
+def _registry_with(domain: Domain) -> Registry:
+    registry = Registry()
+    registry.register_domain(domain)
+    return registry
+
+
+def test_a_shared_parameter_must_match_a_setting_key() -> None:
+    class Unmatched(_AcmeWidget):
+        id = "gauged.unmatched"
+        domain = "gauged"
+        params = (Param("width", "X", "Width", L, default="1 in", shared=True),)
+
+    with pytest.raises(SpecError, match="no setting with that key"):
+        _registry_with(GAUGED).register(Unmatched)
+
+
+def test_a_shared_parameter_must_match_the_setting_dimension() -> None:
+    class WrongKind(_AcmeWidget):
+        id = "gauged.wrong_kind"
+        domain = "gauged"
+        params = (Param("length", "X", "Length", Dimension.ANGLE, default="1 deg", shared=True),)
+
+    with pytest.raises(SpecError, match="measures angle, but the 'gauged' setting measures length"):
+        _registry_with(GAUGED).register(WrongKind)
+
+
+def test_a_matching_shared_parameter_registers_and_may_narrow_its_range() -> None:
+    class Narrow(_AcmeWidget):
+        id = "gauged.narrow"
+        domain = "gauged"
+        params = (Param("length", "X", "Length", L, default="1 in", minimum=5.0, shared=True),)
+
+    assert _registry_with(GAUGED).register(Narrow).id == "gauged.narrow"

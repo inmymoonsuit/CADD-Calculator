@@ -13,6 +13,7 @@ from caddcalc.core import (
     Context,
     Dimension,
     Domain,
+    DomainValues,
     InputError,
     Method,
     Output,
@@ -175,6 +176,17 @@ def test_every_method_runs_on_defaults_and_renders(calc: Calculator) -> None:
             render_step(step, result, DisplayPrefs())
         for key, value in result.outputs.items():
             assert math.isfinite(value), f"{calc.id}/{method.key}: {key} is not finite"
+
+
+@pytest.mark.parametrize("calc", BUILTINS, ids=lambda c: c.id)
+def test_every_method_gives_the_same_result_with_no_settings_set(calc: Calculator) -> None:
+    """ADR-0013: unset domain settings must never change a result."""
+    unset = DomainValues(calc.domain, "Domain settings", {})
+    for method in calc.methods:
+        plain = calc.run(method=method.key)
+        with_unset = calc.run(method=method.key, settings=unset)
+        assert with_unset.outputs == plain.outputs
+        assert with_unset.input_sources == plain.input_sources
 
 
 @pytest.mark.parametrize("calc", BUILTINS, ids=lambda c: c.id)

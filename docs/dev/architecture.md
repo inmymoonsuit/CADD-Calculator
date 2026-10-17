@@ -33,10 +33,13 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
    and any plugins, and looks up a calculator by ID (e.g. `sheet_metal.bend_allowance`).
 2. It builds a form or argument list from `calc.params_for(method)`.
 3. User text goes through `parse_quantity(text, dimension, default_unit)` and becomes **base units**.
-4. `calc.run(inputs, method)` fills defaults, range-checks each value, and calls `compute(ctx)`.
+4. `calc.run(inputs, method, settings=...)` picks each input by the precedence rule
+   (explicit, then a shared parameter's domain setting, then the default; ADR-0013),
+   range-checks it, records its source, and calls `compute(ctx)`.
 5. `compute` calls `ctx.calc("BA", "pi/180*A*(R + K*T)", ...)`. The formula string is
    evaluated by `core.expr` *and* stored as a `Step`.
-6. It returns a `Result`: outputs, steps, symbols, warnings, all in base units.
+6. It returns a `Result`: outputs, steps, symbols, warnings, and each input's source,
+   all in base units.
 7. The front end formats it with `DisplayPrefs`. Rounding only happens here.
    `render_step` produces the three-line work: `BA = π/180·A·(R + K·T)`, the substituted
    values, and the result.

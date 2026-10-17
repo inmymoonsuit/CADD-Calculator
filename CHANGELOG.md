@@ -48,6 +48,13 @@ All notable changes are recorded here. The format follows
   `Registry.register_domain()`, `domain()`, and `domains()` manage them. Plugins add
   domains through the `caddcalc.domains` entry-point group; every domain is registered
   before any calculator. `caddcalc list --json` reports `domain` and `domain_name`.
+- Shared parameters and input provenance (ADR-0013): a `Param(shared=True)` inherits
+  the domain setting with its key, checked at registration. `Calculator.run()` takes
+  `settings=DomainValues(...)` and picks each input as explicit, then domain setting,
+  then default. An out-of-range setting fails and names its source, and settings for
+  another domain are refused. `Result.input_sources` records each input's `InputSource`,
+  which `to_dict()` includes. The CLI prints each input's source, e.g. `(entered)` or
+  `(default)`.
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A

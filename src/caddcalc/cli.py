@@ -17,7 +17,13 @@ from collections.abc import Sequence
 from caddcalc import __version__
 from caddcalc.calculators import default_registry
 from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result
-from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs, format_value, render_step
+from caddcalc.core.formatting import (
+    DISCLAIMER,
+    DisplayPrefs,
+    describe_source,
+    format_value,
+    render_step,
+)
 from caddcalc.core.units import Dimension, parse_quantity
 
 
@@ -182,7 +188,8 @@ def format_result(
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in calc.params_for(result.method):
         value = format_value(result.inputs[p.key], p.dimension, prefs)
-        lines.append(f"  {p.symbol:<6} {p.label:<32} {value}")
+        source = describe_source(result.source_of(p.key))
+        lines.append(f"  {p.symbol:<6} {p.label:<32} {value}  ({source})")
     if show_work:
         lines += ["", "Work"]
         for step in result.steps:

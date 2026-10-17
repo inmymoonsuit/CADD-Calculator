@@ -5,15 +5,56 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, ClassVar
 
 from caddcalc.core import expr
+from caddcalc.core.domain import DomainValues
 from caddcalc.core.errors import InputError, SpecError
 from caddcalc.core.spec import Method, Output, Param
 from caddcalc.core.units import BASE_UNITS, Dimension
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
+
+
+class SourceKind(Enum):
+    """Where an input value came from, in precedence order (ADR-0013 §4)."""
+
+    EXPLICIT = "explicit"
+    """Given for this run: a form field set to override, a CLI argument, or the API."""
+    DOMAIN = "domain"
+    """A domain setting the user has set."""
+    DERIVED = "derived"
+    """Computed from a built-in table. Reserved for materials (ADR-0013, phase 2)."""
+    DEFAULT = "default"
+    """The calculator parameter's own default."""
+
+
+@dataclass(frozen=True)
+class InputSource:
+    """The provenance of one input value."""
+
+    kind: SourceKind
+    label: str = ""
+    """Who supplied the value, e.g. ``"Sheet Metal settings"``. Empty for explicit and default."""
+    domain: str | None = None
+    """The domain id, when ``kind`` is ``DOMAIN``."""
+    reference: str = ""
+    """The table and version a derived value came from (phase 2)."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable form."""
+        return {
+            "kind": self.kind.value,
+            "label": self.label,
+            "domain": self.domain,
+            "reference": self.reference or None,
+        }
+
+
+EXPLICIT = InputSource(SourceKind.EXPLICIT)
+DEFAULT = InputSource(SourceKind.DEFAULT)
 
 
 @dataclass(frozen=True)
@@ -45,6 +86,8 @@ class Result:
     dimensions: Mapping[str, Dimension]
     """Dimension of every input and output key."""
     warnings: tuple[str, ...]
+    input_sources: Mapping[str, InputSource] = field(default_factory=dict)
+    """Where each input value came from, by parameter key (ADR-0013 §5)."""
 
     def to_dict(self) -> dict[str, Any]:
         """A JSON-serialisable form. Values are in base units, and each one names its unit."""
@@ -55,7 +98,10 @@ class Result:
         return {
             "calculator": self.calculator_id,
             "method": self.method,
-            "inputs": {k: q(v, self.dimensions[k]) for k, v in self.inputs.items()},
+            "inputs": {
+                k: {**q(v, self.dimensions[k]), "source": self.source_of(k).to_dict()}
+                for k, v in self.inputs.items()
+            },
             "outputs": {k: q(v, self.dimensions[k]) for k, v in self.outputs.items()},
             "steps": [
                 {
@@ -69,6 +115,10 @@ class Result:
             ],
             "warnings": list(self.warnings),
         }
+
+    def source_of(self, key: str) -> InputSource:
+        """Return where the input ``key`` came from (explicit if it was not recorded)."""
+        return self.input_sources.get(key, EXPLICIT)
 
 
 class Context:
@@ -185,9 +235,34 @@ class Calculator(ABC):
 
     # --- running --------------------------------------------------------------------------
 
-    def run(self, inputs: Mapping[str, float] | None = None, method: str | None = None) -> Result:
-        """Run with ``inputs`` (by parameter key, in base units). Missing inputs use defaults."""
+    def run(
+        self,
+        inputs: Mapping[str, float] | None = None,
+        method: str | None = None,
+        *,
+        settings: DomainValues | None = None,
+    ) -> Result:
+        """Run the calculator and record the work.
+
+        Each input the method uses comes from the first of: ``inputs``, a shared
+        parameter's domain setting in ``settings``, or the parameter's default
+        (ADR-0013 §4).
+
+        Args:
+            inputs: Values given for this run, by parameter key, in base units.
+            method: The method key; the first method when ``None``.
+            settings: The values the user has set for this calculator's domain.
+
+        Raises:
+            InputError: An input is unknown, missing, or out of range.
+            SpecError: ``settings`` belongs to another domain.
+        """
         inputs = dict(inputs or {})
+        if settings is not None and settings.domain_id != self.domain:
+            raise SpecError(
+                f"{self.id} belongs to domain {self.domain!r}, "
+                f"but was given settings for {settings.domain_id!r}"
+            )
         m = self.get_method(method)
         known = {p.key for p in self.params}
         unknown = sorted(set(inputs) - known)
@@ -195,16 +270,19 @@ class Calculator(ABC):
             raise InputError(f"{self.id} has no input(s): {', '.join(unknown)}")
 
         values: dict[str, float] = {}
+        sources: dict[str, InputSource] = {}
         for p in self.params_for(m.key):
-            if p.key in inputs:
-                value = float(inputs[p.key])
-            else:
-                default = p.default_value()
-                if default is None:
-                    raise InputError(f"Missing input: {p.label} ({p.symbol})")
-                value = default
-            p.check(value)
+            value, source = _resolve(p, inputs, settings)
+            try:
+                p.check(value)
+            except InputError as exc:
+                if source.kind is SourceKind.DOMAIN:
+                    raise InputError(
+                        f"{exc} (value from {source.label}). Override it in this calculator."
+                    ) from None
+                raise
             values[p.key] = value
+            sources[p.key] = source
 
         ctx = Context(self, m, values)
         self.compute(ctx)
@@ -224,6 +302,7 @@ class Calculator(ABC):
             symbols=dict(ctx.symbols),
             dimensions=dimensions,
             warnings=tuple(ctx.warnings),
+            input_sources=sources,
         )
 
     # --- definition checks ----------------------------------------------------------------
@@ -259,6 +338,21 @@ class Calculator(ABC):
                     raise SpecError(f"{cls.id}: parameter {p.key!r} names unknown method {mk!r}")
             if p.default is not None:
                 p.check(p.default_value() or 0.0)
+
+
+def _resolve(
+    p: Param, inputs: Mapping[str, float], settings: DomainValues | None
+) -> tuple[float, InputSource]:
+    """Pick one input's value and source by the precedence rule (ADR-0013 §4)."""
+    if p.key in inputs:
+        return float(inputs[p.key]), EXPLICIT
+    if p.shared and settings is not None and p.key in settings.values:
+        source = InputSource(SourceKind.DOMAIN, settings.label, domain=settings.domain_id)
+        return float(settings.values[p.key]), source
+    default = p.default_value()
+    if default is None:
+        raise InputError(f"Missing input: {p.label} ({p.symbol})")
+    return default, DEFAULT
 
 
 def _unique(owner: str, what: str, items: list[str]) -> None:

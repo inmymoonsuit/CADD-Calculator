@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from caddcalc.core import expr
-from caddcalc.core.calculator import Result, Step
+from caddcalc.core.calculator import InputSource, Result, SourceKind, Step
 from caddcalc.core.units import Dimension, from_base, get_unit
 
 DISCLAIMER = (
@@ -104,3 +104,17 @@ def render_step(step: Step, result: Result, prefs: DisplayPrefs) -> tuple[str, s
         text = format_value(v, dim, prefs, unit=dim is Dimension.ANGLE)
         values[name] = f"({text})" if text.startswith("-") else text
     return (symbolic, expr.render_numeric(step.expression, values), value_text)
+
+
+def describe_source(source: InputSource) -> str:
+    """Return how an input's source is shown to users, e.g. ``"Sheet Metal settings"``.
+
+    The GUI and the CLI both use this, so they word sources the same way (ADR-0013 §5).
+    """
+    if source.kind is SourceKind.EXPLICIT:
+        return "entered"
+    if source.kind is SourceKind.DEFAULT:
+        return "default"
+    if source.reference:
+        return f"{source.label}, {source.reference}"
+    return source.label

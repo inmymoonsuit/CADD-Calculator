@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from caddcalc.core.errors import SpecError
@@ -26,6 +27,10 @@ class Domain:
     summary: str
     settings: tuple[Param, ...] = ()
     references: tuple[Reference, ...] = ()
+
+    def find_setting(self, key: str) -> Param | None:
+        """Return the setting with ``key``, or ``None`` if the domain has no such setting."""
+        return next((s for s in self.settings if s.key == key), None)
 
     def validate(self) -> None:
         """Check the definition. Registration calls this so plugin mistakes fail early.
@@ -54,3 +59,18 @@ class Domain:
                 raise SpecError(
                     f"Domain {self.id!r}: setting {setting.key!r} must not be limited to methods"
                 )
+
+
+@dataclass(frozen=True)
+class DomainValues:
+    """The setting values a user has set for one domain, as ``Calculator.run`` takes them.
+
+    ``DomainSettings.for_domain()`` builds one; tests and API callers may build one directly.
+    """
+
+    domain_id: str
+    """The domain these values belong to. ``run`` refuses values for another domain."""
+    label: str
+    """Where the values come from, as shown to users, e.g. ``"Sheet Metal settings"``."""
+    values: Mapping[str, float]
+    """Setting values by setting key, in base units. Unset settings are absent."""

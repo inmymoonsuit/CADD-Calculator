@@ -4,8 +4,15 @@ Standard library only. Nothing here may import ``caddcalc.gui``, ``caddcalc.cli`
 or any third-party package (ADR-0003).
 """
 
-from caddcalc.core.calculator import Calculator, Context, Result, Step
-from caddcalc.core.domain import Domain
+from caddcalc.core.calculator import (
+    Calculator,
+    Context,
+    InputSource,
+    Result,
+    SourceKind,
+    Step,
+)
+from caddcalc.core.domain import Domain, DomainValues
 from caddcalc.core.errors import (
     CaddCalcError,
     CalculationError,
@@ -25,13 +32,16 @@ __all__ = [
     "Context",
     "Dimension",
     "Domain",
+    "DomainValues",
     "InputError",
+    "InputSource",
     "Method",
     "Output",
     "Param",
     "Reference",
     "Registry",
     "Result",
+    "SourceKind",
     "SpecError",
     "Step",
     "UnknownCalculatorError",

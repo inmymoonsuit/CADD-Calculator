@@ -41,6 +41,7 @@ def test_cli_run_shows_work(capsys: pytest.CaptureFixture[str]) -> None:
     assert "BA = (0.64·T + 1.57·R)·A/90" in out
     assert "0.3119 in" in out
     assert "unverified · reproduces legacy" in out
+    assert "0.1046 in  (entered)" in out
 
 
 def test_cli_run_json_and_metric(capsys: pytest.CaptureFixture[str]) -> None:

@@ -63,8 +63,9 @@ class Registry:
             The registered instance.
 
         Raises:
-            SpecError: The definition is invalid, its domain is unknown, or its ID is
-                already registered.
+            SpecError: The definition is invalid, its domain is unknown, a shared
+                parameter doesn't match a setting of that domain, or its ID is already
+                registered.
         """
         instance = calculator() if isinstance(calculator, type) else calculator
         type(instance).validate_spec()
@@ -75,6 +76,7 @@ class Registry:
                 f"first; plugins provide domains through the {DOMAIN_ENTRY_POINT_GROUP!r} "
                 "entry-point group."
             )
+        _check_shared_params(instance, self._domains[instance.domain])
         if instance.id in self._items:
             raise SpecError(f"Calculator id {instance.id!r} is registered twice")
         self._items[instance.id] = instance
@@ -162,6 +164,24 @@ class Registry:
                 register(ep.load())
             except Exception as exc:  # noqa: BLE001 (isolation boundary: a plugin must never crash the app)
                 self.plugin_errors.append(PluginError(f"{ep.name} = {ep.value}", str(exc)))
+
+
+def _check_shared_params(calculator: Calculator, domain: Domain) -> None:
+    """Each shared parameter must match a setting of the domain by key and dimension."""
+    for p in calculator.params:
+        if not p.shared:
+            continue
+        setting = domain.find_setting(p.key)
+        if setting is None:
+            raise SpecError(
+                f"{calculator.id}: shared parameter {p.key!r} has no setting with that key "
+                f"in domain {domain.id!r}"
+            )
+        if setting.dimension is not p.dimension:
+            raise SpecError(
+                f"{calculator.id}: shared parameter {p.key!r} measures {p.dimension.value}, "
+                f"but the {domain.id!r} setting measures {setting.dimension.value}"
+            )
 
 
 def _did_you_mean(name: str, known: Iterable[str]) -> str:

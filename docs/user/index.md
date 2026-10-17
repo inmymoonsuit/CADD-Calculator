@@ -13,9 +13,12 @@ Every answer shows its work.
 
 Each result shows:
 
-1. **Results**, the numbers you asked for, rounded for display only.
-2. **Work**, each formula in symbols, then with your numbers substituted, then the value.
-3. **Method**, which formula family was used, with references and a **status**:
+1. **Inputs**, with where each value came from: *entered* (you typed it), *default*
+   (the calculator's built-in value), or a family setting such as *Sheet Metal
+   settings*.
+2. **Results**, the numbers you asked for, rounded for display only.
+3. **Work**, each formula in symbols, then with your numbers substituted, then the value.
+4. **Method**, which formula family was used, with references and a **status**:
 
 | Status | Meaning |
 |---|---|
@@ -23,7 +26,7 @@ Each result shows:
 | `unverified` | Not yet checked against a published worked example. Use with care. |
 | `· reproduces legacy` (added to either) | Matches the original course spreadsheets exactly. Good for coursework; see the method notes for caveats. |
 
-4. **Warnings**, such as a radius smaller than the thickness, or a segment too short for its bends.
+5. **Warnings**, such as a radius smaller than the thickness, or a segment too short for its bends.
 
 ## Disclaimer
 

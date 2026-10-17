@@ -55,6 +55,8 @@ class Param:
     help: str = ""
     methods: tuple[str, ...] = ()
     """Method keys that use this parameter. Empty means all methods."""
+    shared: bool = False
+    """Inherit the domain setting with the same key when the user has set it (ADR-0013)."""
 
     def default_value(self) -> float | None:
         """Return the default in base units, or ``None`` if there is no default."""
