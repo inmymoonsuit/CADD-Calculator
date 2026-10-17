@@ -893,3 +893,40 @@ decisions D1–D10 and the 2b plan's flags.
   the new material doesn't offer, is cleared and announced.
 * A material derives no setting value (M2). It reaches results only through
   `DomainValues.selections`, for 2b.6's check.
+
+### 2026-10-17: the minimum-radius check as built (maintainer, phase 2b.6)
+
+`sheet_metal.checks.BendCheck`, a result check that *Bend allowance & deduction* and *Flat
+length of a formed segment* declare (flag 4). V-die opening and the cone declare none.
+
+* **Where a source covers the case,** the inside radius is checked against the larger
+  minimum of every source that lists the thickness (D1), with a range held to its upper
+  bound (D2). A radius equal to the minimum passes, within a relative 1e-9, so a radius
+  typed as the minimum isn't flagged for its last bit. A radius below it gets a
+  limit-exceeded note that states each source's value as the source does, with its
+  listing and any stand-in label (D3), and cites every source and its scope. A zero
+  minimum, 5052-H32 up to 0.032 in, allows a sharp bend.
+* **Where only one source lists the thickness,** that source is used, and a
+  no-applicable-value note names the one that doesn't reach it (flag 5).
+* **No applicable value is said aloud,** each in its own note: a material with no source
+  (galvanized and HR P&O, with the table's `radius_note`, which names the coating risk
+  for galvanized); a material and temper no source lists; a bend past 90° at any end,
+  which covers hems (D10; up to 90° takes the 90° value); and a thickness no source lists,
+  with each source's listing, which covers Table 2-16's gap and mild steel's stop at
+  0.187 in (D4).
+* **The rule of thumb moved into the check.** An inside radius below the thickness gets
+  the phase 1 warning, word for word, only where no referenced check applies: no
+  material, or any no-applicable-value case above. Because checks run after compute, it
+  now follows the calculator's own notes (the KI-013 angle warning, the K-factor warning,
+  "Not makeable") instead of preceding them; without settings, the CLI's notes are
+  otherwise unchanged.
+* **Bending practice** (TO 1-1A-9, 2015, paras 2-239 and 2-240): form across the grain
+  where possible, and bend a test piece first. It is noted whenever a referenced check
+  applies, pass or fail, since grain direction is no lookup key in any source. Its text
+  and source are the table's `[practice]` entry, added before the table's first
+  release, so it stays version 1 with its digest re-pinned.
+* **The gauge and the material (flag 9).** When the thickness in use is the chosen
+  gauge's, and the gauge's system isn't one the material is ordered by (the table's
+  `gauges` per material), a warning names both and suggests the decimal thickness. A
+  thickness typed over the gauge doesn't depend on its system, so it isn't warned
+  about. It is a warning, never a block.

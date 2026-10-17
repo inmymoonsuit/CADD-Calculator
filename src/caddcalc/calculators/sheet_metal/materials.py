@@ -133,6 +133,8 @@ class RadiusSource:
     angle: str
     """The bend angle the source states, ``"90"``, or ``"not_stated"``."""
     values: tuple[RadiusValue, ...]
+    listed: bool
+    """Whether the values are at listed thicknesses (D4), not at bands the source states."""
     coverage: str
     """The thicknesses it lists, e.g. ``"0.016–0.258 in"``."""
     label: str = ""
@@ -144,6 +146,14 @@ class RadiusSource:
     def at(self, thickness: float) -> RadiusValue | None:
         """Return the value whose band holds ``thickness``, in base units, if any."""
         return next((v for v in self.values if v.band.contains(thickness)), None)
+
+
+@dataclass(frozen=True)
+class Practice:
+    """Bending practice that applies wherever a minimum-radius check does."""
+
+    source: TableSource
+    note: str
 
 
 @dataclass(frozen=True)
@@ -188,6 +198,7 @@ class Materials:
     radii: tuple[RadiusSource, ...]
     strengths: tuple[Strength, ...]
     k_starts: tuple[KStart, ...]
+    practice: Practice
     values: tuple[ReferenceValue, ...]
     """Every value the table defines, as checked (ADR-0014 §5)."""
 
@@ -279,6 +290,7 @@ def load_materials(table: ReferenceTable) -> Materials:
         radii,
         strengths,
         k_starts,
+        reader.practice(),
         tuple(values),
     )
 
@@ -294,6 +306,14 @@ class _Reader:
         if not isinstance(value, list):
             raise SpecError(f"{self.table.name}: {key!r} must be a list of tables")
         return value
+
+    def practice(self) -> Practice:
+        entry = self.table.data.get("practice")
+        where = f"{self.table.name}: practice"
+        if not isinstance(entry, dict):
+            raise SpecError(f"{where} must be a table")
+        _check_keys(where, entry, {"source", "note"})
+        return Practice(self._source(where, entry["source"]), _text(where, entry, "note"))
 
     def material(self, entry: Any) -> Material:
         where = self._where("material", entry, "key")
@@ -376,6 +396,7 @@ class _Reader:
             source,
             angle,
             radius_values,
+            "thicknesses" in entry,
             coverage,
             str(entry.get("label", "")),
             str(entry.get("note", "")),
@@ -645,7 +666,7 @@ def _enum[E: (Basis, TrustLevel)](where: str, enum: type[E], value: Any) -> E:
 MATERIAL_TABLE = TableSpec(
     "caddcalc.calculators.sheet_metal",
     "data/materials.toml",
-    frozenset({"material", "min_radius", "strength", "k_start"}),
+    frozenset({"material", "min_radius", "practice", "strength", "k_start"}),
     lambda table: load_materials(table).values,
 )
 """The materials table, as ``caddcalc.calculators.REFERENCE_TABLES`` lists it."""
@@ -653,7 +674,10 @@ MATERIAL_TABLE = TableSpec(
 MATERIAL = Choice(
     "material",
     "Material",
-    help="The sheet's material. It sets no value: the thickness and K-factor stay as you set them.",
+    help=(
+        "The sheet's material. Bend results then check the inside radius against its cited "
+        "minimum bend radius. It sets no value: the thickness and K-factor stay as you set them."
+    ),
 )
 """The sheet-metal domain's material choice. Its option keys, e.g. ``"al:6061"``, are public."""
 

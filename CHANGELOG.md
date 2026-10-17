@@ -7,6 +7,14 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **The minimum-radius check (ADR-0014, amendments).** With a material chosen, *Bend
+  allowance & deduction* and *Flat length of a formed segment* check the inside radius
+  against its cited minimum (`sheet_metal.checks.BendCheck`, a result check): the larger
+  source governs, a range at its upper bound, with every source and its scope shown, and a
+  bending-practice note from TO 1-1A-9. A thickness no source lists, a bend past 90°, a
+  hem, and a material with no source each get a no-applicable-value note. A gauge
+  thickness from a system the material isn't ordered by gets a warning. The materials
+  table gains its `[practice]` entry.
 - Material and temper choices on the Sheet Metal page (ADR-0014, amendments): a grouped
   **Material** row (aluminum, carbon steel, stainless) and a **Temper** row that depends
   on it, with a material's only temper selected for it. A material derives no value
@@ -242,6 +250,9 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- The "inside radius is smaller than the material thickness" warning is now part of the
+  bend check: it is dropped wherever a cited minimum applies, and otherwise reads as
+  before, after the calculator's other notes rather than before them.
 - The K-factor help names its cited starting values: 0.445 for aircraft aluminum (FAA),
   about 0.408 and 0.452 from *Machinery's Handbook* by material, and the textbook's 0.4.
 - About names the license (Apache-2.0), and opens over whichever window is active.

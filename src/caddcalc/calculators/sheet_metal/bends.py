@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import override
 
+from caddcalc.calculators.sheet_metal.checks import BendCheck
 from caddcalc.calculators.sheet_metal.common import (
     COURSE_METHOD,
     INSIDE_RADIUS,
@@ -16,7 +17,7 @@ from caddcalc.calculators.sheet_metal.common import (
     bend_allowance_formula,
     bend_angle,
 )
-from caddcalc.calculators.sheet_metal.domain import DOMAIN
+from caddcalc.calculators.sheet_metal.domain import DOMAIN, GAUGES, MATERIALS
 from caddcalc.core import (
     Calculator,
     Context,
@@ -32,15 +33,10 @@ LENGTH = Dimension.LENGTH
 
 
 def _check_bend(ctx: Context, *angle_keys: str) -> None:
-    """Add engineering notes once per run, checking each named bend angle."""
-    if ctx["inside_radius"] < ctx["thickness"]:
-        # A rule of thumb, not a cited limit: published minimums go below 1T for some
-        # alloys and tempers, so this is a warning. Cited checks: ADR-0014 §3.
-        ctx.warn(
-            "Inside radius is smaller than the material thickness. Check the material's "
-            "minimum bend radius; tight bends can crack, especially in hard tempers.",
-            subjects=("inside_radius", "thickness"),
-        )
+    """Add engineering notes once per run, checking each named bend angle.
+
+    The inside radius is checked after compute, against the material (``BendCheck``).
+    """
     for key in angle_keys:
         if ctx[key] > 90:
             a = next(p.symbol for p in ctx.calculator.params if p.key == key)
@@ -68,6 +64,7 @@ class BendAllowance(Calculator):
         "for a single bend."
     )
     params = (THICKNESS, INSIDE_RADIUS, bend_angle(), K_FACTOR)
+    checks = (BendCheck(MATERIALS, GAUGES, ("bend_angle",)),)
     outputs = (
         Output(
             "bend_allowance",
@@ -146,6 +143,7 @@ class FormedSegmentFlatLength(Calculator):
         bend_angle("bend_angle_2", "A2", "Bend angle at end 2", "0 deg"),
         K_FACTOR,
     )
+    checks = (BendCheck(MATERIALS, GAUGES, ("bend_angle_1", "bend_angle_2")),)
     outputs = (
         Output(
             "flat_length",

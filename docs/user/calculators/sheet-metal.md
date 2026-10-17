@@ -90,6 +90,36 @@ each selected as soon as you pick the material. The carbon steels have no temper
 * The material's data, with every value cited, is in the table "Sheet-metal materials,
   version 1".
 
+### The minimum-radius check
+
+With a material chosen, *Bend allowance & deduction* and *Flat length of a formed
+segment* check the inside radius against the material's cited minimum bend radius. Each
+note names its sources and how far each applies.
+
+* **Limit exceeded** when the inside radius is below the minimum. Where sources differ,
+  the larger minimum applies and every source is shown: 6061-T6 is checked against both
+  AC 43.13-1B and TO 1-1A-9. A range, such as AC 43.13's ½T–1T, is checked at its upper
+  bound and shown whole.
+* **Between listed thicknesses** a sheet within 2% of a listed thickness reads at it, so
+  0.063 in reads at 0.064 in; otherwise it reads at the next thickness listed above it.
+  Nothing is interpolated.
+* **No applicable value** is said aloud, never left silent: for a thickness no source
+  lists (TO's stainless table has none between 0.090 and 0.190 in, and mild steel stops
+  at 0.187 in), for a bend past 90° or a hem, and for galvanized and hot-rolled steel,
+  which have no public-domain source. Where only one source lists the thickness, the note
+  says the check uses it alone.
+* **Stand-ins are labelled.** Mild steel uses TO's 2T for 1020/1025, and 304 annealed uses
+  TO's 2T for 304 ½ Hard, its only 304 row; both are conservative.
+* Whenever the check applies, a note repeats TO's bending practice: form across the
+  grain where possible, and bend a test piece first.
+* **The rule of thumb.** Without a material, or where no source applies, an inside radius
+  below the thickness still gets the warning "Inside radius is smaller than the material
+  thickness". A cited check replaces it, so the two never disagree.
+* **The gauge and the material.** A gauge from a system the material isn't ordered by,
+  such as Manufacturers' Standard (steel sheet) with aluminum, gets a warning that names
+  both and suggests entering the decimal thickness. It applies only while the thickness
+  in use is the gauge's.
+
 ### Using a family value in a calculator
 
 * Once a Sheet Metal value is set, each calculator field that shares it shows the value

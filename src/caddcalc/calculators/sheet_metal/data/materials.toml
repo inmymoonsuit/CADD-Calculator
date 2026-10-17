@@ -271,6 +271,12 @@ label = "TO's only 304 row, for ½ Hard; a conservative stand-in for annealed 2B
 note = "TO's 2015 edition gives about 1T for generic annealed corrosion-resistant steel."
 see_also = ["to_2015_annealed_stainless"]
 
+# --- Bending practice, noted whenever a minimum-radius check applies.
+
+[practice]
+source = "to_2015_bending_practice"
+note = "Form across the grain where possible, and bend a test piece first; if it cracks, increase the radius by a thickness or more until it doesn't."
+
 # --- Strengths, stated as the source gives them, longitudinal (L) and long transverse
 # (LT). Stored with their basis for later use; tonnage would need an upper value.
 
