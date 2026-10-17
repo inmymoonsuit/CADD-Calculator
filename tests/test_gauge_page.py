@@ -191,3 +191,17 @@ def test_clear_all_returns_the_gauge_to_none() -> None:
     assert (systems.currentText(), gauges.isEnabled()) == ("None", False)
     assert window.setting_fields["thickness"][1].placeholderText() == "not set"
     window.close()
+
+
+def test_the_gauges_work_is_true_in_millimetres() -> None:
+    """The work's expression gives inches, so it shows inches, then the display unit."""
+    window = open_window()
+    window.units_box.setCurrentText("mm")
+    pick(window, MSG, "12 ga")
+    assert "= (70 + 0) / 16 / 41.82 = 0.1046 in = 2.6568 mm" in about(window, "thickness")
+
+    window.select_calculator(BEND)
+    shown = result(window)
+    assert "= (70 + 0) / 16 / 41.82\n" in shown
+    assert "= 0.1046 in = 2.6568 mm\n" in shown
+    window.close()
