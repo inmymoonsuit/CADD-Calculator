@@ -16,6 +16,7 @@ from caddcalc.calculators.sheet_metal.common import (
     bend_allowance_formula,
     bend_angle,
 )
+from caddcalc.calculators.sheet_metal.domain import DOMAIN
 from caddcalc.core import Calculator, Context, Dimension, Method, Output, Param, Verification
 
 LENGTH = Dimension.LENGTH
@@ -44,7 +45,7 @@ class BendAllowance(Calculator):
 
     id = "sheet_metal.bend_allowance"
     name = "Bend allowance & deduction"
-    domain = "Sheet Metal"
+    domain = DOMAIN.id
     summary = (
         "Bend allowance (neutral-axis arc length), outside setback, and bend deduction "
         "for a single bend."
@@ -106,7 +107,7 @@ class FormedSegmentFlatLength(Calculator):
 
     id = "sheet_metal.segment_flat_length"
     name = "Flat length of a formed segment"
-    domain = "Sheet Metal"
+    domain = DOMAIN.id
     summary = (
         "Flat-pattern length of one segment, dimensioned to the outside, with a bend at "
         "one or both ends."
@@ -178,7 +179,7 @@ class VDieOpening(Calculator):
 
     id = "sheet_metal.v_die_opening"
     name = "V-die opening (air bending)"
-    domain = "Sheet Metal"
+    domain = DOMAIN.id
     summary = "Suggested female (V) die opening for air bending on a press brake."
     params = (
         replace(INSIDE_RADIUS, methods=("radius_ratio",)),

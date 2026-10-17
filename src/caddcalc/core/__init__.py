@@ -5,12 +5,14 @@ or any third-party package (ADR-0003).
 """
 
 from caddcalc.core.calculator import Calculator, Context, Result, Step
+from caddcalc.core.domain import Domain
 from caddcalc.core.errors import (
     CaddCalcError,
     CalculationError,
     InputError,
     SpecError,
     UnknownCalculatorError,
+    UnknownDomainError,
 )
 from caddcalc.core.registry import Registry
 from caddcalc.core.spec import Method, Output, Param, Reference, Verification
@@ -22,6 +24,7 @@ __all__ = [
     "Calculator",
     "Context",
     "Dimension",
+    "Domain",
     "InputError",
     "Method",
     "Output",
@@ -32,6 +35,7 @@ __all__ = [
     "SpecError",
     "Step",
     "UnknownCalculatorError",
+    "UnknownDomainError",
     "Verification",
     "parse_quantity",
 ]

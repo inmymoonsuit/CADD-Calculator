@@ -19,3 +19,7 @@ class SpecError(CaddCalcError):
 
 class UnknownCalculatorError(CaddCalcError, KeyError):
     """No calculator with the requested id is registered."""
+
+
+class UnknownDomainError(CaddCalcError, KeyError):
+    """No domain with the requested id is registered."""

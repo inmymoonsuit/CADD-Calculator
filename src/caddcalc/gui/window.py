@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
         for domain, calcs in self.registry.by_domain().items():
-            parent = QTreeWidgetItem([domain])
+            parent = QTreeWidgetItem([domain.name])
             parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsSelectable)
             for calc in calcs:
                 child = QTreeWidgetItem([calc.name])

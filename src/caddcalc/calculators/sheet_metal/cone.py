@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import override
 
 from caddcalc.calculators.sheet_metal.common import EDD5_CONE, LEGACY_LESSON_4, THICKNESS
+from caddcalc.calculators.sheet_metal.domain import DOMAIN
 from caddcalc.core import (
     Calculator,
     Context,
@@ -25,7 +26,7 @@ class TruncatedConeLayout(Calculator):
 
     id = "sheet_metal.truncated_cone_layout"
     name = "Truncated cone flat pattern"
-    domain = "Sheet Metal"
+    domain = DOMAIN.id
     summary = (
         "Inside radius, outside radius, and sweep angle of the flat pattern for a cone frustum."
     )

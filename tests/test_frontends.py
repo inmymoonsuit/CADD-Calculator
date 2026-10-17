@@ -15,6 +15,13 @@ def test_cli_list(capsys: pytest.CaptureFixture[str]) -> None:
     assert "sheet_metal.bend_allowance" in capsys.readouterr().out
 
 
+def test_cli_list_json_names_each_domain(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["list", "--json"]) == 0
+    rows = json.loads(capsys.readouterr().out)
+    bend = next(r for r in rows if r["id"] == "sheet_metal.bend_allowance")
+    assert (bend["domain"], bend["domain_name"]) == ("sheet_metal", "Sheet Metal")
+
+
 def test_cli_run_shows_work(capsys: pytest.CaptureFixture[str]) -> None:
     assert (
         main(

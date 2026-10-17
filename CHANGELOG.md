@@ -44,8 +44,15 @@ All notable changes are recorded here. The format follows
   (`uv run lint-imports`), and mypy strict. The codebase was brought into line.
 - `scripts/launch_app.cmd` and `scripts/launch_app.sh` run the work-in-progress app from the
   checkout, with an optional `--branding FOLDER` (`docs/dev/launching.md`).
+- Domains (ADR-0013): `caddcalc.core.Domain` declares a calculator family, and
+  `Registry.register_domain()`, `domain()`, and `domains()` manage them. Plugins add
+  domains through the `caddcalc.domains` entry-point group; every domain is registered
+  before any calculator. `caddcalc list --json` reports `domain` and `domain_name`.
 
 ### Changed
+- `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A
+  calculator naming an unknown domain fails registration with a "did you mean" hint,
+  and `Registry.by_domain()` is keyed by `Domain`.
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no
   longer depends on the calculators layer above it (ADR-0003, ADR-0006).
 - The window title and Help > About come from the active branding. About always keeps

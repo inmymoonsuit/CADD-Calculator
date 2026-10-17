@@ -84,12 +84,19 @@ def _cmd_list(args: argparse.Namespace) -> int:
     registry = default_registry()
     if args.json:
         rows = [
-            {"id": c.id, "name": c.name, "domain": c.domain, "summary": c.summary} for c in registry
+            {
+                "id": c.id,
+                "name": c.name,
+                "domain": c.domain,
+                "domain_name": registry.domain(c.domain).name,
+                "summary": c.summary,
+            }
+            for c in registry
         ]
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
     for domain, calcs in registry.by_domain().items():
-        print(domain)
+        print(domain.name)
         for c in calcs:
             print(f"  {c.id:<40} {c.name}")
     for err in registry.plugin_errors:
@@ -98,9 +105,11 @@ def _cmd_list(args: argparse.Namespace) -> int:
 
 
 def _cmd_show(args: argparse.Namespace) -> int:
-    calc = default_registry().get(args.calculator)
+    registry = default_registry()
+    calc = registry.get(args.calculator)
     print(f"{calc.name}  [{calc.id}]")
-    print(f"  {calc.summary}\n")
+    print(f"  {calc.summary}")
+    print(f"  Domain: {registry.domain(calc.domain).name}\n")
     print("Inputs")
     for p in calc.params:
         scope = f"  (methods: {', '.join(p.methods)})" if p.methods else ""

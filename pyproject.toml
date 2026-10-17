@@ -32,7 +32,9 @@ caddcalc-gui = "caddcalc.gui.app:main"
 Homepage = "https://github.com/inmymoonsuit/CADD-Calculator"
 Issues = "https://github.com/inmymoonsuit/CADD-Calculator/issues"
 
-# Third-party calculator packages register here (ADR-0006), e.g.:
+# Third-party packages register domains and calculators here (ADR-0006, ADR-0013), e.g.:
+# [project.entry-points."caddcalc.domains"]
+# my_domain = "my_package.module:DOMAIN"
 # [project.entry-points."caddcalc.calculators"]
 # my_calc = "my_package.module:MyCalculator"
 

@@ -146,6 +146,7 @@ class Calculator(ABC):
     """Unique, dotted, lowercase ``<domain>.<name>``, e.g. ``sheet_metal.bend_allowance``."""
     name: ClassVar[str]
     domain: ClassVar[str]
+    """Id of the ``Domain`` the calculator belongs to, e.g. ``"sheet_metal"`` (ADR-0013)."""
     summary: ClassVar[str]
     params: ClassVar[tuple[Param, ...]]
     outputs: ClassVar[tuple[Output, ...]]

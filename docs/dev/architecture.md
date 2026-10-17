@@ -21,7 +21,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  expr.py        safe formula evaluator + symbolic/numeric rendering      │
 │  spec.py        Param, Output, Method, Reference, Verification           │
 │  calculator.py  Calculator (base), Context, Step, Result                 │
-│  registry.py    Registry (mechanism); plugins via entry points           │
+│  domain.py      Domain: a calculator family and its shared settings      │
+│  registry.py    Registry of domains and calculators; plugin loading      │
 │  formatting.py  DisplayPrefs, rounding, fractions, render_step           │
 └───────────────────────────────────────────────────────────────────────────┘
 ```

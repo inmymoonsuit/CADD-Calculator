@@ -35,15 +35,16 @@ set `UV_LINK_MODE=copy`.
 
 ## Adding a calculator
 
-1. Pick the domain package, e.g. `src/caddcalc/calculators/sheet_metal/`, or create one
-   that exposes `CALCULATORS` and add it to `calculators/__init__.py`.
+1. Pick the domain package, e.g. `src/caddcalc/calculators/sheet_metal/`. A new family
+   needs a new package that exposes a `Domain` as `DOMAIN` and a `CALCULATORS` tuple;
+   add both to `calculators/__init__.py` (ADR-0013).
 2. Subclass `Calculator`:
 
 ```python
 class MyCalc(Calculator):
     id = "sheet_metal.my_calc"  # stable public ID: never rename casually
     name = "Human-readable name"
-    domain = "Sheet Metal"
+    domain = "sheet_metal"  # the id of a registered Domain; built-in IDs start with it
     summary = "One sentence on what it computes."
     params = (
         THICKNESS,

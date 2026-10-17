@@ -12,6 +12,7 @@ from caddcalc.core import (
     Calculator,
     Context,
     Dimension,
+    Domain,
     InputError,
     Method,
     Output,
@@ -104,7 +105,7 @@ def test_expr_math_errors_become_calculation_errors() -> None:
 class _Demo(Calculator):
     id = "demo.double"
     name = "Double"
-    domain = "Demo"
+    domain = "demo"
     summary = "Doubles a length."
     params = (Param("length", "X", "Length", L, default="1 in", minimum=0.0),)
     outputs = (Output("doubled", "Y", "Doubled", L),)
@@ -134,8 +135,17 @@ def test_run_rejects_out_of_range_and_unknown_inputs() -> None:
         _Demo().run(method="nope")
 
 
+DEMO = Domain("demo", "Demo", "Calculators for framework tests.")
+
+
+def demo_registry() -> Registry:
+    registry = Registry()
+    registry.register_domain(DEMO)
+    return registry
+
+
 def test_registry_rejects_duplicates_and_bad_specs() -> None:
-    reg = Registry()
+    reg = demo_registry()
     reg.register(_Demo)
     with pytest.raises(SpecError, match="twice"):
         reg.register(_Demo)
@@ -144,7 +154,7 @@ def test_registry_rejects_duplicates_and_bad_specs() -> None:
         id = "NoDomain"
 
     with pytest.raises(SpecError, match=r"domain\.name"):
-        Registry().register(BadId)
+        demo_registry().register(BadId)
 
 
 def test_registry_suggests_close_ids() -> None:

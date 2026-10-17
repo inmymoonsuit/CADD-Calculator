@@ -6,11 +6,13 @@ from caddcalc.calculators.sheet_metal.bends import (
     VDieOpening,
 )
 from caddcalc.calculators.sheet_metal.cone import TruncatedConeLayout
+from caddcalc.calculators.sheet_metal.domain import DOMAIN
 
 CALCULATORS = (BendAllowance, FormedSegmentFlatLength, VDieOpening, TruncatedConeLayout)
 
 __all__ = [
     "CALCULATORS",
+    "DOMAIN",
     "BendAllowance",
     "FormedSegmentFlatLength",
     "TruncatedConeLayout",
