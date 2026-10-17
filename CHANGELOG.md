@@ -78,6 +78,18 @@ All notable changes are recorded here. The format follows
   unknown key raises `UsageError` naming the domain's settings, and an out-of-range value
   raises `OutOfRangeError`. Their label always comes from `Domain.settings_label`, e.g.
   "Sheet Metal settings". Building `DomainValues` directly checks only that it has a label.
+- The GUI's family rows open a settings page (ADR-0013 §8), generated from the domain's
+  settings. An empty field means unset. Under each field are the setting's help and the
+  calculators and methods that use it. **Clear all** unsets the family, and refused
+  text is outlined in red and explained while the last valid value is kept. A family
+  with no loaded calculator is still listed, marked "No calculators loaded". Values set
+  here are kept for the session; calculators don't use them until the per-field
+  inherit/override step (ADR-0013 phase 1, slice 6).
+- `core.formatting.entry_text()` is the one display rule for typed values (ADR-0013
+  §9.3): a field shows the user's own text while it names its unit or its unit is the
+  display unit, and otherwise the value converted, without re-reading any display text.
+  `field_text()`, `display_unit()`, `describe_setting_uses()`, and
+  `Registry.setting_uses()` support the settings page.
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A
@@ -91,6 +103,9 @@ All notable changes are recorded here. The format follows
 - Parameter and domain-setting symbols must be usable in formulas: an identifier that
   isn't a Python keyword or an evaluator function or constant. Domain setting symbols
   must also be unique.
+- The Sheet Metal thickness setting's help warns that gauge numbers mean different
+  thicknesses in different gauge systems, and the K-factor setting's help gives the
+  typical range and the test-bend advice.
 - A unit of the wrong kind now reads "'3 deg' is an angle, but a length is expected".
 - Range errors name the unit and use the display unit, e.g. the CLI's
   "Material thickness (T) must be greater than 0 in".

@@ -16,6 +16,7 @@ from typing import Any, Protocol
 from caddcalc.core.calculator import Calculator
 from caddcalc.core.domain import Domain
 from caddcalc.core.errors import SpecError, UnknownCalculatorError, UnknownDomainError
+from caddcalc.core.spec import Method
 
 ENTRY_POINT_GROUP = "caddcalc.calculators"
 DOMAIN_ENTRY_POINT_GROUP = "caddcalc.domains"
@@ -155,6 +156,24 @@ class Registry:
         for calc in self:
             grouped.setdefault(self._domains[calc.domain], []).append(calc)
         return grouped
+
+    def setting_uses(self, domain_id: str, key: str) -> list[tuple[Calculator, tuple[Method, ...]]]:
+        """Return each calculator that shares the setting ``key``, with the methods using it.
+
+        Calculators come in name order; a calculator whose parameter with that key isn't
+        shared is not listed.
+
+        Raises:
+            UnknownDomainError: No domain has that ID.
+            UsageError: The domain has no setting with that key.
+        """
+        self.domain(domain_id).setting(key)
+        uses = []
+        for calc in self:
+            param = next((p for p in calc.params if p.key == key), None)
+            if calc.domain == domain_id and param is not None and param.shared:
+                uses.append((calc, tuple(m for m in calc.methods if param.used_by(m.key))))
+        return uses
 
     def load_plugins(self) -> None:
         """Register plugin domains, then plugin calculators."""

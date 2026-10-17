@@ -9,6 +9,30 @@ Conventions for every sheet-metal calculator:
   Gauge for steel sheet) and R = 0.156 in. The K-factor defaults to 0.4, the textbook's
   instructional value.
 
+## Family settings
+
+Select **Sheet Metal** in the calculator list to open its settings page. These are the
+values the sheet-metal calculators share, so you can set them once for the whole
+family. An empty field means the setting is unset, and each calculator uses its own
+default. **Clear all** unsets every one. Settings last until you close the app; nothing
+is saved.
+
+| Setting | Used by |
+|---|---|
+| Material thickness (T) | Bend allowance & deduction; Flat length of a formed segment; Truncated cone flat pattern; V-die opening, 8 × thickness method |
+| Inside bend radius (R) | Bend allowance & deduction; Flat length of a formed segment; V-die opening, inside-radius percentage method |
+| K-factor (K) | The K-factor methods of Bend allowance & deduction and Flat length of a formed segment |
+
+* **Thickness:** enter the decimal thickness. Gauge numbers mean different thicknesses in
+  different gauge systems (see *Thickness* in the [glossary](../glossary.md)).
+* **K-factor:** typically 0.3 to 0.5. Use your shop's test-bend value for production.
+  The course methods have their factor built in, so they don't use this setting.
+* The V-die calculator's die ratio P is not shared; each calculation sets its own.
+
+The settings page shows the same list under each field. In this build it keeps the
+values for the session, but the calculators don't use them yet; that comes with each
+field's *Use Sheet Metal value* switch.
+
 ---
 
 ## Bend allowance & deduction: `sheet_metal.bend_allowance`

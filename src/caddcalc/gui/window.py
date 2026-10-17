@@ -1,7 +1,9 @@
-"""Main window: a calculator browser on the left and a generated form with results on the right."""
+"""Main window: calculators and their families on the left; their pages on the right."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
+from functools import partial
 from html import escape
 from typing import Any, cast, override
 
@@ -16,7 +18,9 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QSplitter,
+    QStackedWidget,
     QTextBrowser,
     QTreeWidget,
     QTreeWidgetItem,
@@ -26,13 +30,25 @@ from PySide6.QtWidgets import (
 
 from caddcalc import __version__
 from caddcalc.calculators import default_registry
-from caddcalc.core import CaddCalcError, Calculator, Param, Registry, Result
+from caddcalc.core import (
+    CaddCalcError,
+    Calculator,
+    Domain,
+    DomainSettings,
+    InputError,
+    Method,
+    OutOfRangeError,
+    Param,
+    Registry,
+    Result,
+)
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
     describe_error,
-    display_value,
-    format_number,
+    describe_setting_uses,
+    entry_text,
+    field_text,
     format_value,
     render_step,
     unit_suffix,
@@ -50,6 +66,11 @@ from caddcalc.gui.icons import (
 )
 
 ID_ROLE = Qt.ItemDataRole.UserRole
+"""Tree item data holding a calculator row's calculator id."""
+DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+"""Tree item data holding a family row's domain id."""
+NO_CALCULATORS = "No calculators loaded"
+"""Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 ERROR_STYLE = "QLineEdit { border: 1px solid #c0392b; }"
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
@@ -79,7 +100,11 @@ class ResultsBrowser(QTextBrowser):
 
 
 class MainWindow(QMainWindow):
-    """The main window: calculators on the left; inputs, results, and work on the right."""
+    """The main window: calculators and their families on the left; a page on the right.
+
+    A calculator's page has its inputs, results, and work. A family's page has its shared
+    settings (ADR-0013 §8).
+    """
 
     def __init__(self, registry: Registry | None = None, branding: Branding = GENERIC) -> None:
         super().__init__()
@@ -87,9 +112,17 @@ class MainWindow(QMainWindow):
         self.branding = branding
         self.prefs = DisplayPrefs()
         self.calculator: Calculator | None = None
+        """The calculator whose page is shown, if one is."""
+        self.domain: Domain | None = None
+        """The domain whose settings page is shown, if one is."""
         self.values: dict[str, dict[str, float]] = {}
         """Last good input values per calculator id, by parameter key, in base units."""
         self.fields: dict[str, tuple[Param, QLineEdit]] = {}
+        self.domain_settings = DomainSettings()
+        """The domain settings the user has set; kept for the life of the window (§7)."""
+        self.setting_fields: dict[str, tuple[Param, QLineEdit]] = {}
+        self.setting_errors: dict[str, str] = {}
+        """Why each setting field's text was refused, by setting key."""
 
         self.setWindowTitle(branding.name)
         self.resize(1100, 720)
@@ -99,24 +132,29 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(DISCLAIMER)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
-        first = self.tree.topLevelItem(0)
-        child = first.child(0) if first is not None else None
-        if child is not None:
-            self.tree.setCurrentItem(child)
+        first = next(self._calculator_items(), None)
+        if first is not None:
+            self.tree.setCurrentItem(first)
 
     # --- layout ---------------------------------------------------------------------------
 
     def _build_ui(self) -> None:
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
-        for domain, calcs in self.registry.by_domain().items():
+        grouped = self.registry.by_domain()
+        for domain in self.registry.domains():
             parent = QTreeWidgetItem([domain.name])
-            parent.setFlags(parent.flags() & ~Qt.ItemFlag.ItemIsSelectable)
-            for calc in calcs:
+            parent.setData(0, DOMAIN_ROLE, domain.id)
+            parent.setToolTip(0, domain.summary)
+            for calc in grouped.get(domain, []):
                 child = QTreeWidgetItem([calc.name])
                 child.setData(0, ID_ROLE, calc.id)
                 child.setToolTip(0, calc.summary)
                 parent.addChild(child)
+            if not parent.childCount():
+                placeholder = QTreeWidgetItem([NO_CALCULATORS])
+                placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
+                parent.addChild(placeholder)
             self.tree.addTopLevelItem(parent)
         self.tree.expandAll()
         self.tree.currentItemChanged.connect(self._on_tree_changed)
@@ -128,29 +166,60 @@ class MainWindow(QMainWindow):
 
         self.method_box = QComboBox()
         self.method_box.currentIndexChanged.connect(self._on_method_changed)
+        self.method_row = QWidget()
+        method_layout = QHBoxLayout(self.method_row)
+        method_layout.setContentsMargins(0, 0, 0, 0)
+        method_layout.addWidget(QLabel("Method:"))
+        method_layout.addWidget(self.method_box, 1)
         self.units_box = QComboBox()
         self.units_box.addItems(["in", "mm"])
         self.units_box.currentTextChanged.connect(self._on_units_changed)
         options = QHBoxLayout()
-        options.addWidget(QLabel("Method:"))
-        options.addWidget(self.method_box, 1)
+        options.addWidget(self.method_row, 1)
+        options.addStretch(0)  # holds the units box right while a settings page hides the method
         options.addSpacing(16)
         options.addWidget(QLabel("Units:"))
         options.addWidget(self.units_box)
 
         self.form_box = QGroupBox("Inputs")
         self.form = QFormLayout(self.form_box)
-
         self.output = ResultsBrowser()
         self.output.setOpenExternalLinks(True)
+        self.calculator_page = QWidget()
+        calc_col = QVBoxLayout(self.calculator_page)
+        calc_col.setContentsMargins(0, 0, 0, 0)
+        calc_col.addWidget(self.form_box)
+        calc_col.addWidget(self.output, 1)
+
+        self.settings_box = QGroupBox("Family settings")
+        self.settings_form = QFormLayout(self.settings_box)
+        self.clear_settings_button = QPushButton("Clear all")
+        self.clear_settings_button.setToolTip("Unset every setting of this family.")
+        self.clear_settings_button.clicked.connect(self._clear_domain_settings)
+        self.domain_note = QLabel()
+        self.domain_note.setWordWrap(True)
+        self.domain_note.setTextFormat(Qt.TextFormat.RichText)
+        buttons = QHBoxLayout()
+        buttons.addWidget(self.clear_settings_button)
+        buttons.addStretch(1)
+        self.domain_page = QWidget()
+        domain_col = QVBoxLayout(self.domain_page)
+        domain_col.setContentsMargins(0, 0, 0, 0)
+        domain_col.addWidget(self.settings_box)
+        domain_col.addLayout(buttons)
+        domain_col.addWidget(self.domain_note)
+        domain_col.addStretch(1)
+
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self.calculator_page)
+        self.pages.addWidget(self.domain_page)
 
         right = QWidget()
         col = QVBoxLayout(right)
         col.addWidget(self.title)
         col.addWidget(self.summary)
         col.addLayout(options)
-        col.addWidget(self.form_box)
-        col.addWidget(self.output, 1)
+        col.addWidget(self.pages, 1)
 
         splitter = QSplitter()
         splitter.addWidget(self.tree)
@@ -158,6 +227,15 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([280, 820])
         self.setCentralWidget(splitter)
+
+    def _calculator_items(self) -> Iterator[QTreeWidgetItem]:
+        """Yield the tree's calculator rows, in order."""
+        for i in range(self.tree.topLevelItemCount()):
+            domain = self.tree.topLevelItem(i)
+            for j in range(domain.childCount() if domain is not None else 0):
+                child = domain.child(j) if domain is not None else None
+                if child is not None and child.data(0, ID_ROLE):
+                    yield child
 
     def _build_menu(self) -> None:
         help_menu = self.menuBar().addMenu("&Help")
@@ -168,13 +246,10 @@ class MainWindow(QMainWindow):
         """(Re)color every icon for the current light or dark scheme."""
         for i in range(self.tree.topLevelItemCount()):
             domain = self.tree.topLevelItem(i)
-            if domain is None:
-                continue
-            domain.setIcon(0, icon("category"))
-            for j in range(domain.childCount()):
-                child = domain.child(j)
-                if child is not None:
-                    child.setIcon(0, icon("calculator"))
+            if domain is not None:
+                domain.setIcon(0, icon("category"))
+        for child in self._calculator_items():
+            child.setIcon(0, icon("calculator"))
         self.about_action.setIcon(icon("info-circle"))
 
     def _on_color_scheme_changed(self, *_args: object) -> None:
@@ -188,16 +263,22 @@ class MainWindow(QMainWindow):
     # --- selection ------------------------------------------------------------------------
 
     def _on_tree_changed(self, current: QTreeWidgetItem | None, _previous: object) -> None:
-        calc_id = current.data(0, ID_ROLE) if current is not None else None
-        if calc_id:
+        if current is None:
+            return
+        if calc_id := current.data(0, ID_ROLE):
             self.select_calculator(str(calc_id))
+        elif domain_id := current.data(0, DOMAIN_ROLE):
+            self.select_domain(str(domain_id))
 
     def select_calculator(self, calc_id: str) -> None:
         """Show the calculator with ``calc_id`` and build its input form."""
         calc = self.registry.get(calc_id)
         self.calculator = calc
+        self.domain = None
         self.title.setText(calc.name)
         self.summary.setText(calc.summary)
+        self.method_row.show()
+        self.pages.setCurrentWidget(self.calculator_page)
         self.method_box.blockSignals(True)
         self.method_box.clear()
         for m in calc.methods:
@@ -208,6 +289,17 @@ class MainWindow(QMainWindow):
                 p.key: v for p in calc.params if (v := p.default_value()) is not None
             }
         self._rebuild_form()
+
+    def select_domain(self, domain_id: str) -> None:
+        """Show the settings page of the domain with ``domain_id``."""
+        domain = self.registry.domain(domain_id)
+        self.domain = domain
+        self.calculator = None
+        self.title.setText(domain.name)
+        self.summary.setText(domain.summary)
+        self.method_row.hide()
+        self.pages.setCurrentWidget(self.domain_page)
+        self._rebuild_domain_form()
 
     @property
     def method_key(self) -> str:
@@ -221,9 +313,12 @@ class MainWindow(QMainWindow):
     def _on_units_changed(self, unit: str) -> None:
         self._read_fields()  # keep any valid edits made in the old unit
         self.prefs = DisplayPrefs(length_unit=unit)
-        self._rebuild_form()
+        if self.domain is not None:
+            self._rebuild_domain_form()
+        else:
+            self._rebuild_form()
 
-    # --- form -----------------------------------------------------------------------------
+    # --- calculator form ------------------------------------------------------------------
 
     def _rebuild_form(self) -> None:
         if self.calculator is None:
@@ -235,7 +330,7 @@ class MainWindow(QMainWindow):
         for p in self.calculator.params_for(self.method_key):
             edit = QLineEdit()
             if p.key in stored:
-                edit.setText(self._field_text(p, stored[p.key]))
+                edit.setText(field_text(stored[p.key], p.dimension, self.prefs))
             edit.setToolTip(p.help)
             edit.textEdited.connect(self.recompute)
             row = QHBoxLayout()
@@ -244,10 +339,6 @@ class MainWindow(QMainWindow):
             self.form.addRow(f"{p.label} ({p.symbol})", row)
             self.fields[p.key] = (p, edit)
         self.recompute()
-
-    def _field_text(self, p: Param, base_value: float) -> str:
-        shown = display_value(base_value, p.dimension, self.prefs)
-        return format_number(shown, 6).rstrip("0").rstrip(".")
 
     def _read_fields(self) -> list[str]:
         """Parse every field into ``self.values``. Return error messages for bad fields."""
@@ -282,6 +373,84 @@ class MainWindow(QMainWindow):
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
         self.output.setHtml(result_html(calc, result, self.prefs, scheme))
+
+    # --- domain settings page -------------------------------------------------------------
+
+    def _rebuild_domain_form(self) -> None:
+        """Build one field per setting of ``self.domain``, showing what the user has set."""
+        domain = self.domain
+        if domain is None:
+            return
+        while self.settings_form.rowCount():
+            self.settings_form.removeRow(0)
+        self.setting_fields.clear()
+        self.setting_errors.clear()
+        for setting in domain.settings:
+            edit = QLineEdit()
+            edit.setPlaceholderText("not set")
+            entry = self.domain_settings.get(domain, setting.key)
+            if entry is not None:
+                edit.setText(entry_text(entry, self.prefs))
+            edit.setToolTip(setting.help)
+            edit.textEdited.connect(partial(self._on_setting_edited, setting.key))
+            field = QHBoxLayout()
+            field.addWidget(edit, 1)
+            field.addWidget(QLabel(unit_suffix(setting.dimension, self.prefs).strip()))
+            about = QLabel(
+                _setting_about_html(setting, self.registry.setting_uses(domain.id, setting.key))
+            )
+            about.setTextFormat(Qt.TextFormat.RichText)
+            about.setWordWrap(True)
+            row = QVBoxLayout()
+            row.addLayout(field)
+            row.addWidget(about)
+            self.settings_form.addRow(f"{setting.label} ({setting.symbol})", row)
+            self.setting_fields[setting.key] = (setting, edit)
+        self.settings_box.setVisible(bool(domain.settings))
+        self.clear_settings_button.setEnabled(bool(domain.settings))
+        self._show_domain_note()
+
+    def _on_setting_edited(self, key: str, text: str) -> None:
+        """Set, or with empty text unset, one domain setting from what the user typed."""
+        domain = self.domain
+        if domain is None:
+            return
+        setting, edit = self.setting_fields[key]
+        default_unit = self.prefs.length_unit if setting.dimension is Dimension.LENGTH else None
+        try:
+            if text.strip():
+                updated = self.domain_settings.set_text(domain, key, text, default_unit)
+            else:
+                updated = self.domain_settings.clear(domain, key)
+        except InputError as exc:
+            edit.setStyleSheet(ERROR_STYLE)
+            message = describe_error(exc, self.prefs)
+            if not isinstance(exc, OutOfRangeError):  # a range error already names the setting
+                message = f"{setting.label} ({setting.symbol}): {message}"
+            self.setting_errors[key] = message
+        else:
+            self.domain_settings = updated
+            edit.setStyleSheet("")
+            self.setting_errors.pop(key, None)
+        self._show_domain_note()
+
+    def _clear_domain_settings(self) -> None:
+        if self.domain is not None:
+            self.domain_settings = self.domain_settings.clear_domain(self.domain)
+            self._rebuild_domain_form()
+
+    def _show_domain_note(self) -> None:
+        """Show whether the family has calculators, and why any field's text was refused."""
+        domain = self.domain
+        if domain is None:
+            return
+        self.domain_note.setText(
+            _domain_note_html(
+                domain,
+                has_calculators=bool(self.registry.by_domain().get(domain)),
+                errors=list(self.setting_errors.values()),
+            )
+        )
 
 
 GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
@@ -318,6 +487,32 @@ def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
         f"<p style='color:#c0392b'>{_img('alert-circle', 'icon_error', scheme)}"
         f"<b>Check the inputs:</b></p><ul>{items}</ul>"
     )
+
+
+def _setting_about_html(setting: Param, uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> str:
+    """Return a setting's help, and the calculators that use it, for its settings-page row."""
+    lines = describe_setting_uses(uses)
+    used = "".join(f"<br>&nbsp;&nbsp;• {escape(line)}" for line in lines)
+    return (
+        f"<small>{escape(setting.help)}<br><b>Used by:</b>{used or ' no loaded calculator'}</small>"
+    )
+
+
+def _domain_note_html(domain: Domain, *, has_calculators: bool, errors: Sequence[str]) -> str:
+    """Return the note under a settings page: no calculators, and any refused values."""
+    parts = []
+    if not has_calculators:
+        parts.append(
+            f"<p><b>{NO_CALCULATORS}.</b> No calculator uses the {escape(domain.name)} "
+            "settings in this session.</p>"
+        )
+    if errors:
+        items = "".join(f"<li>{escape(e)}</li>" for e in errors)
+        parts.append(
+            "<p style='color:#c0392b'><b>Check these settings.</b> Each keeps its last "
+            f"valid value until it is fixed:</p><ul>{items}</ul>"
+        )
+    return "".join(parts)
 
 
 def result_html(

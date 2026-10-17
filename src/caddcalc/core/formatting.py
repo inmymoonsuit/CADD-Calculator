@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 
 from caddcalc.core import expr
-from caddcalc.core.calculator import Result, Step
+from caddcalc.core.calculator import Calculator, Result, Step
 from caddcalc.core.errors import CaddCalcError
 from caddcalc.core.provenance import InputSource, SourceKind
-from caddcalc.core.spec import OutOfRangeError
-from caddcalc.core.units import Dimension, from_base, get_unit
+from caddcalc.core.spec import Method, OutOfRangeError
+from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit
 
 DISCLAIMER = (
     "Results are for drafting and education. Verify against your shop's tooling, "
@@ -39,11 +40,21 @@ def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
     return ""
 
 
+_SHOWN_IN = {Dimension.ANGLE: "deg", Dimension.RATIO: ""}
+"""Display units of the dimensions whose unit isn't a preference."""
+
+
+def display_unit(dimension: Dimension, prefs: DisplayPrefs) -> Unit:
+    """Return the unit values of ``dimension`` are shown in.
+
+    Lengths use the preferred unit, angles degrees, and ratios plain numbers.
+    """
+    return get_unit(prefs.length_unit if dimension is Dimension.LENGTH else _SHOWN_IN[dimension])
+
+
 def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> float:
     """Convert a base-unit value to the display unit, without rounding."""
-    if dimension is Dimension.LENGTH:
-        return from_base(value, prefs.length_unit)
-    return value  # angles display in degrees, ratios as-is
+    return from_base(value, display_unit(dimension, prefs))
 
 
 def format_number(value: float, decimals: int) -> str:
@@ -76,6 +87,31 @@ def format_value(
     ):
         text += f'  (≈ {to_fraction(shown, prefs.fraction_denominator)}")'
     return text
+
+
+FIELD_DECIMALS = 6
+"""Decimal places a form field shows for a value it converted, before trailing zeros go."""
+
+
+def field_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> str:
+    """Return a base-unit value as form-field text in the display unit, e.g. ``2.65684``.
+
+    It has no unit, because the field labels its unit, and no trailing zeros.
+    """
+    shown = format_number(display_value(value, dimension, prefs), FIELD_DECIMALS)
+    return shown.rstrip("0").rstrip(".")
+
+
+def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:
+    """Return the text a form field shows for a value the user typed (ADR-0013 §9).
+
+    The user's own text is shown when it named its unit, or when its unit is still the
+    display unit. Otherwise the value is shown converted, so a field never shows a
+    number in a unit other than the one it labels. The value itself never changes.
+    """
+    if entry.explicit_unit or entry.unit == display_unit(entry.dimension, prefs):
+        return entry.text
+    return field_text(entry.value, entry.dimension, prefs)
 
 
 def to_fraction(value: float, denominator: int = 64) -> str:
@@ -120,6 +156,24 @@ def describe_source(source: InputSource) -> str:
         return "default"
     label = source.label or ("domain settings" if source.kind is SourceKind.DOMAIN else "derived")
     return label if source.reference is None else f"{label}, {source.reference}"
+
+
+def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> list[str]:
+    """Return one line per calculator that uses a domain setting, for the settings page.
+
+    A calculator that uses the setting in every method is named alone; otherwise the
+    methods follow, e.g. ``"V-die opening (air bending): 8 × thickness rule of thumb"``.
+
+    Args:
+        uses: What ``Registry.setting_uses`` returns.
+    """
+    lines = []
+    for calc, methods in uses:
+        if len(methods) == len(calc.methods):
+            lines.append(calc.name)
+        else:
+            lines.append(f"{calc.name}: {', '.join(m.label for m in methods)}")
+    return lines
 
 
 def describe_error(error: CaddCalcError, prefs: DisplayPrefs) -> str:

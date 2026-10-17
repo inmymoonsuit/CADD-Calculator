@@ -22,8 +22,10 @@ from caddcalc.core import (
     SpecError,
     UnknownCalculatorError,
     UnknownDomainError,
+    UsageError,
     Verification,
 )
+from caddcalc.core.formatting import describe_setting_uses
 from caddcalc.core.registry import DOMAIN_ENTRY_POINT_GROUP, ENTRY_POINT_GROUP
 
 L = Dimension.LENGTH
@@ -127,6 +129,51 @@ def test_calculators_are_grouped_by_domain_and_sorted_by_name() -> None:
     names = [c.name for c in grouped[registry.domain("sheet_metal")]]
     assert names == sorted(names)
     assert [d.id for d in registry.domains()] == ["acme", "sheet_metal"]
+
+
+@pytest.mark.parametrize(
+    ("key", "users"),
+    [
+        (
+            "thickness",
+            [
+                "Bend allowance & deduction",
+                "Flat length of a formed segment",
+                "Truncated cone flat pattern",
+                "V-die opening (air bending): 8 × thickness rule of thumb",
+            ],
+        ),
+        (
+            "inside_radius",
+            [
+                "Bend allowance & deduction",
+                "Flat length of a formed segment",
+                "V-die opening (air bending): Inside-radius percentage rule",
+            ],
+        ),
+        (
+            "k_factor",
+            [
+                "Bend allowance & deduction: K-factor (neutral axis)",
+                "Flat length of a formed segment: K-factor (neutral axis)",
+            ],
+        ),
+    ],
+)
+def test_each_sheet_metal_setting_lists_the_calculators_that_use_it(
+    key: str, users: list[str]
+) -> None:
+    registry = default_registry(load_plugins=False)
+    assert describe_setting_uses(registry.setting_uses("sheet_metal", key)) == users
+
+
+def test_setting_uses_need_a_known_domain_and_setting() -> None:
+    registry = default_registry(load_plugins=False)
+    with pytest.raises(UnknownDomainError, match="sheet_metal"):
+        registry.setting_uses("sheet_metl", "thickness")
+    with pytest.raises(UsageError, match="no setting 'gauge'"):
+        registry.setting_uses("sheet_metal", "gauge")
+    assert _registry_with(GAUGED).setting_uses("gauged", "length") == [], "no calculators"
 
 
 def test_builtin_calculator_ids_start_with_their_domain_id() -> None:

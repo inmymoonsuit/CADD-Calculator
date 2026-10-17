@@ -13,6 +13,11 @@ between the flanges, which is 180° − A. This app always uses the bend angle.
 **Bend deduction (BD)**: `2·OSSB − BA`. Subtract it from the sum of outside flange
 dimensions to get the flat length.
 
+**Family settings**: values set once for a family of calculators and shared by them.
+Sheet Metal's are thickness (T), inside radius (R), and K-factor (K); see
+[Family settings](calculators/sheet-metal.md#family-settings) for which calculators and
+methods use each. An unset setting leaves each calculator its own default.
+
 **Flat pattern dimension (FPD)**: a length measured on the flat blank before bending.
 
 **Formed view dimension (FVD)**: a dimension on the formed part, measured to the outside of

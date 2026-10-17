@@ -17,7 +17,8 @@ uv run caddcalc-gui
 
 ## The desktop app
 
-* Pick a calculator on the left.
+* Pick a calculator on the left, or pick a family, such as **Sheet Metal**, to see the
+  settings its calculators share.
 * Choose a **Method** (the status shows in brackets) and **Units** (`in` or `mm`).
 * Type the inputs. Results update as you type, and invalid fields are outlined in red.
   You can type units and fractions: `1/8`, `1-1/2"`, `3 mm`.

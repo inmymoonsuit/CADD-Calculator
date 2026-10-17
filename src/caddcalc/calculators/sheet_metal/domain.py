@@ -14,7 +14,10 @@ THICKNESS_SETTING = Param(
     Dimension.LENGTH,
     minimum=0.0,
     min_inclusive=False,
-    help="Sheet thickness for every sheet-metal calculator that uses it.",
+    help=(
+        "Sheet thickness for every sheet-metal calculator that uses it. Enter the decimal "
+        "thickness. Gauge numbers mean different thicknesses in different gauge systems."
+    ),
 )
 INSIDE_RADIUS_SETTING = Param(
     "inside_radius",
@@ -33,7 +36,8 @@ K_FACTOR_SETTING = Param(
     maximum=1.0,
     help=(
         "Neutral-axis position as a fraction of thickness, measured from the inside surface. "
-        "Used by K-factor methods; course methods have the factor built in."
+        "Typically 0.3 to 0.5. Use your shop's test-bend value for production. Used by "
+        "K-factor methods; course methods have the factor built in."
     ),
 )
 

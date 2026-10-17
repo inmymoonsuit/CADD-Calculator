@@ -21,6 +21,7 @@ from caddcalc.core import (
     UsageError,
     parse_quantity_detailed,
 )
+from caddcalc.core.formatting import DisplayPrefs, entry_text, field_text
 from caddcalc.core.units import get_unit
 
 OTHER = Domain(
@@ -81,6 +82,45 @@ def test_a_typed_value_may_differ_from_its_parse_by_one_ulp() -> None:
     exact = TypedValue.parse("1/3", Dimension.LENGTH, "in").value
     nudged = math.nextafter(exact, math.inf)
     assert TypedValue(nudged, "1/3", get_unit("in"), explicit_unit=False).value == nudged
+
+
+INCHES, MILLIMETRES = DisplayPrefs(length_unit="in"), DisplayPrefs(length_unit="mm")
+
+
+def test_a_field_shows_the_users_text_while_its_unit_is_the_display_unit() -> None:
+    third = TypedValue.parse("1/3", Dimension.LENGTH, "in")
+    switches = [INCHES, MILLIMETRES, INCHES, MILLIMETRES, INCHES]
+    assert [entry_text(third, prefs) for prefs in switches] == [
+        "1/3",
+        "8.466667",
+        "1/3",
+        "8.466667",
+        "1/3",
+    ]
+    assert third.value == 1 / 3 * 25.4, "showing it never changes the value"
+
+
+@pytest.mark.parametrize(
+    ("text", "dimension", "default", "shown_in_mm"),
+    [
+        ("3 mm", Dimension.LENGTH, "in", "3 mm"),
+        ('1-1/2"', Dimension.LENGTH, "mm", '1-1/2"'),
+        ("0.44", Dimension.RATIO, None, "0.44"),
+        ("44%", Dimension.RATIO, None, "44%"),
+        ("90", Dimension.ANGLE, None, "90"),
+        ("2", Dimension.LENGTH, "in", "50.8"),
+    ],
+)
+def test_a_field_keeps_text_that_names_its_unit_or_needs_none(
+    text: str, dimension: Dimension, default: str | None, shown_in_mm: str
+) -> None:
+    assert entry_text(TypedValue.parse(text, dimension, default), MILLIMETRES) == shown_in_mm
+
+
+def test_field_text_is_the_display_value_without_trailing_zeros() -> None:
+    assert field_text(0.1046 * 25.4, Dimension.LENGTH, MILLIMETRES) == "2.65684"
+    assert field_text(25.4, Dimension.LENGTH, INCHES) == "1"
+    assert field_text(0.0, Dimension.RATIO, INCHES) == "0"
 
 
 def test_nothing_is_set_at_first() -> None:
