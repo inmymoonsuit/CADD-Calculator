@@ -37,3 +37,4 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
   `ed728b1429ce42cc307ebbde75b0a119e5a4fa3a80498b16f2bce0845adc1fe2`. Awaiting the review
   session's re-verification.
 * Re-verified by the review session (Support & Review) at 914432d: version 2 changes citation metadata only; its 157 values, its sources' editions and licenses, and all 152 gauge thicknesses and cautions are identical to version 1; digest ed728b1429ce…1fe2; all seven items still pass. Date: 2026-10-17
+* Version 2 approved for release by the maintainer. Date: 2026-10-17

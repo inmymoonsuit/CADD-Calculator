@@ -38,5 +38,5 @@ Each is labelled where it is shown, in the notes and the material facts.
 
 ## Sign-off
 
-* Maintainer:
+* Maintainer: approved for release by the maintainer. Date: 2026-10-17
 * Review session (Support & Review): verified 914432d, table digest c064d35b8e64…672f; all seven items pass; stand-ins disclosed. Date: 2026-10-17
