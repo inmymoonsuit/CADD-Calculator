@@ -131,6 +131,33 @@ def parse_quantity(text: str, dimension: Dimension, default_unit: str | None = N
     unit = get_unit(unit_text)
     if unit.dimension is not dimension:
         raise InputError(
-            f"{text!r} is a {unit.dimension.value}, but a {dimension.value} is expected"
+            f"{text!r} measures {unit.dimension.value}, but {dimension.value} is expected"
         )
     return number * unit.factor
+
+
+@dataclass(frozen=True)
+class TypedValue:
+    """A value the user typed: the text, its exact parse, and the unit it was typed in.
+
+    This is the *intent* tier of ADR-0013 §9: the base-unit ``value`` is parsed once from
+    the user's own ``text`` and never re-read from rounded display text. ``unit`` is the
+    default unit in effect when the text was typed (``None`` when it doesn't matter, e.g.
+    for ratios); a front end may show ``text`` verbatim while that unit is still current.
+    """
+
+    value: float
+    """The exact parse, in base units."""
+    text: str
+    """What the user typed, stripped of surrounding space."""
+    unit: str | None = None
+    """The default unit the text was typed in, e.g. ``"in"``."""
+
+    @classmethod
+    def parse(cls, text: str, dimension: Dimension, default_unit: str | None = None) -> TypedValue:
+        """Parse ``text`` as a ``dimension`` value; ``default_unit`` applies if it has no unit.
+
+        Raises:
+            InputError: The text isn't a valid value of that dimension.
+        """
+        return cls(parse_quantity(text, dimension, default_unit), text.strip(), default_unit)

@@ -60,11 +60,17 @@ All notable changes are recorded here. The format follows
   defaults: the cone keeps 0.0747 in, the V-die calculator shares R and T only in the
   method that uses each, and K is shared only by K-factor methods. The die ratio P stays
   per calculator.
+- `DomainSettings`, the in-memory model of the domain settings a user sets during a session
+  (ADR-0013 §7). It is immutable, validates against each domain's settings, and keeps each
+  value as a `TypedValue`: the user's text, its exact base-unit parse, and the unit it was
+  typed in (§9). `for_domain()` returns the `DomainValues` that `run()` takes. Nothing is
+  saved to disk.
 
 ### Changed
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A
   calculator naming an unknown domain fails registration with a "did you mean" hint,
   and `Registry.by_domain()` is keyed by `Domain`.
+- A unit of the wrong kind now reads "'3 deg' measures angle, but length is expected".
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no
   longer depends on the calculators layer above it (ADR-0003, ADR-0006).
 - The window title and Help > About come from the active branding. About always keeps

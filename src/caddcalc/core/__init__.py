@@ -22,8 +22,9 @@ from caddcalc.core.errors import (
     UnknownDomainError,
 )
 from caddcalc.core.registry import Registry
+from caddcalc.core.settings import DomainSettings
 from caddcalc.core.spec import Method, Output, Param, Reference, Verification
-from caddcalc.core.units import Dimension, parse_quantity
+from caddcalc.core.units import Dimension, TypedValue, parse_quantity
 
 __all__ = [
     "CaddCalcError",
@@ -32,6 +33,7 @@ __all__ = [
     "Context",
     "Dimension",
     "Domain",
+    "DomainSettings",
     "DomainValues",
     "InputError",
     "InputSource",
@@ -44,6 +46,7 @@ __all__ = [
     "SourceKind",
     "SpecError",
     "Step",
+    "TypedValue",
     "UnknownCalculatorError",
     "UnknownDomainError",
     "Verification",
