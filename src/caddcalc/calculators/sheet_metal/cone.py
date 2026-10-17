@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import override
 
 from caddcalc.calculators.sheet_metal.common import EDD5_CONE, LEGACY_LESSON_4, THICKNESS
 from caddcalc.core import (
@@ -20,6 +21,8 @@ LENGTH = Dimension.LENGTH
 
 
 class TruncatedConeLayout(Calculator):
+    """Flat pattern (an annular sector) of a truncated right circular cone."""
+
     id = "sheet_metal.truncated_cone_layout"
     name = "Truncated cone flat pattern"
     domain = "Sheet Metal"
@@ -100,6 +103,7 @@ class TruncatedConeLayout(Calculator):
         ),
     )
 
+    @override
     def compute(self, ctx: Context) -> None:
         if ctx["bottom_diameter"] <= ctx["top_diameter"]:
             raise InputError(

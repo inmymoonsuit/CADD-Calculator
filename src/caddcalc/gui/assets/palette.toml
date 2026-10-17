@@ -1,6 +1,6 @@
 # CADD Calculator UI palette, shared by every edition (branded or not).
-# Design notes, swatches, and contrast checks: docs/dev/design/palette.md
-# tests/test_palette.py enforces that every role pair below stays readable (WCAG 2.x).
+# Usage rules, swatches, and contrast ratios: docs/dev/design/palette.md.
+# tests/test_palette.py enforces the contrast minimums.
 schema = 1
 
 [colors]
@@ -14,11 +14,11 @@ white = "#FFFFFF"
 [light]
 background = "white"
 text = "ink"
-primary = "crimson"     # primary buttons, selection, headings; text on white is fine (7.8:1)
+primary = "crimson"     # primary buttons, selection, headings; text on white is fine
 on_primary = "white"
-accent = "amber"        # highlight fills only; never text on white (1.8:1)
+accent = "amber"        # highlight fills only; never text on white
 on_accent = "ink"
-muted = "slate"         # borders, dividers, icons, disabled; not small text (3.8:1)
+muted = "slate"         # borders, dividers, icons, disabled; not small text
 error = "crimson"
 on_error = "white"
 warning = "amber"
@@ -26,21 +26,21 @@ on_warning = "ink"
 icon = "slate"          # default icon color
 icon_active = "ink"     # selected or emphasized icons
 icon_error = "crimson"
-icon_warning = "ink"    # amber icons on white are too faint (1.8:1); the shape signals it
+icon_warning = "ink"    # amber is too faint on white; the icon shape signals it
 
 [dark]
 background = "ink"
 text = "white"
-primary = "crimson"     # fills with white text only; crimson text on ink is too faint (2.0:1)
+primary = "crimson"     # fills with white text only; crimson text is too faint on ink
 on_primary = "white"
-accent = "amber"        # headings, links, focus rings; reads well on ink (8.8:1)
+accent = "amber"        # headings, links, focus rings; reads well on ink
 on_accent = "ink"
-muted = "slate"         # borders, dividers, icons, disabled (4.0:1)
+muted = "slate"         # borders, dividers, icons, disabled
 error = "crimson"
 on_error = "white"
 warning = "amber"
 on_warning = "ink"
 icon = "slate"
 icon_active = "white"
-icon_error = "white"    # crimson icons on ink are too faint (2.0:1); the shape signals it
+icon_error = "white"    # crimson is too faint on ink; the icon shape signals it
 icon_warning = "amber"

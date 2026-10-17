@@ -33,20 +33,23 @@ VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
 
 
 class FetchError(Exception):
-    pass
+    """A download was refused: changed license, bad name, or a file that differs."""
 
 
 def sha256(data: bytes) -> str:
+    """Return the hex SHA-256 digest of ``data``."""
     return hashlib.sha256(data).hexdigest()
 
 
 def load_manifest() -> dict[str, Any]:
+    """Return the parsed manifest, or an empty dict before the first fetch."""
     if not MANIFEST.is_file():
         return {}
     return tomllib.loads(MANIFEST.read_text(encoding="utf-8"))
 
 
 def write_manifest(version: str, icons: dict[str, str], license_sha: str) -> None:
+    """Write the manifest for ``version``, recording each file's SHA-256."""
     lines = [
         "# Tabler Icons vendored into CADD Calculator: only the icons the app uses.",
         "# Written by packaging/fetch_tabler_icons.py; see docs/dev/design/icons.md.",
@@ -66,12 +69,21 @@ def write_manifest(version: str, icons: dict[str, str], license_sha: str) -> Non
         "[icons]",
         *(f'{name} = "{digest}"' for name, digest in sorted(icons.items())),
     ]
-    MANIFEST.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    MANIFEST.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def download(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "cadd-calculator-icon-fetch"})
-    with urllib.request.urlopen(request, timeout=30) as response:
+    """Return the body of an HTTPS ``url``.
+
+    Raises:
+        FetchError: The URL is not HTTPS.
+    """
+    if not url.startswith("https://"):
+        raise FetchError(f"refusing a non-HTTPS URL: {url}")
+    # The scheme check above is what S310 asks for; ruff can't see it, hence the noqa.
+    headers = {"User-Agent": "cadd-calculator-icon-fetch"}
+    request = urllib.request.Request(url, headers=headers)  # noqa: S310
+    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
         data: bytes = response.read()
     return data
 
@@ -97,6 +109,18 @@ def check() -> list[str]:
 
 
 def fetch(version: str, names: set[str], known: dict[str, str], known_license: str | None) -> None:
+    """Download ``names`` from Tabler ``version``, verify them, and update the vendored files.
+
+    Args:
+        version: The Tabler release to pin, e.g. ``"3.49.0"``.
+        names: Icon names (outline style) to vendor; others are removed.
+        known: Hashes already recorded for this version, to detect changed files.
+        known_license: The license hash recorded for this version, if any.
+
+    Raises:
+        FetchError: The license is no longer MIT, a name is invalid, an icon can't be
+            recolored, or a file differs from the hash recorded for this version.
+    """
     base = BASE_URL.format(version=version)
     license_text = download(f"{base}/LICENSE")
     if b"MIT License" not in license_text:
@@ -127,6 +151,7 @@ def fetch(version: str, names: set[str], known: dict[str, str], known_license: s
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the command line and return the exit status."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else None)
     parser.add_argument("--add", nargs="+", default=[], metavar="NAME", help="icons to add")
     parser.add_argument("--remove", nargs="+", default=[], metavar="NAME", help="icons to drop")

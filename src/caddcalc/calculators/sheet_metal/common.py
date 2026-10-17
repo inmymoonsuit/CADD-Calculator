@@ -81,6 +81,14 @@ K_FACTOR = Param(
 def bend_angle(
     key: str = "bend_angle", symbol: str = "A", label: str = "Bend angle", default: str = "90 deg"
 ) -> Param:
+    """Return a bend-angle parameter, measured from flat and below 180°.
+
+    Args:
+        key: The parameter key, e.g. ``"bend_angle_1"``.
+        symbol: The formula symbol, e.g. ``"A1"``.
+        label: The label shown to users.
+        default: The default as text with units, e.g. ``"90 deg"``.
+    """
     return Param(
         key,
         symbol,
@@ -129,5 +137,6 @@ K_FACTOR_BA = "pi/180*{A}*(R + K*T)"
 
 
 def bend_allowance_formula(method_key: str, angle_symbol: str) -> str:
+    """Return the bend-allowance expression for ``method_key``, using ``angle_symbol``."""
     template = COURSE_BA if method_key == "course" else K_FACTOR_BA
     return template.format(A=angle_symbol)

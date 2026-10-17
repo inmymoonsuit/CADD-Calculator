@@ -135,5 +135,12 @@ antivirus software tends to dislike (ADR-0009).
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml) builds the generic
 edition on Windows, macOS, and Linux when a `v*` tag is pushed, and attaches the archives
 to a **draft** GitHub release for the maintainer to publish. It never builds a branded
-edition. It is a sketch: it hasn't run on GitHub yet, and the macOS and Linux builds are
-untested.
+edition.
+
+Status:
+* It is a sketch from the 0.3 packaging spike. The Windows build and smoke test have run
+  locally with the same commands, but the workflow hasn't run on GitHub yet, and the macOS
+  and Linux jobs are untested.
+* The output is a portable archive per OS. Real installers (Inno Setup, .dmg, AppImage)
+  come later (roadmap 0.3).
+* Nothing is signed yet (ADR-0009, open questions).

@@ -57,12 +57,19 @@ class Param:
     """Method keys that use this parameter. Empty means all methods."""
 
     def default_value(self) -> float | None:
+        """Return the default in base units, or ``None`` if there is no default."""
         return None if self.default is None else parse_quantity(self.default, self.dimension)
 
     def used_by(self, method_key: str) -> bool:
+        """Return whether the method ``method_key`` uses this parameter."""
         return not self.methods or method_key in self.methods
 
     def check(self, value: float) -> None:
+        """Check that ``value`` (in base units) is finite and within the allowed range.
+
+        Raises:
+            InputError: The value is not finite or is out of range.
+        """
         if not math.isfinite(value):
             raise InputError(f"{self.label} ({self.symbol}) must be a finite number")
         lo, hi = self.minimum, self.maximum
@@ -76,6 +83,8 @@ class Param:
 
 @dataclass(frozen=True)
 class Output:
+    """One result a calculator produces."""
+
     key: str
     symbol: str
     label: str

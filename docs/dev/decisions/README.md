@@ -24,3 +24,4 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0009](0009-packaging-and-distribution.md) | Packaging and distribution | Accepted (pyside6-deploy + Nuitka); installers, macOS/Linux, signing still proposed |
 | [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted |
 | [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed** |
+| [0012](0012-engineering-standards-enforced-by-tooling.md) | Write down the engineering standards, and enforce them with tooling | Accepted |

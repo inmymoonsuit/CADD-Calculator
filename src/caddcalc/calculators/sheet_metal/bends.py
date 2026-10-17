@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import override
 
 from caddcalc.calculators.sheet_metal.common import (
     COURSE_METHOD,
@@ -39,6 +40,8 @@ def _check_bend(ctx: Context, *angle_symbols: str) -> None:
 
 
 class BendAllowance(Calculator):
+    """Bend allowance, outside setback, and bend deduction for a single bend."""
+
     id = "sheet_metal.bend_allowance"
     name = "Bend allowance & deduction"
     domain = "Sheet Metal"
@@ -72,6 +75,7 @@ class BendAllowance(Calculator):
     )
     methods = (COURSE_METHOD, K_FACTOR_METHOD)
 
+    @override
     def compute(self, ctx: Context) -> None:
         ctx.calc(
             "BA",
@@ -137,6 +141,7 @@ class FormedSegmentFlatLength(Calculator):
     )
     methods = (COURSE_METHOD, K_FACTOR_METHOD)
 
+    @override
     def compute(self, ctx: Context) -> None:
         ctx.calc(
             "BA1",
@@ -169,6 +174,8 @@ class FormedSegmentFlatLength(Calculator):
 
 
 class VDieOpening(Calculator):
+    """V-die opening for air bending, from the inside radius or the thickness."""
+
     id = "sheet_metal.v_die_opening"
     name = "V-die opening (air bending)"
     domain = "Sheet Metal"
@@ -212,6 +219,7 @@ class VDieOpening(Calculator):
         ),
     )
 
+    @override
     def compute(self, ctx: Context) -> None:
         if ctx.method == "radius_ratio":
             ctx.calc("V", "R/P", label="Die opening", dimension=LENGTH, output="die_opening")

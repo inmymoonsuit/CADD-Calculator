@@ -2,10 +2,10 @@
 
 Run ``uv run python packaging/icons.py`` to redraw ``src/caddcalc/gui/assets/app-icon.png``.
 The generic icon is original line art drawn here in code, so it is covered by the project's
-Apache-2.0 license and needs no third-party notice. It is an interim icon until the
-roadmap's "generic art for the public build" item replaces it (ADR-0008 item 4).
+Apache-2.0 license and needs no third-party notice. Its planned replacement is the roadmap
+item "Generic art for the public build" (ADR-0008, item 4).
 
-The build script uses :func:`save_ico` and :func:`save_icns` to turn a PNG into the
+The build script uses ``save_ico`` and ``save_icns`` to turn a PNG into the
 executable icon each platform needs, so a branding pack only has to supply one PNG.
 """
 
@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import struct
 import sys
+from functools import cache
 from pathlib import Path
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, QRectF, Qt
@@ -32,33 +33,34 @@ GENERIC_ICON = ROOT / "src" / "caddcalc" / "gui" / "assets" / "app-icon.png"
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
-_app: QGuiApplication | None = None
-
-
 def ensure_qt_app() -> QGuiApplication:
-    """Image work and text drawing need a Qt application. Nothing is shown on screen.
+    """Return the running Qt application, creating one if needed. Nothing is shown.
 
-    On a Linux machine with no display, Qt's offscreen platform is used, but only while
-    the application is created, so programs started later (the smoke test) still get the
-    real platform. Elsewhere the native platform is kept: on Windows the offscreen
-    platform has no fonts, so text would come out as boxes.
+    Image work and text drawing need a Qt application. On a Linux machine with no display,
+    Qt's offscreen platform is used, but only while the application is created, so
+    programs started later (the smoke test) still get the real platform. Elsewhere the
+    native platform is kept: on Windows the offscreen platform has no fonts, so text would
+    come out as boxes.
     """
-    global _app
     existing = QGuiApplication.instance()
     if isinstance(existing, QGuiApplication):
         return existing
+    return _create_qt_app()
+
+
+@cache
+def _create_qt_app() -> QGuiApplication:
+    """Create the application once; the cache also keeps it alive for the process."""
     headless = sys.platform.startswith("linux") and not (
         os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     )
-    if headless and "QT_QPA_PLATFORM" not in os.environ:
-        os.environ["QT_QPA_PLATFORM"] = "offscreen"
-        try:
-            _app = QGuiApplication([sys.argv[0]])
-        finally:
-            del os.environ["QT_QPA_PLATFORM"]
-    else:
-        _app = QGuiApplication([sys.argv[0]])
-    return _app
+    if not headless or "QT_QPA_PLATFORM" in os.environ:
+        return QGuiApplication([sys.argv[0]])
+    os.environ["QT_QPA_PLATFORM"] = "offscreen"
+    try:
+        return QGuiApplication([sys.argv[0]])
+    finally:
+        del os.environ["QT_QPA_PLATFORM"]
 
 
 def draw_generic_icon(size: int = 256) -> QImage:
@@ -94,6 +96,7 @@ def draw_generic_icon(size: int = 256) -> QImage:
 
 
 def png_bytes(image: QImage) -> bytes:
+    """Return ``image`` encoded as PNG."""
     data = QByteArray()
     buffer = QBuffer(data)
     buffer.open(QIODevice.OpenModeFlag.WriteOnly)
@@ -107,6 +110,7 @@ def png_bytes(image: QImage) -> bytes:
 
 
 def scaled(image: QImage, size: int) -> QImage:
+    """Return ``image`` resized to ``size`` by ``size`` pixels, smoothly filtered."""
     return image.scaled(
         size,
         size,
@@ -141,6 +145,7 @@ def save_icns(image: QImage, path: Path) -> None:
 
 
 def main() -> int:
+    """Redraw the generic app icon and return the exit status."""
     ensure_qt_app()
     GENERIC_ICON.parent.mkdir(parents=True, exist_ok=True)
     if not draw_generic_icon(256).save(str(GENERIC_ICON)):

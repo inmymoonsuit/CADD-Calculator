@@ -9,9 +9,14 @@ needs a source, and every source needs a test.**
 uv sync --extra gui             # .venv with dev tools and PySide6
 uv run pytest                   # tests (the GUI test runs offscreen if PySide6 is installed)
 uv run ruff check . && uv run ruff format --check .
-uv run mypy                     # strict type checking of src/
+uv run mypy                     # strict type checking of src/ and packaging/
+uv run lint-imports             # architectural layer contracts
 uv run caddcalc-gui             # run the app
 ```
+
+**Read [docs/dev/engineering-guidelines.md](docs/dev/engineering-guidelines.md) first.**
+It sets out the architecture rules, the coding and docstring standards (Google style), what
+belongs in code versus docs, and the definition of done.
 
 To build the standalone app, see [docs/dev/packaging.md](docs/dev/packaging.md).
 
@@ -94,6 +99,13 @@ or original measurements. Keep anything you can't redistribute in the git-ignore
 
 ## Code style
 
-* `ruff` formats and lints. `mypy --strict` must pass on `src/`.
-* `caddcalc.core` and `caddcalc.calculators` use only the standard library (ADR-0003, enforced by tests).
+The full standard is [docs/dev/engineering-guidelines.md](docs/dev/engineering-guidelines.md)
+(ADR-0012). In short:
+
+* `ruff` formats and lints with the rule set in `pyproject.toml`, including Google-style
+  docstrings. `mypy --strict` must pass on `src/` and `packaging/`.
+* `uv run lint-imports` enforces the layers. `caddcalc.core` and `caddcalc.calculators`
+  use only the standard library (ADR-0003).
+* Comments explain *why*. History, measurements, and status go in the docs, and the code
+  points there.
 * Prefer clarity over cleverness: formulas should read like the textbook.

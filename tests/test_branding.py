@@ -249,7 +249,8 @@ def test_windows_version_resources_get_four_numbers(build_script: ModuleType) ->
 
 
 @pytest.mark.gui
-def test_icon_helpers_write_a_multi_size_ico(build_script: ModuleType, tmp_path: Path) -> None:
+@pytest.mark.usefixtures("build_script")
+def test_icon_helpers_write_a_multi_size_ico(tmp_path: Path) -> None:
     gui = pytest.importorskip("PySide6.QtGui")
     icons = importlib.import_module("icons")
     icons.ensure_qt_app()
@@ -261,7 +262,8 @@ def test_icon_helpers_write_a_multi_size_ico(build_script: ModuleType, tmp_path:
 
 
 @pytest.mark.gui
-def test_placeholder_pack_is_a_valid_pack(build_script: ModuleType, tmp_path: Path) -> None:
+@pytest.mark.usefixtures("build_script")
+def test_placeholder_pack_is_a_valid_pack(tmp_path: Path) -> None:
     gui = pytest.importorskip("PySide6.QtGui")
     pack = importlib.import_module("make_placeholder_pack").write_pack(tmp_path / "pack")
     b = load_branding(pack)

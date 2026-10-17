@@ -82,6 +82,7 @@ def write_pack(dest: Path) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Write the placeholder pack to the given folder and return the exit status."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("dest", type=Path, help="folder to write the pack into")
     args = parser.parse_args(argv)

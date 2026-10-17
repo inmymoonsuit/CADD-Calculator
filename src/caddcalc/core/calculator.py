@@ -31,6 +31,8 @@ class Step:
 
 @dataclass(frozen=True)
 class Result:
+    """The outcome of one run, with every value in base units."""
+
     calculator_id: str
     method: str
     inputs: Mapping[str, float]
@@ -88,6 +90,7 @@ class Context:
         return self.inputs[key]
 
     def value(self, symbol: str) -> float:
+        """Return the value of ``symbol`` (an input or an earlier step), in base units."""
         return self.symbols[symbol][0]
 
     def calc(
@@ -118,6 +121,7 @@ class Context:
         return self._record(Step(symbol, label, dimension, value, None, note), output)
 
     def warn(self, message: str) -> None:
+        """Add an engineering warning to the result."""
         self.warnings.append(message)
 
     def _record(self, step: Step, output: str | None) -> float:
@@ -155,6 +159,11 @@ class Calculator(ABC):
 
     @classmethod
     def get_method(cls, key: str | None = None) -> Method:
+        """Return the method with ``key``, or the default (first) method if ``key`` is ``None``.
+
+        Raises:
+            InputError: The calculator has no method with that key.
+        """
         if key is None:
             return cls.methods[0]
         for m in cls.methods:
@@ -165,10 +174,12 @@ class Calculator(ABC):
 
     @classmethod
     def params_for(cls, method_key: str) -> tuple[Param, ...]:
+        """Return the parameters that ``method_key`` uses, in declaration order."""
         return tuple(p for p in cls.params if p.used_by(method_key))
 
     @classmethod
     def output(cls, key: str) -> Output:
+        """Return the output declared with ``key``."""
         return next(o for o in cls.outputs if o.key == key)
 
     # --- running --------------------------------------------------------------------------

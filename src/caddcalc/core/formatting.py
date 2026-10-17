@@ -18,6 +18,8 @@ DISCLAIMER = (
 
 @dataclass(frozen=True)
 class DisplayPrefs:
+    """How values are shown: length unit, decimals, and optional inch fractions."""
+
     length_unit: str = "in"
     decimals: int = 4
     angle_decimals: int = 2
@@ -26,6 +28,7 @@ class DisplayPrefs:
 
 
 def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
+    """Return the unit text shown after a value, e.g. ``" in"`` or ``"°"``."""
     if dimension is Dimension.LENGTH:
         return f" {prefs.length_unit}"
     if dimension is Dimension.ANGLE:
@@ -41,6 +44,7 @@ def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> fl
 
 
 def format_number(value: float, decimals: int) -> str:
+    """Return ``value`` rounded to ``decimals`` places, never as negative zero."""
     text = f"{value:.{decimals}f}"
     return "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
 
@@ -48,6 +52,14 @@ def format_number(value: float, decimals: int) -> str:
 def format_value(
     value: float, dimension: Dimension, prefs: DisplayPrefs, *, unit: bool = True
 ) -> str:
+    """Return a base-unit value as display text, e.g. ``0.3119 in``.
+
+    Args:
+        value: The value in base units.
+        dimension: What the value measures.
+        prefs: The display unit, decimals, and fraction preference.
+        unit: Append the unit (and the nearest fraction, when enabled).
+    """
     shown = display_value(value, dimension, prefs)
     decimals = prefs.angle_decimals if dimension is Dimension.ANGLE else prefs.decimals
     text = format_number(shown, decimals)

@@ -47,9 +47,15 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md#adding-a-calculator). In short: subc
 status, write `compute` with `ctx.calc`, add it to the domain's `CALCULATORS` tuple, and add
 tests (a golden or worked example per method).
 
-## Invariants (enforced by tests)
+## Invariants (enforced in CI)
 
-* `caddcalc.core` and `caddcalc.calculators` import nothing outside the standard library.
+The full rule set is in [engineering-guidelines.md](engineering-guidelines.md).
+
+
+* Layers import only downward: CLI, then GUI, then calculators, then core. Function-level
+  imports count too (`uv run lint-imports`).
+* `caddcalc.core` and `caddcalc.calculators` import nothing outside the standard library,
+  and they and `gui.branding` never import Qt.
 * Every method of every built-in calculator runs on its defaults, and every step renders.
 * A method that is `verified` or flagged `legacy` has at least one reference.
 * Legacy methods reproduce the spreadsheet values to 1e-12 relative.

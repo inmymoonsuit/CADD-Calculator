@@ -41,5 +41,8 @@ jobs:
       - name: Type check
         run: uv run mypy
 
+      - name: Architecture (import layers)
+        run: uv run lint-imports
+
       - name: Test
         run: uv run pytest

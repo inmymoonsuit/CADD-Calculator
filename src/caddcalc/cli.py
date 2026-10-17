@@ -22,6 +22,7 @@ from caddcalc.core.units import Dimension, parse_quantity
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the ``caddcalc`` command line and return the exit status."""
     _ensure_unicode_output()
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -130,6 +131,16 @@ def _resolve_param(calc: Calculator, name: str) -> Param:
 
 
 def parse_inputs(calc: Calculator, items: Sequence[str], length_unit: str) -> dict[str, float]:
+    """Parse ``NAME=VALUE`` arguments into base-unit values keyed by parameter key.
+
+    Args:
+        calc: The calculator the inputs belong to.
+        items: Arguments such as ``T=0.1046`` or ``thickness=3mm``.
+        length_unit: The unit for lengths typed without one.
+
+    Raises:
+        InputError: An argument is malformed, names an unknown input, or has a bad value.
+    """
     values: dict[str, float] = {}
     for item in items:
         name, sep, text = item.partition("=")
@@ -157,6 +168,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
 def format_result(
     calc: Calculator, result: Result, prefs: DisplayPrefs, *, show_work: bool = True
 ) -> str:
+    """Render a result as plain text: inputs, work, results, warnings, and status."""
     method = calc.get_method(result.method)
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in calc.params_for(result.method):
@@ -182,7 +194,7 @@ def format_result(
     return "\n".join(lines)
 
 
-def _cmd_gui(args: argparse.Namespace) -> int:
+def _cmd_gui(_args: argparse.Namespace) -> int:
     from caddcalc.gui.app import main as gui_main
 
     return gui_main([])

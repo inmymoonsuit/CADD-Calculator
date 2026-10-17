@@ -25,6 +25,7 @@ Scheme = Literal["light", "dark"]
 
 @cache
 def palette() -> dict[str, Any]:
+    """Return the parsed ``palette.toml``, cached after the first read."""
     data: dict[str, Any] = tomllib.loads((ASSETS / "palette.toml").read_text(encoding="utf-8"))
     return data
 

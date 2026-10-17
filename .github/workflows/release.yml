@@ -1,15 +1,9 @@
 name: Release builds
 
-# Sketch from the 0.3 packaging spike (ADR-0009). It builds the GENERIC edition only.
-#
-# Branded editions are never built here (ADR-0008 item 4, ADR-0011): the repository has
-# no branding pack, the first step fails if a branding/ folder ever appears, and
-# packaging/build.py refuses any branded build when CI is set.
-#
-# Status: the Windows build and smoke test have run locally with the same commands.
-# This workflow has not run on GitHub yet, and the macOS and Linux jobs are untested.
-# The output is a portable archive per OS; real installers (Inno Setup, .dmg, AppImage)
-# come later (roadmap 0.3). Nothing is signed yet (ADR-0009, open questions).
+# Builds and archives the generic edition on version tags, then drafts a release (ADR-0009).
+# Branded editions are never built here (ADR-0008 item 4, ADR-0011): the first step fails
+# if a branding/ folder exists, and packaging/build.py refuses branded builds in CI.
+# Status and limitations: docs/dev/packaging.md, "CI".
 
 on:
   push:

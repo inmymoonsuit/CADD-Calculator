@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from caddcalc.calculators import default_registry
@@ -162,7 +164,7 @@ def test_every_method_runs_on_defaults_and_renders(calc: Calculator) -> None:
         for step in result.steps:
             render_step(step, result, DisplayPrefs())
         for key, value in result.outputs.items():
-            assert value == value, f"{calc.id}/{method.key}: {key} is NaN"
+            assert math.isfinite(value), f"{calc.id}/{method.key}: {key} is not finite"
 
 
 @pytest.mark.parametrize("calc", BUILTINS, ids=lambda c: c.id)

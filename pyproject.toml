@@ -41,11 +41,10 @@ dev = [
     "pytest>=8.3",
     "ruff>=0.8",
     "mypy>=1.13",
+    "import-linter>=2.15",
 ]
-# Packaging only (ADR-0009): `uv sync --extra gui --group build`, then
-# `uv run python packaging/build.py`. Pin Nuitka to the version that pyside6-deploy's
-# default.spec names for the locked PySide6: Nuitka 4.3 builds an app that crashes
-# (engineering log, 2026-10-17). pyside6-deploy needs patchelf on Linux.
+# Packaging only: `uv sync --extra gui --group build` (docs/dev/packaging.md).
+# Nuitka is pinned deliberately; see ADR-0009. pyside6-deploy needs patchelf on Linux.
 build = [
     "nuitka==4.1.1",
     "patchelf>=0.17; sys_platform == 'linux'",
@@ -72,11 +71,52 @@ target-version = "py312"
 src = ["src", "tests", "packaging"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
-# Formula display strings intentionally use math symbols such as · π ° −.
-ignore = ["RUF001", "RUF002", "RUF003"]
+# The standard and the reasons for each exclusion: docs/dev/engineering-guidelines.md.
+select = [
+    "E", "W", "F", "I", "B", "UP", "SIM", "RUF",       # correctness and modern Python
+    "D",                                               # docstrings (Google convention)
+    "N", "C4", "PIE", "RET", "PTH", "TID",             # naming and idioms
+    "PGH", "ERA", "BLE", "ARG",                        # no blanket suppressions, dead code, blind except
+    "PLE", "PLW",                                      # pylint errors and warnings
+    "S",                                               # bandit security checks
+]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # formula text uses math symbols (· π ° −) on purpose
+    "D105", "D107",                # magic methods and __init__ are covered by the class docstring
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D1", "S101"]          # test names document behavior; pytest asserts
+"packaging/**" = ["S603", "S607"]    # build tools run fixed developer executables
 
 [tool.mypy]
 strict = true
 files = ["src", "packaging"]
 python_version = "3.12"
+
+# Architectural boundaries, checked by `uv run lint-imports` (ADR-0003, ADR-0012).
+[tool.importlinter]
+root_package = "caddcalc"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layers: CLI, then GUI, then calculators, then core"
+type = "layers"
+layers = [
+    "caddcalc.cli",
+    "caddcalc.gui",
+    "caddcalc.calculators",
+    "caddcalc.core",
+]
+
+[[tool.importlinter.contracts]]
+name = "Core, calculators, and the branding loader never import Qt"
+type = "forbidden"
+source_modules = ["caddcalc.core", "caddcalc.calculators", "caddcalc.gui.branding"]
+forbidden_modules = ["PySide6", "shiboken6"]

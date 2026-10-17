@@ -1,6 +1,6 @@
 """Optional branding packs for the desktop app (ADR-0008 item 4, ADR-0011).
 
-The public build is unbranded and uses :data:`GENERIC`. A *branding pack* is a folder
+The public build is unbranded and uses ``GENERIC``. A *branding pack* is a folder
 with a ``branding.toml`` file and the files it names::
 
     schema = 1                                   # pack format version (optional)
@@ -74,6 +74,7 @@ class Branding:
 
     @property
     def is_generic(self) -> bool:
+        """Whether this is the built-in, unbranded identity."""
         return self.source is None
 
 
@@ -81,7 +82,11 @@ GENERIC = Branding()
 
 
 def load_branding(pack_dir: Path | str) -> Branding:
-    """Read and check the pack in ``pack_dir``. Raise :class:`BrandingError` if it's invalid."""
+    """Read and check the branding pack in ``pack_dir``.
+
+    Raises:
+        BrandingError: The pack is missing, malformed, or names files it doesn't contain.
+    """
     root = Path(pack_dir)
     toml_path = root / PACK_FILE
     if not toml_path.is_file():
@@ -137,7 +142,7 @@ def find_pack_dir(
 ) -> Path | None:
     """Locate the pack to use (see the module docstring), or ``None`` for the generic build.
 
-    ``app_dir`` defaults to :func:`packaged_app_dir`.
+    ``app_dir`` defaults to ``packaged_app_dir()``.
     """
     env = os.environ if environ is None else environ
     if value := env.get(ENV_VAR, "").strip():

@@ -15,16 +15,35 @@ ENTRY_POINT_GROUP = "caddcalc.calculators"
 
 @dataclass
 class PluginError:
+    """A plugin that failed to load, and the reason."""
+
     source: str
     message: str
 
 
 @dataclass
 class Registry:
+    """Calculators by ID.
+
+    ``caddcalc.calculators.default_registry()`` builds the usual one, with the built-in
+    calculators and any installed plugins.
+    """
+
     _items: dict[str, Calculator] = field(default_factory=dict)
     plugin_errors: list[PluginError] = field(default_factory=list)
 
     def register(self, calculator: Calculator | type[Calculator]) -> Calculator:
+        """Check a calculator's definition and add it.
+
+        Args:
+            calculator: A ``Calculator`` subclass or instance.
+
+        Returns:
+            The registered instance.
+
+        Raises:
+            SpecError: The definition is invalid, or its ID is already registered.
+        """
         instance = calculator() if isinstance(calculator, type) else calculator
         type(instance).validate_spec()
         if instance.id in self._items:
@@ -33,6 +52,11 @@ class Registry:
         return instance
 
     def get(self, calculator_id: str) -> Calculator:
+        """Return the calculator with ``calculator_id``.
+
+        Raises:
+            UnknownCalculatorError: No calculator has that ID; the message suggests close ones.
+        """
         try:
             return self._items[calculator_id]
         except KeyError:
@@ -47,6 +71,7 @@ class Registry:
         return len(self._items)
 
     def by_domain(self) -> dict[str, list[Calculator]]:
+        """Return the calculators grouped by domain, each group sorted by name."""
         grouped: dict[str, list[Calculator]] = {}
         for calc in self:
             grouped.setdefault(calc.domain, []).append(calc)
@@ -66,5 +91,5 @@ class Registry:
                 )
                 for item in items:
                     self.register(item)
-            except Exception as exc:  # a plugin must never crash the host
+            except Exception as exc:  # noqa: BLE001 (isolation boundary: a plugin must never crash the app)
                 self.plugin_errors.append(PluginError(f"{ep.name} = {ep.value}", str(exc)))

@@ -54,10 +54,11 @@ COMPANY = "CADD Calculator contributors"
 
 
 class BuildError(Exception):
-    pass
+    """A build step failed; the message says which and why."""
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the build from the command line and return the exit status."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--branding",
@@ -93,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def running_in_ci() -> bool:
+    """Whether a CI system runs this build (``CI`` or ``GITHUB_ACTIONS`` is set)."""
     return any(os.environ.get(v, "").lower() in {"1", "true"} for v in ("CI", "GITHUB_ACTIONS"))
 
 
@@ -125,6 +127,7 @@ def choose_branding(pack: str | None) -> Branding:
 
 
 def platform_tag() -> str:
+    """Return the platform part of output names, e.g. ``windows-x64``."""
     system = {"win32": "windows", "darwin": "macos"}.get(sys.platform, sys.platform)
     machine = platform.machine().lower()
     arch = {"amd64": "x64", "x86_64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(
@@ -145,7 +148,8 @@ def stage_pack(branding: Branding, dest: Path) -> None:
 
     Anything else in the pack folder (source art, drafts) stays behind.
     """
-    assert branding.source is not None
+    if branding.source is None:
+        raise BuildError("the generic edition has no branding pack to stage")
     notices = [
         p
         for p in branding.source.iterdir()
@@ -160,7 +164,8 @@ def stage_pack(branding: Branding, dest: Path) -> None:
 def exe_icon(branding: Branding, work: Path) -> Path:
     """The icon file each platform's executable needs, converted from PNG if necessary."""
     source = branding.icon or GENERIC.icon
-    assert source is not None
+    if source is None:
+        raise BuildError("no icon to convert for the executable")
     wanted = {"win32": ".ico", "darwin": ".icns"}.get(sys.platform, ".png")
     if source.suffix.lower() == wanted:
         return source
@@ -179,6 +184,7 @@ def exe_icon(branding: Branding, work: Path) -> Path:
 
 
 def nuitka_args(branding: Branding, staged_pack: Path | None) -> list[str]:
+    """Return the Nuitka options for an edition, passed through pyside6-deploy's spec."""
     args = [
         "--noinclude-qt-translations",
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
@@ -203,6 +209,7 @@ def nuitka_args(branding: Branding, staged_pack: Path | None) -> list[str]:
 def write_spec(
     path: Path, *, title: str, icon: Path, exec_dir: Path, mode: str, extra: list[str]
 ) -> None:
+    """Write the pyside6-deploy spec file for one build to ``path``."""
     spec = configparser.ConfigParser(interpolation=None)
     spec["app"] = {
         "title": title,
@@ -226,6 +233,19 @@ def write_spec(
 
 
 def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, object]:
+    """Build one edition with pyside6-deploy and report what was built.
+
+    Args:
+        branding: The edition to build; ``GENERIC`` for the public build.
+        mode: ``"standalone"`` for a folder, or ``"onefile"``.
+        verbose: Print pyside6-deploy's log even when the build succeeds.
+
+    Returns:
+        Facts about the build (output paths, sizes, versions) for the JSON report.
+
+    Raises:
+        BuildError: pyside6-deploy failed, or the output is wrong for the edition.
+    """
     edition_dir = BUILDS / branding.edition
     work = edition_dir / "work"
     name = f"{EXE_STEM}-{__version__}-{branding.edition}-{platform_tag()}"
@@ -261,7 +281,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
     log = work / "deploy.log"
     started = time.perf_counter()
     with log.open("w", encoding="utf-8") as fh:
-        result = subprocess.run(command, cwd=work, stdout=fh, stderr=subprocess.STDOUT)
+        result = subprocess.run(command, cwd=work, stdout=fh, stderr=subprocess.STDOUT, check=False)
     seconds = time.perf_counter() - started
     if verbose or result.returncode:
         print(log.read_text(encoding="utf-8", errors="replace"))
@@ -345,6 +365,7 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
 
 
 def make_archive(output: Path) -> Path:
+    """Pack ``output`` for distribution and return the archive (a file is returned as is)."""
     if sys.platform == "darwin":
         archive = output.with_suffix(".zip")
         subprocess.run(["ditto", "-c", "-k", "--keepParent", str(output), str(archive)], check=True)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Any, cast
+from typing import Any, cast, override
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QTextDocument
@@ -56,9 +56,13 @@ ICON_PX = 32
 
 
 class ResultsBrowser(QTextBrowser):
-    """A QTextBrowser that serves ``icon:<scheme>/<role>/<name>`` images from the vendored
-    Tabler icons, recolored from the palette (see :func:`_img`)."""
+    """A results pane that can show the vendored icons inline.
 
+    It serves ``icon:<scheme>/<role>/<name>`` image URLs (written by ``_img``) by rendering
+    the Tabler icon in the palette color for that role and scheme.
+    """
+
+    @override
     def loadResource(self, type: int, name: QUrl | str) -> Any:
         url = QUrl(name) if isinstance(name, str) else name
         kind = getattr(type, "value", type)
@@ -74,6 +78,8 @@ class ResultsBrowser(QTextBrowser):
 
 
 class MainWindow(QMainWindow):
+    """The main window: calculators on the left; inputs, results, and work on the right."""
+
     def __init__(self, registry: Registry | None = None, branding: Branding = GENERIC) -> None:
         super().__init__()
         self.registry = registry or default_registry()
@@ -186,6 +192,7 @@ class MainWindow(QMainWindow):
             self.select_calculator(str(calc_id))
 
     def select_calculator(self, calc_id: str) -> None:
+        """Show the calculator with ``calc_id`` and build its input form."""
         calc = self.registry.get(calc_id)
         self.calculator = calc
         self.title.setText(calc.name)
@@ -203,6 +210,7 @@ class MainWindow(QMainWindow):
 
     @property
     def method_key(self) -> str:
+        """The key of the method selected in the method box."""
         return str(self.method_box.currentData())
 
     def _on_method_changed(self, _index: int) -> None:
@@ -217,7 +225,8 @@ class MainWindow(QMainWindow):
     # --- form -----------------------------------------------------------------------------
 
     def _rebuild_form(self) -> None:
-        assert self.calculator is not None
+        if self.calculator is None:
+            return
         while self.form.rowCount():
             self.form.removeRow(0)
         self.fields.clear()
@@ -256,6 +265,7 @@ class MainWindow(QMainWindow):
         return errors
 
     def recompute(self) -> None:
+        """Read the inputs, run the calculator, and show the result or the input errors."""
         calc = self.calculator
         if calc is None:
             return
@@ -277,8 +287,11 @@ GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and desi
 
 
 def about_html(branding: Branding) -> str:
-    """Help > About text. A pack replaces the description; the version, the disclaimer,
-    and the link to the source code are always shown."""
+    """Return the Help > About text.
+
+    A branding pack replaces the description. The version, the disclaimer, the link to
+    the source code, and the third-party credits are always shown.
+    """
     return (
         f"<h3>{escape(branding.name)} {escape(__version__)}</h3>"
         + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
@@ -291,7 +304,7 @@ def about_html(branding: Branding) -> str:
 
 
 def _img(name: str, role: str, scheme: Scheme) -> str:
-    """An inline icon for the results pane, served by :class:`ResultsBrowser`."""
+    """Return an inline icon for the results pane, served by ``ResultsBrowser``."""
     return (
         f'<img src="{ICON_URL_SCHEME}:{scheme}/{role}/{name}" width="16" height="16" '
         'align="middle">&nbsp;'
@@ -309,6 +322,7 @@ def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
 def result_html(
     calc: Calculator, result: Result, prefs: DisplayPrefs, scheme: Scheme = "light"
 ) -> str:
+    """Return the results pane as rich text: results, warnings, work, and method."""
     method = calc.get_method(result.method)
     rows = "".join(
         f"<tr><td><b>{escape(o.symbol)}</b></td><td>{escape(o.label)}</td>"

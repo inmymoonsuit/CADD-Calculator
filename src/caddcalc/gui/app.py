@@ -24,6 +24,12 @@ also writes ``smoke-test.json`` and a ``window.png`` screenshot there.
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Start the desktop app and return its exit status.
+
+    Args:
+        argv: Command-line arguments without the program name. ``--smoke-test[=DIR]``
+            is handled here (see ``SMOKE_TEST_FLAG``); the rest go to Qt.
+    """
     started = time.perf_counter()
     try:
         from PySide6.QtGui import QIcon, QPixmap
@@ -45,7 +51,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     branding = active_branding()
 
     app = QApplication.instance() or QApplication([sys.argv[0], *args])
-    assert isinstance(app, QApplication)
+    if not isinstance(app, QApplication):
+        raise TypeError("a non-widget Qt application already exists; the GUI needs QApplication")
     # The application name stays fixed so settings are shared by every edition;
     # the display name is what the user sees in window titles.
     app.setApplicationName("CADD Calculator")

@@ -16,6 +16,8 @@ from caddcalc.core.errors import InputError
 
 
 class Dimension(Enum):
+    """What a quantity measures. Each dimension has one base unit (``BASE_UNITS``)."""
+
     LENGTH = "length"
     ANGLE = "angle"
     RATIO = "ratio"
@@ -23,6 +25,8 @@ class Dimension(Enum):
 
 @dataclass(frozen=True)
 class Unit:
+    """A unit of measure and its conversion factor to the base unit."""
+
     symbol: str
     name: str
     dimension: Dimension
@@ -56,6 +60,11 @@ for _unit in UNITS:
 
 
 def get_unit(symbol: str) -> Unit:
+    """Return the unit for a symbol or alias such as ``in``, ``"`` or ``mm``.
+
+    Raises:
+        InputError: The unit is unknown.
+    """
     try:
         return _LOOKUP[symbol.strip().lower()]
     except KeyError:
@@ -63,15 +72,18 @@ def get_unit(symbol: str) -> Unit:
 
 
 def units_for(dimension: Dimension) -> tuple[Unit, ...]:
+    """Return every unit of ``dimension``."""
     return tuple(u for u in UNITS if u.dimension is dimension)
 
 
 def to_base(value: float, unit: str | Unit) -> float:
+    """Convert ``value`` from ``unit`` to base units."""
     u = unit if isinstance(unit, Unit) else get_unit(unit)
     return value * u.factor
 
 
 def from_base(value: float, unit: str | Unit) -> float:
+    """Convert ``value`` from base units to ``unit``."""
     u = unit if isinstance(unit, Unit) else get_unit(unit)
     return value / u.factor
 

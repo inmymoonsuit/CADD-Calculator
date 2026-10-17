@@ -63,9 +63,9 @@ def test_lesson2_female_die_opening() -> None:
 @pytest.mark.parametrize(
     ("a1", "a2", "expected"),
     [
-        # B10 = FVD - tan(A1/2)(R+T) + BA1/2,  BA = (0.64T + 1.57R)A/90
+        # Cell B10: FVD − tan(A1/2)·(R+T) + BA1/2, with BA = (0.64T + 1.57R)·A/90
         (45, 0, 1.12 - 0.4142135623730950 * 0.2606 + 0.311864 * 45 / 90 / 2),
-        # B14 = FVD - tan(A1/2)(R+T) - tan(A2/2)(R+T) + BA1/2 + BA2/2
+        # Cell B14: FVD − tan(A1/2)·(R+T) − tan(A2/2)·(R+T) + BA1/2 + BA2/2
         (
             60,
             30,

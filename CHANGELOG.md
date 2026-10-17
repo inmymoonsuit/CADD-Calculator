@@ -39,6 +39,9 @@ All notable changes are recorded here. The format follows
   and credited in Help > About.
 - A sketch of a release workflow that builds the generic edition when a version tag is
   pushed and drafts a GitHub release.
+- Engineering guidelines (`docs/dev/engineering-guidelines.md`, ADR-0012), enforced in CI:
+  Google-style docstrings and a best-practice ruff rule set, import-linter layer contracts
+  (`uv run lint-imports`), and mypy strict. The codebase was brought into line.
 
 ### Changed
 - `default_registry()` moved from `caddcalc.core` to `caddcalc.calculators`, so core no

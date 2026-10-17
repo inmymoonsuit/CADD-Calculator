@@ -21,6 +21,14 @@ from functools import lru_cache
 
 from caddcalc.core.errors import CalculationError, SpecError
 
+
+def _tand(deg: float) -> float:
+    """Tangent of an angle in degrees, refusing angles where it is undefined."""
+    if abs(math.cos(math.radians(deg))) < 1e-12:
+        raise ValueError(f"tan is undefined at {deg:g}°")
+    return math.tan(math.radians(deg))
+
+
 FUNCTIONS: dict[str, Callable[..., float]] = {
     "sqrt": math.sqrt,
     "abs": abs,
@@ -28,18 +36,12 @@ FUNCTIONS: dict[str, Callable[..., float]] = {
     "max": max,
     "sind": lambda deg: math.sin(math.radians(deg)),
     "cosd": lambda deg: math.cos(math.radians(deg)),
-    "tand": lambda deg: _tand(deg),
+    "tand": _tand,
     "asind": lambda x: math.degrees(math.asin(x)),
     "acosd": lambda x: math.degrees(math.acos(x)),
     "atand": lambda x: math.degrees(math.atan(x)),
     "atan2d": lambda y, x: math.degrees(math.atan2(y, x)),
 }
-
-
-def _tand(deg: float) -> float:
-    if abs(math.cos(math.radians(deg))) < 1e-12:
-        raise ValueError(f"tan is undefined at {deg:g}°")
-    return math.tan(math.radians(deg))
 
 
 # (minimum, maximum) argument counts; None means unlimited.
@@ -185,7 +187,8 @@ def evaluate(expression: str, symbols: Mapping[str, float]) -> float:
 
 def _eval(node: ast.expr, symbols: Mapping[str, float], expression: str) -> float:
     if isinstance(node, ast.Constant):
-        assert isinstance(node.value, int | float)
+        if isinstance(node.value, bool) or not isinstance(node.value, int | float):
+            raise SpecError(f"Formula {expression!r} contains a non-numeric constant")
         return float(node.value)
     if isinstance(node, ast.Name):
         if node.id in CONSTANTS:
@@ -212,14 +215,14 @@ _TOKEN = re.compile(r"\d+\.?\d*(?:[eE][-+]?\d+)?|\.\d+|[A-Za-z_]\w*|\*\*|\*")
 
 def _render(expression: str, name_text: Callable[[str], str]) -> str:
     def replace(m: re.Match[str]) -> str:
-        token = m.group(0)
-        if token == "**":
+        lexeme = m.group(0)
+        if lexeme == "**":
             return "^"
-        if token == "*":
+        if lexeme == "*":
             return "·"
-        if token[0].isalpha() or token[0] == "_":
-            return name_text(token)
-        return token
+        if lexeme[0].isalpha() or lexeme[0] == "_":
+            return name_text(lexeme)
+        return lexeme
 
     return _TOKEN.sub(replace, expression)
 
