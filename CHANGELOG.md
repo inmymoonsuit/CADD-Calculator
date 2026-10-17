@@ -28,6 +28,9 @@ All notable changes are recorded here. The format follows
 - An interim generic app icon, drawn in code.
 - `caddcalc-gui --smoke-test[=DIR]` opens the window, optionally writes a report and a
   screenshot to DIR, and exits. It is used to check packaged builds.
+- UI color palette (crimson, slate, amber, ink) with light and dark role mappings in
+  `gui/assets/palette.toml`, documented in `docs/dev/design/palette.md`. A test keeps every
+  text/background pair at or above WCAG AA contrast.
 - A sketch of a release workflow that builds the generic edition when a version tag is
   pushed and drafts a GitHub release.
 

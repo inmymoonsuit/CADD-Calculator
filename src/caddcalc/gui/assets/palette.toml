@@ -1,0 +1,38 @@
+# CADD Calculator UI palette, shared by every edition (branded or not).
+# Design notes, swatches, and contrast checks: docs/dev/design/palette.md
+# tests/test_palette.py enforces that every role pair below stays readable (WCAG 2.x).
+schema = 1
+
+[colors]
+crimson = "#A3122F"
+slate = "#77848B"
+amber = "#F2BA52"
+ink = "#21251F"
+white = "#FFFFFF"
+
+# Roles name a color above. "on_X" is the text or icon color used on top of X.
+[light]
+background = "white"
+text = "ink"
+primary = "crimson"     # primary buttons, selection, headings; text on white is fine (7.8:1)
+on_primary = "white"
+accent = "amber"        # highlight fills only; never text on white (1.8:1)
+on_accent = "ink"
+muted = "slate"         # borders, dividers, icons, disabled; not small text (3.8:1)
+error = "crimson"
+on_error = "white"
+warning = "amber"
+on_warning = "ink"
+
+[dark]
+background = "ink"
+text = "white"
+primary = "crimson"     # fills with white text only; crimson text on ink is too faint (2.0:1)
+on_primary = "white"
+accent = "amber"        # headings, links, focus rings; reads well on ink (8.8:1)
+on_accent = "ink"
+muted = "slate"         # borders, dividers, icons, disabled (4.0:1)
+error = "crimson"
+on_error = "white"
+warning = "amber"
+on_warning = "ink"

@@ -6,6 +6,7 @@
 # Binary assets
 *.png binary
 *.jpg binary
+*.jpeg binary
 *.ico binary
 *.icns binary
 *.xls binary

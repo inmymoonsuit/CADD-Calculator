@@ -50,6 +50,8 @@ has been checked. The suite starts with sheet metal and grows by domain.
       A workflow that builds generic archives on tags and drafts a release is sketched in
       `.github/workflows/release.yml`. It hasn't run on GitHub, and macOS and Linux are untested.
 - [ ] Third-party license notices in the app folder (KI-016)
+- [ ] Light and dark Qt themes built from the UI palette (`gui/assets/palette.toml`,
+      [design/palette.md](design/palette.md)), replacing the ad-hoc HTML colors in `gui/window.py`
 - [ ] Generic art for the public build: logo/app icon (Windows `.ico`, macOS `.icns`,
       Linux PNG sizes) and splash. Use original work, released permissively (see
       ADR-0008, item 4), with the source files (SVG or `.blend`) committed so others can
