@@ -718,3 +718,18 @@ These refine the one-formula-string entry above; they replace its exponent limit
   the text shown for them, not to numbers, and `expression_unit` names the unit; each is
   `null` for an ordinary step.
 
+### 2026-10-17: gauge-table citations and labels after review (maintainer, phase 2a)
+
+These refine the corrections-path and gauge-picker entries above.
+
+* **Standards are cited by designation only,** with no url: the ASTM store urls are
+  removed rather than unverified ones added.
+* **ANSI H35.2 is cited at its current edition, 2024,** found on the ANSI webstore. Only
+  the citation changes; no H35.2 content ships.
+* **Each system's label names its material,** as US Standard's already did:
+  "Manufacturers' Standard, steel sheet", "Galvanized, coated steel sheet", and
+  "AWG (Brown & Sharpe), nonferrous". Results name it in the derived value's source.
+* **The wheel doesn't change a choice.** A choice's boxes take the focus only by click or
+  tab, and ignore the mouse wheel, so scrolling past them can't change a gauge unseen.
+* The table stays at version 1 and its digest is re-pinned; it hasn't been released.
+

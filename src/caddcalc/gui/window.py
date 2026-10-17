@@ -9,7 +9,7 @@ from functools import partial
 from html import escape
 from typing import Any, cast, override
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QEvent, QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -133,6 +133,19 @@ class _EditStart:
     in_use: float | None
 
 
+class _WheelGuard(QObject):
+    """Ignores the mouse wheel on the widgets it watches, such as a choice's boxes.
+
+    A wheel turned over a choice box would change the choice, and with it the values it
+    derives, without a click, even while another field has the focus (review M1). The
+    boxes still change by click and by keyboard.
+    """
+
+    @override
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        return event.type() == QEvent.Type.Wheel
+
+
 class ResultsBrowser(QTextBrowser):
     """A results pane that can show the vendored icons inline.
 
@@ -202,6 +215,7 @@ class MainWindow(QMainWindow):
         self.choice_groups: dict[tuple[str, str], str] = {}
         """The group picked for a choice with no option chosen yet, by (domain id, key)."""
         self.domain_notices: list[str] = []
+        self._wheel_guard = _WheelGuard(self)
         """Choices the last change cleared, announced on the settings page until the next."""
         self.pending_settings: dict[tuple[str, str], str] = {}
         """Text typed in a settings field but not applied, by (domain id, setting key).
@@ -869,6 +883,10 @@ class MainWindow(QMainWindow):
         grouped = any(o.group for o in domain.options(choice.key, self._selections(domain)))
         group_box = QComboBox() if grouped else None
         option_box = QComboBox()
+        for box in (group_box, option_box):
+            if box is not None:
+                box.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                box.installEventFilter(self._wheel_guard)
         boxes = QHBoxLayout()
         if group_box is not None:
             group_box.setToolTip(choice.help)

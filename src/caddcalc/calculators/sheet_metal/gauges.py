@@ -232,7 +232,7 @@ class GaugeSystem:
 
     @property
     def group(self) -> str:
-        """The system as its options' group, e.g. ``"Manufacturers' Standard"``."""
+        """The system as its options' group, e.g. ``"Manufacturers' Standard, steel sheet"``."""
         return f"{self.name}, {self.scope}" if self.scope else self.name
 
 

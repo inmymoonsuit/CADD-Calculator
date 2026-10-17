@@ -15,8 +15,9 @@ from tests.qt_helpers import open_window, plain, type_into
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
 BEND = "sheet_metal.bend_allowance"
-MSG = "Manufacturers' Standard"
-GAUGE_SOURCE = "12 ga, Manufacturers' Standard (nominal), Gauge systems, version 1"
+MSG = "Manufacturers' Standard, steel sheet"
+GALVANIZED = "Galvanized, coated steel sheet"
+GAUGE_SOURCE = "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 1"
 CAUTION = (
     "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check the "
     "material's specification or measure before cutting."
@@ -58,10 +59,10 @@ def test_no_gauge_is_chosen_by_default_so_thickness_is_typed() -> None:
     systems, gauges = window.choice_rows["gauge"]
     assert [systems.itemText(i) for i in range(systems.count())] == [
         "None",
-        "Manufacturers' Standard",
-        "Galvanized",
+        "Manufacturers' Standard, steel sheet",
+        "Galvanized, coated steel sheet",
         "US Standard 1893, as commonly used for stainless; practice varies",
-        "AWG (Brown & Sharpe)",
+        "AWG (Brown & Sharpe), nonferrous",
     ]
     assert (gauges.currentText(), gauges.isEnabled()) == ("Choose…", False)
     assert gauge(window) is None
@@ -81,7 +82,7 @@ def test_choosing_a_gauge_shows_the_derived_thickness_its_caution_and_work() -> 
     thickness = window.setting_fields["thickness"][1]
     assert (thickness.text(), thickness.placeholderText()) == (
         "",
-        "0.1046 in (12 ga, Manufacturers' Standard (nominal))",
+        "0.1046 in (12 ga, Manufacturers' Standard, steel sheet (nominal))",
     )
     text = about(window, "thickness")
     assert f"From {GAUGE_SOURCE}: 0.1046 in" in text
@@ -96,13 +97,13 @@ def test_choosing_a_gauge_shows_the_derived_thickness_its_caution_and_work() -> 
 def test_changing_the_system_resets_the_gauge_number() -> None:
     window = open_window()
     pick(window, MSG, "12 ga")
-    pick(window, "Galvanized")
+    pick(window, GALVANIZED)
     _systems, gauges = window.choice_rows["gauge"]
     assert gauge(window) is None
     assert (gauges.currentText(), gauges.count()) == ("Choose…", 28)
     assert window.setting_fields["thickness"][1].placeholderText() == "not set"
 
-    pick(window, "Galvanized", "12 ga")
+    pick(window, GALVANIZED, "12 ga")
     assert gauge(window) == "galv:12"
     pick(window, None)
     assert gauge(window) is None and not window.choice_rows["gauge"][1].isEnabled()
@@ -204,4 +205,33 @@ def test_the_gauges_work_is_true_in_millimetres() -> None:
     shown = result(window)
     assert "= (70 + 0) / 16 / 41.82\n" in shown
     assert "= 0.1046 in = 2.6568 mm\n" in shown
+    window.close()
+
+
+def test_the_wheel_doesnt_change_a_gauge() -> None:
+    """Review M1: a wheel tick over a box changed the gauge while T had the focus."""
+    from PySide6.QtCore import QPoint, QPointF, Qt
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtWidgets import QApplication
+
+    window = open_window()
+    pick(window, MSG, "12 ga")
+    window.setting_fields["thickness"][1].setFocus()
+    for box in window.choice_rows["gauge"]:
+        assert box.focusPolicy() is Qt.FocusPolicy.StrongFocus
+        for delta in (-120, 120):
+            tick = QWheelEvent(
+                QPointF(5, 5),
+                QPointF(5, 5),
+                QPoint(0, 0),
+                QPoint(0, delta),
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+                Qt.ScrollPhase.NoScrollPhase,
+                False,
+            )
+            QApplication.sendEvent(box, tick)
+    assert gauge(window) == "msg:12"
+    systems, gauges = window.choice_rows["gauge"]
+    assert (systems.currentText(), gauges.currentText()) == (MSG, "12 ga")
     window.close()

@@ -36,14 +36,14 @@ edition = "29th ed., Industrial Press, 2012"
 license = "cite_only_fact"
 cite_only_cap = 1
 
-# The tolerance standards are cited by designation only; none of their values ship.
+# The tolerance standards are cited by designation only, with no url; none of their
+# values ship.
 
 [[publication]]
 id = "astm_a568"
 kind = "standard"
 title = "ASTM A568/A568M"
 edition = "2025, rev. a"
-url = "https://store.astm.org/a0568_a0568m-25a.html"
 license = "cite_only_fact"
 
 [[publication]]
@@ -51,7 +51,6 @@ id = "astm_a924"
 kind = "standard"
 title = "ASTM A924/A924M"
 edition = "2026"
-url = "https://store.astm.org/a0924_a0924m-26.html"
 license = "cite_only_fact"
 
 [[publication]]
@@ -72,7 +71,7 @@ license = "cite_only_fact"
 id = "ansi_h35_2"
 kind = "standard"
 title = "ANSI H35.2"
-edition = "2017"
+edition = "2024"
 license = "cite_only_fact"
 
 [[source]]
@@ -165,6 +164,7 @@ oz_per_sq_ft = { "0000000" = "320", "000000" = "300", "00000" = "280", "0000" = 
 [[system]]
 id = "msg"
 name = "Manufacturers' Standard"
+scope = "steel sheet"
 size_label = "ga"
 formula = "weight"
 constants = { B = "steel_basis" }
@@ -179,6 +179,7 @@ tolerances = ["uncoated_steel_tolerances"]
 [[system]]
 id = "galv"
 name = "Galvanized"
+scope = "coated steel sheet"
 size_label = "ga"
 formula = "weight"
 constants = { B = "steel_basis", c = "galvanized_coating" }
@@ -206,6 +207,7 @@ tolerances = ["stainless_tolerances"]
 [[system]]
 id = "awg"
 name = "AWG (Brown & Sharpe)"
+scope = "nonferrous"
 size_label = "AWG"
 formula = "awg"
 constants = { d0000 = "awg_0000", d36 = "awg_36" }

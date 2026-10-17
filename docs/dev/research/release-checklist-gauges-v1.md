@@ -3,7 +3,7 @@
 The ADR-0014 §5 checklist, applied to the gauge table before its first public release.
 
 * **Table:** `src/caddcalc/calculators/sheet_metal/data/gauges.toml`, "Gauge systems",
-  version 1, digest `3542868c5b82651082115ffa5c36f75524f8b760ab1d2a49496deb3ee13a343d`
+  version 1, digest `ed6163290ce1b92eb929efa905c5fcb7a7e9eeaacd83990a8e7cad1e32f51d0d`
   (pinned in `tests/test_refdata.py`).
 * **Prepared by:** the Calculator Engine session, 2026-10-17, from Support & Review's dry
   run in its review of the gauge data (2a.3). The dry run passed items 1 to 6, and item 7
@@ -17,7 +17,7 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
 | 3 | Embedded third-party content | pass | Circular 391 reprints 1927–1929 ASTM and industry tolerance tables; none is used. Only the Bureau's own definitions ship. The statute credits no one else. |
 | 4 | Safety rules | pass | Phase 2a ships no strengths, limits, or checks, so no conservative value or basis is at stake. A derived thickness out of a calculator's range is refused, and the error names the gauge. |
 | 5 | Liability labels | pass | A gauge's thickness is labelled "(nominal)", and every result that uses it, or a copy of it, carries "Nominal thickness; mill tolerances apply (see …). Check the material's specification or measure before cutting." Its references carry their scope (`test_choosing_a_gauge_derives_the_thickness_with_its_caution`, `test_an_unticked_copy_keeps_the_gauges_name_and_its_caution`). |
-| 6 | Currency | pass | Every source records its access date (2026-10-17) and every publication its edition: the statute's 2024 edition (its url pinned to 2024), Circular 391 (1931), MH29 29th ed., and each ASTM and ANSI revision; B209 is marked "latest revision seen, as of 2026-10-17". No superseded source is used. Re-check the ASTM revisions at each release. |
+| 6 | Currency | pass | Every source records its access date (2026-10-17) and every publication its edition: the statute's 2024 edition (its url pinned to 2024), Circular 391 (1931), MH29 29th ed., and each ASTM and ANSI revision. Support & Review confirmed all four ASTM editions (A568/A568M-25a, A924/A924M-26, A480/A480M-25b, B209/B209M-21a) as "Standard Active" on ASTM's store on 2026-10-17, and found ANSI H35.2's current edition, 2024, on the ANSI webstore; the table cites it. B209 is also marked "latest revision seen, as of 2026-10-17". No superseded source is used. Re-check the editions at each release. |
 | 7 | Corrections and removal | pass | CONTRIBUTING.md, "Reporting a wrong or rights-encumbered value", and `.github/ISSUE_TEMPLATE/reference_value.md` promise to fix or remove a value promptly. The README and the sheet-metal user guide link to them (bcf13b7). Every value is traceable through its source. |
 
 ## Sign-off

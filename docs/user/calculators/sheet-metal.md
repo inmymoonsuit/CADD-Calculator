@@ -50,11 +50,13 @@ until you pick one, so by default you type the decimal thickness.
 
 | System | Gauges | Stated to |
 |---|---|---|
-| Manufacturers' Standard (steel sheet) | 3 to 38 | 4 decimal places |
-| Galvanized | 8 to 34 | 4 decimal places |
+| Manufacturers' Standard, steel sheet | 3 to 38 | 4 decimal places |
+| Galvanized, coated steel sheet | 8 to 34 | 4 decimal places |
 | US Standard 1893, as commonly used for stainless; practice varies | 7/0 to 38 | the statute's exact decimals |
-| AWG (Brown & Sharpe) | 4/0 to 40 | 4 decimal places, 5 below 0.0100 in |
+| AWG (Brown & Sharpe), nonferrous | 4/0 to 40 | 4 decimal places, 5 below 0.0100 in |
 
+* The boxes change by click or keyboard, not by the mouse wheel, so scrolling past
+  them can't change the gauge.
 * **Name the system, always.** 12 ga is 0.1046 in in Manufacturers' Standard, 0.1084 in
   galvanized, 0.109375 in in US Standard, and 0.0808 in in AWG. A gauge number alone
   can't be chosen, and changing the system clears the number.
@@ -80,15 +82,15 @@ until you pick one, so by default you type the decimal thickness.
   and a ticked **Use Sheet Metal value** box. The field is read-only while the box is
   ticked, and the result lists the value as *Sheet Metal settings*.
 * A gauge's thickness works the same way. The result lists it by its gauge, e.g.
-  *12 ga, Manufacturers' Standard (nominal), Gauge systems, version 1*, carries the
-  caution, and shows the gauge's work before the calculator's own.
+  *12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 1*,
+  carries the caution, and shows the gauge's work before the calculator's own.
 * To give one calculator its own value, **untick the box**. The field keeps an exact
   copy of the family value, so nothing changes until you edit it; the result lists it
   as *copied from Sheet Metal settings*, and as *entered* once you type a new value.
   The override lasts for the session, even if the family value changes later; the
   copy is then listed as *copied earlier from Sheet Metal settings*. A copy of a gauge's
-  thickness is listed as *copied from 12 ga, Manufacturers' Standard (nominal), …*, and
-  keeps the caution until you type a new value.
+  thickness is listed as *copied from 12 ga, Manufacturers' Standard, steel sheet
+  (nominal), …*, and keeps the caution until you type a new value.
 * While a field overrides a set value, a note under it shows both values, e.g.
   "Sheet Metal value is 0.2500 in; this calculator uses 0.1046 in." Tick the box to
   use the family value again. The settings page shows how many calculators override
