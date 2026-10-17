@@ -84,6 +84,9 @@ All notable changes are recorded here. The format follows
   that matches domain IDs and names, and `Registry.by_domain()` is keyed by `Domain`.
 - `UnknownCalculatorError` and `UnknownDomainError` print their message without the
   quotes `KeyError` adds, so the CLI shows `error: No calculator 'x'.`
+- A calculator default that doesn't parse or is out of range fails registration with
+  `SpecError`, as a definition bug, instead of an input error. `Registry()` and
+  `DomainSettings()` start empty and are filled only through their checked methods.
 - Parameter and domain-setting symbols must be usable in formulas: an identifier that
   isn't a Python keyword or an evaluator function or constant. Domain setting symbols
   must also be unique.

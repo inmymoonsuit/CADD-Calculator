@@ -167,6 +167,20 @@ def test_parameter_symbols_must_be_usable_in_formulas(symbol: str) -> None:
         demo_registry().register(BadSymbol)
 
 
+@pytest.mark.parametrize("default", ["-1 in", "abc"])
+def test_a_bad_default_is_a_definition_error(default: str) -> None:
+    class BadDefault(_Demo):
+        params = (Param("length", "X", "Length", L, default=default, minimum=0.0),)
+
+    with pytest.raises(SpecError, match="'length' has a bad default"):
+        demo_registry().register(BadDefault)
+
+
+def test_a_registry_is_filled_only_by_registering() -> None:
+    with pytest.raises(TypeError):
+        Registry(_items={"demo.double": _Demo()})  # type: ignore[call-arg]
+
+
 def test_registry_suggests_close_ids() -> None:
     with pytest.raises(UnknownCalculatorError, match=r"sheet_metal\.bend_allowance"):
         default_registry(load_plugins=False).get("sheet_metal.bend_alowance")

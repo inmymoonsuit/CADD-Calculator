@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from caddcalc.core.spec import Reference
+from caddcalc.core.reference import Reference
 
 
 class SourceKind(Enum):

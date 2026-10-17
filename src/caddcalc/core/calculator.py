@@ -272,7 +272,12 @@ class Calculator(ABC):
 
     @classmethod
     def validate_spec(cls) -> None:
-        """Check the class definition. Called on registration so plugin mistakes fail early."""
+        """Check the class definition. Called on registration so plugin mistakes fail early.
+
+        Raises:
+            SpecError: The definition is invalid, including a default that doesn't parse
+                or is out of range.
+        """
         for attr in ("id", "name", "domain", "summary", "params", "outputs", "methods"):
             if not hasattr(cls, attr):
                 raise SpecError(f"{cls.__name__} is missing class attribute {attr!r}")
@@ -299,7 +304,12 @@ class Calculator(ABC):
                 if mk not in method_keys:
                     raise SpecError(f"{cls.id}: parameter {p.key!r} names unknown method {mk!r}")
             if p.default is not None:
-                p.check(p.default_value() or 0.0, DEFAULT)
+                try:
+                    p.check(p.default_value() or 0.0, DEFAULT)
+                except InputError as exc:
+                    raise SpecError(
+                        f"{cls.id}: parameter {p.key!r} has a bad default: {exc}"
+                    ) from exc
 
 
 def _resolve(

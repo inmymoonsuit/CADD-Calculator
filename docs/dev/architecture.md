@@ -19,7 +19,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 ┌───────────────────── caddcalc.core  (stdlib only) ───────────────────────┐
 │  units.py       Dimension, Unit, parse_quantity (fractions, suffixes)    │
 │  expr.py        safe formula evaluator + symbolic/numeric rendering      │
-│  spec.py        Param, Output, Method, Reference, Verification           │
+│  spec.py        Param, Output, Method, Verification, OutOfRangeError     │
+│  reference.py   Reference: a citation (title, detail, URL)               │
 │  calculator.py  Calculator (base), Context, Step, Result                 │
 │  provenance.py  SourceKind, InputSource: where each input came from      │
 │  domain.py      Domain: a calculator family and its shared settings      │

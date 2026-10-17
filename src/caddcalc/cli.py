@@ -39,6 +39,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return int(args.handler(args))
     except CaddCalcError as exc:
+        # Only running a calculator raises range errors, and _cmd_run words them itself.
         return _fail(str(exc))
 
 

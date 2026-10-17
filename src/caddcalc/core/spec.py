@@ -1,4 +1,4 @@
-"""Declarative pieces of a calculator definition: parameters, outputs, methods, references."""
+"""Declarative pieces of a calculator definition: parameters, outputs, and methods."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from enum import Enum
 
 from caddcalc.core.errors import InputError
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
+from caddcalc.core.reference import Reference
 from caddcalc.core.units import BASE_UNITS, Dimension, parse_quantity
 
 
@@ -23,22 +24,6 @@ class Verification(Enum):
     """No published worked example has been checked yet."""
     VERIFIED = "verified"
     """Checked against at least one cited published source, with a worked example as a test."""
-
-
-@dataclass(frozen=True)
-class Reference:
-    """A citation. Cite edition, section, and page. Do not copy copyrighted text or tables."""
-
-    title: str
-    detail: str = ""
-    url: str = ""
-
-    def __str__(self) -> str:
-        return f"{self.title}, {self.detail}" if self.detail else self.title
-
-    def to_dict(self) -> dict[str, str]:
-        """Return a JSON-serialisable form."""
-        return {"title": self.title, "detail": self.detail, "url": self.url}
 
 
 @dataclass(frozen=True)

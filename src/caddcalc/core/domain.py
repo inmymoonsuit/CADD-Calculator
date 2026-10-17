@@ -9,7 +9,8 @@ from types import MappingProxyType
 
 from caddcalc.core import expr
 from caddcalc.core.errors import SpecError, UsageError
-from caddcalc.core.spec import Param, Reference
+from caddcalc.core.reference import Reference
+from caddcalc.core.spec import Param
 
 _DOMAIN_ID = re.compile(r"[a-z][a-z0-9_]*")
 

@@ -57,12 +57,13 @@ class Registry:
     """Domains and calculators by ID.
 
     ``caddcalc.calculators.default_registry()`` builds the usual one, with the built-in
-    domains and calculators and any installed plugins.
+    domains and calculators and any installed plugins. A new registry is empty, and the
+    ``register`` methods, which check each definition, are the only way to fill it.
     """
 
-    _items: dict[str, Calculator] = field(default_factory=dict)
-    _domains: dict[str, Domain] = field(default_factory=dict)
-    plugin_errors: list[PluginError] = field(default_factory=list)
+    _items: dict[str, Calculator] = field(default_factory=dict, init=False)
+    _domains: dict[str, Domain] = field(default_factory=dict, init=False)
+    plugin_errors: list[PluginError] = field(default_factory=list, init=False)
     entry_points: EntryPointSource = field(
         default=metadata.entry_points, kw_only=True, repr=False, compare=False
     )
