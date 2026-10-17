@@ -54,11 +54,17 @@ def test_cli_run_json_and_metric(capsys: pytest.CaptureFixture[str]) -> None:
 def test_cli_reports_notes_with_their_kind(capsys: pytest.CaptureFixture[str]) -> None:
     args = ["run", "sheet_metal.bend_allowance", "T=0.25", "R=0.1"]
     assert main([*args, "--json"]) == 0
-    notes = json.loads(capsys.readouterr().out)["warnings"]
-    assert [(n["kind"], n["reference"]) for n in notes] == [("limit_exceeded", None)]
+    notes = json.loads(capsys.readouterr().out)["notes"]
+    assert [(n["kind"], n["references"], n["subjects"]) for n in notes] == [
+        ("warning", [], ["inside_radius", "thickness"])
+    ]
     assert "minimum bend radius" in notes[0]["text"]
     assert main(args) == 0
-    assert "  ! Limit exceeded: Inside radius is smaller" in capsys.readouterr().out
+    assert "Notes\n  ! Inside radius is smaller" in capsys.readouterr().out
+
+    short = ["run", "sheet_metal.segment_flat_length", "FVD=0.2", "A1=90", "A2=90"]
+    assert main(short) == 0
+    assert "  ! Not makeable: The flat length is zero or negative" in capsys.readouterr().out
 
 
 def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
@@ -75,16 +81,17 @@ def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
 @pytest.mark.gui
 def test_gui_results_mark_each_kind_of_note() -> None:
     pytest.importorskip("PySide6.QtWidgets")
-    from caddcalc.calculators.sheet_metal import BendAllowance
+    from caddcalc.calculators.sheet_metal import FormedSegmentFlatLength
     from caddcalc.core.formatting import DisplayPrefs
     from caddcalc.gui.window import result_html
 
-    calc = BendAllowance()
-    result = calc.run({"thickness": 3.0, "inside_radius": 1.0, "bend_angle": 120.0})
+    calc = FormedSegmentFlatLength()
+    result = calc.run({"formed_dimension": 1.0, "bend_angle_1": 120.0, "bend_angle_2": 90.0})
     html = result_html(calc, result, DisplayPrefs())
-    assert "icon:light/icon_error/alert-circle" in html, "a limit is marked as an error"
+    assert "icon:light/icon_error/alert-circle" in html, "an impossibility is marked as an error"
     assert "icon:light/icon_warning/alert-triangle" in html, "a warning is marked as one"
-    assert "Limit exceeded: Inside radius" in html
+    assert "Not makeable: The flat length" in html
+    assert "Notes</h3>" in html
 
 
 @pytest.mark.gui

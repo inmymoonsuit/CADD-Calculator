@@ -167,18 +167,21 @@ _NOTE_HEADINGS = {
     NoteKind.WARNING: "",
     NoteKind.LIMIT_EXCEEDED: "Limit exceeded",
     NoteKind.NO_APPLICABLE_VALUE: "No applicable value",
+    NoteKind.INFEASIBLE: "Not makeable",
 }
 """How each kind of note is introduced; a plain warning needs no heading."""
 
 
 def describe_note(note: Note) -> str:
-    """Return a note as one line for users: its kind, its text, and its source.
+    """Return a note as one line for users: its kind, its text, and its sources.
 
     The GUI and the CLI both use this, so a note reads the same in both.
     """
     heading = _NOTE_HEADINGS[note.kind]
     text = f"{heading}: {note.text}" if heading else note.text
-    return text if note.reference is None else f"{text} ({note.reference})"
+    if not note.references:
+        return text
+    return f"{text} ({'; '.join(str(reference) for reference in note.references)})"
 
 
 def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> list[str]:

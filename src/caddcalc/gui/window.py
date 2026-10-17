@@ -84,6 +84,8 @@ DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 NO_CALCULATORS = "No calculators loaded"
 """Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 ERROR_STYLE = "QLineEdit { border: 1px solid #c0392b; }"
+NOTE_STYLE = "QLineEdit { border: 1px solid #b9770e; }"
+"""Outlines a field that a note on the result concerns."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
 """Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
@@ -745,6 +747,10 @@ class MainWindow(QMainWindow):
         except CaddCalcError as exc:
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
+        for note in self.result.notes:
+            for key in note.subjects:
+                if key in self.fields:
+                    self.fields[key][1].setStyleSheet(NOTE_STYLE)
         self.output.setHtml(result_html(calc, self.result, self.prefs, scheme))
 
     # --- domain settings page -------------------------------------------------------------
@@ -930,6 +936,7 @@ _NOTE_ICONS = {
     NoteKind.WARNING: ("alert-triangle", "icon_warning"),
     NoteKind.LIMIT_EXCEEDED: ("alert-circle", "icon_error"),
     NoteKind.NO_APPLICABLE_VALUE: ("info-circle", "icon"),
+    NoteKind.INFEASIBLE: ("alert-circle", "icon_error"),
 }
 """The icon and palette role that mark each kind of note in the results pane."""
 
@@ -997,7 +1004,7 @@ def _domain_note_html(domain: Domain, *, has_calculators: bool, errors: Sequence
 def result_html(
     calc: Calculator, result: Result, prefs: DisplayPrefs, scheme: Scheme = "light"
 ) -> str:
-    """Return the results pane as rich text: results, warnings, inputs, work, and method."""
+    """Return the results pane as rich text: results, notes, inputs, work, and method."""
     method = calc.get_method(result.method)
     rows = "".join(
         f"<tr><td><b>{escape(o.symbol)}</b></td><td>{escape(o.label)}</td>"
@@ -1006,14 +1013,14 @@ def result_html(
         for o in calc.outputs
     )
     parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"]
-    if result.warnings:
+    if result.notes:
         warn = "".join(
             f"<li>{_img(*_NOTE_ICONS[note.kind], scheme)}{escape(describe_note(note))}</li>"
-            for note in result.warnings
+            for note in result.notes
         )
         parts.append(
             f"<h3 style='color:#b9770e'>{_img('alert-triangle', 'icon_warning', scheme)}"
-            f"Warnings</h3><ul>{warn}</ul>"
+            f"Notes</h3><ul>{warn}</ul>"
         )
     inputs = "".join(
         f"<tr><td><b>{escape(p.symbol)}</b></td><td>{escape(p.label)}</td>"

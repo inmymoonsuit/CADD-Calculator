@@ -135,8 +135,11 @@ The research changed what phase 2 can promise.
   * its basis: specification minimum, typical, A-basis, or rule of thumb
   * a `Reference` and the date accessed. `Reference` today has only a title, detail, and
     URL, so it gains optional structured fields: edition, locator (table, figure, or
-    page), and date accessed. Only the data-table validator requires them, so existing
-    references and `to_dict` keep working.
+    page), date accessed, and **scope**, the practice a source describes, e.g.
+    "aerospace bench practice". Only the data-table validator requires them, and it
+    requires a scope on any source a check uses; existing references and `to_dict` keep
+    working. `describe_note` shows a reference's scope, so a note says how far its
+    source applies.
   * its license: public domain, cite-only fact, or our own measurement
   * its trust level: verified derivation, handbook rule, specification guidance, or rule
     of thumb. This is a separate type from `Verification`, which rates *methods*
@@ -169,11 +172,18 @@ The research changed what phase 2 can promise.
     through the domain's tables into `derived`.
   * `run()`'s signature doesn't change.
 * **Structured result notes.** The GUI needs to style "no applicable value" apart from
-  "radius too small", and tests need to assert which one appeared, so warnings are
+  "radius too small", and tests need to assert which one appeared, so results carry
   structured notes. They landed in phase 1's close-out (ADR-0013 slice 7), before that
-  surface was released: `core.notes` provides `Note` (kind, text, and an optional
-  `Reference`) and `NoteKind` (`warning`, `limit_exceeded`, `no_applicable_value`), and
-  `Result.warnings` holds `Note`s.
+  surface was released:
+  * `Result.notes` holds `Note`s (`core.notes`), each with a `NoteKind`, its text, its
+    `references` (every source, when sources disagree, M4), and its `subjects`, the
+    parameter or output keys it concerns.
+  * The kinds are `warning` (something to check, such as a rule of thumb),
+    `limit_exceeded` (past a limit a cited source states), `no_applicable_value` (no
+    source covers the case), and `infeasible` (the inputs describe something that
+    can't be made; the numbers are still shown).
+  * A `limit_exceeded` note must cite at least one reference, so "limit" always means a
+    cited limit. The minimum-radius checks below are the first to make them.
 * **Formulas.** Gauge derivations (weight ÷ density basis, the coating rule, the AWG
   formula) run through `core.expr`, so they show their work and are tested like
   calculator steps (AGENTS rule 3).
@@ -249,6 +259,9 @@ The research changed what phase 2 can promise.
   * mild steel: 2T from TO 1-1A-9's 1020/1025 entry, labelled as a conservative stand-in
   * 304: TO 1-1A-9, after a manual check of the table
   * Where sources disagree, warn at the **larger** radius and cite every source (M4).
+  * Whenever a referenced minimum-radius check applies, the phase 1 rule-of-thumb
+    warning (inside radius below the thickness) is dropped, so the two can't contradict
+    each other. It still appears where no check applies.
   * **No applicable value is said aloud, never silent.** When no source covers the
     case, the app says so, with a `NoteKind.NO_APPLICABLE_VALUE` note. Examples: a
     thickness outside the table's band, an unlisted temper, a 180° hem against 90°
@@ -305,7 +318,8 @@ reference data, phase 2a included. A release ships only if every item holds.
    and 8), and results already carry the app's disclaimer. Phase 2 adds:
    * gauge-derived thickness labelled **nominal**, with "check the material's
      specification or measure before cutting"
-   * every warning labelled with its scope, e.g. "aerospace bench practice"
+   * every warning labelled with its scope, e.g. "aerospace bench practice", from the
+     `scope` field of the `Reference` it cites (§1)
 6. **Currency.** Every value records its edition and access date. Superseded sources
    are flagged and re-checked at each release: for example, MIL-HDBK-5J was cancelled in
    2003, and TO 1-1A-9's newer revisions haven't been read.

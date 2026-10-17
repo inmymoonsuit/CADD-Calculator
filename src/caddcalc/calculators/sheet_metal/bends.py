@@ -31,23 +31,30 @@ from caddcalc.core import (
 LENGTH = Dimension.LENGTH
 
 
-def _check_bend(ctx: Context, *angle_symbols: str) -> None:
+def _check_bend(ctx: Context, *angle_keys: str) -> None:
     """Add engineering notes once per run, checking each named bend angle."""
-    if ctx.value("R") < ctx.value("T"):
+    if ctx["inside_radius"] < ctx["thickness"]:
+        # A rule of thumb, not a cited limit: published minimums go below 1T for some
+        # alloys and tempers, so this is a warning. Cited checks: ADR-0014 §3.
         ctx.warn(
             "Inside radius is smaller than the material thickness. Check the material's "
             "minimum bend radius; tight bends can crack, especially in hard tempers.",
-            NoteKind.LIMIT_EXCEEDED,
+            subjects=("inside_radius", "thickness"),
         )
-    for a in angle_symbols:
-        if ctx.value(a) > 90:
+    for key in angle_keys:
+        if ctx[key] > 90:
+            a = next(p.symbol for p in ctx.calculator.params if p.key == key)
             ctx.warn(
                 f"{a} is past 90°. Its outside setback, tan({a}/2)·(R + T), is measured to the "
                 "virtual sharp. Some drawings dimension these bends to the outside-arc tangent "
-                "instead (KI-013), so confirm how the part is dimensioned."
+                "instead (KI-013), so confirm how the part is dimensioned.",
+                subjects=(key,),
             )
-    if ctx.method == "k_factor" and ctx.value("K") > 0.5:
-        ctx.warn("A K-factor above 0.5 puts the neutral axis past mid-thickness, which is unusual.")
+    if ctx.method == "k_factor" and ctx["k_factor"] > 0.5:
+        ctx.warn(
+            "A K-factor above 0.5 puts the neutral axis past mid-thickness, which is unusual.",
+            subjects=("k_factor",),
+        )
 
 
 class BendAllowance(Calculator):
@@ -105,7 +112,7 @@ class BendAllowance(Calculator):
         ctx.calc(
             "BD", "2*OSSB - BA", label="Bend deduction", dimension=LENGTH, output="bend_deduction"
         )
-        _check_bend(ctx, "A")
+        _check_bend(ctx, "bend_angle")
 
 
 class FormedSegmentFlatLength(Calculator):
@@ -177,11 +184,12 @@ class FormedSegmentFlatLength(Calculator):
             dimension=LENGTH,
             output="flat_length",
         )
-        _check_bend(ctx, "A1", "A2")
+        _check_bend(ctx, "bend_angle_1", "bend_angle_2")
         if fpd <= 0:
-            ctx.warn(
+            ctx.note(
                 "The flat length is zero or negative: the segment is too short for these bends.",
-                NoteKind.LIMIT_EXCEEDED,
+                NoteKind.INFEASIBLE,
+                subjects=("flat_length",),
             )
 
 

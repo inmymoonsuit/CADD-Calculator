@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
@@ -48,8 +48,8 @@ class Result:
     """Every symbol known after the run (inputs and steps), for rendering the work."""
     dimensions: Mapping[str, Dimension]
     """Dimension of every input and output key."""
-    warnings: tuple[Note, ...]
-    """Notes on the result, in the order the calculation made them."""
+    notes: tuple[Note, ...]
+    """Notes on the result: warnings, cited limits, gaps, and impossibilities, in order."""
     input_sources: Mapping[str, InputSource]
     """Where each input value came from, by parameter key (ADR-0013 §5)."""
 
@@ -77,7 +77,7 @@ class Result:
                 }
                 for s in self.steps
             ],
-            "warnings": [note.to_dict() for note in self.warnings],
+            "notes": [note.to_dict() for note in self.notes],
         }
 
     def source_of(self, key: str) -> InputSource:
@@ -100,7 +100,7 @@ class Context:
             p.symbol: (inputs[p.key], p.dimension) for p in calculator.params if p.key in inputs
         }
         self.steps: list[Step] = []
-        self.warnings: list[Note] = []
+        self.notes: list[Note] = []
         self.outputs: dict[str, float] = {}
 
     def __getitem__(self, key: str) -> float:
@@ -138,20 +138,38 @@ class Context:
         """Record a value computed in Python (e.g. a table lookup), with a note explaining it."""
         return self._record(Step(symbol, label, dimension, value, None, note), output)
 
-    def warn(
+    def note(
         self,
-        message: str,
+        text: str,
         kind: NoteKind = NoteKind.WARNING,
-        reference: Reference | None = None,
+        *,
+        references: Sequence[Reference] = (),
+        subjects: Sequence[str] = (),
     ) -> None:
-        """Add a note to the result: a warning by default, or another ``NoteKind``.
+        """Add a note to the result.
 
         Args:
-            message: One or two sentences for users.
+            text: One or two sentences for users.
             kind: What the note tells the user.
-            reference: The source of the limit or rule behind it, if any.
+            references: The sources of the limit or rule behind it. A limit-exceeded note
+                needs at least one.
+            subjects: The parameter or output keys the note concerns.
+
+        Raises:
+            SpecError: A subject isn't a parameter or output of this calculator, or a
+                limit-exceeded note cites nothing.
         """
-        self.warnings.append(Note(kind, message, reference))
+        known = {p.key for p in self.calculator.params} | {o.key for o in self.calculator.outputs}
+        unknown = [s for s in subjects if s not in known]
+        if unknown:
+            raise SpecError(
+                f"{self.calculator.id}: note subjects {unknown} aren't parameters or outputs"
+            )
+        self.notes.append(Note(kind, text, tuple(references), tuple(subjects)))
+
+    def warn(self, text: str, *, subjects: Sequence[str] = ()) -> None:
+        """Add a warning: something to check before using the result. Short for ``note``."""
+        self.note(text, NoteKind.WARNING, subjects=subjects)
 
     def _record(self, step: Step, output: str | None) -> float:
         if step.symbol in self.symbols:
@@ -289,7 +307,7 @@ class Calculator(ABC):
             steps=tuple(ctx.steps),
             symbols=dict(ctx.symbols),
             dimensions=dimensions,
-            warnings=tuple(ctx.warnings),
+            notes=tuple(ctx.notes),
             input_sources=sources,
         )
 

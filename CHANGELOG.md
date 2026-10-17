@@ -125,15 +125,18 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
-- `Result.warnings` holds `Note`s instead of strings: a `NoteKind` (`warning`,
-  `limit_exceeded`, or `no_applicable_value`), the text, and an optional `Reference`.
-  `ctx.warn(text, kind, reference)` makes them, defaulting to a plain warning. In
-  `to_dict()` and `--json`, each warning is an object with `kind`, `text`, and
-  `reference`. The CLI prefixes a limit or a missing value with its kind, e.g.
-  "! Limit exceeded: …", and the GUI marks each kind with its own icon. A radius below
-  the thickness and a segment too short for its bends are limits; the rest are
-  warnings. Nothing has been released yet, so this changes the shape outright, with no
-  deprecation path.
+- `Result.warnings` becomes `Result.notes`, a tuple of `Note`s instead of strings. A
+  note has a `NoteKind` (`warning`, `limit_exceeded`, `no_applicable_value`, or
+  `infeasible`), its text, its `references`, and its `subjects`, the parameter or output
+  keys it concerns. A `limit_exceeded` note must cite a reference. `ctx.note(text, kind,
+  references=..., subjects=...)` makes notes and checks the subjects; `ctx.warn(text)`
+  is short for a warning. In `to_dict()` and `--json`, `notes` is a list of objects
+  with `kind`, `text`, `references`, and `subjects`. The CLI and GUI head the section
+  "Notes" and prefix each kind but a warning, e.g. "Not makeable: …"; the GUI marks
+  each kind with its own icon and outlines the fields a note concerns. A radius below
+  the thickness is a warning (a rule of thumb, not a cited limit), and a segment too
+  short for its bends is infeasible. Nothing has been released yet, so this changes the
+  shape outright, with no deprecation path.
 - `Calculator.domain` holds a domain id (`"sheet_metal"`), not a display name. A
   calculator naming an unknown domain fails registration with a "did you mean" hint
   that matches domain IDs and names, and `Registry.by_domain()` is keyed by `Domain`.

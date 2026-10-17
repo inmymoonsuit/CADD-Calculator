@@ -23,7 +23,7 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  reference.py   Reference: a citation (title, detail, URL)               │
 │  calculator.py  Calculator (base), Context, Step, Result                 │
 │  provenance.py  SourceKind, InputSource: where each input came from      │
-│  notes.py       Note, NoteKind: warnings and limits a result carries     │
+│  notes.py       Note, NoteKind: notes a result carries, with sources     │
 │  domain.py      Domain: a calculator family and its shared settings      │
 │  registry.py    Registry of domains and calculators; plugin loading      │
 │  settings.py    DomainSettings: domain settings for the session          │
@@ -42,7 +42,7 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
    range-checks it, records its source, and calls `compute(ctx)`.
 5. `compute` calls `ctx.calc("BA", "pi/180*A*(R + K*T)", ...)`. The formula string is
    evaluated by `core.expr` *and* stored as a `Step`.
-6. It returns a `Result`: outputs, steps, symbols, warnings, and each input's source,
+6. It returns a `Result`: outputs, steps, symbols, notes, and each input's source,
    all in base units.
 7. The front end formats it with `DisplayPrefs`. Rounding only happens here.
    `render_step` produces the three-line work: `BA = π/180·A·(R + K·T)`, the substituted

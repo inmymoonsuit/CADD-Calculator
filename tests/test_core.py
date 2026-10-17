@@ -148,42 +148,89 @@ def test_run_uses_defaults_and_records_steps() -> None:
     }
 
 
-def test_notes_carry_a_kind_and_an_optional_reference() -> None:
+def test_notes_carry_a_kind_references_and_subjects() -> None:
+    handbook = Reference("Shop handbook", "Table 4", "https://example.org/t4")
     limit = Note(
         NoteKind.LIMIT_EXCEEDED,
         "Past the bench limit.",
-        Reference("Shop handbook", "Table 4", "https://example.org/t4"),
+        (handbook, Reference("Second source")),
+        ("length",),
     )
     assert limit.to_dict() == {
         "kind": "limit_exceeded",
         "text": "Past the bench limit.",
-        "reference": {
-            "title": "Shop handbook",
-            "detail": "Table 4",
-            "url": "https://example.org/t4",
-        },
+        "references": [
+            {"title": "Shop handbook", "detail": "Table 4", "url": "https://example.org/t4"},
+            {"title": "Second source", "detail": "", "url": ""},
+        ],
+        "subjects": ["length"],
     }
     plain = Note(NoteKind.WARNING, "Check this.")
-    assert plain.to_dict() == {"kind": "warning", "text": "Check this.", "reference": None}
-    assert describe_note(plain) == "Check this."
-    assert describe_note(limit) == "Limit exceeded: Past the bench limit. (Shop handbook, Table 4)"
-    gap = Note(NoteKind.NO_APPLICABLE_VALUE, "No table covers 0.3 in.")
-    assert describe_note(gap) == "No applicable value: No table covers 0.3 in."
+    assert plain.to_dict() == {
+        "kind": "warning",
+        "text": "Check this.",
+        "references": [],
+        "subjects": [],
+    }
 
 
-def test_ctx_warn_makes_a_warning_note_unless_told_otherwise() -> None:
+@pytest.mark.parametrize(
+    ("note", "wording"),
+    [
+        (Note(NoteKind.WARNING, "Check this."), "Check this."),
+        (
+            Note(NoteKind.LIMIT_EXCEEDED, "Too tight.", (Reference("A", "p. 1"), Reference("B"))),
+            "Limit exceeded: Too tight. (A, p. 1; B)",
+        ),
+        (
+            Note(NoteKind.NO_APPLICABLE_VALUE, "No table covers it."),
+            "No applicable value: No table covers it.",
+        ),
+        (Note(NoteKind.INFEASIBLE, "Too short."), "Not makeable: Too short."),
+    ],
+)
+def test_notes_are_worded_once_for_every_front_end(note: Note, wording: str) -> None:
+    assert describe_note(note) == wording
+
+
+def test_a_limit_exceeded_note_must_cite_its_limit() -> None:
+    with pytest.raises(SpecError, match="must cite its limit"):
+        Note(NoteKind.LIMIT_EXCEEDED, "Too tight.")
+
+
+def test_ctx_note_records_kinds_references_and_subjects() -> None:
     class Noting(_Demo):
         def compute(self, ctx: Context) -> None:
             super().compute(ctx)
-            ctx.warn("Plain.")
-            ctx.warn("No data.", NoteKind.NO_APPLICABLE_VALUE, Reference("Table"))
+            ctx.warn("Plain.", subjects=("length",))
+            ctx.note(
+                "No data.",
+                NoteKind.NO_APPLICABLE_VALUE,
+                references=[Reference("Table")],
+                subjects=["doubled"],
+            )
 
     result = Noting().run()
-    assert result.warnings == (
-        Note(NoteKind.WARNING, "Plain."),
-        Note(NoteKind.NO_APPLICABLE_VALUE, "No data.", Reference("Table")),
+    assert result.notes == (
+        Note(NoteKind.WARNING, "Plain.", (), ("length",)),
+        Note(NoteKind.NO_APPLICABLE_VALUE, "No data.", (Reference("Table"),), ("doubled",)),
     )
-    assert result.to_dict()["warnings"][1]["kind"] == "no_applicable_value"
+    assert result.to_dict()["notes"][1] == {
+        "kind": "no_applicable_value",
+        "text": "No data.",
+        "references": [{"title": "Table", "detail": "", "url": ""}],
+        "subjects": ["doubled"],
+    }
+
+
+def test_note_subjects_must_be_parameters_or_outputs() -> None:
+    class Stray(_Demo):
+        def compute(self, ctx: Context) -> None:
+            super().compute(ctx)
+            ctx.warn("Odd.", subjects=("width",))
+
+    with pytest.raises(SpecError, match=r"note subjects \['width'\]"):
+        Stray().run()
 
 
 def test_run_rejects_out_of_range_and_unknown_inputs() -> None:

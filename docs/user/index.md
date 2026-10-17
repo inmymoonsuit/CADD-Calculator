@@ -26,9 +26,15 @@ Each result shows:
 | `unverified` | Not yet checked against a published worked example. Use with care. |
 | `· reproduces legacy` (added to either) | Matches the original course spreadsheets exactly. Good for coursework; see the method notes for caveats. |
 
-5. **Warnings**, such as a radius smaller than the thickness, or a segment too short for its bends.
-   Each is marked by kind: a *warning* to check, a *limit exceeded* (shown in red), or
-   *no applicable value*, when no reference covers the case.
+5. **Notes**, such as a radius smaller than the thickness, or a segment too short for its
+   bends. Each is marked by kind:
+   * a *warning*: something to check, such as a rule of thumb
+   * *limit exceeded*: past a limit a cited source states, shown in red with the source
+   * *no applicable value*: no source covers the case, so it couldn't be checked
+   * *not makeable*: the inputs describe something that can't be made, shown in red; the
+     numbers are still shown so you can see why
+
+   In the desktop app, the input fields a note concerns are outlined.
 
 ## Disclaimer
 

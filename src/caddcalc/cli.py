@@ -194,7 +194,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
 def format_result(
     calc: Calculator, result: Result, prefs: DisplayPrefs, *, show_work: bool = True
 ) -> str:
-    """Render a result as plain text: inputs, work, results, warnings, and status."""
+    """Render a result as plain text: inputs, work, results, notes, and status."""
     method = calc.get_method(result.method)
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in calc.params_for(result.method):
@@ -214,9 +214,9 @@ def format_result(
     for o in calc.outputs:
         value = format_value(result.outputs[o.key], o.dimension, prefs)
         lines.append(f"  {o.symbol:<6} {o.label:<32} {value}")
-    if result.warnings:
-        lines += ["", "Warnings"]
-        lines += [f"  ! {describe_note(note)}" for note in result.warnings]
+    if result.notes:
+        lines += ["", "Notes"]
+        lines += [f"  ! {describe_note(note)}" for note in result.notes]
     lines += ["", f"Method status: {method.status}. {DISCLAIMER}"]
     return "\n".join(lines)
 

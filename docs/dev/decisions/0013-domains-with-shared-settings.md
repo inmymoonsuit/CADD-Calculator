@@ -163,9 +163,12 @@ As built:
   carrying the parameter, value, bound, and source; `SpecError` for a definition bug,
   including a bad default; and `UsageError` for API misuse, such as another domain's
   settings or a label for a key that isn't an input.
-* `Result.warnings` holds structured `Note`s (`core.notes`): a `NoteKind`, the text, and
-  an optional `Reference`. ADR-0014 needs the kinds; they landed in slice 7, before
-  release.
+* `Result.notes` holds structured `Note`s (`core.notes`): a `NoteKind` (`warning`,
+  `limit_exceeded`, `no_applicable_value`, or `infeasible`), the text, its `references`,
+  and its `subjects`, the parameter or output keys it concerns. A `limit_exceeded` note
+  must cite at least one reference. `ctx.note()` makes notes and checks their subjects;
+  `ctx.warn()` is short for a warning. ADR-0014 needs the kinds; they landed in slice 7,
+  before release.
 
 ### 7. Settings last for the session (decision B)
 
@@ -335,7 +338,7 @@ That is about 2% per bend.
 * Public-API changes before 0.1:
   * `Calculator.domain` becomes an id
   * `run()` gains `settings` and `explicit_sources`
-  * `Result` gains `input_sources`, and `Result.warnings` holds `Note`s
+  * `Result` gains `input_sources`, and `Result.notes` replaces `warnings`, holding `Note`s
   * `caddcalc.core` exports `Domain`, `DomainValues`, `DomainSettings`, `TypedValue`,
     `InputSource`, `Note`, `OutOfRangeError`, and `UsageError`, among others
   * there is a new entry-point group

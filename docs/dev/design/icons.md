@@ -51,6 +51,6 @@ pyside6-deploy spec.
 |---|---|---|
 | `category` | icon | domain groups in the calculator list |
 | `calculator` | icon | calculators in the list |
-| `info-circle` | icon | Help > About |
-| `alert-triangle` | icon_warning | the Warnings heading in results |
-| `alert-circle` | icon_error | "Check the inputs" in results |
+| `info-circle` | icon | Help > About, and "no applicable value" notes in results |
+| `alert-triangle` | icon_warning | the Notes heading and warning notes in results |
+| `alert-circle` | icon_error | "Check the inputs", and "limit exceeded" and "not makeable" notes in results |

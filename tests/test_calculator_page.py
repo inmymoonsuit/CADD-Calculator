@@ -305,6 +305,18 @@ def test_loading_the_course_example_leaves_other_inputs_as_they_were() -> None:
     window.close()
 
 
+def test_fields_a_note_concerns_are_outlined() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(field(window, "inside_radius"), "0.05", enter=False)  # R < T
+    for key in ("inside_radius", "thickness"):
+        assert "#b9770e" in field(window, key).styleSheet(), key
+    assert field(window, "bend_angle").styleSheet() == ""
+    type_into(field(window, "inside_radius"), "0.156", enter=False)
+    assert field(window, "thickness").styleSheet() == ""
+    window.close()
+
+
 def test_a_family_k_factor_reaches_only_the_methods_that_use_it() -> None:
     window = open_window()
     set_family(window, "k_factor", "0.44")
