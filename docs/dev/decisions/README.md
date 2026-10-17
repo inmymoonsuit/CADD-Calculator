@@ -28,4 +28,4 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0013](0013-domains-with-shared-settings.md) | Domains with shared settings that their calculators inherit | Accepted (phase 1 built); superseded in part by 0014 |
 | [0014](0014-materials-and-reference-data.md) | Materials and reference data for sheet metal (ADR-0013 phase 2) | Accepted (phases 2a and 2b built; 2b's release sign-offs pending) |
 | [0015](0015-welcome-screen.md) | A welcome screen composed from branding-pack parts | Accepted (built) |
-| [0016](0016-welcome-style-system.md) | A style system for the welcome screen | Accepted (not built) |
+| [0016](0016-welcome-style-system.md) | A style system for the welcome screen | Accepted |

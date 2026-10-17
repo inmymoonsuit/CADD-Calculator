@@ -11,7 +11,13 @@ with a ``branding.toml`` file and the files it names::
     [welcome]                                    # optional welcome-screen parts (ADR-0015)
     art = "welcome-art.png"                      # 16:9, supplied at 1920 x 1080
     art_focus = [0.35, 0.5]                      # the point kept in view when cropping
-    logo = "logo-vertical.svg"                   # the vertical logo strip (.svg or .png)
+    logo = "logo-vertical.svg"                   # the logo, in its box (.svg or .png)
+
+    [welcome.style.logo]                         # optional overrides (ADR-0016, S5)
+    fill_role = "welcome_paper"                  # also margin_left, margin_top,
+                                                 #   margin_bottom, padding
+    [welcome.style.panes]
+    fill_opacity_min = 0.25                      # also fill_role
 
 Every edition is called ``PRODUCT_NAME``, and is told apart by its icon, art, logo, and
 About text (ADR-0016, S4).
@@ -43,7 +49,7 @@ from pathlib import Path
 from typing import Any
 
 from caddcalc.core.errors import CaddCalcError
-from caddcalc.gui.welcome_style import style
+from caddcalc.gui.welcome_style import StyleError, WelcomeStyle, style, with_overrides
 
 PRODUCT_NAME = "CADD Calculator"
 """The name every edition shows: window title, welcome screen, and About (ADR-0016, S4)."""
@@ -59,7 +65,7 @@ GENERIC_ICON = ASSETS / "app-icon.png"
 ICON_SUFFIXES = frozenset({".png", ".ico"})
 ABOUT_SUFFIXES = frozenset({".html", ".htm", ".txt"})
 _KEYS = frozenset({"schema", "edition", "icon", "about", "welcome"})
-_WELCOME_KEYS = frozenset({"art", "art_focus", "logo"})
+_WELCOME_KEYS = frozenset({"art", "art_focus", "logo", "style"})
 _EDITION_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 
 
@@ -81,13 +87,20 @@ class Branding:
     welcome_focus: tuple[float, float] = (0.5, 0.5)
     """The point of the art kept in view when it is cropped, as fractions of its size."""
     welcome_logo: Path | None = None
-    """The welcome screen's vertical logo; ``None`` means the app icon and name."""
+    """The welcome screen's logo; ``None`` means the app icon and name."""
+    welcome_style: WelcomeStyle | None = None
+    """The welcome screen's tokens with the pack's overrides; ``None`` for the shipped ones."""
     about_html: str | None = None
     """Rich-text fragment for Help > About. ``None`` means the generic description."""
     source: Path | None = None
     """The pack folder this came from, or ``None`` for the built-in generic branding."""
     files: tuple[Path, ...] = ()
     """Every file the pack uses, ``branding.toml`` included: what a build must bundle."""
+
+    @property
+    def welcome_tokens(self) -> WelcomeStyle:
+        """The welcome screen's design tokens for this edition (ADR-0016)."""
+        return style() if self.welcome_style is None else self.welcome_style
 
     @property
     def is_generic(self) -> bool:
@@ -144,13 +157,14 @@ def load_branding(pack_dir: Path | str) -> Branding:
     icon = _pack_file(data, "icon", root, ICON_SUFFIXES)
     about = _pack_file(data, "about", root, ABOUT_SUFFIXES)
     about_html = _read_about(about) if about is not None else None
-    art, focus, logo = _welcome(data.get("welcome", {}), root)
+    art, focus, logo, tokens = _welcome(data.get("welcome", {}), root)
     return Branding(
         edition=edition,
         icon=icon if icon is not None else GENERIC_ICON,
         welcome_art=art,
         welcome_focus=focus,
         welcome_logo=logo,
+        welcome_style=tokens,
         about_html=about_html,
         source=root,
         files=(toml_path, *(f for f in (icon, about, art, logo) if f is not None)),
@@ -203,11 +217,14 @@ def _required_text(data: Mapping[str, Any], key: str, toml_path: Path) -> str:
     return value.strip()
 
 
-def _welcome(table: Any, root: Path) -> tuple[Path | None, tuple[float, float], Path | None]:
-    """Read the ``[welcome]`` table: the art, its focal point, and the logo.
+def _welcome(
+    table: Any, root: Path
+) -> tuple[Path | None, tuple[float, float], Path | None, WelcomeStyle | None]:
+    """Read the ``[welcome]`` table: the art, its focal point, the logo, and the style.
 
     Only the suffix, the path, and the size in bytes are checked here, without Qt. The
     welcome screen checks the art's pixel size before decoding it (ADR-0015, amendments).
+    The style's overrides are checked by ``welcome_style.with_overrides`` (ADR-0016, S5).
     """
     toml_path = root / PACK_FILE
     if not isinstance(table, Mapping):
@@ -239,7 +256,13 @@ def _welcome(table: Any, root: Path) -> tuple[Path | None, tuple[float, float], 
         raise BrandingError(
             f"{toml_path}: welcome.art_focus must be two numbers from 0 to 1, e.g. [0.35, 0.5]"
         )
-    return art, (float(focus[0]), float(focus[1])), logo
+    overridden: WelcomeStyle | None = None
+    if "style" in table:
+        try:
+            overridden = with_overrides(tokens, table["style"], f"{toml_path}: welcome.style")
+        except StyleError as exc:
+            raise BrandingError(str(exc)) from exc
+    return art, (float(focus[0]), float(focus[1])), logo, overridden
 
 
 _XLINK_HREF = "{http://www.w3.org/1999/xlink}href"

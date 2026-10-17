@@ -52,7 +52,9 @@ from caddcalc.gui.welcome_layout import (
 )
 from caddcalc.gui.welcome_style import (
     RGB,
+    PaneStyle,
     PaneTokens,
+    WelcomeStyle,
     opaque_fill,
     pane_fill,
     percentile_colors,
@@ -190,6 +192,7 @@ class _LogoBox(QWidget):
         """Where the logo came from: ``"pack"``, or ``"generic"``."""
         self.scale = 1.0
         """The card's scale, set by the screen, so the padding and border shrink with it."""
+        self.tokens = branding.welcome_tokens
         self.setAccessibleName(f"{PRODUCT_NAME} logo")
 
     @property
@@ -205,7 +208,7 @@ class _LogoBox(QWidget):
 
     def place(self, scale: float) -> None:
         """Size the box around the logo, inside the logo area, at the card's ``scale``."""
-        tokens = style()
+        tokens = self.tokens
         self.scale = scale
         minimum = Size(tokens.logo.min_size.width * scale, tokens.logo.min_size.height * scale)
         area = scaled(tokens.logo_area, scale)
@@ -214,7 +217,7 @@ class _LogoBox(QWidget):
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
-        tokens, scheme = style().logo, current_scheme()
+        tokens, scheme = self.tokens.logo, current_scheme()
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
@@ -249,9 +252,12 @@ class _Pane(QWidget):
     the art's luminance percentiles; the text takes the role that needs the least.
     """
 
-    def __init__(self, text: str, tokens: PaneTokens, parent: QWidget) -> None:
+    def __init__(self, text: str, panes: PaneStyle, tokens: PaneTokens, parent: QWidget) -> None:
         super().__init__(parent)
+        self.panes = panes
+        """The style the panes share."""
         self.tokens = tokens
+        """Where this pane sits, and its text."""
         self.text = text
         self.scale = 1.0
         self.art: tuple[RGB, RGB] | None = None
@@ -265,7 +271,7 @@ class _Pane(QWidget):
         Until the art is measured, the fill is opaque.
         """
         if scheme not in self._fills:
-            panes = style().panes
+            panes = self.panes
             fill = rgb(role_color(panes.fill_role, scheme))
             texts = [rgb(role_color(role, scheme)) for role in panes.text_roles]
             if self.art is None:
@@ -296,13 +302,13 @@ class _Pane(QWidget):
     def measure(self, art: QImage) -> None:
         """Measure the art under the pane, from ``art`` as the slot shows it."""
         under = art.copy(self.geometry()).convertToFormat(QImage.Format.Format_RGBX8888)
-        self.art = percentile_colors(bytes(under.constBits()), style().panes.percentiles)
+        self.art = percentile_colors(bytes(under.constBits()), self.panes.percentiles)
         self._fills.clear()
         self.update()
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
-        panes, scheme = style().panes, current_scheme()
+        panes, scheme = self.panes, current_scheme()
         role, alpha = self.fill(scheme)
         text = QColor(role_color(role, scheme))
         fill = QColor(role_color(panes.fill_role, scheme))
@@ -332,10 +338,12 @@ class _ArtSlot(QWidget):
         self.source = "generic" if self._art is None else "pack"
         """Where the art came from: ``"pack"``, or ``"generic"`` when there was none or it
         couldn't be used."""
-        tokens = style()
+        tokens = branding.welcome_tokens
+        self.slot = tokens.art.slot
         self.logo = _LogoBox(branding, self)
-        self.name_pane = _Pane(PRODUCT_NAME, tokens.name_pane, self)
-        self.version_pane = _Pane(f"Version {__version__}", tokens.version_pane, self)
+        self.name_pane = _Pane(PRODUCT_NAME, tokens.panes, tokens.name_pane, self)
+        version = f"Version {__version__}"
+        self.version_pane = _Pane(version, tokens.panes, tokens.version_pane, self)
 
     def shown_art(self) -> QImage:
         """Return the art as the slot shows it, one image pixel per logical pixel."""
@@ -362,7 +370,7 @@ class _ArtSlot(QWidget):
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:
-        scale = self.width() / style().art.slot.width
+        scale = self.width() / self.slot.width
         slot = Size(self.width(), self.height())
         self._generic = None
         self.logo.place(scale)
@@ -387,9 +395,10 @@ class _Border(QWidget):
     desktop through the translucent window (ADR-0016 §4).
     """
 
-    def __init__(self, parent: QWidget) -> None:
+    def __init__(self, tokens: WelcomeStyle, parent: QWidget) -> None:
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.tokens = tokens
         self.radius = 0.0
         """The outer corners' radius; 0 for square corners."""
         self.scale = 1.0
@@ -399,7 +408,7 @@ class _Border(QWidget):
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
-        tokens, scheme = style(), current_scheme()
+        tokens, scheme = self.tokens, current_scheme()
         rect = QRectF(self.rect())
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -440,7 +449,7 @@ class WelcomeScreen(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setWindowTitle(PRODUCT_NAME)
         self.setAccessibleName(f"Welcome to {PRODUCT_NAME}")
-        tokens = style()
+        tokens = branding.welcome_tokens
         self.display_face = display_family()
         """The display face its text uses: the tokens' family, or ``"fallback"``."""
         self.rounded = can_round_corners()
@@ -483,7 +492,7 @@ class WelcomeScreen(QWidget):
         column.addWidget(self.top_bar)
         column.addWidget(self.art)
 
-        self.border = _Border(self)
+        self.border = _Border(tokens, self)
         self.border.scale = scale
         self.border.bar_height = self.top_bar.height()
         self.border.radius = tokens.card.corner_radius * self.height() if self.rounded else 0

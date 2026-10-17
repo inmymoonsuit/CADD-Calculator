@@ -88,6 +88,12 @@ region and shows the app icon and the name set upright.
 art = "welcome-art.png"      # optional; the generic art when absent
 art_focus = [0.35, 0.5]      # optional; the point kept in view when cropping
 logo = "logo-vertical.svg"   # optional; the app icon and name when absent
+
+[welcome.style.logo]         # optional; see "Restyling a pack's screen" below
+fill_role = "welcome_paper"
+
+[welcome.style.panes]
+fill_opacity_min = 0.25
 ```
 
 * The files go in the branding pack folder, as `icon` and `about` do (docs/dev/packaging.md).
@@ -96,6 +102,24 @@ logo = "logo-vertical.svg"   # optional; the app icon and name when absent
   build copies files whose names contain NOTICE, LICENSE, LICENCE, or COPYING. Third-party
   art never goes in this repository (ADR-0008, item 4).
 * To try a pack without building, point `CADDCALC_BRANDING` at its folder.
+
+### Restyling a pack's screen
+
+A pack may override a few of the design tokens below, in `[welcome.style.logo]` and
+`[welcome.style.panes]` tables that mirror `welcome_style.toml` (ADR-0016, S5):
+
+* `logo.fill_role`: the logo box's fill, a palette role. The default follows the
+  theme, white in light and ink in dark, so a logo drawn for a white background may
+  want `welcome_paper`, white in both themes.
+* `logo.margin_left`, `logo.margin_top`, `logo.margin_bottom`, and `logo.padding`.
+* `panes.fill_role` and `panes.fill_opacity_min`: the panes' fill and its least
+  opacity. The contrast guarantee still applies above it.
+
+Each value is checked as the token file's is. The fonts, the frame, the sizes, and
+every other token stay the same in every edition, so a pack that sets anything else
+is refused, with a message naming what it may set. So is one whose margins leave the
+logo box less than its least size, whose padding leaves no room for the logo, or
+whose pane fill no text role can read on, in either theme.
 
 ## Typography
 

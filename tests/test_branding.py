@@ -104,6 +104,23 @@ def test_load_branding_reads_a_complete_pack(tmp_path: Path) -> None:
     assert b.about_html == "<p>Made for <b>testing</b>.</p>"
 
 
+def test_a_pack_may_restyle_its_welcome_screen_within_the_whitelist(tmp_path: Path) -> None:
+    from caddcalc.gui.welcome_style import style
+
+    toml = (
+        'edition = "styled"\n'
+        "[welcome.style.logo]\n"
+        'fill_role = "welcome_paper"\n'
+        "margin_left = 24\n"
+        "[welcome.style.panes]\n"
+        "fill_opacity_min = 0.4\n"
+    )
+    tokens = load_branding(make_pack(tmp_path / "pack", toml)).welcome_tokens
+    assert (tokens.logo.fill_role, tokens.logo.margin_left) == ("welcome_paper", 24)
+    assert tokens.panes.fill_opacity_min == 0.4
+    assert GENERIC.welcome_style is None and GENERIC.welcome_tokens is style()
+
+
 def test_optional_files_fall_back_to_generic(tmp_path: Path) -> None:
     pack = make_pack(tmp_path / "pack", 'edition = "minimal"\n')
     b = load_branding(pack)
@@ -161,6 +178,15 @@ def test_plain_text_about_is_escaped_into_paragraphs(tmp_path: Path) -> None:
             "two numbers from 0 to 1",
         ),
         ('edition = "x"\n[welcome]\nart_focus = "centre"\n', "two numbers from 0 to 1"),
+        (
+            'edition = "x"\n[welcome.style.card]\ncorner_radius = 0\n',
+            r"welcome\.style: a pack may override only .*, not 'card'",
+        ),
+        ('edition = "x"\n[welcome]\nstyle = 3\n', r"must be a table, \[welcome\.style\]"),
+        (
+            'edition = "x"\n[welcome.style.panes]\nfill_role = "welcome_line"\n',
+            "neither welcome_ink nor welcome_paper",
+        ),
     ],
 )
 def test_invalid_packs_are_rejected_with_a_reason(tmp_path: Path, toml: str, message: str) -> None:

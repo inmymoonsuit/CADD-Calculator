@@ -25,6 +25,7 @@ from caddcalc.gui.welcome_style import (
     percentile_colors,
     rgb,
     style,
+    with_overrides,
     worst_contrast,
 )
 
@@ -220,3 +221,50 @@ def test_an_unreadable_fill_becomes_opaque_under_the_text_that_reads() -> None:
     panes = style().panes
     mid = (119, 119, 119)
     assert pane_fill([BLACK, WHITE], mid, [INK, PAPER], panes) == (1, 255), "white: 4.48"
+
+
+def test_a_pack_may_override_its_whitelist() -> None:
+    tokens = with_overrides(
+        style(),
+        {
+            "logo": {"fill_role": "welcome_paper", "margin_left": 24, "padding": 6},
+            "panes": {"fill_opacity_min": 0.3},
+        },
+        "pack",
+    )
+    assert (tokens.logo.fill_role, tokens.logo.margin_left, tokens.logo.padding) == (
+        "welcome_paper",
+        24,
+        6,
+    )
+    assert tokens.panes.fill_opacity_min == 0.3
+    assert tokens.logo_area.x == 24 and tokens.card == style().card, "the rest is shipped"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"card": {"corner_radius": 0}}, "may override only .*, not 'card'"),
+        ({"typography": {"display_family": "Arial"}}, "not 'typography'"),
+        ({"logo": {"min_size": [10, 10]}}, r"not logo\.min_size"),
+        ({"panes": {"min_contrast": 1}}, r"not panes\.min_contrast"),
+        ({"logo": 3}, r"logo must be a table, \[welcome\.style\.logo\]"),
+        ("panes", r"must be a table, \[welcome\.style\]"),
+        ({"panes": {"fill_opacity_min": 1.5}}, "fill_opacity_min must be a number from 0 to 1"),
+        ({"logo": {"fill_role": "fuchsia"}}, "'fuchsia' isn't a palette role"),
+        ({"logo": {"margin_left": 60}}, "the logo's margins leave 36 × 508 px"),
+        ({"logo": {"padding": 24}}, "logo.padding 24 leaves no room"),
+        ({"panes": {"fill_role": "welcome_line"}}, "neither welcome_ink nor welcome_paper"),
+    ],
+)
+def test_a_pack_may_not_override_anything_else(overrides: Any, message: str) -> None:
+    with pytest.raises(StyleError, match=message):
+        with_overrides(style(), overrides, "pack")
+
+
+def test_the_shipped_tokens_fit_together() -> None:
+    """The same whole-style checks hold the shipped file to what it lets packs do."""
+    data = shipped()
+    data["logo"] = {**data["logo"], "min_size": [100, 160]}
+    with pytest.raises(StyleError, match="less than its box's least size"):
+        parse_style(data)

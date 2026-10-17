@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 import tomllib
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from functools import cache
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -48,6 +48,7 @@ class Rect(NamedTuple):
     height: float
 
 
+SCHEMES = ("light", "dark")
 ANCHORS = frozenset({"top_left", "top_right", "bottom_left", "bottom_right"})
 FONTS = frozenset({"display", "body"})
 
@@ -274,7 +275,7 @@ def _formats(where: str, value: Any) -> tuple[str, ...]:
 def _role(where: str, value: Any) -> str:
     role = _text(where, value)
     palette = _palette()
-    if not all(role in palette[scheme] for scheme in ("light", "dark")):
+    if not all(role in palette[scheme] for scheme in SCHEMES):
         raise StyleError(f"{where}: {role!r} isn't a palette role in both themes")
     return role
 
@@ -393,7 +394,85 @@ def parse_style(data: Mapping[str, Any], origin: str = STYLE_FILE.name) -> Welco
             key: check(f"{origin}: {name}.{key}", table[key]) for key, check in checks.items()
         }
         tables[name] = kind(**{f.name: values[f.name] for f in fields(kind)})
-    return WelcomeStyle(**tables)
+    return _checked(WelcomeStyle(**tables), origin)
+
+
+PACK_OVERRIDES: Mapping[str, frozenset[str]] = {
+    "logo": frozenset({"fill_role", "margin_left", "margin_top", "margin_bottom", "padding"}),
+    "panes": frozenset({"fill_role", "fill_opacity_min"}),
+}
+"""The tokens a branding pack may override in ``[welcome.style]`` (ADR-0016 §7, S5).
+
+The fonts, the frame, and the sizes stay the same in every edition.
+"""
+
+
+def with_overrides(base: WelcomeStyle, overrides: Any, origin: str) -> WelcomeStyle:
+    """Return ``base`` with a pack's overrides, each checked as the token file's are.
+
+    Args:
+        base: The tokens to start from, normally the shipped ones.
+        overrides: The pack's ``[welcome.style]`` table: a ``logo`` table, a ``panes``
+            table, or both, holding only the tokens in ``PACK_OVERRIDES``.
+        origin: Where the overrides came from, for messages.
+
+    Raises:
+        StyleError: A table or token isn't one a pack may override, a value doesn't
+            check, or together they'd break the layout or the panes' contrast.
+    """
+    allowed = ", ".join(
+        f"{name}.{key}" for name, keys in PACK_OVERRIDES.items() for key in sorted(keys)
+    )
+    if not isinstance(overrides, Mapping):
+        raise StyleError(f"{origin} must be a table, [welcome.style]")
+    changed: dict[str, Any] = {}
+    for name, table in overrides.items():
+        if name not in PACK_OVERRIDES:
+            raise StyleError(f"{origin}: a pack may override only {allowed}, not {name!r}")
+        if not isinstance(table, Mapping):
+            raise StyleError(f"{origin}: {name} must be a table, [welcome.style.{name}]")
+        refused = sorted(set(table) - PACK_OVERRIDES[name])
+        if refused:
+            raise StyleError(
+                f"{origin}: a pack may override only {allowed}, not {name}.{refused[0]}"
+            )
+        checks = _TABLES[name][1]
+        values = {key: checks[key](f"{origin}: {name}.{key}", v) for key, v in table.items()}
+        changed[name] = replace(getattr(base, name), **values)
+    return _checked(replace(base, **changed), origin)
+
+
+def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
+    """Check what no single token can: that the tokens fit together.
+
+    The logo area must hold the logo box's least size with room for the logo inside its
+    padding, and some text role must read on an opaque pane fill in both themes, so the
+    contrast guarantee can always be met (ADR-0016 §5).
+    """
+    area, logo = tokens.logo_area, tokens.logo
+    if area.width < logo.min_size.width or area.height < logo.min_size.height:
+        raise StyleError(
+            f"{origin}: the logo's margins leave {area.width:g} × {area.height:g} px, less "
+            f"than its box's least size, {logo.min_size.width:g} × {logo.min_size.height:g}"
+        )
+    if 2 * logo.padding >= min(logo.min_size):
+        raise StyleError(
+            f"{origin}: logo.padding {logo.padding:g} leaves no room for the logo in a box "
+            f"of {logo.min_size.width:g} × {logo.min_size.height:g}"
+        )
+    panes = tokens.panes
+    for scheme in SCHEMES:
+        fill = rgb(_role_color(panes.fill_role, scheme))
+        texts = [rgb(_role_color(role, scheme)) for role in panes.text_roles]
+        index, _alpha = opaque_fill(fill, texts)
+        best = contrast(rgb_luminance(texts[index]), rgb_luminance(fill))
+        if best < panes.min_contrast:
+            raise StyleError(
+                f"{origin}: neither {' nor '.join(panes.text_roles)} reaches "
+                f"{panes.min_contrast:g}:1 on panes.fill_role {panes.fill_role!r} in the "
+                f"{scheme} theme ({best:.2f}:1)"
+            )
+    return tokens
 
 
 def load_style(path: Path = STYLE_FILE) -> WelcomeStyle:
@@ -419,6 +498,13 @@ def style() -> WelcomeStyle:
 def _palette() -> dict[str, Any]:
     data: dict[str, Any] = tomllib.loads(PALETTE_FILE.read_text(encoding="utf-8"))
     return data
+
+
+def _role_color(role: str, scheme: str) -> str:
+    """Return a palette role's ``#RRGGBB`` colour in ``scheme``."""
+    palette = _palette()
+    color: str = palette["colors"][palette[scheme][role]]
+    return color
 
 
 # --- contrast (WCAG 2) ----------------------------------------------------------------------

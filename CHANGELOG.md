@@ -7,6 +7,10 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Branding packs may restyle their welcome screen within a whitelist (ADR-0016, S5):
+  `[welcome.style.logo]` sets the logo box's fill role, margins, and padding, and
+  `[welcome.style.panes]` the panes' fill role and least opacity. Anything else is
+  refused, as are values that would leave the logo no room or the panes unreadable.
 - The welcome screen's display face, VT323 by Peter Hull, drawn bold (ADR-0016, S1). It
   ships unmodified under the SIL Open Font License 1.1 with its `OFL.txt`, pinned to a
   google/fonts commit and hashed by `packaging/fetch_fonts.py`. It's credited in About

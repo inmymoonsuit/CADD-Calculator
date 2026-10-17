@@ -365,3 +365,24 @@ def test_without_a_compositor_the_card_is_square(monkeypatch: pytest.MonkeyPatch
     welcome.show()
     assert welcome.grab().toImage().pixelColor(0, 0).alpha() == 255, "square, opaque"
     welcome.close()
+
+
+def test_a_packs_style_overrides_reach_the_screen(tmp_path: Path) -> None:
+    import math
+
+    from caddcalc.gui.icons import current_scheme
+
+    branding = pack(tmp_path / "pack", art="light")
+    assert branding.source is not None
+    toml = branding.source / "branding.toml"
+    overrides = (
+        "[welcome.style.logo]\nmargin_left = 30\n[welcome.style.panes]\nfill_opacity_min = 0.4\n"
+    )
+    toml.write_text(toml.read_text(encoding="utf-8") + overrides, encoding="utf-8")
+    welcome = screen(load_branding(branding.source))
+    welcome.show()
+    scale = welcome.art.width() / style().art.slot.width
+    assert welcome.logo.x() >= round(30 * scale), "the pack's margin"
+    _role, alpha = welcome.art.name_pane.fill(current_scheme())
+    assert alpha == math.ceil(0.4 * 255), "calm art: the pack's floor, not the shipped one"
+    welcome.close()

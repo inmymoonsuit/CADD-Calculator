@@ -70,7 +70,13 @@ about = "about.html"                          # optional; .html fragment or .txt
 [welcome]                                     # optional welcome screen parts (ADR-0015)
 art = "welcome-art.png"                       # 16:9, supplied at 1920 x 1080; .png or .jpg
 art_focus = [0.35, 0.5]                       # the point kept in view when cropping
-logo = "logo-vertical.svg"                    # the vertical logo strip; .svg or .png
+logo = "logo-vertical.svg"                    # the logo, in its box; .svg or .png
+
+[welcome.style.logo]                          # optional overrides (ADR-0016, S5)
+fill_role = "welcome_paper"                   # also margin_left, margin_top,
+                                              #   margin_bottom, padding
+[welcome.style.panes]
+fill_opacity_min = 0.25                       # also fill_role
 ```
 
 * Every edition is called "CADD Calculator": in its window title, on its welcome
@@ -87,6 +93,10 @@ logo = "logo-vertical.svg"                    # the vertical logo strip; .svg or
   notice are in the [art specification](design/welcome-screen.md), and
   `packaging/make_welcome_template.py` writes a guide for the art. A pack that still
   names the old `splash` key is refused, with a message naming `[welcome]`.
+* `[welcome.style.logo]` and `[welcome.style.panes]` may override a short whitelist of
+  the welcome screen's design tokens: the logo box's fill role, margins, and padding,
+  and the panes' fill role and least opacity. Anything else is refused. The art
+  specification lists them and the checks.
 * The build copies only `branding.toml`, the files it names, and any file at the top of
   the pack whose name contains `NOTICE`, `LICENSE`, `LICENCE`, or `COPYING` (such as
   `ART-NOTICE.md` for the pack's art). Source art, drafts, and planning notes in the pack

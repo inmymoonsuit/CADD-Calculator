@@ -1,7 +1,7 @@
 # ADR-0016: A style system for the welcome screen
 
-* **Status:** **Accepted** (not built). The maintainer approved S1–S5 as recommended on
-  2026-10-17.
+* **Status:** **Accepted**, built on 2026-10-17 (see the amendments). The maintainer
+  approved S1–S5 as recommended on 2026-10-17.
 * **Date:** 2026-10-17
 * **Builds on:** ADR-0015 (the welcome screen), ADR-0011 (branding packs),
   [design/palette.md](../design/palette.md), ADR-0008 (third-party assets)
@@ -208,3 +208,20 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
   if none reaches 4.5:1, the fill is opaque under the role that contrasts more. Tests
   check this on light, dark, and busy generated art, against Qt's own blending.
 * This replaces "Until slice e" above.
+
+### 2026-10-17: what a pack may change (slice f)
+
+* A pack's `[welcome]` table may hold `[welcome.style.logo]` and `[welcome.style.panes]`
+  tables. They mirror the token file, and hold only the whitelist of S5:
+  * `logo.fill_role`, `logo.margin_left`, `logo.margin_top`, `logo.margin_bottom`,
+    and `logo.padding`
+  * `panes.fill_role` and `panes.fill_opacity_min`
+* `welcome_style.with_overrides` checks each value with the token file's own checks and
+  refuses any other table or key with a message naming the whitelist. It stays
+  standard-library only; the branding loader calls it and reports a `BrandingError`.
+* **Whole-style checks.** One check now applies to the shipped tokens and to every pack's
+  overrides. The logo area must hold the box's least size; the padding must leave room
+  for the logo in that box; and some text role must reach `panes.min_contrast` on an
+  opaque pane fill in both themes, so the contrast guarantee can always be met.
+* `Branding.welcome_tokens` gives the screen its edition's tokens, and the welcome
+  screen reads the logo box's, the panes', and the frame's tokens from it.
