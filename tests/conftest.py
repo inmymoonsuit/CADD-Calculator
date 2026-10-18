@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from caddcalc.core import i18n
+from tests.ci_annotations import pytest_terminal_summary  # noqa: F401  # registers the hook
 
 
 @pytest.fixture(autouse=True)

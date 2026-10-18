@@ -26,6 +26,8 @@ set `UV_LINK_MODE=copy`.
 ## Workflow
 
 * Branch from `main` and open a pull request. CI must pass on Windows, macOS, and Linux.
+  Each failing test is also an annotation on the line that failed, which anyone can read
+  through GitHub's API without signing in (`tests/ci_annotations.py`).
 * Use small, focused commits with imperative subjects, e.g. "Add K-factor-from-test-bend calculator".
 * Update docs in the same PR (ADR-0007). Significant decisions need an ADR
   ([docs/dev/decisions](docs/dev/decisions/README.md)). Failed experiments go in the

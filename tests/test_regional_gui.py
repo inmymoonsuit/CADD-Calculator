@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 import pytest
@@ -223,8 +224,12 @@ def test_with_our_catalog_for_the_language_qts_text_is_in_it_too(tmp_path: Any) 
         assert _undo_text() != "&Undo"
         window = open_window()
         tip = window.results.copy_all_button.toolTip()
-        assert COPY_ALL_KEYS.toString(QKeySequence.SequenceFormat.NativeText) in tip
-        assert "Strg" in tip, tip
+        native = COPY_ALL_KEYS.toString(QKeySequence.SequenceFormat.NativeText)
+        assert native in tip
+        # macOS writes the modifiers as symbols in every language, "⇧⌘C"; elsewhere
+        # they're words, which Qt's German names.
+        if sys.platform != "darwin":
+            assert "Strg" in native, tip
         window.close()
     finally:
         app.removeTranslator(translator)

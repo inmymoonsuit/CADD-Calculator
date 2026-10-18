@@ -122,8 +122,8 @@ def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 @pytest.mark.gui
+@pytest.mark.usefixtures("qt")
 def test_gui_results_mark_each_kind_of_note() -> None:
-    pytest.importorskip("PySide6.QtWidgets")
     from caddcalc.calculators.sheet_metal import FormedSegmentFlatLength
     from caddcalc.core.formatting import DisplayPrefs
     from caddcalc.gui.window import result_html

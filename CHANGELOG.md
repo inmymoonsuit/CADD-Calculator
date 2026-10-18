@@ -451,6 +451,8 @@ All notable changes are recorded here. The format follows
   `{0}`, unbalanced braces, or a printf placeholder of any kind, reads the fields nested
   in a format spec, such as `{width}` in `{value:{width}}`, and checks each plural form
   on its own.
+- CI marks each failing test as an annotation on the line that failed, which anyone can
+  read through GitHub's API without signing in.
 - **The catalogs ship in every build.** The packaged app and the wheel carry the compiled
   catalogs, so an installed app has British spelling too. The packaged app also carries
   Qt's own `qtbase` catalogs, for Qt's words in each language the app gains, and
