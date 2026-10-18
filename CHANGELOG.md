@@ -339,8 +339,10 @@ All notable changes are recorded here. The format follows
   output, in a Results panel between the inputs and the notes: the symbol, the label, the
   value aligned on its decimal point, and the unit, with a copy button. A note about an
   output outlines its field as it would an input. While the inputs have no result, every
-  field shows "—". The notes, inputs, and work below keep at least 160 px, and the fields
-  scroll on their own in a short window.
+  field shows "—". Every field always shows in full: the notes, inputs, and work below
+  take the height that's left, never less than 96 px, with their own scroll bar. In a
+  window too short for all of it, the whole calculator page scrolls, results included,
+  never the results alone.
 - An input field a note concerns is outlined 2 px, not 1 px, so the outline reads without
   its colour; result fields will share it (ADR-0017).
 - **Welcome screen refinements (ADR-0016, amendments).**

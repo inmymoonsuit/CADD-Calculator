@@ -28,16 +28,21 @@ token, so the specification can't drift from the code.
 
 ## The panel
 
-* `gui/result_fields.py`: a `ResultsPanel` of `ResultField`s, in a `ResultsArea` scroll
-  area between the inputs and the document. The panel is built when the calculator
-  changes, and its values update on every recompute, so focus and hover survive
-  typing. While the inputs have no result, every field shows "—" at once.
+* `gui/result_fields.py`: a `ResultsPanel` of `ResultField`s, between the inputs and the
+  document. The panel is built when the calculator changes, and its values update on
+  every recompute, so focus and hover survive typing. While the inputs have no result,
+  every field shows "—" at once.
 * A field shows its output through `core.formatting.output_parts()`, the one place
   outputs are presented; the CLI and the document use `format_output()` on it. An
   output's own presentation (ADR-0018) will apply there.
-* The document under the panel starts at Notes and always keeps
-  `document_min_height`. The panel takes its fields' height up to that, never less
-  than its title and one field, and scrolls on its own beyond it.
+* **Results are never obscured.** The panel is always exactly as tall as its title and
+  every field, and has no scroll bar of its own.
+* The document under the panel starts at Notes. It takes the height that's left, never
+  less than `document_min_height`, and scrolls on its own.
+* When the window is too short for the inputs, every field, and the document's least
+  height, the page scrolls as a whole: title, options, inputs, results, and document,
+  vertically only (`gui/pages.py`). The page is never narrower than its content, and a
+  family page isn't made to scroll by the calculator page hidden behind it.
 * The status bar's disclaimer is a widget, so a passing message covers it for a moment
   and it comes back.
 * A test keeps layout numbers and colours out of `result_fields.py`, as out of
@@ -87,7 +92,7 @@ heavier than the border.
 | `result_field.value_weight` | bold | The value's weight |
 | `result_field.tabular_figures` | true | Digits of one width, so columns line up |
 | `result_field.decimal_align` | true | Align the values on their decimal points |
-| `result_field.document_min_height` | 160 | The height the document under the panel always keeps |
+| `result_field.document_min_height` | 96 | The document's least height; below it, the page scrolls |
 | `result_field.copy_icon` | copy | The copy button's icon |
 | `result_field.copied_icon` | check | Its icon once it has copied |
 | `note_outline.width` | 2 | Every note outline's width, on input and result fields |

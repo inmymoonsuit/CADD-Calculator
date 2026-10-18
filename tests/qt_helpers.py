@@ -58,6 +58,6 @@ def results_text(window: Any) -> str:
     lines = [
         f"{field.output.symbol} {field.output.label} "
         f"{'—' if field.parts is None else field.parts.with_unit}"
-        for field in window.results.panel.fields.values()
+        for field in window.results.fields.values()
     ]
     return "\n".join([*lines, window.output.toPlainText()])

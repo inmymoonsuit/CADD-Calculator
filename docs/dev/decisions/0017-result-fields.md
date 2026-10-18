@@ -53,6 +53,8 @@ wrapped text, selection, and later export.
     document keeps its own scrollbar.
   * Example: at 1100 × 720, with five inputs, notes, and four fields, the panel shrinks
     to leave the document 160 px, and scrolls its fourth field into view.
+  * **Refined by the maintainer:** results never scroll on their own; the page does (see
+    Amendments, "Results are never obscured").
 
 ### 2. Anatomy
 
@@ -256,7 +258,7 @@ Approved on 2026-10-17, each as recommended. The alternatives stay on record.
 |---|---|---|---|
 | R1 | What Copy copies | **The number as shown, without its unit** (`0.3119`) | With its unit (`0.3119 in`); full precision (`0.311924…`) |
 | R2 | Copy all | **Yes: tab-separated rows (symbol, label, value, unit), which paste into spreadsheet columns** | Plain lines ("BA = 0.3119 in"); no Copy all |
-| R3 | Where the fields sit | **Pinned above the scrolling Notes, Inputs, and Work, so the answer stays in view** | Scrolling with the rest of the document |
+| R3 | Where the fields sit | **Pinned above the scrolling Notes, Inputs, and Work, so the answer stays in view** (refined: never scrolled on their own; see Amendments) | Scrolling with the rest of the document |
 | R4 | Copied feedback | **A check icon in place for 1.5 s, plus a status-bar message** | A tooltip only; a toast |
 | R5 | Field outlines from notes | **Yes, the same outline roles and ranking as the input fields** | No outlines on results |
 | R6 | Other copy formats | **A context menu: with unit, full precision, fraction** | None |
@@ -371,3 +373,32 @@ Seen in the current pane (`results/results-notes-light.png`).
   `gui/painting.py`, with a dashed style for the no-value outline.
 * The copy button is shown and enabled with a value, but copying, the copied state,
   the keyboard, and the accessible names come with k4.
+
+### 2026-10-17: results are never obscured (refining R3)
+
+* **The maintainer's decision,** on seeing bend allowance at 1100 × 720 show only BA,
+  with OSSB and BD behind the panel's own scroll bar: "I feel that it's incorrect for us
+  to ever obscure results, unless perhaps they are very long so they would cause the
+  lower section to break the overall app border." The boxed fields themselves stay as
+  built.
+* **The panel never scrolls on its own.** It's always exactly as tall as its title and
+  every field. `ResultsArea` is gone: the window holds the `ResultsPanel` itself.
+* **The document takes the height that's left,** and keeps its own scroll bar.
+  `document_min_height` drops from 160 to 96, so more layouts fit without scrolling. The
+  document asks for no more than that least height, so a page that has to scroll gives
+  its room to the results first.
+* **A window too short for it all scrolls the page as a whole:** one vertical-only
+  scroll area (`gui/pages.py`, `PageScrollArea`) around the title, summary, options,
+  inputs, results, and document. Results scroll only with the page, never clipped on
+  their own.
+  * The area is never narrower than its page, since it doesn't scroll sideways.
+  * The page stack takes its height from the shown page alone (`PageStack`), so a family
+    page isn't made to scroll by the calculator page behind it. The family page keeps
+    its own scroll area, unchanged.
+* §1's short-window rule (the panel shrinking to leave the document 160 px, and
+  scrolling its fields) and §7's `document_min_height 160` are replaced by the above.
+* Tests: at 1100 × 720, bend allowance and the cone show every field in full, with no
+  scroll bar on the panel; at 1100 × 420 the page scrolls, the document is at its least
+  height, and every field can be scrolled into full view; the document still scrolls on
+  its own; the page is never narrower than its content; and a family page isn't made to
+  scroll by the hidden calculator page.

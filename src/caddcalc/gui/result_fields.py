@@ -1,10 +1,12 @@
 """Result fields: one boxed, copyable field per output, for every calculator (ADR-0017).
 
-The Results panel holds one ``ResultField`` per output of the shown calculator, in a
-scroll area above the document of notes, inputs, and work. It's built when the
-calculator changes and its values update on every recompute, so keyboard focus and hover
-survive typing. A field shows its output through ``core.formatting.output_parts``, the
-one place outputs are presented, so it can't disagree with the document or the CLI.
+The Results panel holds one ``ResultField`` per output of the shown calculator, above the
+document of notes, inputs, and work. It's always as tall as its fields: results are
+never clipped or scrolled on their own, only with the page (ADR-0017 R3, as amended).
+It's built when the calculator changes and its values update on every recompute, so
+keyboard focus and hover survive typing. A field shows its output through
+``core.formatting.output_parts``, the one place outputs are presented, so it can't
+disagree with the document or the CLI.
 
 Every size, role, and state comes from the design tokens (``ui_style``); a test keeps
 literals out of here.
@@ -25,10 +27,8 @@ from PySide6.QtGui import (
     QResizeEvent,
 )
 from PySide6.QtWidgets import (
-    QFrame,
     QHBoxLayout,
     QLabel,
-    QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -231,6 +231,8 @@ class ResultsPanel(QWidget):
         self.title.setFont(title_font)
         column.addWidget(self.title)
         self._column = column
+        # Exactly the title's and the fields' height: never squeezed, never stretched.
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
     def build(self, calc: Calculator) -> None:
         """Make one field per output of ``calc``; nothing changes for the same calculator."""
@@ -267,14 +269,6 @@ class ResultsPanel(QWidget):
         for field in self.fields.values():
             field.restyle()
 
-    def first_field_height(self) -> int:
-        """The panel's least useful height: its title and its first field."""
-        top, _sides = self.tokens.panel_inset
-        first = next(iter(self.fields.values()), None)
-        field = 0 if first is None else first.sizeHint().height()
-        title = self.title.sizeHint().height()
-        return round(top + title + self.tokens.stack_gap + field)
-
     def _align(self) -> None:
         """Line the fields' columns up, and their values on the decimal point (ADR-0017 §2)."""
         fields = list(self.fields.values())
@@ -304,32 +298,3 @@ def _decimals(number: str) -> int:
     """Return how many decimal places ``number`` is shown with."""
     _whole, point, places = number.partition(".")
     return len(places) if point else 0
-
-
-class ResultsArea(QScrollArea):
-    """The Results panel's scroll area: as tall as its fields, and scrolling past a cap.
-
-    The document under it always keeps ``document_min_height``; when the fields don't fit
-    above that, this area shrinks, never below the title and one field, and scrolls on
-    its own, vertically (ADR-0017 §1).
-    """
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.panel = ResultsPanel()
-        self.setWidget(self.panel)
-        self.setWidgetResizable(True)
-        self.setFrameShape(QFrame.Shape.NoFrame)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-
-    def build(self, calc: Calculator) -> None:
-        """Make the panel's fields for ``calc``, and size the area to them."""
-        self.panel.build(calc)
-        self.setMinimumHeight(self.panel.first_field_height())
-        self.updateGeometry()
-
-    @override
-    def sizeHint(self) -> QSize:
-        hint = super().sizeHint()
-        return QSize(hint.width(), self.panel.sizeHint().height() + 2 * self.frameWidth())

@@ -9,7 +9,7 @@ from enum import Enum
 from html import escape
 from typing import Any, cast, override
 
-from PySide6.QtCore import QEvent, QObject, Qt, QUrl
+from PySide6.QtCore import QEvent, QObject, QSize, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSplitter,
-    QStackedWidget,
     QTextBrowser,
     QTreeWidget,
     QTreeWidgetItem,
@@ -87,7 +86,8 @@ from caddcalc.gui.icons import (
     role_color,
 )
 from caddcalc.gui.outlines import Outline, error_outline, strongest
-from caddcalc.gui.result_fields import ResultsArea
+from caddcalc.gui.pages import PageScrollArea, PageStack
+from caddcalc.gui.result_fields import ResultsPanel
 from caddcalc.gui.ui_style import ui_style
 from caddcalc.gui.welcome import WelcomeScreen
 
@@ -201,6 +201,13 @@ class ResultsBrowser(QTextBrowser):
                 if (TABLER_DIR / f"{icon_name}.svg").is_file():
                     return render(icon_name, role_color(role, cast(Scheme, scheme)), ICON_PX)
         return super().loadResource(type, name)
+
+    @override
+    def sizeHint(self) -> QSize:
+        # It asks for its least height and grows into whatever the page leaves. A page
+        # that scrolls lays out at its preferred height, so a taller hint here would be
+        # page height the results could have had.
+        return QSize(super().sizeHint().width(), self.minimumHeight())
 
 
 class MainWindow(QMainWindow):
@@ -349,9 +356,10 @@ class MainWindow(QMainWindow):
         example_row = QHBoxLayout()
         example_row.addWidget(self.example_button)
         example_row.addStretch(1)
-        self.results = ResultsArea()
+        self.results = ResultsPanel()
         self.output = ResultsBrowser()
-        # The document under the results always keeps its height; the results scroll.
+        # The document takes the height the results leave, and never less than its
+        # least; below that, the page scrolls, never the results alone (ADR-0017 R3).
         self.output.setMinimumHeight(round(ui_style().result_field.document_min_height))
         self.output.setOpenExternalLinks(True)
         self.calculator_page = QWidget()
@@ -388,7 +396,7 @@ class MainWindow(QMainWindow):
         domain_col.addWidget(self.domain_note)
         domain_col.addStretch(1)
 
-        self.pages = QStackedWidget()
+        self.pages = PageStack()
         self.pages.addWidget(self.calculator_page)
         self.pages.addWidget(self.domain_page)
 
@@ -399,9 +407,12 @@ class MainWindow(QMainWindow):
         col.addLayout(options)
         col.addWidget(self.pages, 1)
 
+        # Too short a window scrolls the page as a whole: title, options, inputs,
+        # every result field, and the document's least height (ADR-0017 R3).
+        self.page_scroll = PageScrollArea(right)
         splitter = QSplitter()
         splitter.addWidget(self.tree)
-        splitter.addWidget(right)
+        splitter.addWidget(self.page_scroll)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([280, 820])
         self.setCentralWidget(splitter)
@@ -432,7 +443,7 @@ class MainWindow(QMainWindow):
     def _on_color_scheme_changed(self, *_args: object) -> None:
         clear_cache()
         self._apply_icons()
-        self.results.panel.restyle()
+        self.results.restyle()
         self.recompute()
         self._show_setting_problems()
 
@@ -895,7 +906,7 @@ class MainWindow(QMainWindow):
         scheme = current_scheme()
         self.result = None
         if problems:
-            self.results.panel.show_result(None, self.prefs)
+            self.results.show_result(None, self.prefs)
             self.output.setHtml(_error_html(problems, scheme))
             return
         try:
@@ -908,12 +919,12 @@ class MainWindow(QMainWindow):
                 explicit_notes=notes,
             )
         except CaddCalcError as exc:
-            self.results.panel.show_result(None, self.prefs)
+            self.results.show_result(None, self.prefs)
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
         for key, outline in strongest(self.result.notes, self.fields).items():
             self.fields[key][1].setStyleSheet(_outline(outline))
-        self.results.panel.show_result(self.result, self.prefs)
+        self.results.show_result(self.result, self.prefs)
         self.output.setHtml(
             result_html(calc, self.result, self.prefs, scheme, include_results=False)
         )
