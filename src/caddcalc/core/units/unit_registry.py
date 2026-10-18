@@ -54,6 +54,8 @@ class UnitRegistry:
         unit, which ``_names`` then checks."""
         self._lengths: list[int] = []
         """Every name's length, longest first."""
+        self._reserved: dict[str, Unit] = {}
+        """The built-ins' names, casefolded: no later unit takes one, in any dimension."""
 
     @property
     def frozen(self) -> bool:
@@ -63,6 +65,17 @@ class UnitRegistry:
     def freeze(self) -> None:
         """Take no more units; the registry is frozen before first use."""
         self._frozen = True
+
+    def reserve(self) -> None:
+        """Keep every name registered so far from any later unit, in any dimension.
+
+        Called once the built-ins are in, so a plugin unit of another dimension can't take
+        a built-in's name, which would make that name ambiguous wherever its dimension
+        isn't given, and so break the built-in (U2: built-ins always win).
+        """
+        for unit in self._units:
+            for key in unit.keys:
+                self._reserved.setdefault(key.casefold(), unit)
 
     def register(self, unit: Unit) -> None:
         """Add ``unit``, after checking it (ADR-0019 §5).
@@ -102,9 +115,17 @@ class UnitRegistry:
             raise SpecError(f"{where}: it must read back the symbol it's written with")
         if unit.close_up and unit.written not in CLOSE_UP_SYMBOLS:
             raise SpecError(f"{where}: only °, ′, and ″ are written close up (SP 811 §7.2)")
+        if any(not alias for alias in unit.aliases):
+            raise SpecError(f"{where}: an alias is empty")
         for key in unit.keys:
             if key != key.strip() or key[0] in _UNSAFE_STARTS:
                 raise SpecError(f"{where}: {key!r} can't be told from the number before it")
+            built_in = self._reserved.get(key.casefold())
+            if built_in is not None:
+                raise SpecError(
+                    f"{where}: {key!r} is the built-in unit {built_in.symbol!r} "
+                    f"({built_in.name}), in any dimension"
+                )
         if any(u.symbol == unit.symbol for u in self._units):
             raise SpecError(f"{where}: the symbol {unit.symbol!r} is taken")
         for other in self.units_for(unit.dimension):
@@ -135,18 +156,22 @@ class UnitRegistry:
 
         Args:
             text: A symbol or alias.
-            dimension: The dimension to look in; any, when ``None``.
+            dimension: The dimension it's expected to be of. A unit of that dimension wins
+                where units of several share the name; with none of that dimension, the
+                unit of whatever dimension has it is returned, so the caller can say it
+                measures the wrong thing.
 
         Raises:
             InputError: No unit has that name.
-            UsageError: Units of several dimensions have it, and no dimension was given.
+            UsageError: Units of several dimensions have it, and none is of ``dimension``.
         """
         key = text.strip()
         if key:
             named = [u for u in self._by_name.get(key.casefold(), ()) if _names(u, key)]
         else:
             named = [u for u in self._units if not u.symbol]  # "" is the unnamed ratio
-        found = [u for u in named if dimension is None or u.dimension is dimension]
+        own = [u for u in named if u.dimension is dimension]
+        found = own or named
         if not found:
             raise InputError(f"Unknown unit {text!r}")
         if len(found) > 1:
@@ -210,6 +235,7 @@ def build_registry(
     built = UnitRegistry(builtin.DIMENSIONS)
     for unit in builtin.UNITS:
         built.register(unit)
+    built.reserve()
     if load_plugins:
         built.plugin_errors += load_group(entry_points, ENTRY_POINT_GROUP, Unit, _registrar(built))
     built.freeze()

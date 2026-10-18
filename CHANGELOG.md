@@ -130,7 +130,7 @@ All notable changes are recorded here. The format follows
   bare number is read in.
 - Welcome-screen docs: the art specification (docs/dev/design/welcome-screen.md), the
   `[welcome]` pack keys in packaging.md, the welcome screen in the user guide, and
-  KI-020, the platform checks CI can't run on Wayland and macOS.
+  KI-020, the checks CI can't run on real windowing systems.
 - `caddcalc.gui.welcome.WelcomeScreen` (ADR-0015): a frameless, application-modal card
   with an About button (ⓘ) and an X, a vertical logo strip, and 16:9 art with
   the name and version as live text on theme-coloured scrims (new palette roles
@@ -403,8 +403,8 @@ All notable changes are recorded here. The format follows
   characters. Every text that read before reads the same, and every error says the same.
   One factor changes: psi is now its exact definition rounded once, one unit in the last
   place from before; no shown value changes. Plugins can add units through the
-  `caddcalc.units` entry-point group; one that clashes with a built-in is skipped, with an
-  error naming both.
+  `caddcalc.units` entry-point group. A plugin unit can't take any built-in unit's name,
+  in any dimension; one that tries is skipped, with an error naming both.
 - `core.citations` holds the citation model, `Publication`, `Source`, `License`, and
   `PublicationKind`, which the units and the reference tables share; `TablePublication`
   and `TableSource` are still there, as its `Publication` and `Source`.

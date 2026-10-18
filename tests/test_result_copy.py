@@ -226,9 +226,9 @@ def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
 def test_a_focused_copy_button_draws_no_focus_of_its_own() -> None:
     """Its field's ring is the one focus indicator (UI/UX's k4 M2).
 
-    Whether a style draws a tool button's focus varies by style and platform, and none
-    does offscreen here, so this checks what the button asks its style to draw: a field's
-    button never asks for focus, and Copy all, which has no ring, still does.
+    Whether a style draws a tool button's focus varies by style and platform, so this
+    checks what the button asks its style to draw: a field's button never asks for
+    focus, and Copy all, which has no ring, still does. The next test checks the pixels.
     """
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication, QProxyStyle, QStyle
@@ -261,6 +261,49 @@ def test_a_focused_copy_button_draws_no_focus_of_its_own() -> None:
         assert button.hasFocus()
         button.grab()
         assert style.focused and set(style.focused) == {asks}, button.accessibleName()
+    window.close()
+
+
+def _pixels_tab_changes(button: Any, before: Any) -> int:
+    """How many of ``button``'s pixels change as Tab brings the focus to it from ``before``.
+
+    A Tab key press, unlike ``setFocus()``, sets the window's keyboard-focus flag, which
+    is what styles draw a tool button's focus for.
+    """
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    before.setFocus(Qt.FocusReason.OtherFocusReason)
+    QApplication.processEvents()
+    plain = button.grab().toImage()
+    QTest.keyClick(before, Qt.Key.Key_Tab)
+    QApplication.processEvents()
+    assert button.hasFocus(), button.accessibleName()
+    focused = button.grab().toImage()
+    size = range(plain.width()), range(plain.height())
+    return sum(plain.pixel(x, y) != focused.pixel(x, y) for x in size[0] for y in size[1])
+
+
+@pytest.mark.parametrize("style_name", ["Fusion", "windows11"])
+def test_tabbing_to_a_copy_button_paints_no_focus_but_the_ring(style_name: str) -> None:
+    """The painting itself (UI/UX's k6 L2): a field's button is unchanged; Copy all isn't."""
+    from PySide6.QtWidgets import QApplication, QStyleFactory
+
+    style = QStyleFactory.create(style_name)
+    if style is None:
+        pytest.skip(f"no {style_name} style on this platform")
+    window = _bend_window()
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+    last_input = list(window.fields.values())[-1][1]
+    fields = list(window.results.fields.values())
+    for button in (fields[0].copy_button, window.results.copy_all_button):
+        button.setStyle(style)
+    assert _pixels_tab_changes(fields[0].copy_button, last_input) == 0
+    copy_all = window.results.copy_all_button
+    assert _pixels_tab_changes(copy_all, fields[-1].copy_button) > 0, "the style's own focus"
     window.close()
 
 

@@ -34,10 +34,6 @@ from caddcalc.core.units import (
 
 L, A = Dimension.LENGTH, Dimension.ANGLE
 
-PRINTED = frozenset({builtin.FR_1959.id})
-"""Public-domain works the units cite with no url, named on purpose: the 1959 Federal
-Register notice is cited as printed."""
-
 
 def test_every_unit_cites_its_definition_and_its_exact_factor() -> None:
     """ADR-0019 §4: a cited source, an exact factor, rounded once."""
@@ -55,8 +51,8 @@ def test_every_unit_cites_its_definition_and_its_exact_factor() -> None:
                 PublicationKind.GOVERNMENT_DOCUMENT,
                 License.PUBLIC_DOMAIN,
             )
-            assert work.on_allowlist or work.id in PRINTED, work.id
-    assert builtin.SP_811.on_allowlist, "nist.gov"
+            assert work.on_allowlist, work.id
+    assert builtin.SP_811.on_allowlist and builtin.FR_1959.on_allowlist, "nist and govinfo"
     inch, pound_force = get_unit("in"), get_unit("psi")
     assert builtin.FR_1959 in {s.publication for s in inch.sources}, "the inch's primary source"
     assert builtin.FR_1959 in {s.publication for s in pound_force.sources}, "and the pound's"
@@ -129,6 +125,7 @@ def test_a_cited_unit_registers_and_parses_at_once() -> None:
         ({"aliases": ("eyd",)}, "can't be told from the number"),
         ({"aliases": ("Eyd",)}, "can't be told from the number"),
         ({"aliases": (" yd",)}, "can't be told from the number"),
+        ({"aliases": ("",)}, "an alias is empty"),
         ({"aliases": ("MM",)}, "'MM' is already 'mm', unit 'mm'"),
         ({"aliases": ('"',)}, "is already '\"', unit 'in'"),
         ({"symbol": "in"}, "the symbol 'in' is taken"),
@@ -217,7 +214,7 @@ def test_plugin_units_register_and_a_bad_one_is_skipped_with_its_reason() -> Non
         "clash[0] = tests:clash",
         "junk[0] = tests:junk",
     ]
-    assert "'in' is already 'in', unit 'in' (inch)" in built.plugin_errors[0].message
+    assert "'in' is the built-in unit 'in' (inch)" in built.plugin_errors[0].message
     assert built.find("in").name == "inch", "the built-in kept its name"
 
 
@@ -250,3 +247,69 @@ def test_nothing_reads_units_at_import_time() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert out.stdout.strip() == "0"
+
+
+def _incline(*names: str) -> Unit:
+    """A test angle unit named like a built-in length."""
+    return Unit(
+        "incl",
+        "incline",
+        A,
+        1.0,
+        names,
+        "inclines",
+        exact=Fraction(1),
+        system=UnitSystem.NONE,
+        sources=get_unit("deg").sources,
+    )
+
+
+def test_a_plugin_cant_take_a_built_in_name_in_another_dimension() -> None:
+    """S&R's u1 M1: "in" for an angle would make every inch lookup ambiguous (U2)."""
+
+    def entry_points(*, group: str) -> list[_EntryPoint]:
+        assert group == "caddcalc.units"
+        return [_EntryPoint("incline", _incline("in")), _EntryPoint("deg", _incline("DEG"))]
+
+    built = build_registry(entry_points=entry_points)
+    assert [e.message for e in built.plugin_errors] == [
+        "unit 'incl' (incline): 'in' is the built-in unit 'in' (inch), in any dimension",
+        "unit 'incl' (incline): 'DEG' is the built-in unit 'deg' (degree), in any dimension",
+    ]
+    assert built.find("in").name == "inch"
+
+
+def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """S&R's u1 M1, the other way: core names the dimension wherever it knows it.
+
+    Two built-ins of different dimensions may share a name (the foot and the arcminute
+    will), so with one forced in, inches still show and every shipped table still loads.
+    """
+    from caddcalc.calculators import REFERENCE_TABLES
+    from caddcalc.calculators.sheet_metal import BendAllowance
+    from caddcalc.core.formatting import DisplayPrefs, format_value
+    from caddcalc.core.refdata import load_table
+    from caddcalc.core.units import unit_registry
+
+    forced = _fresh()
+    forced.register(_incline("in"))
+    forced.freeze()
+    monkeypatch.setattr(unit_registry, "build_registry", lambda **_: forced)
+    clear_registry()
+    try:
+        assert registry() is forced
+        with pytest.raises(UsageError, match="several dimensions"):
+            get_unit("in")
+        assert get_unit("in", L).name == "inch" and get_unit("in", A).name == "incline"
+        assert format_value(25.4, L, DisplayPrefs()) == "1.0000 in"
+        parsed = parse_quantity_detailed("3", L, "in")
+        assert (parsed.value, parsed.unit.symbol) == (pytest.approx(76.2), "in")
+        for spec in REFERENCE_TABLES:
+            table = load_table(spec.package, spec.filename, spec.content_keys, spec.quantities)
+            assert list(spec.values(table)), spec.filename
+        assert BendAllowance().run().outputs, "a calculator runs"
+    finally:
+        monkeypatch.undo()
+        clear_registry()

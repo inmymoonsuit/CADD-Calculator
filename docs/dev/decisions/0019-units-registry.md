@@ -1,6 +1,7 @@
 # ADR-0019: A units registry, the one source of unit knowledge
 
-* **Status:** **Accepted** (not built). The maintainer asked for this ADR on 2026-10-17
+* **Status:** **Accepted**; the behaviour-neutral refactor (§7's first step) is built, as
+  u1 and u1b (see Amendments). The maintainer asked for this ADR on 2026-10-17
   ("create a registry of units in our codebase (maybe even a subsystem for units and
   conversions) with definitions and attributes and the ability to add new ones"), decided
   U4 and U5 that day, and approved U1–U3 as recommended on 2026-10-18 ("Approve all"),
@@ -15,11 +16,11 @@
 ## Context
 
 Unit knowledge is spread across the code today:
-* `core/units.py`: the `Dimension` enum, `_WITH_ARTICLE`, the `UNITS` tuple (float
+* `core/units.py`: the `Dimension` enum, an article table, the `UNITS` tuple (float
   factors, one of them `180/π`), `BASE_UNITS`, the alias lookup, and a parser whose unit
   token is a hand-written character class (`[A-Za-z°%"'″′]+`).
-* `core/formatting.py`: `_SHOWN_IN`, `_STRESS_WITH_LENGTH`, `display_unit`'s per-dimension
-  branches, `_decimals`'s branches, `DisplayPrefs`' per-dimension decimal fields, the
+* `core/formatting.py`: the display-unit tables, `display_unit`'s per-dimension branches,
+  the per-dimension decimals branches, `DisplayPrefs`' per-dimension decimal fields, the
   close-up rule for "°", and inch-only fractions.
 * Planned work would add more: `Unit.spoken_plural` (ADR-0017), and for ADR-0018 an AREA
   dimension touching six places plus the parser, fixed-unit outputs, significant figures,
@@ -185,3 +186,34 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
   they can't disagree.
 * The registry refactor comes before ADR-0018's new families, which delays them by one
   core step but avoids rework.
+
+## Amendments
+
+### 2026-10-18: the refactor as built (u1, u1b)
+
+* **The package:** `core/units/` holds `model.py` (Dimension, Unit, DimensionSpec,
+  UnitSystem), `builtin.py` (the declarations), `unit_registry.py` (the registry), and
+  `parsing.py` (the parser and TypedValue). The registry module isn't called
+  `registry.py`, which would clash with `core/registry.py` and with the package's own
+  `registry()` function. Entry-point loading moved to `core/plugins.py`, which both
+  registries use, so there's no import cycle.
+* **Citations** moved to `core/citations.py`, as §4 says. psi and ksi cite SP 811
+  Appendix B.8's pound (footnote 22), pound-force (footnote 23) and standard free fall,
+  and ksi also the kip; B.8's own psi and ksi factors are rounded. The 1959 notice is cited
+  as 24 FR 5348 (July 1, 1959), on govinfo.gov, so it's on the public-domain allowlist.
+  The §5 record is `docs/dev/research/release-checklist-units-v1.md`.
+* **Neutral, as checked:** an identity test against a frozen copy of the old module, and
+  Support & Review's independent diff of the real old and new code over 411,844 results.
+  Only psi's factor changed, by one unit in the last place, as §2 says.
+* **A name shared across dimensions (Support & Review's u1 M1).** §3 lets two units of
+  different dimensions share a name, so a name alone can be ambiguous. Two rules keep a
+  plugin from making a built-in's name ambiguous:
+  * A plugin unit may not take any built-in's name, case-folded, in any dimension;
+    built-ins may still share one with each other, as the foot and the arcminute will.
+  * `get_unit(name, dimension)` prefers a unit of `dimension`, and falls back to
+    whatever dimension has the name, so its caller can say a value measures the wrong
+    thing. Every core caller that knows the dimension gives it: the length preference,
+    a parse's default unit, a stated value (`nominal(..., dimension=)`), and a step's
+    expression unit. With no dimension and two units of the name, it raises UsageError.
+* **Guards beyond §5's list:** an empty alias is refused, and so is any name starting with
+  "e" or "E", which is broader than the exponent clash it prevents, but harmless today.

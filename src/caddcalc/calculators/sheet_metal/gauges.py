@@ -29,6 +29,7 @@ from caddcalc.core import (
     Basis,
     Choice,
     DerivedValue,
+    Dimension,
     InputSource,
     Note,
     NoteKind,
@@ -177,7 +178,8 @@ class Precision:
 
     def state(self, exact: Fraction) -> TypedValue:
         """Return ``exact`` inches as the system states it, e.g. ``"0.1046 in"``."""
-        return nominal(exact, FORMULA_UNIT, self.places(exact), self.rounding)
+        places = self.places(exact)
+        return nominal(exact, FORMULA_UNIT, places, self.rounding, dimension=Dimension.LENGTH)
 
     def explain(self, exact: Fraction) -> str:
         """Say how ``exact`` inches became the stated value, for the derived value's work."""

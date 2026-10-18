@@ -41,7 +41,7 @@ class Step:
         if self.expression is None:
             raise SpecError(f"Step {self.symbol}: only a formula step has an expression_unit")
         try:
-            unit = get_unit(self.expression_unit)
+            unit = get_unit(self.expression_unit, self.dimension)
         except InputError as exc:
             raise SpecError(f"Step {self.symbol}: {exc}") from None
         if unit.dimension is not self.dimension:

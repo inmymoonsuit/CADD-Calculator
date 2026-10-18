@@ -568,7 +568,12 @@ def _json_default(value: Any) -> str:
 
 
 def nominal(
-    value: Fraction | Decimal, unit: str, decimals: int, rounding: str = ROUND_HALF_UP
+    value: Fraction | Decimal,
+    unit: str,
+    decimals: int,
+    rounding: str = ROUND_HALF_UP,
+    *,
+    dimension: Dimension | None = None,
 ) -> TypedValue:
     """Return a standard's stated value: ``value`` at the precision the standard publishes.
 
@@ -585,6 +590,8 @@ def nominal(
         unit: The unit the standard states it in, e.g. ``"in"``; ``""`` for a ratio.
         decimals: How many decimal places the standard publishes.
         rounding: ``decimal.ROUND_HALF_UP``, ``ROUND_HALF_EVEN``, or ``ROUND_DOWN``.
+        dimension: What the value measures; give it wherever it's known, so ``unit`` is
+            found in that dimension (``get_unit``).
 
     Raises:
         UsageError: ``value`` isn't a finite ``Fraction`` or ``Decimal``, ``decimals`` is
@@ -612,4 +619,5 @@ def nominal(
     sign = "-" if exact < 0 and units else ""
     digits = str(units).rjust(decimals + 1, "0")
     number = f"{digits[:-decimals]}.{digits[-decimals:]}" if decimals else digits
-    return TypedValue.parse(f"{sign}{number} {unit}".rstrip(), get_unit(unit).dimension)
+    measures = get_unit(unit, dimension).dimension
+    return TypedValue.parse(f"{sign}{number} {unit}".rstrip(), measures)

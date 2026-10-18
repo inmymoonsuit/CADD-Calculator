@@ -683,7 +683,7 @@ def _fraction(where: str, text: Any) -> Fraction:
 
 
 def _unit(where: str, symbol: Any) -> Unit:
-    unit = get_unit(_string(where, symbol))
+    unit = get_unit(_string(where, symbol), _LENGTH)
     if unit.dimension is not _LENGTH:
         raise SpecError(f"{where}: unit {symbol!r} isn't a length unit")
     return unit

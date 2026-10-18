@@ -44,12 +44,14 @@ def get_unit(symbol: str, dimension: Dimension | None = None) -> Unit:
 
     Args:
         symbol: The symbol or alias.
-        dimension: The dimension it's of, when known; needed only where units of two
-            dimensions share a name.
+        dimension: The dimension it's expected to be of. Give it wherever it's known: a
+            unit of that dimension wins where units of several share the name, and with
+            none of that dimension, the unit of whatever dimension has it is returned.
 
     Raises:
         InputError: The unit is unknown.
-        UsageError: Units of several dimensions have that name, and no dimension was given.
+        UsageError: Units of several dimensions have that name, and none is of
+            ``dimension``.
     """
     return registry().find(symbol, dimension)
 
@@ -140,7 +142,8 @@ def parse_quantity_detailed(
     if named is not None:
         unit = named[0]
     else:
-        unit = units.find(word or (BASE_UNITS[dimension] if default_unit is None else default_unit))
+        name = word or (BASE_UNITS[dimension] if default_unit is None else default_unit)
+        unit = units.find(name, dimension)
     explicit = named is not None or bool(word)
     if unit.dimension is not dimension:
         raise InputError(

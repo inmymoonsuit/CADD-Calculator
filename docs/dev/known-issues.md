@@ -151,11 +151,12 @@ field's override note and the settings page's "Overridden in N" count show it, a
 ticking "Use … value" undoes it. Accepted for now; the code that judges an edit
 points here (`MainWindow._finish_field_edit`).
 
-### KI-020: The welcome screen is unchecked on Wayland and macOS (Low)
+### KI-020: Checks by hand on real windowing systems (Low)
 
-The welcome screen (ADR-0015) is frameless and application-modal. CI runs Qt's offscreen
-platform, which can't show how real windowing systems treat it, so these need checking
-by hand before a release on each platform:
+The welcome screen (ADR-0015) is frameless and application-modal, and the result fields
+(ADR-0017) depend on the platform's keys, style, and screen reader. CI runs Qt's
+offscreen platform, which can't show how real windowing systems treat them, so these
+need checking by hand before a release on each platform:
 
 * **Wayland (Linux):** the compositor places windows, so the card may not open centred;
   dragging the top bar must still move it (`startSystemMove`). Stay-on-top hints are
@@ -188,6 +189,9 @@ by hand before a release on each platform:
 * **The result fields' menu keys (ADR-0017):** on a real Windows window, check that the
   Menu key and Shift+F10 on a focused copy button open its menu of copy forms. Offscreen
   tests send the menu event itself, not the platform's key-to-menu step.
+* **The result fields' focus (ADR-0017):** on a native Windows window, Tab to a copy
+  button and check that only the focus ring shows, with no focus frame of the style's
+  own inside it.
 * **Screen readers (ADR-0017):** check that Narrator or NVDA reads a result field ("Bend
   allowance, BA: 0.3119 inches"), its copy button with its value, and the announcement
   after a copy. The tests check the names and the announcement calls, not the speech.

@@ -42,14 +42,15 @@ FR_1959 = Publication(
     PublicationKind.GOVERNMENT_DOCUMENT,
     "Refinement of Values for the Yard and the Pound (Federal Register notice, July 1, 1959)",
     License.PUBLIC_DOMAIN,
+    url="https://www.govinfo.gov/app/details/FR-1959-07-01",
     public_domain_basis=(
         "17 U.S.C. §105: a notice of the National Bureau of Standards, a work of the U.S. "
         "government"
     ),
-    short_title="24 FR 5348",
+    short_title="24 FR 5348 (July 1, 1959)",
 )
 """The primary source of the inch and the pound: the yard is 0.9144 m, the pound
-0.453 592 37 kg. It's printed; no url is given, so it's named on the citation allowlist."""
+0.453 592 37 kg. Published July 1, 1959, in the issue govinfo holds."""
 
 YARD_POUND = cite("fr_1959", FR_1959, "Vol. 24, No. 128, p. 5348")
 
@@ -58,7 +59,9 @@ INCH_MM = Fraction("25.4")
 POUND_KG = Fraction("0.45359237")
 """The avoirdupois pound, exactly (24 FR 5348)."""
 STANDARD_GRAVITY = Fraction("9.80665")
-"""Standard acceleration of free fall, in m/s², exactly (SP 811 Appendix B.8)."""
+"""Standard acceleration of free fall, in m/s², exactly (SP 811 Appendix B.8). With the
+pound, it defines the pound-force (B.8, footnote 23); B.8's own psi and ksi factors are
+rounded, so they come from these definitions instead."""
 PSI_MPA = POUND_KG * STANDARD_GRAVITY / INCH_MM**2
 """A pound-force per square inch, in N/mm², which is MPa."""
 
@@ -244,7 +247,8 @@ UNITS: tuple[Unit, ...] = (
         STRESS,
         PSI_MPA,
         US,
-        "Appendix B.8 (pound-force per square inch to pascal; free fall, standard)",
+        "Appendix B.8: pound (avoirdupois), footnote 22; pound-force, footnote 23; "
+        "acceleration of free fall, standard",
         primary=True,
     ),
     _unit(
@@ -254,7 +258,8 @@ UNITS: tuple[Unit, ...] = (
         STRESS,
         1000 * PSI_MPA,
         US,
-        "Appendix B.8 (kip per square inch to pascal)",
+        "Appendix B.8: pound (avoirdupois), footnote 22; pound-force, footnote 23; "
+        "acceleration of free fall, standard; kip (1 kip = 1000 lbf)",
         primary=True,
     ),
 )

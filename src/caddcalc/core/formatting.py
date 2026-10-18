@@ -88,7 +88,7 @@ def display_unit(dimension: Dimension, prefs: DisplayPrefs) -> Unit:
     degrees, and ratios as plain numbers. Each dimension declares its rule in the units
     registry (ADR-0019 §2).
     """
-    return registry().shown_unit(dimension, get_unit(prefs.length_unit))
+    return registry().shown_unit(dimension, get_unit(prefs.length_unit, Dimension.LENGTH))
 
 
 def entry_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
@@ -394,7 +394,7 @@ def render_step(
     """
     value_text = format_value(step.value, step.dimension, prefs)
     if step.expression_unit is not None:
-        unit = get_unit(step.expression_unit)
+        unit = get_unit(step.expression_unit, step.dimension)
         yielded = step.stated
         if yielded is None:
             decimals = _decimals(step.dimension, prefs)
