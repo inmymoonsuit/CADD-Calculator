@@ -96,3 +96,9 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
   length preference, to 4 decimals, and never with an inch fraction. ADR-0019's u2
   amendment has the details.
 
+### 2026-10-18: feet and inches, and degrees, minutes and seconds (ADR-0019, u3)
+
+* Feet-and-inches input (`3'-4 1/2"`) is built, as a compound form of a length, and so
+  is degrees, minutes and seconds for an angle, with the minute and second of arc as
+  units (SP 811 Table 6). KI-009 is resolved. ADR-0019's u3 amendment has the details.
+

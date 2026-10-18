@@ -5,9 +5,10 @@ a corpus through both and wants the same answer: the same value and unit, or the
 error, word for word. The one allowed difference is psi's factor, now its exact
 definition rounded once, one unit in the last place from before.
 
-Dimensions and units added since (the area and its squares, ADR-0018 §3) are new, so
-the corpus is the old dimensions and units. A text the old module refused may now name
-a new unit, as ``3 sq in`` does; it's held to that unit instead (``AREA_TEXTS``).
+Dimensions and units added since (the area and its squares, ADR-0018 §3, and the minute
+and second of arc) are new, so the corpus is the old dimensions and units. A text the
+old module refused may now name a new unit, as ``3 sq in`` and ``30′`` in an angle do,
+or be a compound form, as ``1'4"`` is; each is held to its new reading instead.
 """
 
 from __future__ import annotations
@@ -67,8 +68,17 @@ INVALID = (
 """Text the parser has always refused, each with its own message."""
 OLD_DIMENSIONS = {d: old.Dimension(d.value) for d in Dimension if d is not Dimension.AREA}
 """The dimensions the old module had, by the new ones."""
-OLD_UNITS = tuple(u for u in UNITS if u.dimension in OLD_DIMENSIONS)
-"""The units the old module had: every unit but the squares."""
+OLD_UNITS = tuple(u for u in UNITS if u.symbol in {was.symbol for was in old.UNITS})
+"""The units the old module had: every unit but the squares and the minute and second."""
+ARC_MARKS = {"'": "arcmin", "′": "arcmin", '"': "arcsec", "″": "arcsec"}
+"""The foot's and inch's marks, which in an angle are the minute's and second's (SP 811
+Table 6): an angle the old module refused as a length reads in them now."""
+COMPOUND_TEXTS = {
+    ("1'4\"", Dimension.LENGTH): 16 * 25.4,
+    ("1'4\"", Dimension.ANGLE): 1 / 60 + 4 / 3600,
+}
+"""Texts the old module refused that are compound forms now: 1 foot 4 inches, and in an
+angle 1 minute 4 seconds (ADR-0019 U3)."""
 AREA_TEXTS = {"3 m2": "m²", "3 sq in": "in²"}
 """Texts the old module refused that name a square now: each reads as that area, and in
 any other dimension is refused for measuring an area."""
@@ -139,6 +149,22 @@ def _same(new: tuple[Any, ...], was: tuple[Any, ...]) -> bool:
     return new == was
 
 
+def _reads_arc(text: str, dimension: Dimension, new: tuple[Any, ...], was: tuple[Any, ...]) -> bool:
+    """Whether ``text`` is an angle in minutes or seconds the old module refused as a length.
+
+    If it is, it must read as that many minutes or seconds now.
+    """
+    mark = text.rstrip()[-1:]
+    if dimension is not Dimension.ANGLE or mark not in ARC_MARKS:
+        return False
+    if was != ("InputError", f"{text!r} is a length, but an angle is expected"):
+        return False
+    length, unit, _named = old.parse_quantity_detailed(text, old.Dimension.LENGTH, None)
+    arc = get_unit(ARC_MARKS[mark])
+    assert new == (pytest.approx(length / unit.factor * arc.factor), arc.symbol, True), text
+    return True
+
+
 def test_every_text_reads_as_it_always_has() -> None:
     differ = []
     count = 0
@@ -148,6 +174,12 @@ def test_every_text_reads_as_it_always_has() -> None:
         was = _reads(old.parse_quantity_detailed, text, OLD_DIMENSIONS[dimension], default)
         if "," in text:  # still refused, now saying why (ADR-0020 §4)
             assert new[0] == was[0] == "InputError" and "has a comma" in new[1], (new, was)
+            continue
+        if (text, dimension) in COMPOUND_TEXTS:
+            assert was[0] == "InputError" and new[2] is True, (new, was)
+            assert new[0] == pytest.approx(COMPOUND_TEXTS[text, dimension]), (text, new)
+            continue
+        if _reads_arc(text, dimension, new, was):
             continue
         if text in AREA_TEXTS:  # refused still, now because it names an area
             assert was[0] == "InputError" and new == (
@@ -172,7 +204,7 @@ def test_every_name_finds_the_unit_it_always_has() -> None:
     """Names are now US English, the source language, each one an old alias (ADR-0020 §2)."""
     for unit in OLD_UNITS:
         for key in (*(k for k in unit.keys if k not in NEW_SPELLINGS), unit.symbol):
-            new, was = get_unit(key), old.get_unit(key)
+            new, was = get_unit(key, unit.dimension), old.get_unit(key)
             assert (new.symbol, new.dimension.value) == (was.symbol, was.dimension.value)
             assert new.name in (was.name, *was.aliases), new.name
             assert new.spoken_plural in (was.spoken_plural, *was.aliases), new.spoken_plural
@@ -212,9 +244,10 @@ def test_dimensions_and_base_units_are_as_they_were() -> None:
     assert base_unit_names() == f"{old.base_unit_names()}, mm²"
     for dimension in OLD_DIMENSIONS:
         assert dimension.with_article == OLD_DIMENSIONS[dimension].with_article
-        assert [u.symbol for u in units_for(dimension)] == [
-            u.symbol for u in old.units_for(OLD_DIMENSIONS[dimension])
-        ]
+        was = [u.symbol for u in old.units_for(OLD_DIMENSIONS[dimension])]
+        now = [u.symbol for u in units_for(dimension)]
+        assert now[: len(was)] == was, "the old units first, in their order"
+        assert set(now[len(was) :]) <= {"arcmin", "arcsec"}, "then only the new ones"
 
 
 LENGTH_CHOICES = tuple(

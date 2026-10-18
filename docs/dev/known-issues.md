@@ -84,10 +84,6 @@ In the Rough Draft workbooks, cell D14 on "Non-90 Degree Bend Calculations" says
 90 Degree Bends", but the formula is for two arbitrary angles. Recorded for history only;
 the app doesn't reuse the labels.
 
-### KI-009: No feet-and-inches input (Low)
-
-`parse_quantity` accepts `2'` and `1-1/2"` but not the combined `3'-4 1/2"`.
-
 ### KI-010: GUI is a skeleton (Low)
 
 No saved sessions, printing or export, fraction display toggle, dark-mode polish,
@@ -200,6 +196,14 @@ need checking by hand before a release on each platform:
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
 ## Resolved
+
+### KI-009: No feet-and-inches input (resolved 2026-10-18)
+
+`parse_quantity` accepted `2'` and `1-1/2"` but not the combined `3'-4 1/2"`. Feet and
+inches is now a compound form of a length, read in AutoCAD's report and input forms, the
+spaced and prime forms, and words (`1 ft 4 3/16 in`), and shown `1'-4 3/16"` where an
+output asks for it (ADR-0019 U3, its u3 amendment). `tests/test_compound_forms.py` checks
+each form.
 
 ### KI-024: With shorter text lines, the tallest page could scroll at launch (resolved 2026-10-18)
 

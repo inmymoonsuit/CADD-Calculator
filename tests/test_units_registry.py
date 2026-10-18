@@ -75,10 +75,10 @@ def test_derived_factors_equal_their_definitions() -> None:
     assert float(radian) == 180 / math.pi
 
 
-def test_symbols_keep_their_case_and_the_degree_alone_is_close_up() -> None:
-    """SP 811 §6.1.2 and §7.2: lower case but Pa's P and the M and G prefixes; ° close up."""
+def test_symbols_keep_their_case_and_only_degrees_minutes_seconds_are_close_up() -> None:
+    """SP 811 §6.1.2 and §7.2: lower case but Pa's P and the M and G prefixes; ° ′ ″ close up."""
     assert {u.symbol for u in UNITS if u.symbol != u.symbol.lower()} == {"MPa", "kPa", "GPa"}
-    assert {u.written for u in UNITS if u.close_up} == {"°"}
+    assert {u.written for u in UNITS if u.close_up} == {"°", "′", "″"}
     assert get_unit("%").close_up is False, "the percent sign is spaced (§7.10.2)"
     assert {u.symbol for u in UNITS if u.fractions} == {"in"}
 
@@ -159,26 +159,16 @@ def test_case_sensitive_units_may_differ_only_in_case() -> None:
 
 
 def test_names_are_unique_within_a_dimension_and_the_parser_knows_which() -> None:
-    """′ is the foot for a length and could be the minute for an angle (SP 811 Table 6)."""
-    minute = Unit(
-        "arcmin",
-        "minute",
-        A,
-        float(Fraction(1, 60)),
-        ("′", "'"),
-        "minutes",
-        exact=Fraction(1, 60),
-        system=UnitSystem.ACCEPTED,
-        sources=get_unit("deg").sources,
-        written="′",
-        close_up=True,
-    )
+    """′ is the foot for a length and the minute for an angle (SP 811 Table 6)."""
     test = _fresh()
-    test.register(minute)
+    minute, second = test.find("arcmin"), test.find("arcsec")
     assert test.find("′", A) is minute and test.find("′", L).symbol == "ft"
+    assert test.find('"', A) is second and test.find('"', L).symbol == "in"
     with pytest.raises(UsageError, match="several dimensions"):
         test.find("′")
     assert test.ending("30′", A) == (minute, 1) and test.ending("30′", L)[0].symbol == "ft"
+    assert (minute.exact, second.exact) == (Fraction(1, 60), Fraction(1, 3600))
+    assert (minute.written, second.written, minute.close_up) == ("′", "″", True)
 
 
 def test_a_frozen_registry_takes_no_more() -> None:

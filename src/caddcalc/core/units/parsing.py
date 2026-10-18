@@ -6,7 +6,8 @@ at the edges, when input is parsed and when output is formatted (ADR-0005).
 
 A unit in typed text is found by the registry, never by a list of characters here: the
 longest registered symbol or alias that ends the text, as a whole word, names it, and the
-rest is the number. So a unit parses as soon as it's registered.
+rest is the number. So a unit parses as soon as it's registered. A dimension's compound
+forms, such as feet and inches, are tried before that (``units.compound``).
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ from caddcalc.core.errors import InputError, UsageError
 from caddcalc.core.units.builtin import DIMENSIONS
 from caddcalc.core.units.builtin import UNITS as UNITS
 from caddcalc.core.units.model import Dimension, Unit
+from caddcalc.core.units.numbers import MINUS_SIGN as MINUS_SIGN
+from caddcalc.core.units.numbers import parse_number as parse_number
 from caddcalc.core.units.unit_registry import registry
 
 BASE_UNITS: dict[Dimension, str] = {spec.dimension: spec.base for spec in DIMENSIONS}
@@ -73,56 +76,6 @@ def from_base(value: float, unit: str | Unit) -> float:
     return value / u.factor
 
 
-_MIXED = re.compile(r"([-+]?)(\d+)[\s-]+(\d+)/(\d+)")
-_FRACTION = re.compile(r"([-+]?)(\d+)/(\d+)")
-
-
-MINUS_SIGN = "\u2212"
-"""U+2212, the minus sign: it's read as ``-`` (ADR-0020 §4)."""
-
-
-def parse_number(text: str, decimal: str = ".") -> float:
-    """Parse a decimal or drafting-style fraction: ``0.1046``, ``1/8``, ``1-1/2``, ``1 1/2``.
-
-    The decimal mark is ``"."`` or ``decimal``, the locale's, and a number has one at
-    most. Digits are never grouped, so ``1.234`` is 1.234 in every locale, and a comma
-    that isn't the locale's mark is refused, never read as grouping (ADR-0020 §4).
-
-    Raises:
-        InputError: The text isn't a number.
-    """
-    s = text.strip().replace(MINUS_SIGN, "-")
-    if decimal != ".":
-        if s.count(".") + s.count(decimal) > 1:
-            raise InputError(f"{text!r} has more than one decimal mark; digits aren't grouped")
-        s = s.replace(decimal, ".")
-    if "," in s:
-        raise InputError(
-            f"{text!r} has a comma, which isn't a decimal mark here: the decimal mark is "
-            f"{decimal!r}, and digits aren't grouped"
-        )
-    if "_" in s:
-        raise InputError(f"{text!r} is not a number; digits aren't grouped")
-    for pattern in (_MIXED, _FRACTION):
-        m = pattern.fullmatch(s)
-        if m:
-            groups = m.groups()
-            sign = -1.0 if groups[0] == "-" else 1.0
-            numbers = [int(g) for g in groups[1:]]
-            den = numbers[-1]
-            if den == 0:
-                raise InputError(f"Fraction {text!r} has a zero denominator")
-            whole = numbers[0] if len(numbers) == 3 else 0
-            return sign * (whole + numbers[-2] / den)
-    try:
-        value = float(s)
-    except ValueError:
-        raise InputError(f"{text!r} is not a number") from None
-    if not math.isfinite(value):
-        raise InputError(f"{text!r} is not a finite number")
-    return value
-
-
 class ParsedQuantity(NamedTuple):
     """A parsed quantity, and the unit that was applied to read it."""
 
@@ -163,6 +116,11 @@ def parse_quantity_detailed(
     """
     units = registry()
     stripped = _SPACES.sub(" ", text).strip()
+    signed = stripped.replace(MINUS_SIGN, "-")
+    for form in units.compounds_for(dimension):  # tried first, and only for their own
+        value = form.parse(signed, decimal)
+        if value is not None:
+            return ParsedQuantity(value, units.find(form.full_unit, dimension), True)
     named = units.ending(stripped, dimension)
     # Without a registered name at its end, any word there is an unknown unit, said as typed.
     word = "" if named is not None else units.trailing_word(stripped)

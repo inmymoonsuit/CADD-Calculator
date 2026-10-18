@@ -22,6 +22,7 @@ from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
+    CompoundText,
     Dimension,
     Precision,
     TypedValue,
@@ -237,6 +238,10 @@ class ValueParts:
     """The unit's symbol, e.g. ``"in"``, ``"ksi"``, or ``"°"``; ``""`` for a ratio."""
     fraction: str | None = None
     """The nearest drafting fraction of an inch length, e.g. ``"5/16"``, when it's shown."""
+    compound: CompoundText | None = None
+    """The value in a compound form, when it's shown in one, e.g. feet and inches. Its
+    ``number`` is then the form as shown, with no unit of its own, and it's copied and
+    spoken as the form writes it."""
 
     @property
     def with_unit(self) -> str:
@@ -307,15 +312,24 @@ def spoken_value(parts: ValueParts) -> str:
     """Return a value as a screen reader should say it, e.g. ``"0.3119 inches"``.
 
     The unit is named in full, singular only after a shown ``1`` (``Unit.spoken``); a
-    ratio is only its number.
+    ratio is only its number, and a compound form is said as it says itself, e.g. "1 foot
+    4 inches".
     """
+    if parts.compound is not None:
+        return parts.compound.spoken
     unit = registry().written(parts.unit)
     name = "" if unit is None else unit.spoken(parts.number)
     return SPOKEN.format(number=parts.number, unit=name) if name else parts.number
 
 
 def output_unit(output: Output, prefs: DisplayPrefs) -> Unit:
-    """Return the unit an output is shown in: its fixed unit, or its dimension's display unit."""
+    """Return the unit an output is shown in: its fixed unit, or its dimension's display unit.
+
+    An output in a compound form gives the form's full-precision unit, such as the inch
+    for feet and inches.
+    """
+    if output.form:
+        return get_unit(registry().compound(output.form).full_unit, output.dimension)
     if output.unit:
         return get_unit(output.unit, output.dimension)
     return display_unit(output.dimension, prefs)
@@ -327,8 +341,12 @@ def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValuePart
     Every front end presents outputs through here or ``format_output``, so an output's
     own presentation applies in one place. An output with a fixed unit, as a converter's
     row has (ADR-0018 §3), is shown in it, whatever the display unit, to the registry's
-    precision for it; any other is shown as ``value_parts`` shows its dimension.
+    precision for it; one with a compound form, in that form; and any other as
+    ``value_parts`` shows its dimension.
     """
+    if output.form:
+        written = registry().compound(output.form).text(value, prefs.symbols.decimal)
+        return ValueParts(written.shown, "", None, written)
     if not output.unit:
         return value_parts(value, output.dimension, prefs)
     unit = output_unit(output, prefs)
@@ -397,6 +415,8 @@ def _copy_prefs(prefs: DisplayPrefs, form: CopyForm) -> DisplayPrefs:
 
 def _copied(parts: ValueParts, shown: float, form: CopyForm) -> str:
     """Return a shown value's clipboard text in ``form``; ``shown`` is it unrounded."""
+    if parts.compound is not None and form in (CopyForm.VALUE, CopyForm.WITH_UNIT):
+        return parts.compound.copied  # as CAD takes it, e.g. 1'4-3/16"
     if form in (CopyForm.VALUE, CopyForm.SHOWN):
         return parts.number
     if form is CopyForm.WITH_UNIT:
@@ -436,13 +456,16 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     leading apostrophe, which spreadsheets take as "this is text" (OWASP, "CSV
     Injection"). So does one starting with ``"``, which a paste might take as the start of
     a quoted field. A tab or line break, which OWASP also lists, is already a space here.
-    The value cell never gets one: a negative number must paste as a number.
+    The value cell never gets one, a negative number must paste as a number, unless it's
+    a compound form, such as ``-1'-4"``, which is text.
     """
     rows = []
     for output in calc.outputs:
         parts = output_parts(output, result.outputs[output.key], prefs)
         symbol, label, unit = (_text_cell(t) for t in (output.symbol, output.label, parts.unit))
-        rows.append("\t".join((symbol, label, _cell(parts.number), unit)) + "\n")
+        # A compound value isn't a number, so it's kept from being read as a formula too.
+        value = _cell(parts.number) if parts.compound is None else _text_cell(parts.number)
+        rows.append("\t".join((symbol, label, value, unit)) + "\n")
     return "".join(rows)
 
 

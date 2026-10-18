@@ -300,8 +300,32 @@ UNITS: tuple[Unit, ...] = (
         "acceleration of free fall, standard; kip (1 kip = 1000 lbf)",
         primary=True,
     ),
+    _unit(
+        "arcmin",
+        NP_("unit", "minute", "minutes"),
+        ANGLE,
+        Fraction(1, 60),
+        ACCEPTED,
+        "Table 6 (minute), §7.2",
+        aliases=("′", "'", "arcminute", "arcminutes", "minute", "minutes"),
+        written="′",
+        close_up=True,
+    ),
+    _unit(
+        "arcsec",
+        NP_("unit", "second", "seconds"),
+        ANGLE,
+        Fraction(1, 3600),
+        ACCEPTED,
+        "Table 6 (second), §7.2",
+        aliases=("″", '"', "arcsecond", "arcseconds", "second", "seconds"),
+        written="″",
+        close_up=True,
+    ),
 )
-"""The built-in units, in the order they've always been listed; the squares follow."""
+"""The built-in units, in the order they've always been listed, then the minute and second
+of arc, which share ′ and ″ with the foot and inch (SP 811 Table 6): a unit of the
+expected dimension wins (ADR-0019 §3). The squares follow."""
 
 _ROOTS = {unit.symbol: unit for unit in UNITS}
 

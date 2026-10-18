@@ -143,6 +143,10 @@ class Output:
     """The key symbol of a unit it's always shown in, whatever the display preferences,
     e.g. ``"mm"`` for a converter's millimetre row (ADR-0018 §3); empty to follow them.
     It's shown with the registry's precision for that unit (``precision_for``)."""
+    form: str = ""
+    """The key of a compound form it's always shown in, e.g. ``"ft_in"`` for feet and
+    inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.
+    An output gives a unit or a form, not both."""
 
 
 @dataclass(frozen=True)

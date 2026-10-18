@@ -58,7 +58,8 @@ has been checked. The suite starts with sheet metal and grows by domain.
       - press-brake tonnage, once an upper strength value passes ADR-0014 §5
       - user or shop-editable tables, which need their own decision, outside the
         session-only model
-- [ ] Feet-and-inches input (KI-009). Fraction display toggle in the GUI.
+- [x] Feet-and-inches input (KI-009, ADR-0019 u3).
+- [ ] Fraction display toggle in the GUI.
 - [ ] 1:1 printable SVG templates for cone layouts (annular sector) and flat blanks, to
       cut a paper template and check a first part (see KI-001). Use the conventions of the
       maintainer's parametric_CADD SVG writer: the user unit is the paper millimetre

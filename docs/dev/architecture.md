@@ -19,7 +19,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼
 ┌───────────────────── caddcalc.core  (stdlib only) ───────────────────────┐
-│  units/         the units registry (ADR-0019): declarations, parsing     │
+│  units/         the units registry (ADR-0019): declarations, parsing,    │
+│                 compound forms (feet and inches; degrees, min, sec)      │
 │  citations.py   Publication, Source, License: what the app cites         │
 │  expr.py        safe formula evaluator (float and exact) + rendering     │
 │  spec.py        Param, Output, Method, Verification, OutOfRangeError     │

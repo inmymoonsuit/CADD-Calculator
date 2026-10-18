@@ -23,7 +23,23 @@ where your format's mark is "." is refused rather than guessed at. The minus sig
 works as `-` does. Numbers the app fills in, such as the course example, are written in
 your format; what you typed stays as you typed it.
 
-Not supported yet: combined feet and inches such as `3'-4 1/2"`.
+### Feet and inches, and degrees, minutes and seconds
+
+A length can be typed in feet and inches, in any of the usual forms: `1'-4 3/16"`,
+`1'-4-3/16"`, `1'4-3/16"`, `1' 4 3/16"`, `1′ 4 3/16″`, or `1 ft 4 3/16 in`. Give whole
+feet, then inches under 12 with their mark, and at most one sign, at the front:
+`-1'-4"`.
+
+An angle can be typed in degrees, minutes and seconds: `40°30′15″`, `40°30'15"`,
+`40d30'15.5"` (as AutoCAD takes it), or `40 degrees 30 minutes`. Give whole degrees and
+minutes, minutes and seconds under 60, and at most one sign, at the front: `-0°30′`. In
+an angle, `′` and `″` (or `'` and `"`) are minutes and seconds, so `30′` is half a
+degree; everywhere else they're feet and inches.
+
+Where a result is shown in feet and inches, it reads `1'-4 3/16"`, to the nearest 1/16
+inch, and Copy gives `1'4-3/16"`, the form CAD takes. A result in degrees, minutes and
+seconds reads `40°30′15.00″`, and Copy gives `40d30'15.00"`. Rounding carries, so
+1'-11 63/64" shows as 2'-0", and 29.99999999° as 30°0′0.00″.
 
 ## Precision and rounding
 

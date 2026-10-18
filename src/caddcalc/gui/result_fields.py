@@ -622,11 +622,14 @@ def _tail(parts: ValueParts | None, metrics: QFontMetricsF, point: str) -> float
     if parts is None:
         return 0.0
     places = _decimals(parts.number, point)
-    tail = metrics.horizontalAdvance(point + "0" * places) if places else 0.0
+    tail = metrics.horizontalAdvance(point + places) if places else 0.0
     return tail + (metrics.horizontalAdvance(parts.unit) if parts.unit_close_up else 0.0)
 
 
-def _decimals(number: str, point: str) -> int:
-    """Return how many decimal places ``number`` is shown with, after ``point``."""
+def _decimals(number: str, point: str) -> str:
+    """Return what ``number`` shows after ``point``: its decimals, and any mark after them.
+
+    A compound form, such as ``40°30′15.00″``, ends in a mark after its seconds' decimals.
+    """
     _whole, found, places = number.partition(point)
-    return len(places) if found else 0
+    return places if found else ""

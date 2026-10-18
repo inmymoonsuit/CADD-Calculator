@@ -18,7 +18,14 @@ from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
 from caddcalc.core.steps import Step
-from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names, get_unit
+from caddcalc.core.units import (
+    BASE_UNITS,
+    Dimension,
+    base_text,
+    base_unit_names,
+    get_unit,
+    registry,
+)
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
 
@@ -499,7 +506,20 @@ class Calculator(ABC):
 
 
 def _check_output_unit(owner: str, output: Output) -> None:
-    """Check that an output's fixed unit, if it names one, is a unit of its dimension."""
+    """Check that an output's fixed unit or form, if it names one, is of its dimension."""
+    if output.form:
+        if output.unit:
+            raise SpecError(f"{owner}: output {output.key!r} gives a unit and a form; give one")
+        try:
+            form = registry().compound(output.form)
+        except UsageError as exc:
+            raise SpecError(f"{owner}: output {output.key!r} has a bad form: {exc}") from None
+        if form.dimension is not output.dimension:
+            raise SpecError(
+                f"{owner}: output {output.key!r}'s form {output.form!r} doesn't write "
+                f"{output.dimension.with_article}"
+            )
+        return
     if not output.unit:
         return
     try:

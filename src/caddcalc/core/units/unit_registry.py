@@ -17,7 +17,8 @@ from importlib import metadata
 
 from caddcalc.core.errors import InputError, SpecError, UsageError
 from caddcalc.core.plugins import EntryPointSource, PluginError, load_group
-from caddcalc.core.units import builtin
+from caddcalc.core.units import builtin, compound
+from caddcalc.core.units.compound import CompoundForm
 from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
     Dimension,
@@ -57,6 +58,7 @@ class UnitRegistry:
         """Every name's length, longest first."""
         self._reserved: dict[str, Unit] = {}
         """The built-ins' names, casefolded: no later unit takes one, in any dimension."""
+        self._compounds: dict[str, CompoundForm] = {}
 
     @property
     def frozen(self) -> bool:
@@ -158,6 +160,41 @@ class UnitRegistry:
                 f"{where}: its factor must be {root.symbol!r}'s exact factor to the power "
                 f"{derivation.power}"
             )
+
+    def register_compound(self, form: CompoundForm) -> None:
+        """Add a compound form, such as feet and inches, for its dimension (ADR-0019 §2).
+
+        Raises:
+            UsageError: The registry is frozen.
+            SpecError: Its key is taken, or its full-precision unit isn't a unit of its
+                dimension.
+        """
+        if self._frozen:
+            raise UsageError(f"The units registry is frozen; {form.key!r} came too late")
+        if form.key in self._compounds:
+            raise SpecError(f"compound form {form.key!r}: the key is taken")
+        if not any(u.symbol == form.full_unit for u in self.units_for(form.dimension)):
+            raise SpecError(
+                f"compound form {form.key!r}: {form.full_unit!r} isn't "
+                f"{self._dimensions[form.dimension].article} unit"
+            )
+        self._compounds[form.key] = form
+
+    def compounds_for(self, dimension: Dimension) -> tuple[CompoundForm, ...]:
+        """Return the compound forms of ``dimension``, which the parser tries first."""
+        return tuple(f for f in self._compounds.values() if f.dimension is dimension)
+
+    def compound(self, key: str) -> CompoundForm:
+        """Return the compound form ``key`` names, e.g. ``"ft_in"``.
+
+        Raises:
+            UsageError: No compound form has that key.
+        """
+        try:
+            return self._compounds[key]
+        except KeyError:
+            known = ", ".join(self._compounds)
+            raise UsageError(f"No compound form {key!r}; there's {known}") from None
 
     @property
     def units(self) -> tuple[Unit, ...]:
@@ -270,6 +307,8 @@ def build_registry(
     built = UnitRegistry(builtin.DIMENSIONS)
     for unit in builtin.UNITS:
         built.register(unit)
+    for form in compound.FORMS:
+        built.register_compound(form)
     built.reserve()
     if load_plugins:
         built.plugin_errors += load_group(entry_points, ENTRY_POINT_GROUP, Unit, _registrar(built))

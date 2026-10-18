@@ -6,6 +6,7 @@ Standard library only. The built-in units are declared, with their citations, in
 here still.
 """
 
+from caddcalc.core.units.compound import CompoundForm, CompoundText
 from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
     Derivation,
@@ -44,6 +45,8 @@ __all__ = [
     "CLOSE_UP_SYMBOLS",
     "ENTRY_POINT_GROUP",
     "UNITS",
+    "CompoundForm",
+    "CompoundText",
     "Derivation",
     "Dimension",
     "DimensionSpec",

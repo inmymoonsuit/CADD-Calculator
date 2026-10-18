@@ -102,6 +102,13 @@ msgid_plural "degrees"
 msgstr[0] ""
 msgstr[1] ""
 
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "eighth"
+msgid_plural "eighths"
+msgstr[0] ""
+msgstr[1] ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "foot"
@@ -113,6 +120,13 @@ msgstr[1] ""
 msgctxt "unit"
 msgid "gigapascal"
 msgid_plural "gigapascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "half"
+msgid_plural "halves"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -160,6 +174,13 @@ msgstr[1] ""
 
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
+msgid "minute"
+msgid_plural "minutes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
 msgid "percent"
 msgid_plural "percent"
 msgstr[0] "percent"
@@ -172,10 +193,38 @@ msgid_plural "pounds per square inch"
 msgstr[0] ""
 msgstr[1] ""
 
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "quarter"
+msgid_plural "quarters"
+msgstr[0] ""
+msgstr[1] ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "radian"
 msgid_plural "radians"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "second"
+msgid_plural "seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "sixteenth"
+msgid_plural "sixteenths"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "sixty-fourth"
+msgid_plural "sixty-fourths"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -213,4 +262,37 @@ msgid "square millimeter"
 msgid_plural "square millimeters"
 msgstr[0] ""
 msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "thirty-second"
+msgid_plural "thirty-seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#. an angle in degrees, minutes and seconds, for a screen reader, e.g.
+#. "40 degrees 30 minutes 15.00 seconds".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{degrees} {degree} {minutes} {minute} {seconds} {second}"
+msgstr ""
+
+#. feet and a mixed number of inches, e.g. "1 foot 4 and 3 sixteenths inches";
+#. {part} is the fraction's denominator as a word, such as "sixteenths".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{feet} {foot} {inches} and {numerator} {part} inches"
+msgstr ""
+
+#. a length in feet and inches, for a screen reader, e.g. "1 foot 4 inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{feet} {foot} {inches} {inch}"
+msgstr ""
+
+#. feet and a fraction of an inch, e.g. "1 foot 3 sixteenths of an inch".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{feet} {foot} {numerator} {part} of an inch"
+msgstr ""
 

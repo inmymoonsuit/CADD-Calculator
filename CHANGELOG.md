@@ -7,6 +7,15 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Feet and inches (ADR-0019 U3; KI-009 resolved).** Type a length as `1'-4 3/16"`,
+  `1'-4-3/16"`, `1'4-3/16"`, `1' 4 3/16"`, `1′ 4 3/16″` or `1 ft 4 3/16 in`. A result in
+  feet and inches shows `1'-4 3/16"`, copies `1'4-3/16"`, and is read aloud as "1 foot 4
+  and 3 sixteenths inches"; rounding carries, so 1'-11 63/64" shows as 2'-0".
+- **Degrees, minutes and seconds.** Type an angle as `40°30′15″`, `40°30'15"` or
+  `40d30'15.5"`. A result in this form shows `40°30′15.00″` and copies `40d30'15.00"`;
+  29.99999999° reads 30°0′0.00″, and zero never reads -0°. In an angle, `′` and `″` (and
+  `'` and `"`) are minutes and seconds, so `30′` is half a degree; elsewhere they're still
+  feet and inches. An output can be shown in either form (`Output.form`).
 - **Areas (ADR-0018 §3, ADR-0019).** A new kind of quantity, the area, in in², ft², mm²,
   cm² and m², each the exact square of its length unit, so 1 ft² is 92 903.04 mm²
   exactly. Type `3 in²`, `3 in^2`, `3 in2`, `3 sq in` or `3 square inches`; it's always

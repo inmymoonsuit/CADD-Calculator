@@ -1,8 +1,8 @@
 # ADR-0019: A units registry, the one source of unit knowledge
 
 * **Status:** **Accepted**; the behaviour-neutral refactor (§7's first step) is built, as
-  u1 and u1b, U5's spellings as i3, and §7's area and fixed-unit outputs as u2 (see
-  Amendments). The maintainer asked for this ADR
+  u1 and u1b, U5's spellings as i3, §7's area and fixed-unit outputs as u2, and its compound
+  forms as u3 (see Amendments). The maintainer asked for this ADR
   on 2026-10-17
   ("create a registry of units in our codebase (maybe even a subsystem for units and
   conversions) with definitions and attributes and the ability to add new ones"), decided
@@ -274,4 +274,47 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
 * **The identity test** now runs over the old dimensions and units. Two texts it held as
   refused, "3 m2" and "3 sq in", name a square now: each reads as that area, and
   elsewhere is refused for being an area. Every other text reads exactly as before.
+
+### 2026-10-18: compound forms, as built (u3)
+
+* **`core/units/compound.py`** holds `CompoundForm`, which reads a text written in it
+  and writes a value as a `CompoundText`: shown, copied and spoken. The registry holds
+  the built-in forms by key, `ft_in` and `dms`, and the parser tries a dimension's forms
+  before its units, and only that dimension's. An output names one with `Output.form`
+  (never with a unit as well), and the result fields, Copy, Copy all, the document and
+  the CLI show it through `formatting.output_parts` with no code of their own.
+  `parse_number` moved to `core/units/numbers.py`, which the forms and the parser both
+  read, so the registry and the parser don't import each other; `units.parsing` still
+  exports it.
+* **The minute and second of arc** are units of the angle, `arcmin` and `arcsec`,
+  written ′ and ″ close up, with `'` and `"` as aliases too (SP 811 Table 6, §7.2). They
+  share those marks with the foot and inch, as §3 allows: in an angle, `30′` is 30
+  minutes, and everywhere else ′ and ″ stay the foot and inch. Angles still show in
+  degrees.
+* **Feet and inches** (U3): shown in AutoCAD's report form, `1'-4 3/16"`, and copied in
+  its input form, `1'4-3/16"`. Both always give the feet and the inches, as `0'-4"` and
+  `2'-0"`, so a row reads the same whatever its value. The value is rounded once, to the
+  nearest 1/16 inch by default (a power of two to 1/64, or whole inches), so it carries:
+  1'-11 63/64" is 2'-0". Spoken: "1 foot 4 and 3 sixteenths inches", "1 foot 4 inches",
+  and "1 foot 3 sixteenths of an inch". Input takes every form U3 lists, with whole
+  feet, inches under 12 with their mark, and one sign at the front. A full-precision
+  copy gives the inches.
+* **Degrees, minutes and seconds:** shown `40°30′15.00″`, to hundredths of a second by
+  default, rounded once so it carries (29.99999999° is 30°0′0.00″), with one sign before
+  the degrees (−0.5° is -0°30′0.00″, in ASCII "-") and never a negative zero. It's copied
+  as AutoCAD takes an angle in degrees, minutes and seconds, `40d30'15.00"`, with "." for
+  the point, which U3's rule implies: CAD's input form. Input takes ° or `d`, ′ or `'`,
+  ″ or `"`, and the units' words, two or three parts in order, whole degrees and
+  minutes, minutes and seconds in [0, 60), and one sign. Spoken: "40 degrees 30 minutes
+  15.00 seconds".
+* **Marked for translation:** the spoken templates, one per sentence, with named fields,
+  and the fractions' words, `NP_("fraction", "sixteenth", "sixteenths")`; the minute
+  and second's names. The new messages for a form that doesn't fit are plain text, as
+  the parser's other messages are, until the string sweep (ADR-0020 §6).
+* **Copy all** keeps a compound value, which isn't a number, from being read as a
+  formula, as it does a text cell, so `-1'-4"` pastes as text.
+* **The identity test:** besides u2's area texts, two kinds of text the old module
+  refused read now, each held to its new reading: an angle ending in ′, ″, `'` or `"`,
+  refused before as a length, reads as minutes or seconds; and `1'4"` is 1 foot 4
+  inches, or in an angle 1 minute 4 seconds. Every other text reads as before.
 
