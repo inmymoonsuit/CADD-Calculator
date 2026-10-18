@@ -275,8 +275,11 @@ and stays, modal, until the user closes it.
 
 ### 2026-10-18: the card owned before it shows (UI/UX's real-launch review)
 
-UI/UX's real launches of the stable startup found the card wasn't owned: natively, its
-owner (`GW_OWNER`) was none. Qt gives a top-level window its owner only as the window
+Two reviews found, independently, that the card wasn't owned: natively, its owner
+(`GW_OWNER`) was none. UI/UX found it on real launches; Support & Review found it from
+outside the app, with a watcher that samples the app's windows through Win32, and
+measured the card covered, and proposed placing the window under the card with
+`SetWindowPos`. Qt gives a top-level window its owner only as the window
 shows, and the card was already showing when it was given to the main window. With the
 raise gone, the main window then showed on top of the card, which never came back: a
 window the user couldn't use, blocked by a modal card they couldn't see.
@@ -292,6 +295,8 @@ window the user couldn't use, blocked by a modal card they couldn't see.
   size.
 * **A failed build** still ends the app with status 1: building is the step that can
   fail, as it loads the registry and plugins, so it's inside the isolation boundary.
+  So is making the shell (Support & Review's L2): if even that fails, the app says so
+  and ends with status 1, and the card isn't shown.
 * **Tests:** natively, after the reveal, the card's owner is the main window, and the
   card is above it in the system's z-order, walked from the top. Giving the card its
   owner at the reveal, as before, fails that. A real launch through `main()`: the card

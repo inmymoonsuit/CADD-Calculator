@@ -80,10 +80,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         actions = AppActions(branding, app)
         welcome = WelcomeScreen(branding, actions)
         startup = _Startup(app, branding, actions, welcome, smoke_test=smoke_test)
-        welcome.show()
-        app.processEvents()
-
-        if smoke_test:
+        if startup.failed:  # not even the main window's shell; it has said so
+            status = 1
+        elif smoke_test:
+            welcome.show()
+            app.processEvents()
             startup.build_main_window()
             if startup.failed:
                 status = 1
@@ -93,6 +94,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _write_smoke_report(report_dir, app, window, branding, welcome, ready)
                 status = 0
         else:
+            welcome.show()
+            app.processEvents()
             QTimer.singleShot(0, startup.build_main_window)
             status = int(app.exec())
         _dispose(app, welcome, startup.window, actions)
@@ -140,7 +143,7 @@ class _Startup:
         self.actions = actions
         self.welcome = welcome
         self.smoke_test = smoke_test
-        self.window: MainWindow
+        self.window: MainWindow | None = None
         """The main window: its shell from the start, built once the card has painted."""
         self.failed = False
         """Whether building the main window failed."""
@@ -155,7 +158,11 @@ class _Startup:
         app.setQuitOnLastWindowClosed(False)
         welcome.painted.connect(self._on_card_painted)
         welcome.closed.connect(self._on_card_closed)
-        self._own_the_card()
+        # The same isolation boundary as the build's: the shell is the main window too.
+        try:
+            self._own_the_card()
+        except Exception as exc:  # noqa: BLE001
+            self._fail(exc)
 
     def _own_the_card(self) -> None:
         """Make the main window's shell, and the card a window it owns, before the card shows.
@@ -168,36 +175,40 @@ class _Startup:
 
         from caddcalc.gui.window import MainWindow
 
-        self.window = MainWindow(branding=self.branding, actions=self.actions, build=False)
+        window = MainWindow(branding=self.branding, actions=self.actions, build=False)
+        self.window = window
         # It mustn't take the card's focus when it shows. Qt reads this as it makes the
         # native window, here, and again after the show, so it stays set until the card
         # closes.
-        self.window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         # On the card's screen: made unplaced, Windows puts a window on the pointer's
         # screen, and an owner on a screen of another scale rescales the card it owns.
         screen = self.welcome.screen()
         if screen is not None:
-            self.window.setScreen(screen)
-            self.window.move(screen.availableGeometry().topLeft())
-        self.window.winId()  # the native window, which the card's owner must be
+            window.setScreen(screen)
+            window.move(screen.availableGeometry().topLeft())
+        window.winId()  # the native window, which the card's owner must be
         self.welcome.winId()
         card = self.welcome.windowHandle()
         if card is not None:
-            card.setTransientParent(self.window.windowHandle())
+            card.setTransientParent(window.windowHandle())
 
     def build_main_window(self) -> None:
         """Build the main window into its shell, hidden, fitted to the card's screen."""
         from shiboken6 import isValid
 
+        window = self.window
+        if self.failed or window is None:
+            return
         try:
-            self.window.build()
+            window.build()
         # An isolation boundary: a packaged app has no console, so an error here would
         # otherwise leave a process with no window once the welcome screen closes.
         except Exception as exc:  # noqa: BLE001
             self._fail(exc)
             return
         # On the welcome card's screen, so the two stay together (ADR-0021 §3).
-        self.window.fit_to_screen(self.welcome.screen() if isValid(self.welcome) else None)
+        window.fit_to_screen(self.welcome.screen() if isValid(self.welcome) else None)
         self.ready = True
         self._reveal_when_due()
 
@@ -221,8 +232,9 @@ class _Startup:
         """Give the main window the focus the card had, and let it take focus from now on."""
         from PySide6.QtCore import Qt
 
-        self.window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
-        self.window.activateWindow()
+        if self.window is not None:
+            self.window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
+            self.window.activateWindow()
 
     def _reveal_when_due(self) -> None:
         """Reveal the main window once it's ready, and the hold is over or the card closed."""
@@ -230,9 +242,10 @@ class _Startup:
 
         if not self.ready or self.revealed or not (self._held or not self._card_open):
             return
-        if not isValid(self.window):  # deleted already, as on the way out
+        window = self.window
+        if window is None or not isValid(window):  # deleted already, as on the way out
             return
-        self.window.show()  # below the card it owns, and without taking the card's focus
+        window.show()  # below the card it owns, and without taking the card's focus
         self.revealed = True
         self.app.setQuitOnLastWindowClosed(True)
         if not self._card_open:
@@ -259,7 +272,7 @@ class _Startup:
 
     def main_window(self) -> MainWindow:
         """Return the main window, once built."""
-        if not self.ready:
+        if not self.ready or self.window is None:
             raise RuntimeError("the main window hasn't been built yet")
         return self.window
 

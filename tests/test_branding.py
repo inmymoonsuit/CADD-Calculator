@@ -530,6 +530,7 @@ def test_a_folder_named_like_the_art_is_not_a_file(tmp_path: Path) -> None:
 
 
 FAILING_STARTUP = """
+import os
 import sys
 from PySide6.QtWidgets import QMessageBox
 import caddcalc.gui.window as window
@@ -538,16 +539,23 @@ from caddcalc.gui.app import main
 def broken(*args, **kwargs):
     raise RuntimeError("probe: the main window can't be built")
 
-window.MainWindow.build = broken
+setattr(window.MainWindow, os.environ["PROBE_BREAKS"], broken)
 QMessageBox.critical = lambda *args, **kwargs: print("critical shown", file=sys.stderr)
 raise SystemExit(main(sys.argv[1:]))
 """
 
 
 @pytest.mark.gui
+@pytest.mark.parametrize("part", ["build", "__init__"], ids=["its build", "its shell"])
 @pytest.mark.parametrize("args", [[], ["--smoke-test"]], ids=["running", "smoke test"])
-def test_a_failed_startup_ends_the_app_with_status_1(tmp_path: Path, args: list[str]) -> None:
-    """Review M1: run apart, under a timeout, so a regression can't hang the suite."""
+def test_a_failed_startup_ends_the_app_with_status_1(
+    tmp_path: Path, args: list[str], part: str
+) -> None:
+    """Review M1: run apart, under a timeout, so a regression can't hang the suite.
+
+    The main window fails as it's built, or before, as its shell is made for the card
+    to be owned by: either way the app says so, and ends with status 1.
+    """
     import os
     import subprocess
 
@@ -556,6 +564,7 @@ def test_a_failed_startup_ends_the_app_with_status_1(tmp_path: Path, args: list[
     script.write_text(FAILING_STARTUP, encoding="utf-8")
     env = {**os.environ, "QT_QPA_PLATFORM": os.environ.get("QT_QPA_PLATFORM", "offscreen")}
     env.pop(ENV_VAR, None)
+    env["PROBE_BREAKS"] = part
     done = subprocess.run(  # noqa: S603  # this interpreter, on a script the test wrote
         [sys.executable, str(script), *args],
         capture_output=True,

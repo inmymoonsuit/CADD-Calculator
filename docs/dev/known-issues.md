@@ -162,7 +162,9 @@ by hand before a release on each platform:
   ignored, but the card still blocks the main window.
 * **macOS:** About and Exit (Quit) must appear in the application menu for the main
   window, and the card must open as a window, not as a sheet attached to the main
-  window.
+  window. A calculator's work must be in a fixed-width face: where Consolas isn't
+  installed, it's the system's fixed-width family, which on macOS may be a private one,
+  named with a leading dot (ADR-0016, amendments).
 * **The startup order (ADR-0015, amendments):** check that the main window appears once,
   behind the card, without taking its focus, and that the card stays above it until it's
   closed: it's a window the main window owns. Wayland ignores stacking requests, so check
