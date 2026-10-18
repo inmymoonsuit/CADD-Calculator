@@ -145,7 +145,7 @@ to.
 | `panel_max_chars` | 148 | Replaces `panel_max_width`: the results panel's widest |
 | `launch_lines` | 46 | The launch content height, in line spacings (736 px at 9 pt; 45 as first approved, see Amendments) |
 | `screen_margin` | 16 | The least space between the frame and the screen's work area |
-| `method_min_chars` | measured | The method box's least width: the longest built-in method name, computed from the registry by a test, not typed in |
+| `method_min_chars` | measured | The method box's least width: the longest method name, computed from the registry when the window is built, not typed in |
 | `right_pane_min_chars` | 58 | Future: a docked right pane's least width |
 | `right_pane_default_chars` | 64 | Future: its width when it opens |
 

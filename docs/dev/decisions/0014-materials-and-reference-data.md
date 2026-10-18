@@ -1158,6 +1158,7 @@ materials table, and the gauge table's version 2 is re-verified. Its Lows, as bu
 * The gauge table becomes version 3: citation metadata only, with the cap still one
   value. Its record is in `docs/dev/research/release-checklist-gauges-v1.md`, for Support
   & Review and then the maintainer to sign.
-* MH31's new Table 20, "Sheet Metal Gauge Sizes" (p. 1453), isn't cited: its inch and
+* MH31's new Table 20, under the section heading "Sheet Metal Gauge Sizes" and printed
+  as "Sheet Metal Gauge Conversion Cart" (p. 1453), isn't cited: its inch and
   millimetre columns disagree in places, and its stainless column isn't the steel
   Manufacturers' Standard Gage (`docs/dev/research/materials-data-sources.md`).

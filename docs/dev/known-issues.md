@@ -48,7 +48,7 @@ input, plus the Handbook's worked example as a `verified` test.
 The legacy `FDO = R/0.156` encodes the air-bending rule that the inside radius forms at
 about 15.6% of the V-die opening, the course's mild-steel value. Other materials differ.
 **Now:** `P` is an input (default 0.156). **Still missing:** a per-material table with
-cited sources (roadmap). The rule is not in MH29, MH31's bending section (pp. 1417–1423),
+cited sources (roadmap). The rule is not in MH29, MH31's bending section (pp. 1417–1424),
 or EDD5. The review session points to The Fabricator's "20 percent rule" articles (Steve
 Benson). Their terms couldn't be read,
 so their figures aren't reproduced here (ADR-0014 §5.2, M3), and they haven't been

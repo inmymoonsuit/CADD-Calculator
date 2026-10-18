@@ -68,8 +68,8 @@ token, so the specification can't drift from the code.
     its own, so the wheel over it scrolls the page.
   * The page is never narrower than its content, and a family page isn't made to
     scroll by the calculator page hidden behind it.
-* The status bar's disclaimer is a widget, so a passing message covers it for a moment
-  and it comes back.
+* The disclaimer is part of the results panel, under the last field (ADR-0021 §7), not
+  in the status bar, so a passing status message never covers it.
 * A test keeps layout numbers and colours out of `result_fields.py`, as out of
   `welcome.py`.
 

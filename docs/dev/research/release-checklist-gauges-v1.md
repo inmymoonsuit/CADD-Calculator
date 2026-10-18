@@ -46,6 +46,8 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
   at 12, 16, 20 and 24 ga; its title is now "Sheet Metal Gages in Approximate Decimals of
   an Inch". Citation metadata only: values unchanged, the license unchanged (cite-only),
   and the cap still one value. Digest
-  `ae1da48bd0f688660b0d91169db074712b55f7ddb36f458938e15c04e4e7dfc6`.
-* Re-verified by the review session (Support & Review):
+  `ae1da48bd0f688660b0d91169db074712b55f7ddb36f458938e15c04e4e7dfc6`. Item 6 is
+  flagged: the 31st edition is superseded by the 32nd (2024), which hasn't been read,
+  so the 41.82 basis is to be re-checked at each release.
+* Re-verified by the review session (Support & Review) at dcf32c9, unchanged at cd1966d: version 3 changes citation metadata only (the Handbook's edition and short title, and the steel basis's locator and access date); every value, source scope, license and the one-value cap are identical to version 2; the locator, Table 2's title, the 41.82 basis and its spot values were checked against the 31st edition's page images; digest ae1da48bd0f6…dfc6, recomputed independently. All seven items pass; item 6 is flagged: the 31st edition is superseded by the 32nd (2024), which hasn't been read, so the basis is to be re-checked at each release. Date: 2026-10-18
 * Version 3 approved for release by the maintainer:

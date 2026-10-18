@@ -80,7 +80,8 @@ is computed by us from public-domain data, unless it is marked as a cited fact.
   don't reproduce vendor figures.
 * **Rounding differs between tables.** MH31 Table 13 (printed p. 1422; MH29's p. 1352) lists
   12 ga as 0.1093.
-* **MH31's new Table 20, "Sheet Metal Gauge Sizes" (p. 1453), isn't cited.** Its inch and
+* **MH31's new Table 20, under the section heading "Sheet Metal Gauge Sizes" and printed
+  as "Sheet Metal Gauge Conversion Cart" (p. 1453), isn't cited.** Its inch and
   millimetre columns disagree in places, so it has printing errors: 10 ga mild steel is
   0.1395 in against 3.416 mm (0.1345 in), 21 ga stainless 0.0244 in against 0.873 mm
   (0.0344 in), and 31 ga aluminum 0.0089 in (0.226 mm) against 0.261 mm. Its stainless
