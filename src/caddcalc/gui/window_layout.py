@@ -45,17 +45,25 @@ def chars(count: float, unit: float) -> int:
     return math.ceil(count * unit)
 
 
-def launch_size(tokens: LayoutTokens, unit: float, line: float, handle: float) -> Size:
+def launch_size(
+    tokens: LayoutTokens, unit: float, line: float, handle: float, pages: float = 0
+) -> Size:
     """Return the window's preferred content size: the list, its handle, and a full page.
+
+    Its height is ``launch_lines`` line spacings, or what the tallest calculator page
+    needs, if that's more: the result fields' heights are in pixels, so with shorter
+    lines than the design's the lines alone fall short (ADR-0021 §3, amendments).
 
     Args:
         tokens: The layout tokens.
         unit: ``ch``, in pixels.
         line: The body font's line spacing, in pixels.
         handle: The splitter handle's width, in pixels.
+        pages: The window height the tallest calculator page needs at the launch width,
+            its bars included, in pixels.
     """
     width = math.ceil(tokens.list_width_chars * unit + handle + tokens.page_max_chars * unit)
-    return Size(width, math.ceil(tokens.launch_lines * line))
+    return Size(width, max(math.ceil(tokens.launch_lines * line), math.ceil(pages)))
 
 
 def fit_window(

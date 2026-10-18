@@ -420,6 +420,20 @@ def test_a_pane_measures_every_device_pixel_at_twice_the_scale(tmp_path: Path) -
         assert measured_pixels == covered, "every device pixel under the pane"
 
 
+def test_the_fills_are_chosen_before_the_cards_first_paint() -> None:
+    """Measuring the art chooses the panes' fills, so the first paint doesn't wait on it.
+
+    ``show()`` lays the card out, and so measures its art; it paints only later.
+    """
+    from caddcalc.gui.icons import current_scheme
+
+    welcome = screen()
+    welcome.show()
+    for pane in (welcome.art.name_pane, welcome.art.version_pane):
+        assert current_scheme() in pane._fills, pane.text
+    welcome.close()
+
+
 def test_the_generic_look_is_unchanged_by_the_calm_rule() -> None:
     """The generic gradient is calm: both panes stay at the floor, white on ink."""
     import math

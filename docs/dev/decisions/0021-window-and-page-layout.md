@@ -51,7 +51,10 @@
 1. The preferred content size, in text units:
    * width: `ceil(list_width_chars · ch + handle + page_max_chars · ch)` (1100 at 9 pt:
      280.5 + 5 + 814 = 1099.5, rounded up)
-   * height: `launch_lines · line spacing` (736 at 9 pt; 720 as first approved, see Amendments)
+   * height: `launch_lines · line spacing` (736 at 9 pt; 720 as first approved, see Amendments),
+     or the height the tallest calculator page needs at the launch width, with the window's
+     bars, if that's more (KI-024, see Amendments). Settings pages don't count: they have
+     no results to keep in view, so they may scroll.
 2. Fit it to the available geometry of the screen the welcome card is on (or the primary
    screen), less the platform frame (from the native window, before it's shown) and
    `screen_margin` on each side. The welcome card is to be checked to be centred on that
@@ -143,7 +146,7 @@ to.
 | `list_min_chars` | 24 | The list's least width (132 px at 9 pt) |
 | `page_max_chars` | 148 | The page's widest, scroll bar included (814 px at 9 pt) |
 | `panel_max_chars` | 148 | Replaces `panel_max_width`: the results panel's widest |
-| `launch_lines` | 46 | The launch content height, in line spacings (736 px at 9 pt; 45 as first approved, see Amendments) |
+| `launch_lines` | 46 | The launch content height's floor, in line spacings (736 px at 9 pt; 45 as first approved, see Amendments); the tallest calculator page can raise it |
 | `screen_margin` | 16 | The least space between the frame and the screen's work area |
 | `method_min_chars` | measured | The method box's least width: the longest method name, computed from the registry when the window is built, not typed in |
 | `right_pane_min_chars` | 58 | Future: a docked right pane's least width |
@@ -233,3 +236,41 @@ to.
   each of the three `[layout]` cross-checks refuses; and `main()`, at 125%, builds the
   window in scaled fonts, fits it to the welcome card's screen, and restores the font,
   even when its teardown fails.
+
+### 2026-10-18: the launch height covers the tallest calculator page (KI-024)
+
+UI/UX ruled on KI-024 (its layout-fixes review): the launch shows every calculator page
+without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
+
+* **The rule.** The launch height is `max(launch_lines · line spacing, the tallest
+  calculator page's height at the launch width)`, capped by the screen's fit as before.
+  A page's height is the height it fits in with its document at its least (rule C),
+  plus the window's menu and status bars. `launch_lines` is now the floor.
+* **Calculator pages only.** A family's settings page has no results; it's a form with
+  long help text, and scrolling it is normal. Counting it would let its help text set
+  the window's height. Its rules stay: never sideways, and nothing clipped at the
+  least size (§7).
+* **Not field heights in text units.** ADR-0017's field sizes are pixels on purpose:
+  the 28 px copy button and the 40 px field are click targets, which text units would
+  shrink toward WCAG 2.5.8's 24 px minimum, and the focus ring and borders are whole
+  device pixels by rule.
+* **How it's measured.** When the window is built, each calculator's page is laid out
+  hidden at the page's cap and measured. A hidden page is laid out only when shown, and
+  the results panel's height follows its own width, so the page is laid out twice
+  (`pages.lay_out`); the second pass gives exactly the heights the shown page has,
+  where one pass overstates the first page measured. The fit test and the page scroll
+  area share one measure (`pages.fit_height`).
+* **A failing calculator is left out.** Measuring runs every calculator's page before
+  the user chooses one, plugins included. One whose own code raises any error is left
+  out of the launch size, with a warning, as an isolation boundary: before, it failed
+  only when chosen, and it mustn't stop the window or the other calculators (Support &
+  Review's M1; ADR-0019).
+* **What it does.** On Windows at 9 pt nothing changes: the tallest page, the cone's,
+  needs 672 px plus 54 px of bars, 726, under 736. With the offscreen platform's 14 px
+  lines, 644 px of lines became 672, and no page scrolls where the cone and segment
+  did. Measuring the four built-in pages takes about 25 ms, while the welcome screen
+  shows.
+* **Tests.** No calculator page scrolls at the launch size, with the platform's font
+  and with one whose lines are under 16 px, everywhere; a mutation back to lines alone
+  fails both. Each page's measured height is its shown height, which one layout pass
+  fails, and a plugin calculator that raises leaves the window and the others working.

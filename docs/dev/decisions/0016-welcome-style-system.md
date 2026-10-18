@@ -407,7 +407,8 @@ fix.
   at 14,608 px and 266 ms at 56,588, where the earlier code, given every pixel, took 115
   and 432 ms.
 * **When.** The fills are chosen as soon as the art is measured, before the card
-  shows, so its first paint doesn't wait on them.
+  shows, so its first paint doesn't wait on them; a test checks they're chosen by the
+  time `show()` returns.
 * **KI-020** loses its high-DPI pane check, which this closes.
 * **Tests.** The stripes are measured at their true share, within 0.5 percentage
   points, over the same sweep (the grid fails it); a pane's device rectangle at ratios

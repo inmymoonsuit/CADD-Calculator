@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 import weakref
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
@@ -97,7 +98,14 @@ from caddcalc.gui.icons import (
     role_color,
 )
 from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
-from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack, PageWidget
+from caddcalc.gui.pages import (
+    PageDocument,
+    PageScrollArea,
+    PageStack,
+    PageWidget,
+    fit_height,
+    lay_out,
+)
 from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
 from caddcalc.gui.style_tokens import Rect, Size
@@ -313,6 +321,8 @@ class MainWindow(QMainWindow):
         """
 
         self.setWindowTitle(PRODUCT_NAME)
+        self.launch_pages = 0
+        """The window height the tallest calculator page needs at its launch width."""
         self.focus_ring = FocusRing(self)
         """Focus around whichever outlined input has it (WCAG 2.4.7); the window owns it."""
         self._build_ui()
@@ -330,6 +340,11 @@ class MainWindow(QMainWindow):
         self.addAction(self.copy_all_action)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
+        # The launch height covers the tallest calculator page, measured once, here, while
+        # the welcome screen shows (ADR-0021 §3, amendments).
+        self.launch_pages = self._tallest_calculator_page()
+        launch = self.launch_size()
+        self.resize(round(launch.width), round(launch.height))
         first = next(self._calculator_items(), None)
         if first is not None:
             self.tree.setCurrentItem(first)
@@ -493,11 +508,48 @@ class MainWindow(QMainWindow):
         """Return the window's preferred content size, in its font's text units.
 
         That's the list at its launch width, its handle, and a page at its cap, by
-        ``launch_lines`` line spacings: 1100 × 720 at 9 pt (ADR-0021 §3).
+        ``launch_lines`` line spacings, or the tallest calculator page's height if that's
+        more: 1100 × 736 at 9 pt (ADR-0021 §3).
         """
         font = self.font()
         handle = self.splitter.handleWidth()
-        return launch_size(ui_style().layout, text_unit(font), line_spacing(font), handle)
+        layout = ui_style().layout
+        return launch_size(layout, text_unit(font), line_spacing(font), handle, self.launch_pages)
+
+    def _tallest_calculator_page(self) -> int:
+        """Return the window height the tallest calculator page needs at the launch width.
+
+        Each calculator's page is laid out, hidden, at the page's cap, and measured with
+        its document at its least: the height it fits in without scrolling. The window's
+        bars are added as its layout places them. A family's settings page doesn't count:
+        it has no results to keep in view, so it may scroll (ADR-0021 §3).
+
+        A calculator whose page fails to show is left out, with a warning: it's measured
+        here only for the launch size, and would otherwise fail only when chosen.
+        """
+        page, width = self.page_scroll.widget(), self.page_scroll.maximumWidth()
+        if page is None:
+            return 0
+        tallest = 0
+        for calc in self.registry:
+            # An isolation boundary: a plugin's code runs here, before the user chose it,
+            # and its own error mustn't stop the window, or every other calculator.
+            try:
+                self.select_calculator(calc.id)
+                lay_out(page, width)
+                tallest = max(tallest, fit_height(page, width, self.output))
+            except Exception as exc:  # noqa: BLE001
+                warnings.warn(
+                    f"The launch size leaves out {calc.name} ({calc.id}), whose page "
+                    f"failed to show: {exc!r}",
+                    stacklevel=2,
+                )
+        window_layout = self.layout()
+        if window_layout is not None:
+            window_layout.activate()  # the bars, at the heights the window gives them
+        central = self.centralWidget()
+        bars = self.height() - central.height() if central is not None else 0
+        return tallest + bars
 
     def fit_to_screen(self, screen: QScreen | None = None) -> None:
         """Give the window its launch size, fitted to ``screen``, and centre it there.

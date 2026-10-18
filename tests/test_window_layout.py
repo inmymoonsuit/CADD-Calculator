@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 import pytest
 
 from caddcalc.gui.style_tokens import Rect, Size
 from caddcalc.gui.ui_style import ui_style
-from caddcalc.gui.window_layout import Margins, ch, chars, fit_window
+from caddcalc.gui.window_layout import Margins, ch, chars, fit_window, launch_size
 from tests.qt_helpers import open_window
 from tests.test_result_fields import _settle
 
@@ -44,6 +44,14 @@ def test_the_launch_size_fits_each_work_area_centred(
     bottom = area.y + area.height - (placed.y + placed.height + FRAME.bottom)
     assert min(left, right, top, bottom) >= 0, "the frame is inside the work area"
     assert abs(left - right) <= 1 and abs(top - bottom) <= 1, "centred"
+
+
+def test_the_launch_height_covers_the_tallest_calculator_page() -> None:
+    """``launch_lines`` is the floor; a taller calculator page raises it (KI-024)."""
+    layout = ui_style().layout
+    assert launch_size(layout, 5.5, 16, 5).height == 736
+    assert launch_size(layout, 5.5, 16, 5, pages=726).height == 736, "Windows at 9 pt"
+    assert launch_size(layout, 5.5, 14, 5, pages=672).height == 672, "14 px lines"
 
 
 def test_the_launch_size_never_goes_below_the_least_window() -> None:
@@ -88,7 +96,8 @@ def test_the_window_opens_at_its_launch_size_in_text_units(qt_window: Any) -> No
     expected = chars(layout.list_width_chars, unit) - 1 + handle + cap
     assert abs(launch.width - (layout.list_width_chars * unit + handle + cap)) <= 1
     assert launch.width >= expected
-    assert launch.height == layout.launch_lines * line_spacing(qt_window.font())
+    floor = layout.launch_lines * line_spacing(qt_window.font())
+    assert launch.height == max(floor, qt_window.launch_pages)
     assert (qt_window.width(), qt_window.height()) == (launch.width, launch.height)
 
 
@@ -144,20 +153,28 @@ def test_the_list_never_collapses(qt_window: Any) -> None:
 
 
 def test_a_larger_base_font_scales_the_whole_layout(qt: Any) -> None:
-    """Windows' text size at 125% makes everything larger in proportion (ADR-0021 §2)."""
-    from caddcalc.gui.text_units import scaled_font
+    """Windows' text size at 125% makes everything larger in proportion (ADR-0021 §2).
 
+    The text-unit sizes grow in proportion: the width, the page's cap, and the launch
+    height's floor in lines. Where the tallest calculator page sets the height, it grows
+    less, as the fields' heights are in pixels, but never shrinks.
+    """
+    from caddcalc.gui.text_units import line_spacing, scaled_font
+
+    lines = ui_style().layout.launch_lines
     app = qt.QApplication.instance()
     base = app.font()
     window = open_window()
     normal = window.launch_size()
     normal_cap = window.page_scroll.maximumWidth()
+    normal_floor = lines * line_spacing(window.font())
     window.close()
     app.setFont(scaled_font(base, 1.25))
     try:
         larger = open_window()
         grown = larger.launch_size()
-        assert grown.width > normal.width * 1.15 and grown.height > normal.height * 1.15
+        assert grown.width > normal.width * 1.15 and grown.height >= normal.height
+        assert lines * line_spacing(larger.font()) > normal_floor * 1.15
         assert larger.page_scroll.maximumWidth() > normal_cap * 1.15
         larger.close()
     finally:
@@ -430,22 +447,98 @@ DESIGN_LINE = 16
 
 
 @pytest.mark.usefixtures("qt")
-@pytest.mark.parametrize("calc_id", CALCULATORS)
-def test_no_page_scrolls_at_the_launch_size(calc_id: str) -> None:
-    """Every page fits the launch size, with lines at least the design's.
+def test_each_calculator_page_is_measured_at_its_shown_height(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Laid out hidden, each page measures what it needs once shown (``pages.lay_out``).
 
-    The launch height is in lines, but the fields' heights are in pixels, so shorter
-    lines than the design's give a window shorter than the pages need.
+    The results panel's height follows its own width, which a hidden page doesn't have
+    until it's laid out once; a single pass overstates the first page measured.
+    """
+    from caddcalc.gui import window as window_module
+
+    fit_height = window_module.fit_height
+    measured: list[int] = []
+
+    def spy(page: Any, width: int, document: Any = None) -> int:
+        height: int = fit_height(page, width, document)
+        measured.append(height)
+        return height
+
+    monkeypatch.setattr(window_module, "fit_height", spy)
+    window = open_window()
+    monkeypatch.setattr(window_module, "fit_height", fit_height)
+    ids = [calc.id for calc in window.registry]
+    assert len(measured) == len(ids)
+    window.show()
+    for calc_id, height in zip(ids, measured, strict=True):
+        window.select_calculator(calc_id)
+        _settle(window)
+        view = window.page_scroll.viewport()
+        shown = fit_height(window.page_scroll.widget(), view.width(), window.output)
+        assert shown == height, calc_id
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_a_failing_plugin_calculator_leaves_the_window_working() -> None:
+    """A plugin calculator whose own code raises is left out of the launch size.
+
+    Measuring runs every calculator before the user chooses one. One plugin's error, of
+    any kind, mustn't stop the window, or the other calculators (ADR-0019).
+    """
+    from caddcalc.calculators import default_registry
+    from caddcalc.core import Context
+    from tests.test_domains import ACME, _AcmeWidget
+
+    class Failing(_AcmeWidget):
+        id = "acme.failing"
+        name = "Failing"
+
+        @override
+        def compute(self, ctx: Context) -> None:
+            raise ZeroDivisionError("the plugin's own error")
+
+    registry = default_registry(load_plugins=False)
+    registry.register_domain(ACME)
+    registry.register(Failing)
+    with pytest.warns(UserWarning, match=r"leaves out Failing \(acme\.failing\)"):
+        window = open_window(registry)
+    window.select_calculator("sheet_metal.bend_allowance")
+    window.show()
+    _settle(window)
+    assert window.results.fields["bend_allowance"].value.text() not in ("", "—")
+    window.close()
+
+
+@pytest.mark.parametrize("shorter", [False, True], ids=["platform-font", "shorter-lines"])
+@pytest.mark.parametrize("calc_id", CALCULATORS)
+def test_no_calculator_page_scrolls_at_the_launch_size(
+    qt: Any, calc_id: str, shorter: bool
+) -> None:
+    """Every calculator page fits the launch size, whatever the font's lines (KI-024).
+
+    The fields' heights are in pixels, so with lines shorter than the design's,
+    ``launch_lines`` alone would give a window shorter than the pages need. The launch
+    height covers the tallest calculator page instead.
     """
     from caddcalc.gui.text_units import line_spacing
 
-    window = open_window()
-    if line_spacing(window.font()) < DESIGN_LINE:
+    app = qt.QApplication.instance()
+    base = app.font()
+    if shorter:
+        font = qt.QApplication.font()
+        font.setPointSizeF(base.pointSizeF() * 0.75)
+        app.setFont(font)
+    try:
+        window = open_window()
+        if shorter:
+            assert line_spacing(window.font()) < DESIGN_LINE
+        window.select_calculator(calc_id)
+        window.show()
+        _settle(window)
+        assert window.page_scroll.verticalScrollBar().maximum() == 0
+        assert not window.output.full
         window.close()
-        pytest.skip(f"this platform's lines are under the design's {DESIGN_LINE} px")
-    window.select_calculator(calc_id)
-    window.show()
-    _settle(window)
-    assert window.page_scroll.verticalScrollBar().maximum() == 0
-    assert not window.output.full
-    window.close()
+    finally:
+        app.setFont(base)

@@ -377,8 +377,10 @@ All notable changes are recorded here. The format follows
 - **The window and page layout (ADR-0021).** The window opens centred on the welcome
   card's screen, sized to fit it, and in Windows follows the user's text size, read at
   startup: every size is in text units, so larger text makes the whole layout larger in
-  proportion. The page is capped at a comfortable width, left-aligned beside the list,
-  with plain background beyond it; the list can't be dragged shut.
+  proportion. The window opens tall enough for the tallest calculator page, so no
+  calculator scrolls at launch, even with a font of shorter lines than Windows'. The
+  page is capped at a comfortable width, left-aligned beside the list, with plain
+  background beyond it; the list can't be dragged shut.
 - The disclaimer moves from the status bar to the last line under the results, wrapped,
   never cut off; the status bar keeps passing messages such as "Copied". The method box
   shows the method's name, with its status beside it, or under it when narrow; the open

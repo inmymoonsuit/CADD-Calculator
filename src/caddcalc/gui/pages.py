@@ -86,6 +86,33 @@ class PageWidget(QWidget):
             self.updateGeometry()  # a new width: a new least height
 
 
+def fit_height(page: QWidget, width: int, document: PageDocument | None = None) -> int:
+    """Return the height ``page`` fits in at ``width``, with its document at its least.
+
+    It's the least height at which the page doesn't scroll (rule C, ADR-0021 §6).
+    """
+    needed = _needed_height(page, width)
+    if document is None or not document.isVisibleTo(page):
+        return needed
+    return needed - document.sizeHint().height() + document.least
+
+
+def lay_out(page: QWidget, width: int) -> None:
+    """Lay ``page`` out at ``width`` while it's hidden, so its height at that width holds.
+
+    A hidden widget is laid out only when it shows, and a part whose height follows its
+    own width, such as the results panel, needs that width first. So the page is given
+    the width, and each layout in it is run from the page down, twice: the second pass
+    sees the widths the first one gave.
+    """
+    for _ in range(2):
+        page.resize(width, max(page.height(), _needed_height(page, width)))
+        for widget in (page, *page.findChildren(QWidget)):
+            layout = widget.layout()
+            if layout is not None:
+                layout.activate()
+
+
 def _needed_height(page: QWidget, width: int) -> int:
     """The height ``page`` needs at ``width``.
 
@@ -125,9 +152,8 @@ class PageScrollArea(QScrollArea):
         document, page = self.document, self.widget()
         if document is None or page is None or not document.isVisibleTo(page):
             return
-        needed = _needed_height(page, self.viewport().width())
-        filling = needed - document.sizeHint().height() + document.least
-        document.set_full(filling > self.viewport().height())
+        view = self.viewport()
+        document.set_full(fit_height(page, view.width(), document) > view.height())
 
     @override
     def minimumSizeHint(self) -> QSize:
