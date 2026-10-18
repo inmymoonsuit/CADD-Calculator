@@ -44,7 +44,7 @@ from PySide6.QtWidgets import QApplication, QHBoxLayout, QToolButton, QVBoxLayou
 from caddcalc import __version__
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC_ICON, PRODUCT_NAME, Branding
-from caddcalc.gui.fonts import display_family
+from caddcalc.gui.fonts import FALLBACK, display_family
 from caddcalc.gui.icons import Scheme, current_scheme, icon, role_color
 from caddcalc.gui.painting import on_device_pixels, stroke
 from caddcalc.gui.welcome_art import generic_art
@@ -114,10 +114,14 @@ def display_font(pixels: int, typography: TypographyTokens | None = None) -> QFo
     token's: regular, or Qt's bold, which each platform's text engine draws differently
     (ADR-0016, amendments).
     """
-    display_family()  # loads the vendored face on first use
+    loaded = display_family() != FALLBACK  # loads the vendored face on first use
     typography = style().typography if typography is None else typography
     font = QFont()
-    font.setFamilies([typography.display_family, *typography.fallback_families])
+    # The fallbacks are for a face that didn't load. Named beside a loaded one, each is
+    # resolved at the first measure, which on a machine with many fonts held the card's
+    # first paint for over a second (ADR-0016, amendments).
+    fallbacks = () if loaded else typography.fallback_families
+    font.setFamilies([typography.display_family, *fallbacks])
     font.setPixelSize(pixels)
     font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
     font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)

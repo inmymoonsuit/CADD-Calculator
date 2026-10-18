@@ -97,6 +97,27 @@ def test_a_note_about_an_output_outlines_its_field() -> None:
     window.close()
 
 
+def test_the_work_is_set_in_the_platforms_fixed_width_face() -> None:
+    """Named, not CSS's generic "monospace", which Windows has no face for.
+
+    Qt searched its whole fallback list for that name at the first use, over a second
+    with many fonts installed, and then set the work in a proportional face (ADR-0016,
+    amendments).
+    """
+    from PySide6.QtGui import QFontDatabase
+
+    from caddcalc.gui.window import fixed_family, result_html
+
+    fixed = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+    assert fixed_family() == fixed
+    window = open_window()
+    window.select_calculator("sheet_metal.bend_allowance")
+    assert window.calculator is not None and window.result is not None
+    html = result_html(window.calculator, window.result, window.prefs)
+    assert f"<h3>Work</h3><p style=\"font-family: '{fixed}'\">" in html
+    window.close()
+
+
 def test_values_line_up_on_the_decimal_point() -> None:
     """The cone shows lengths to 4 places and its angle to 2; their points align."""
     from PySide6.QtCore import QPoint

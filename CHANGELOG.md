@@ -319,6 +319,13 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **The welcome screen was slow to appear on a machine with many fonts:** about 2.7 s
+  from launch, most of it resolving the display face's fallback fonts, which are for a
+  face that didn't load. They're now used only then, and the card appears in about
+  1.1 s, looking the same.
+- The work in a calculator's notes was meant to be fixed-width, but on Windows it was
+  set in Tahoma, and finding a face for it held the main window for over a second. It's
+  now set in the platform's fixed-width face: Courier New on Windows.
 - **The welcome screen flickered at startup.** The main window showed on top of it, then
   the card came back on top. Now the card shows once, and the main window is prepared
   hidden and appears behind it once, 1.5 s after the card shows, without taking its

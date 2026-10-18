@@ -426,3 +426,34 @@ fix.
   doesn't depend on which screen the pointer is on (UI/UX and Support & Review).
 * **Superseded wording.** This replaces slice e's "one sample per logical pixel" and
   slice i's grid of at least `panes.min_samples` nearest pixels.
+
+### 2026-10-18: the card's first paint
+
+UI/UX found the welcome card took about 2.8 s to appear on the maintainer's machine,
+about 2 s of it inside its first show, in font work. Profiled natively on Windows, with
+2,457 font families installed:
+
+* **The cause.** The display font named the fallback families beside the loaded face, so
+  the first measure of the name resolved each of them: 1.35 s, where the face alone
+  takes 1 ms. The fallbacks are for a face that didn't load, as the token says, so
+  they're named only then. The face draws the name either way: the card is
+  pixel-identical natively, 0 of 549,120 pixels differing.
+* **The effect.** From process start to the card's first paint: 2.58–2.74 s before,
+  1.08–1.19 s after, over five runs.
+* **The same cost, a second time, in the main window.** The result document set its
+  work in CSS's generic `monospace`. Windows has no face by that name, so Qt searched
+  its whole fallback list for it at the first use, 1.44 s, and then set the work in
+  Tahoma, a proportional face. With the card's fix, that search moved into the main
+  window's first show, so the reveal came 2.8 s after the card's paint, not 1.5 s, and
+  the card didn't respond meanwhile. The work now names the platform's fixed-width
+  family (`QFontDatabase.systemFont(FixedFont)`: Courier New on Windows), found in 3 ms.
+  The work's face changes on Windows, from Tahoma to Courier New, for UI/UX to review.
+* **A real launch now** (Windows, natively, through `main()`): the card paints at
+  1.07–1.33 s, and the main window shows behind it 1.51–1.52 s later, at the hold.
+* **What's left is Qt's.** The first text measure populates Qt's font database, about
+  0.6 s with DirectWrite, Qt's default font engine on Windows. The GDI engine populates
+  it in about 45 ms, but changes how every text in the app is drawn, so it isn't
+  changed here; it's for UI/UX and the maintainer to judge, with renders.
+* **Tests** check that the display font names only its face when it's loaded, and its
+  fallbacks after it when it isn't, and that the work names the platform's fixed-width
+  family.

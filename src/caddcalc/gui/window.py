@@ -8,6 +8,7 @@ import weakref
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
+from functools import cache
 from html import escape
 from itertools import pairwise
 from typing import Any, cast, override
@@ -16,6 +17,7 @@ from PySide6.QtCore import QEvent, QModelIndex, QObject, QPersistentModelIndex, 
 from PySide6.QtGui import (
     QAction,
     QColor,
+    QFontDatabase,
     QFontMetricsF,
     QGuiApplication,
     QPalette,
@@ -119,11 +121,11 @@ ID_ROLE = Qt.ItemDataRole.UserRole
 DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Tree item data holding a family row's domain id."""
 NO_CALCULATORS = "No calculators loaded"
+"""Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 BUILTIN_IDS = frozenset(calc.id for calc in BUILTIN_CALCULATORS)
 """The built-in calculators: the only ones whose pages open before the user chooses one.
 
 A plugin's page runs the plugin's code, so it opens only when chosen (ADR-0019)."""
-"""Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
 """Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
@@ -1781,6 +1783,18 @@ def _text_style(kind: NoteKind, scheme: Scheme) -> str:
     return "" if role is None else f" style='color:{role_color(role, scheme)}'"
 
 
+@cache
+def fixed_family() -> str:
+    """Return the platform's fixed-width family, which the work's lines are set in.
+
+    It's named, rather than CSS's generic "monospace": Windows has no face by that name,
+    so Qt searched its whole fallback list for it at the first use, over a second with
+    many fonts installed, and then set the work in a proportional face (ADR-0016,
+    amendments).
+    """
+    return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+
+
 def result_html(
     calc: Calculator,
     result: Result,
@@ -1837,7 +1851,9 @@ def result_html(
         if step.expression is not None and step.note:
             lines.append(f"({step.note})")
         work.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;".join(escape(x) for x in lines))
-    parts.append("<h3>Work</h3><p style='font-family: monospace'>" + "<br><br>".join(work) + "</p>")
+    family = fixed_family().replace("'", "")
+    parts.append(f"<h3>Work</h3><p style=\"font-family: '{family}'\">")
+    parts.append("<br><br>".join(work) + "</p>")
     refs = "".join(f"<li>{escape(str(r))}</li>" for r in method.references)
     notes = "".join(f"<li>{escape(n)}</li>" for n in method.notes)
     parts.append(

@@ -115,6 +115,26 @@ def test_the_display_face_loads_into_qt(fresh_fonts: Any) -> None:
 
 
 @pytest.mark.gui
+def test_the_fallbacks_are_named_only_for_a_face_that_didnt_load(
+    fresh_fonts: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Named beside a loaded face, each fallback is resolved at the first measure.
+
+    On a machine with many fonts, that held the welcome card's first paint for over a
+    second (ADR-0016, amendments).
+    """
+    from caddcalc.gui.welcome import display_font
+
+    typography = style().typography
+    assert display_font(50).families() == [typography.display_family]
+    fresh_fonts.display_family.cache_clear()
+    monkeypatch.setattr(fresh_fonts, "ASSETS", tmp_path)
+    with pytest.warns(UserWarning, match="using a fallback"):
+        families = display_font(50).families()
+    assert families == [typography.display_family, *typography.fallback_families]
+
+
+@pytest.mark.gui
 def test_a_face_that_cant_be_loaded_falls_back_with_a_warning(
     fresh_fonts: Any, tmp_path: Path
 ) -> None:
