@@ -221,7 +221,7 @@ class MainWindow(QMainWindow):
             actions: The app's shared commands; the window makes its own when ``None``.
         """
         super().__init__()
-        self.registry = registry or default_registry()
+        self.registry = default_registry() if registry is None else registry
         self.branding = branding
         self.app_actions = actions if actions is not None else AppActions(branding, self)
         self.prefs = DisplayPrefs()

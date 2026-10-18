@@ -144,6 +144,9 @@ class TruncatedConeLayout(Calculator):
 
         if ctx["top_diameter"] and ctx["top_diameter"] <= ctx["thickness"]:
             raise InputError("Top diameter must be larger than the thickness for this method.")
+        if ctx["bottom_diameter"] <= ctx["thickness"]:
+            # Db - T would be zero or negative: no mid-thickness circle to develop.
+            raise InputError("Bottom diameter must be larger than the thickness for this method.")
         ctx.calc("Dtm", "max(Dt - T, 0)", label="Mean top diameter", dimension=LENGTH)
         ctx.calc("Dbm", "Db - T", label="Mean bottom diameter", dimension=LENGTH)
         ctx.calc(

@@ -188,6 +188,15 @@ def card_outline(p: QPainter, rect: QRectF, radius: float, border: float) -> QPa
     return path
 
 
+def card_background(scheme: Scheme) -> QColor:
+    """Return the colour the card paints behind its top bar and its art.
+
+    Art with transparent pixels shows it through, so the panes measure the art over it
+    too, and what they measure is what the screen shows.
+    """
+    return QColor(role_color("background", scheme))
+
+
 def _qrect(rect: Rect) -> QRectF:
     return QRectF(rect.x, rect.y, rect.width, rect.height)
 
@@ -408,14 +417,20 @@ class _ArtSlot(QWidget):
         """The card's corner radius, which rounds the art's lower corners."""
         self.border = 0.0
         """The card's border width, whose centre line the art is clipped to."""
+        self.placed = False
+        """Whether the logo box and the panes have been placed, once the slot has its size."""
         self.logo = _LogoBox(branding, self)
         self.name_pane = _Pane(PRODUCT_NAME, tokens, tokens.name_pane, self)
         version = f"Version {__version__}"
         self.version_pane = _Pane(version, tokens, tokens.version_pane, self)
 
     def shown_art(self) -> QImage:
-        """Return the art as the slot shows it, one image pixel per logical pixel."""
+        """Return the art as the slot shows it, one image pixel per logical pixel.
+
+        The image starts as the card's background, which shows through transparent art.
+        """
         image = QImage(self.size(), QImage.Format.Format_RGBX8888)
+        image.fill(card_background(current_scheme()))
         p = QPainter(image)
         self._draw(p)
         p.end()
@@ -442,9 +457,15 @@ class _ArtSlot(QWidget):
         slot = Size(self.width(), self.height())
         self._generic = None
         self.logo.place(scale)
-        art = self.shown_art()
         for pane in (self.name_pane, self.version_pane):
             pane.place(slot, scale)
+        self.placed = True
+        self.measure()
+
+    def measure(self) -> None:
+        """Measure the art under each pane, as the slot shows it over the card."""
+        art = self.shown_art()
+        for pane in (self.name_pane, self.version_pane):
             pane.measure(art)
 
     @override
@@ -611,6 +632,8 @@ class WelcomeScreen(QWidget):
         scheme = current_scheme()
         self.about_button.setIcon(icon("info-circle", "icon_active", scheme))
         self.close_button.setIcon(icon("x", "icon_active", scheme))
+        if self.art.placed:  # transparent art now shows another background
+            self.art.measure()
         self.update()
 
     def _on_color_scheme_changed(self, *_args: object) -> None:
@@ -621,7 +644,7 @@ class WelcomeScreen(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         outline = card_outline(p, QRectF(self.rect()), self.radius, self.border_width)
-        p.fillPath(outline, QColor(role_color("background", current_scheme())))
+        p.fillPath(outline, card_background(current_scheme()))
         p.end()
 
     @override

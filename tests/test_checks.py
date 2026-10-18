@@ -298,3 +298,33 @@ def test_every_source_a_check_cites_states_its_scope() -> None:
     cited += [s for r in materials.radii for s in r.see_also]
     cited.append(materials.practice.source)
     assert all(source.reference.scope for source in cited)
+
+
+def segment(radius: float, angles: tuple[float, float], material: str = "al:6061") -> Result:
+    """Run the formed segment, T = 0.063 in, with the family's material."""
+    settings = DomainSettings().set_choice(DOMAIN, "material", material).for_domain(DOMAIN)
+    inputs = {
+        "thickness": 0.063 * IN,
+        "inside_radius": radius * IN,
+        "bend_angle_1": angles[0],
+        "bend_angle_2": angles[1],
+    }
+    return FormedSegmentFlatLength().run(inputs, "k_factor", settings=settings)
+
+
+def test_a_part_with_bends_on_both_sides_of_90_degrees_checks_those_up_to_it() -> None:
+    """6061-T6 at 0.063 in needs 0.16 in: the 90° bend is checked, the 120° one isn't covered."""
+    part = segment(0.15, (90.0, 120.0))
+    (limit,) = notes(part, LIMIT)
+    assert limit.subjects == ("inside_radius", "thickness")
+    (gap,) = notes(part, GAP)
+    assert "A2 is past 90°" in gap.text and gap.subjects == ("bend_angle_2",)
+    assert not rule_of_thumb(part), "a cited check applied, so the rule of thumb is quiet"
+
+
+def test_a_part_with_every_bend_past_90_degrees_is_checked_as_before() -> None:
+    part = segment(0.05, (120.0, 135.0))
+    (gap,) = notes(part, GAP)
+    assert "A1 and A2 are past 90°" in gap.text
+    assert gap.subjects == ("bend_angle_1", "bend_angle_2")
+    assert notes(part, LIMIT) == [] and rule_of_thumb(part), "R < T: the rule of thumb speaks"

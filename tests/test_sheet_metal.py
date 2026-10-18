@@ -196,3 +196,33 @@ def test_an_entered_value_still_beats_the_shared_setting() -> None:
     )
     assert out.source_of("thickness").kind is SourceKind.EXPLICIT
     assert from_base(out.outputs["flat_length"], "in") == pytest.approx(1.015332, rel=1e-9)
+
+
+@pytest.mark.parametrize(
+    ("bottom", "thickness"), [(3.0, 3.0), (2.0, 3.0)], ids=["equal", "smaller"]
+)
+def test_mean_diameter_cone_refuses_a_bottom_no_larger_than_the_thickness(
+    bottom: float, thickness: float
+) -> None:
+    """Db - T would be zero (a division by zero) or negative (a negative sweep angle)."""
+    with pytest.raises(InputError, match="Bottom diameter must be larger than the thickness"):
+        run_inches(
+            TruncatedConeLayout(),
+            "mean_diameter",
+            top_diameter=0,
+            bottom_diameter=bottom,
+            height=5,
+            thickness=thickness,
+        )
+
+
+def test_a_pointed_cone_still_develops_by_mean_diameter() -> None:
+    out = run_inches(
+        TruncatedConeLayout(),
+        "mean_diameter",
+        top_diameter=0,
+        bottom_diameter=10,
+        height=5,
+        thickness=0.5,
+    )
+    assert out["inside_radius"] == 0 and 0 < out["sweep_angle"] < 360

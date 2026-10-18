@@ -270,8 +270,8 @@ def to_fraction(value: float, denominator: int = 64) -> str:
     """Nearest drafting fraction: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``."""
     if not math.isfinite(value):
         return str(value)
-    sign = "-" if value < 0 else ""
     frac = Fraction(round(abs(value) * denominator), denominator)
+    sign = "-" if value < 0 and frac else ""  # a value that rounds to 0 is never "-0"
     whole, rem = divmod(frac.numerator, frac.denominator)
     if rem == 0:
         return f"{sign}{whole}"

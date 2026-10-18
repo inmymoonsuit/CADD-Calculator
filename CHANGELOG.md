@@ -298,6 +298,25 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **The bend check on a part with bends on both sides of 90°.** A bend past 90° made the
+  whole part "no applicable value", so a bend up to 90° went unchecked: 6061-T6 at
+  0.063 in with R = 0.15 in and bends of 90° and 120° showed no limit, though the 90° bend
+  needs 0.16 in. Bends up to 90° are now checked, and those past 90° get their own note.
+  The rule of thumb speaks only when no bend was checked against a source.
+- **The welcome screen measured transparent art wrongly.** The image it measured the art
+  in started uninitialized, so where a pack's PNG art was transparent the panes read
+  arbitrary memory, and could pick a fill that left the text at about 1.55:1. The art is
+  now measured over the card's own background, the same colour the card paints, and is
+  measured again when the theme changes.
+- **The mean-diameter cone with a bottom diameter no larger than the thickness.** It gave
+  a negative sweep angle, or failed with a division by zero when they were equal. It now
+  refuses the input, as it already did for the top diameter. The course method is
+  unchanged (KI-021).
+- **A window given an empty registry.** `MainWindow(registry=...)` replaced a registry with
+  domains but no calculators by the built-in one, because an empty registry is falsy. It
+  now keeps the registry it's given.
+- **A negative zero in an inch fraction.** A tiny negative length showed `(≈ -0")`; it now
+  shows `(≈ 0")`.
 - The app, and the test suite, could crash on exit after the window closed (KI-019): the
   window's own widgets held it through their signal connections, so it was torn down
   during interpreter exit. Every CI job failed from it. The `caddcalc-gui` command also

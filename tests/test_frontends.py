@@ -135,3 +135,21 @@ def test_a_window_is_freed_when_the_last_reference_goes() -> None:
     del window
     gc.collect()
     assert alive() is None, "a cycle through the window's connections keeps it alive"
+
+
+@pytest.mark.gui
+@pytest.mark.usefixtures("qt")
+def test_an_explicit_registry_is_kept_even_with_no_calculators() -> None:
+    """A Registry has a length, so an empty one is falsy; it's still the one given."""
+    from caddcalc.core import Domain, Registry
+    from caddcalc.gui.window import MainWindow
+
+    registry = Registry()
+    registry.register_domain(Domain("acme", "Acme Tools", "A domain with no calculators yet."))
+    assert len(registry) == 0
+    window = MainWindow(registry=registry)
+    assert window.registry is registry
+    assert [
+        window.tree.topLevelItem(i).text(0) for i in range(window.tree.topLevelItemCount())
+    ] == ["Acme Tools"]
+    window.close()

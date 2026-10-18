@@ -42,8 +42,15 @@ def generated_art(kind: str, size: tuple[int, int]) -> Any:
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QColor, QImage, QPainter
 
-    art = QImage(*size, QImage.Format.Format_RGB32)
+    transparent = kind == "transparent"
+    art = QImage(*size, QImage.Format.Format_ARGB32 if transparent else QImage.Format.Format_RGB32)
     art.fill(QColor({"blue": "#336699", "light": "#F4F1EA", "dark": "#101418"}.get(kind, "white")))
+    if transparent:
+        # Dark ink on the left, and nothing at all where the panes sit.
+        art.fill(Qt.GlobalColor.transparent)
+        p = QPainter(art)
+        p.fillRect(0, 0, size[0] * 2 // 5, size[1], QColor("#101418"))
+        p.end()
     if kind.startswith("saturated"):
         # A saturated colour between neutral extremes: grey and white stripes, 1 px in 17.
         saturated = {"blue": "#0000FF", "red": "#FF0000", "green": "#00FF00"}[kind.split("-")[1]]
@@ -262,11 +269,13 @@ def test_the_about_button_shows_the_version_and_the_license(
 def measured(welcome: Any, pane: Any) -> tuple[float, float]:
     """The text's contrast, and the background's spread, over the art as Qt shows it.
 
-    The art is grabbed with the pane hidden, the pane's fill is blended over it by Qt
-    itself, and every pixel under the pane counts, at the style's percentile.
+    The card is grabbed with the pane hidden, as Qt renders it, so transparent art
+    shows the card's background; the pane's fill is blended over it by Qt itself, and
+    every pixel under the pane counts, at the style's percentile.
     """
     import math
 
+    from PySide6.QtCore import QPoint, QRect
     from PySide6.QtGui import QColor, QImage, QPainter
 
     from caddcalc.gui.icons import current_scheme, role_color
@@ -275,14 +284,15 @@ def measured(welcome: Any, pane: Any) -> tuple[float, float]:
     panes, scheme = style().panes, current_scheme()
     text_role, fill_role, alpha = pane.fill(scheme)
     pane.hide()
-    shown = welcome.art.grab().toImage().convertToFormat(QImage.Format.Format_RGBX8888)
+    shown = welcome.grab().toImage().convertToFormat(QImage.Format.Format_RGBX8888)
     pane.show()
+    area = QRect(pane.mapTo(welcome, QPoint(0, 0)), pane.size())
     fill = QColor(role_color(fill_role, scheme))
     fill.setAlpha(alpha)
     p = QPainter(shown)
-    p.fillRect(pane.geometry(), fill)
+    p.fillRect(area, fill)
     p.end()
-    under = shown.copy(pane.geometry())  # kept alive while its pixels are read
+    under = shown.copy(area)  # kept alive while its pixels are read
     data = bytes(under.constBits())
     levels = sorted(rgb_luminance(c) for c in zip(data[0::4], data[1::4], data[2::4], strict=True))
     text = luminance(role_color(text_role, scheme))
@@ -574,4 +584,19 @@ def test_the_generic_mark_is_the_app_icon_alone_in_a_square_box(
         if not (icon.x - 1 <= x <= icon.x + icon.width and icon.y - 1 <= y <= icon.y + icon.height)
     ]
     assert outside_icon and set(outside_icon) == {fill}, "only the fill around the icon"
+    welcome.close()
+
+
+def test_transparent_art_is_measured_over_the_cards_background(tmp_path: Path) -> None:
+    """Where the art is transparent the card's background shows, so that's what's measured."""
+    from caddcalc.gui.icons import current_scheme, role_color
+    from caddcalc.gui.welcome_style import rgb
+
+    welcome = screen(pack(tmp_path / "pack", art="transparent"))
+    welcome.show()
+    background = rgb(role_color("background", current_scheme()))
+    for pane, needed in ((welcome.art.name_pane, 3), (welcome.art.version_pane, 4.5)):
+        assert set(pane.art) == {background}, pane.text
+        reading, _spread = measured(welcome, pane)
+        assert reading >= needed, pane.text
     welcome.close()

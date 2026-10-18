@@ -51,6 +51,9 @@ class BendCheck:
     * Where no source covers the case, a no-applicable-value note says why: no source for
       the material, a bend past 90° (D10), or a thickness no source lists (D4). Then, as
       with no material chosen, an inside radius below the thickness gets the rule of thumb.
+    * A part with bends on both sides of 90° is checked for the bends up to 90°, and its
+      bends past 90° get their own no-applicable-value note. The rule of thumb speaks only
+      when no bend was checked against a source, so the two never contradict.
     """
 
     def __init__(
@@ -148,7 +151,7 @@ class BendCheck:
             return False
         cited = tuple(s.source.reference for s in sources)
         past = [k for k in self.angle_keys if ctx[k] > MAX_ANGLE]
-        if past:
+        if past:  # those bends aren't covered; any up to 90° are checked below
             ctx.note(
                 f"The minimum radii for {name} are for bends up to 90°, and "
                 f"{and_list(_symbol(ctx, k) for k in past)} {'is' if len(past) == 1 else 'are'} "
@@ -157,7 +160,8 @@ class BendCheck:
                 references=cited,
                 subjects=past,
             )
-            return False
+            if len(past) == len(self.angle_keys):
+                return False
         thickness = ctx["thickness"]
         found = [(source, source.at(thickness)) for source in sources]
         covering = [(source, value) for source, value in found if value is not None]

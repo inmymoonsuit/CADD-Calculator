@@ -136,7 +136,8 @@ note names its sources and how far each applies.
   lists (TO's stainless table has none between 0.090 and 0.190 in, and mild steel stops
   at 0.187 in), for a bend past 90° or a hem, and for galvanized and hot-rolled steel,
   which have no public-domain source. Where only one source lists the thickness, the note
-  says the check uses it alone.
+  says the check uses it alone. A part with bends on both sides of 90° is still checked
+  for its bends up to 90°; only those past 90° get the no-applicable-value note.
 * **Stand-ins are labelled.** Mild steel uses TO's 2T for 1020/1025, and 304 annealed uses
   TO's 2T for 304 ½ Hard, its only 304 row; both are conservative.
 * When the inside radius is below the minimum, a second note gives TO's bending
@@ -249,7 +250,7 @@ radius FPOR, and sweep angle FPA.
 | Method | Status | Notes |
 |---|---|---|
 | Course spreadsheet | unverified · reproduces legacy | The radii use the diameters as given, while the angle uses (Db − T). See below. |
-| Mean diameter | unverified | Treats the diameters as outside diameters and develops the mid-thickness surface throughout |
+| Mean diameter | unverified | Treats the diameters as outside diameters and develops the mid-thickness surface throughout. Refuses a top diameter (other than 0, a pointed cone) or a bottom diameter no larger than the thickness, which leave no mid-surface |
 
 Course method:
 

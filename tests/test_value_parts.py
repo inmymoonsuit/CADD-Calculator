@@ -165,3 +165,11 @@ def test_results_tabulate_one_row_per_output_without_breaking_cells() -> None:
     assert results_tsv(_Bracket(), result, DisplayPrefs(length_unit="mm")).startswith(
         "H\tHalf of it\t12.7000\tmm\n"
     )
+
+
+def test_a_fraction_that_rounds_to_zero_is_never_negative() -> None:
+    assert to_fraction(-0.001, 64) == "0"
+    assert to_fraction(-0.5, 64) == "-1/2" and to_fraction(-1.015625, 64) == "-1-1/64"
+    prefs = DisplayPrefs(fraction_denominator=64)
+    assert format_value(-0.00001, L, prefs) == '0.0000 in  (≈ 0")'
+    assert value_parts(-0.00001, L, prefs).fraction == "0"
