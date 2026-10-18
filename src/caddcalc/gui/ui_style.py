@@ -72,9 +72,13 @@ class ResultFieldTokens:
     decimal_align: bool
     """Align the values on their decimal points, not only on their right edges."""
     document_min_height: float
-    """The height the document under the panel always keeps; the panel scrolls past it."""
+    """The document's least height; below it, the page scrolls and the document shows in
+    full."""
     copy_icon: str
     copied_icon: str
+    title_scale: float
+    """The "Results" title's size, a multiple of the body text's: the document's headings'
+    size, so the panel's title reads as one of them."""
 
 
 @dataclass(frozen=True)
@@ -141,6 +145,7 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "document_min_height": _SIZE,
             "copy_icon": check_icon,
             "copied_icon": check_icon,
+            "title_scale": check_number(1, 3),
         },
     ),
     "note_outline": (

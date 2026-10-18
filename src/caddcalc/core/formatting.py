@@ -109,7 +109,7 @@ def decimal_separator(prefs: DisplayPrefs) -> str:
     """Return the decimal separator values are shown with: ``"."`` for now.
 
     Everything that reads a shown number's decimals asks here, so a separator preference
-    (ADR-0020's L4, ADR-0017 F5) changes one place.
+    (ADR-0017 F5, KI-022) changes one place.
     """
     del prefs  # every preference writes "." until there's a separator preference
     return "."

@@ -28,6 +28,8 @@ Not supported yet: combined feet and inches such as `3'-4 1/2"`.
   for them (not numbers), `expression_unit`, the unit its formula yields, and `stated`,
   the value as its source states it, e.g. `"0.109375 in"`; all three are `null` for an
   ordinary step, whose formula yields base units.
+  Each note gives its lead as `text` and the rest as `detail`, with any values in base
+  units, and `quantities` with each value it names and that value's unit.
 
 Round only when you put the final number on a drawing. Rounding intermediate values,
 such as a bend allowance before adding up a flat pattern, builds up error.

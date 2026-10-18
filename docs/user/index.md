@@ -6,6 +6,7 @@ Every answer shows its work.
 
 * [Getting started](getting-started.md): install it and run your first calculation
 * [Sheet-metal calculators](calculators/sheet-metal.md): what each one computes, and the formulas
+* [Results and copying](results.md): the result fields, copying values, the keyboard
 * [Units and precision](units-and-precision.md): typing fractions and mm, rounding
 * [Glossary](glossary.md): bend angle, K-factor, outside setback, and other terms
 
@@ -16,7 +17,9 @@ Each result shows:
 1. **Inputs**, with where each value came from: *entered* (you typed it), *default*
    (the calculator's built-in value), or a family setting such as *Sheet Metal
    settings*.
-2. **Results**, the numbers you asked for, rounded for display only.
+2. **Results**, the numbers you asked for, rounded for display only. In the desktop app
+   they sit in their own fields, which you can copy from; see
+   [Results and copying](results.md).
 3. **Work**, each formula in symbols, then with your numbers substituted, then the value.
 4. **Method**, which formula family was used, with references and a **status**:
 
@@ -27,7 +30,8 @@ Each result shows:
 | `· reproduces legacy` (added to either) | Matches the original course spreadsheets exactly. Good for coursework; see the method notes for caveats. |
 
 5. **Notes**, such as a radius smaller than the thickness, or a segment too short for its
-   bends. Each is marked by kind:
+   bends. Each leads with its verdict and numbers, then says what its sources give, then
+   names them. In the desktop app they come strongest first. Each is marked by kind:
    * a *warning*: something to check, such as a rule of thumb
    * *limit exceeded*: past a limit a cited source states, shown in red with the source
    * *no applicable value*: no source covers the case, so it couldn't be checked

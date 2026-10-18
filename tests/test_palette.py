@@ -163,13 +163,18 @@ def test_delta_e_2000_matches_the_published_test_data() -> None:
 
 @pytest.mark.parametrize("theme", ["light", "dark"])
 def test_focus_never_looks_like_an_outline_or_a_border(theme: str) -> None:
-    """ADR-0017 §3: focus is ΔE2000 ≥ 15 from every outline and border role."""
+    """ADR-0017 §3: focus is ΔE2000 ≥ 15 from every outline and border role.
+
+    The borders include a result field's hover border, read from its token.
+    """
+    from caddcalc.gui.ui_style import ui_style
+
     roles = PALETTE[theme]
     focus = COLORS[roles["focus_ring"]]
-    others = [
-        role
-        for role in roles
-        if role.startswith("outline_") or role in ("field_border", "card_border", "welcome_line")
-    ]
+    tokens = ui_style().result_field
+    borders = {"field_border", "card_border", "welcome_line", tokens.border_role}
+    borders.add(tokens.hover_border_role)
+    others = [role for role in roles if role.startswith("outline_") or role in borders]
+    assert tokens.hover_border_role in others
     near = {role: round(delta_e_2000(focus, COLORS[roles[role]]), 1) for role in others}
     assert min(near.values()) >= 15, near

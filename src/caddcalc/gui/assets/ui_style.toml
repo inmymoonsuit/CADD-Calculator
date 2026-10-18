@@ -30,6 +30,7 @@ decimal_align = true
 document_min_height = 96           # the document's least height; below it, the page scrolls
 copy_icon = "copy"
 copied_icon = "check"
+title_scale = 1.2                  # the Results title: the document's h3, which Qt sets at 1.2×
 
 [note_outline]                     # a field a note concerns, input or result alike
 width = 2                          # heavier than the 1 px border, so it reads without colour

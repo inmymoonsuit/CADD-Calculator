@@ -28,7 +28,7 @@ themes. Change colors there, then update this page and regenerate the swatch ima
 | White on crimson | 7.8:1 | Text on primary buttons and badges (AAA) |
 | Crimson on white | 7.8:1 | Headings and links in light mode (AAA) |
 | Ink on amber | 8.8:1 | Text on highlights and warnings (AAA) |
-| Amber on ink | 8.8:1 | Headings, links, and focus rings in dark mode (AAA) |
+| Amber on ink | 8.8:1 | Headings and links in dark mode (AAA). Focus is `focus_ring`, focus blue, in both themes |
 | Slate on ink | 4.0:1 | Borders and icons in dark mode; large text only |
 | Slate on white | 3.8:1 | Borders and icons in light mode; large text only |
 | Crimson on amber | 4.4:1 | Large text only |
@@ -64,7 +64,7 @@ and dark themes. A test keeps hex colors out of the GUI code except the palette 
 |---|---|---|---|
 | `text_error` | crimson | white (crimson on ink is too faint) | "Check the inputs" and "Not applied" |
 | `text_warning` | ink (amber on white is too faint) | amber | the Notes heading in results |
-| `outline_error` | crimson | white | the border of a field whose text can't be used |
+| `outline_error` | crimson | white | the border of a field whose text can't be used. It equals `outline_limit` on purpose: an unreadable input stops the calculation, so no limit note can share its field |
 | `outline_note` | ink (amber on white is too faint) | amber | the border of a field a result note concerns |
 | `outline_limit` | crimson | white | the border of a field a limit-exceeded note concerns |
 | `outline_no_value` | slate | slate | the dashed border of a field no reference value could check |

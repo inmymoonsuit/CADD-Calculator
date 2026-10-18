@@ -1,9 +1,10 @@
 # ADR-0017: Result fields, one boxed, copyable component for every calculator
 
-* **Status:** **Accepted** (not built). On 2026-10-17 the maintainer approved R1–R6 as
-  recommended, and the optional findings F1–F3 as in scope. F4 and F5 are follow-ups,
-  and F5 is recorded as a KI. Drafted by the UI/UX & Design session; the Engine checks it
-  against the code and adds it to the repo.
+* **Status:** **Accepted, and built** (slices k1–k5, 2026-10-17; see Amendments). On
+  2026-10-17 the maintainer approved R1–R6 as recommended, and the optional findings
+  F1–F3 as in scope, and later refined R3 (results are never obscured). F4 is a
+  follow-up, and F5 is KI-022, with ADR-0020's L4 as its planned fix. Drafted by the
+  UI/UX & Design session; the Engine checked it against the code and built it.
 * **Date:** 2026-10-17
 * **Builds on:** ADR-0016 (the style-token discipline), ADR-0004 (Result and provenance),
   ADR-0005 (units and display), ADR-0003 (layers), [design/palette.md](../design/palette.md)
@@ -488,3 +489,38 @@ From UI/UX & Design's review of k3b:
   3.85:1 on white, under 4.5:1 for text, and palette.md keeps it off words.
 * **Not changed:** a domain's `Fact` (2b.7b) still fills positional `{}` fields; moving
   it to named fields belongs with ADR-0020's string sweep.
+
+### 2026-10-17: review findings, and the docs (k5)
+
+From UI/UX & Design's reviews of k2b and k3:
+* **k2b M1, focus on an outlined input (WCAG 2.4.7).** An input's note or error outline
+  is a style sheet border, which replaces the native frame and its focus indicator, and a
+  `QLineEdit:focus` rule would hide the outline while focused. So one `FocusRing` per
+  window (`gui/focus_ring.py`) follows the keyboard focus and draws the result fields'
+  ring, `focus_ring`, 2 px, 1 px gap, outside an input marked `OUTLINED`. It's a child of
+  the input's parent, so it scrolls and clips with it, and ignores the mouse. Every
+  outline goes through `window._set_outline()`, which sets the style sheet and the mark,
+  and the ring refreshes after outlines change.
+* **k2b L1, L3–L6:** the stale "focus rings" wording on amber is gone from palette.toml
+  and palette.md; palette.md says `outline_error` equals `outline_limit` on purpose; the
+  ΔE test adds the hover border role, read from `ui_style`; the doc-quote test runs both
+  ways; and the design doc keeps the device-pixel rule to the painted fields, since a
+  style sheet draws an input's outline.
+* **k3 L1:** the "Results" title is `title_scale` (1.2) times the body text, the size Qt
+  gives the document's `<h3>`; a test compares the two.
+* **k3 L2:** the document's background is the fields' `fill_role` in both themes.
+* **k3 L3:** a dashed line has flat caps, so its dashes are the pattern's 4 and 2 line
+  widths, 8 and 4 px at 100%, not 10 and 2.
+* **k3 L4:** the ring's gap and width are each whole device pixels. A result field now
+  strokes its ring at its own edge and draws its frame inside the room
+  (`painting.frame_within`), which also stops the ring losing a row at its top and left
+  at 150%, where 2 px of ring and 1 px of gap need 5 device pixels, not the 4.5 the
+  layout keeps.
+* **The k3b check:** the window's least height is a page's title, its method row, and
+  one result field; with the page scroll, it had fallen to 112 px.
+* **Docs:** the user guide's "Results and copying"; KI-022 for the decimal separator (F5);
+  this ADR's status.
+* Tests check each fix, and each was checked by removing it: the ring and the outline
+  together, the ring following focus and outlines, the title against the document's
+  heading, the document's surface in dark, the dashes, the ring at 150%, and the least
+  height.

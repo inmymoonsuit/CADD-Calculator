@@ -27,7 +27,11 @@ token, so the specification can't drift from the code.
   still line up.
 * A copy button with the Tabler "copy" icon, which shows a "check" for a moment once
   it has copied.
-* Lines follow the welcome screen's rule: whole device pixels, never under one.
+* The field's painted lines (its border, its note outline, and its focus ring) follow the
+  welcome screen's rule: whole device pixels, never under one, through `gui/painting.py`.
+  An input field's note outline is a style sheet border, which Qt draws, so it isn't held
+  to the rule and can look soft at 150%. The focus ring around an outlined input is
+  painted, so it is.
 * **Spacing as seen.** Each field keeps the focus ring's room, `focus_width` 2 plus
   `focus_gap` 1, inside its edges, so its frame sits 3 px in. Between two frames that
   makes a visible 12 px gap (`stack_gap` 6, plus 3 px on each side), and the frames sit
@@ -109,14 +113,26 @@ token, so the specification can't drift from the code.
   the source after them, set smaller.
 * "Smaller" stands in for muted: the palette's muted role, slate, is under 4.5:1 for
   text, so it's never used for words.
+* The document has the fields' surface, `fill_role`, in both themes, so in dark it
+  matches the fields rather than Qt's lighter text-pane grey. The "Results" title is
+  the size of the document's headings (`title_scale`).
+* The window can't be shorter than a page's title, its method row, and one result field.
 
 ## States
 
 * **Hover:** the border takes the text colour, and the field a faint fill of it.
 * **Keyboard focus:** a 2 px ring in `focus_ring`, `focus_blue`, outside the frame with
   a 1 px gap. Focus is never an outline colour, so it never looks like a warning; a test
-  keeps it at least ΔE2000 15 from every outline and border role, and 3:1 against the
-  background in both themes.
+  keeps it at least ΔE2000 15 from every outline and border role, the hover border
+  included, and 3:1 against the background in both themes.
+  * The ring is at the field's edge and the frame inside its room, each in whole device
+    pixels (`gui/painting.py`, `frame_within`), so at 150% the gap is the same on every
+    side and the ring is never clipped.
+  * **An input a note outlines** gets the same ring, outside its outline
+    (`gui/focus_ring.py`): its style sheet border replaces the native focus indicator,
+    and a `:focus` rule would hide the outline. Other inputs keep their native focus.
+* **A dashed outline** has flat ends, so it reads 8 px on and 4 off at 100%, the
+  pattern's four and two line widths.
 * **A note concerns it:** the same outline an input field gets, by the same ranking
   (`gui/outlines.py`): a cited limit over a warning over a check that couldn't be made,
   whose outline is dashed. Every note outline is 2 px, heavier than the 1 px border, so
@@ -157,6 +173,7 @@ heavier than the border.
 | `result_field.document_min_height` | 96 | The document's least height; below it, the page scrolls |
 | `result_field.copy_icon` | copy | The copy button's icon |
 | `result_field.copied_icon` | check | Its icon once it has copied |
+| `result_field.title_scale` | 1.2 | The "Results" title's size against the body text: the document's headings', so it reads as one of them |
 | `note_outline.width` | 2 | Every note outline's width, on input and result fields |
 | `note_outline.limit_role` | outline_limit | A cited limit is exceeded |
 | `note_outline.limit_style` | solid | Its line |

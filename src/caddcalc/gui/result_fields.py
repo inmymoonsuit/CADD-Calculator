@@ -62,7 +62,7 @@ from caddcalc.core.formatting import (
 )
 from caddcalc.gui.icons import current_scheme, icon, role_color
 from caddcalc.gui.outlines import Outline, strongest
-from caddcalc.gui.painting import on_device_pixels, stroke
+from caddcalc.gui.painting import frame_within, on_device_pixels, stroke
 from caddcalc.gui.ui_style import ResultFieldTokens, ui_style
 
 NO_VALUE = "—"
@@ -319,7 +319,10 @@ class ResultField(QWidget):
 
     @property
     def frame(self) -> QRectF:
-        """The field's frame, inside the room kept for the focus ring."""
+        """The field's frame, inside the room kept for the focus ring, at 100% scaling.
+
+        Painting places it in whole device pixels (``frame_within``).
+        """
         ring = self.tokens.focus_width + self.tokens.focus_gap
         return QRectF(self.rect()).adjusted(ring, ring, -ring, -ring)
 
@@ -347,8 +350,11 @@ class ResultField(QWidget):
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
         tokens, scheme = self.tokens, current_scheme()
-        frame = self.frame
         p = QPainter(self)
+        # The ring at the field's edge and the frame inside its room, in whole device
+        # pixels, so the gap is even and the ring unclipped at any scaling.
+        bounds = QRectF(self.rect())
+        frame = frame_within(p, bounds, tokens.focus_gap, tokens.focus_width)
         surface = on_device_pixels(p, frame)
         p.fillRect(surface, QColor(role_color(tokens.fill_role, scheme)))
         if self.hovered:
@@ -362,8 +368,7 @@ class ResultField(QWidget):
             role = tokens.hover_border_role if self.hovered else tokens.border_role
             stroke(p, frame, QColor(role_color(role, scheme)), tokens.border_width)
         if self.copy_button.hasFocus():
-            out = tokens.focus_gap + tokens.focus_width
-            ring = frame.adjusted(-out, -out, out, out)
+            ring = on_device_pixels(p, bounds)
             stroke(p, ring, QColor(role_color(tokens.focus_role, scheme)), tokens.focus_width)
         p.end()
 
@@ -406,6 +411,7 @@ class ResultsPanel(QWidget):
         self.title = QLabel(TITLE, self)
         title_font = QFont(self.title.font())
         title_font.setBold(True)
+        title_font.setPointSizeF(title_font.pointSizeF() * self.tokens.title_scale)
         self.title.setFont(title_font)
         self.copy_all_button = _CopyButton(self)
         self.copy_all_button.setText(COPY_ALL)

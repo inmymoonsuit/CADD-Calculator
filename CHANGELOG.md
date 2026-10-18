@@ -17,6 +17,10 @@ All notable changes are recorded here. The format follows
   the status bar and screen readers say what was copied.
 - Tab goes through the inputs, then each result's copy button, then Copy all. Screen
   readers hear each result in full, e.g. "Bend allowance, BA: 0.3119 inches".
+- The user guide's [Results and copying](docs/user/results.md): the result fields,
+  copying, the keyboard, and how a short window scrolls.
+- KI-022: values are always written with "." as the decimal point, with a workaround for
+  comma-decimal spreadsheets.
 - Groundwork for result fields (ADR-0017): their design tokens in
   `gui/assets/ui_style.toml`, documented in `docs/dev/design/result-fields.md`; a new
   palette colour, focus blue, for keyboard focus, kept well apart from every warning
@@ -313,6 +317,14 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- An input outlined by a note showed no keyboard focus, since its outline replaced the
+  native frame. It now gets the result fields' blue focus ring outside its outline
+  (WCAG 2.4.7).
+- At 150% scaling, a result field's focus ring had a 1 px gap on two sides and 2 px on
+  the others, and lost a row at its top and left; it's now even and whole.
+- A no-value result field's dashed outline read 10 px on and 2 off; it now reads 8 and 4.
+- The window could shrink to a sliver; it now keeps at least a page's title, its method
+  row, and one result field.
 - **The bend check on a part with bends on both sides of 90°.** A bend past 90° made the
   whole part "no applicable value", so a bend up to 90° went unchecked: 6061-T6 at
   0.063 in with R = 0.15 in and bends of 90° and 120° showed no limit, though the 90° bend
@@ -358,6 +370,9 @@ All notable changes are recorded here. The format follows
   its number.
 - An input field a note concerns is outlined 2 px, not 1 px, so the outline reads without
   its colour; result fields will share it (ADR-0017).
+- In the dark theme, the notes, inputs, and work below the results have the result
+  fields' background, rather than a lighter grey, and the "Results" title is the size of
+  their headings.
 - **Notes lead with the verdict (ADR-0017 F1).** A bend check's note now opens with the
   decision and its numbers, in your display units, e.g. "Limit exceeded: inside radius
   0.0500 in is below 0.1600 in, the recommended minimum this check uses, for 6061-T6

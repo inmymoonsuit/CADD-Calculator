@@ -29,6 +29,9 @@ uv run caddcalc-gui
   You can type units and fractions: `1/8`, `1-1/2"`, `3 mm`.
 * Switching units re-expresses the values you've entered. The part doesn't change, and
   what you typed comes back exactly when you switch back.
+* Results show in their own fields. Click a field's copy button to copy its value, or
+  **Copy all** for every result as spreadsheet rows; see
+  [Results and copying](results.md) for the other forms and the keyboard.
 * **Load course example** fills a calculator's inputs with the course's example values.
 * Family settings, such as Sheet Metal thickness, fill the fields that share them until
   you type over them; see [Family settings](calculators/sheet-metal.md#family-settings).

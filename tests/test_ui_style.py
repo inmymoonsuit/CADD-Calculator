@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import fields
 from pathlib import Path
@@ -82,6 +83,17 @@ def test_the_doc_quotes_every_token() -> None:
         if f"| `{table}.{key}` | {_quote(value)} |" not in doc
     ]
     assert missing == [], missing
+
+
+def test_the_doc_quotes_no_token_that_isnt_there() -> None:
+    """The other way: a doc row for a removed or renamed token fails (UI/UX's k2b L5)."""
+    doc = SPEC.read_text(encoding="utf-8")
+    quoted = re.findall(r"^\| `(\w+)\.(\w+)` \|", doc, flags=re.MULTILINE)
+    tables = shipped()
+    stale = [
+        f"{t}.{k}" for t, k in quoted if not isinstance(tables.get(t), dict) or k not in tables[t]
+    ]
+    assert quoted and stale == [], stale
 
 
 def _note(kind: NoteKind, *subjects: str) -> Note:

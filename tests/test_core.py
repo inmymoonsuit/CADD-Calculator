@@ -293,7 +293,7 @@ def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_jso
 def test_a_notes_fields_must_be_named_and_given(
     text: str, fields: dict[str, tuple[float, Dimension]], problem: str
 ) -> None:
-    """Named fields only, so a translation can reorder them (ADR-0020 notes, item A)."""
+    """Named fields only, so a translation can reorder them (ADR-0017, amendments)."""
     with pytest.raises(SpecError, match=problem):
         Note(NoteKind.WARNING, text, quantities=fields)
     with pytest.raises(SpecError, match="both quantities and phrases"):

@@ -386,3 +386,135 @@ def test_a_field_draws_its_border_and_its_outline(
     assert image.pixelColor(middle, frame.top()).name().upper() == limit
     assert image.pixelColor(middle, frame.top() + 1).name().upper() == limit, "2 px"
     window.close()
+
+
+def test_the_results_title_is_the_size_of_the_documents_headings() -> None:
+    """The panel's title reads as one of the document's headings (UI/UX's k3 review)."""
+    from PySide6.QtGui import QTextCursor
+
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    document = window.output.document()
+    block = document.begin()
+    while block.isValid() and block.text() != "Inputs":
+        block = block.next()
+    assert block.isValid()
+    cursor = QTextCursor(block)
+    cursor.movePosition(QTextCursor.MoveOperation.Right)
+    heading = cursor.charFormat().font()
+    title = window.results.title.font()
+    assert title.pointSizeF() == pytest.approx(heading.pointSizeF())
+    assert title.bold() and heading.bold()
+    window.close()
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_the_document_has_the_fields_surface(scheme: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """In dark, the document matched neither the fields nor the window (UI/UX's k3 review)."""
+    from PySide6.QtCore import QPoint
+
+    from caddcalc.gui import result_fields
+    from caddcalc.gui import window as window_module
+    from caddcalc.gui.icons import role_color
+    from caddcalc.gui.ui_style import ui_style
+
+    monkeypatch.setattr(window_module, "current_scheme", lambda: scheme)
+    monkeypatch.setattr(result_fields, "current_scheme", lambda: scheme)
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    window._on_color_scheme_changed()
+    surface = role_color(ui_style().result_field.fill_role, scheme)
+    viewport = window.output.viewport()
+    image = viewport.grab().toImage()
+    corner = QPoint(viewport.width() - 2, viewport.height() - 2)
+    assert image.pixelColor(corner).name().upper() == surface
+    field = window.results.fields["bend_allowance"]
+    middle = field.frame.center().toPoint()
+    assert field.grab().toImage().pixelColor(middle.x(), middle.y() - 12).name().upper() == surface
+    window.close()
+
+
+def _runs(colors: list[str], color: str) -> tuple[list[int], list[int]]:
+    """The lengths of the runs of ``color``, and of the runs between them."""
+    on, off, last, length = [], [], None, 0
+    for c in colors:
+        same = c == color
+        if same == last:
+            length += 1
+            continue
+        if last is not None:
+            (on if last else off).append(length)
+        last, length = same, 1
+    return on, off
+
+
+def test_a_dashed_outline_reads_eight_on_and_four_off() -> None:
+    """Flat caps: the pattern's 4 and 2 line widths, not 10 and 2 (UI/UX's k3 review)."""
+    from caddcalc.core import NoteKind
+    from caddcalc.gui.icons import role_color
+    from caddcalc.gui.outlines import note_outline
+
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    field = window.results.fields["bend_allowance"]
+    dashed = note_outline(NoteKind.NO_APPLICABLE_VALUE)
+    field.show_parts(field.parts, dashed)
+    image = field.grab().toImage()
+    frame = field.frame.toRect()
+    color = role_color(dashed.role, "light")
+    top = [
+        image.pixelColor(x, frame.top()).name().upper() for x in range(frame.left(), frame.right())
+    ]
+    on, off = _runs(top, color)
+    width = round(dashed.width)
+    assert set(on[1:-1]) == {4 * width} and set(off[1:-1]) == {2 * width}, (on, off)
+    window.close()
+
+
+def test_the_focus_ring_is_even_and_whole_at_150_percent() -> None:
+    """Each side: the same gap and the same ring, in whole device pixels (k3 review L4)."""
+    from PySide6.QtCore import QSize, Qt
+    from PySide6.QtGui import QImage
+
+    from caddcalc.gui.icons import role_color
+    from caddcalc.gui.ui_style import ui_style
+
+    tokens = ui_style().result_field
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    field = window.results.fields["bend_allowance"]
+    field.copy_button.hasFocus = lambda: True  # paint as focused
+    ratio = 1.5
+    image = QImage(
+        QSize(round(field.width() * ratio), round(field.height() * ratio)),
+        QImage.Format.Format_ARGB32,
+    )
+    image.setDevicePixelRatio(ratio)
+    image.fill(Qt.GlobalColor.white)
+    field.render(image)
+    focus = role_color(tokens.focus_role, "light")
+    border = role_color(tokens.border_role, "light")
+    middle_x, middle_y = image.width() // 2, image.height() // 2
+    sides = {
+        "top": [image.pixelColor(middle_x, y) for y in range(image.height())],
+        "left": [image.pixelColor(x, middle_y) for x in range(image.width())],
+    }
+    sides["bottom"] = sides["top"][::-1]
+    sides["right"] = sides["left"][::-1]
+    ring = round(tokens.focus_width * ratio)
+    for side, line in sides.items():
+        names = [c.name().upper() for c in line]
+        assert names[:ring] == [focus] * ring, (side, names[:8])
+        gap = names.index(border) - ring
+        assert gap == round(tokens.focus_gap * ratio), (side, names[:8])
+    window.close()
+
+
+def test_the_window_never_shrinks_below_a_title_a_method_row_and_one_field() -> None:
+    """The k3b page scroll let the window shrink to a sliver (UI/UX's k3b check)."""
+    from caddcalc.gui.ui_style import ui_style
+
+    tokens = ui_style().result_field
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    window.resize(1100, 1)
+    _settle(window)
+    field = tokens.min_height + 2 * (tokens.focus_width + tokens.focus_gap)
+    least = window.title.sizeHint().height() + window.method_row.sizeHint().height() + field
+    assert window.page_scroll.height() >= least
+    window.close()

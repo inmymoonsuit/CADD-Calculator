@@ -11,7 +11,7 @@ from itertools import pairwise
 from typing import Any, cast, override
 
 from PySide6.QtCore import QEvent, QObject, Qt, QUrl
-from PySide6.QtGui import QAction, QGuiApplication, QTextDocument
+from PySide6.QtGui import QAction, QColor, QGuiApplication, QPalette, QTextDocument
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -78,6 +78,7 @@ from caddcalc.core.formatting import (
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
+from caddcalc.gui.focus_ring import OUTLINED, FocusRing
 from caddcalc.gui.icons import (
     TABLER_DIR,
     Scheme,
@@ -283,6 +284,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(PRODUCT_NAME)
         self.resize(1100, 720)
+        self.focus_ring = FocusRing()
+        """Focus around whichever outlined input has it (WCAG 2.4.7)."""
         self._build_ui()
         self._build_menu()
         self._apply_icons()
@@ -411,12 +414,34 @@ class MainWindow(QMainWindow):
         # Too short a window scrolls the page as a whole: title, options, inputs,
         # every result field, and the document's least height (ADR-0017 R3).
         self.page_scroll = PageScrollArea(right, self.output)
+        # The least a page shows, so the window can't shrink to a sliver.
+        self.page_scroll.setMinimumHeight(self._least_page_height())
         splitter = QSplitter()
         splitter.addWidget(self.tree)
         splitter.addWidget(self.page_scroll)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([280, 820])
         self.setCentralWidget(splitter)
+        self._style_document()
+
+    def _least_page_height(self) -> int:
+        """The page's title, its method row, and one result field, with their spacing."""
+        tokens = ui_style().result_field
+        field = round(tokens.min_height + 2 * (tokens.focus_width + tokens.focus_gap))
+        page = self.page_scroll.widget()
+        column = page.layout() if page is not None else None
+        top, spacing = (
+            (0, 0) if column is None else (column.contentsMargins().top(), column.spacing())
+        )
+        method = max(self.method_row.sizeHint().height(), self.units_box.sizeHint().height())
+        return top + self.title.sizeHint().height() + spacing + method + spacing + field
+
+    def _style_document(self) -> None:
+        """Give the document the result fields' surface, so they match in both themes."""
+        color = QColor(role_color(ui_style().result_field.fill_role, current_scheme()))
+        palette = self.output.palette()
+        palette.setColor(QPalette.ColorRole.Base, color)
+        self.output.setPalette(palette)
 
     def _calculator_items(self) -> Iterator[QTreeWidgetItem]:
         """Yield the tree's calculator rows, in order."""
@@ -444,6 +469,7 @@ class MainWindow(QMainWindow):
     def _on_color_scheme_changed(self, *_args: object) -> None:
         clear_cache()
         self._apply_icons()
+        self._style_document()
         self.results.restyle()
         self.recompute()
         self._show_setting_problems()
@@ -897,7 +923,7 @@ class MainWindow(QMainWindow):
         for key, (p, edit) in self.fields.items():
             pending = self.pending_fields.get((calc.id, key))
             problem = None if pending is None else self._field_problem(p, pending)
-            edit.setStyleSheet(_outline(error_outline()) if problem else "")
+            _set_outline(edit, error_outline() if problem else None)
             if problem:
                 problems.append(problem)
             edit.setReadOnly(self._inherits_family_value(calc, p))
@@ -924,6 +950,7 @@ class MainWindow(QMainWindow):
         if calc is None:
             return
         problems = self._refresh_fields(calc)
+        self.focus_ring.refresh()  # an error outline came or went
         scheme = current_scheme()
         self.result = None
         if problems:
@@ -944,7 +971,8 @@ class MainWindow(QMainWindow):
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
         for key, outline in strongest(self.result.notes, self.fields).items():
-            self.fields[key][1].setStyleSheet(_outline(outline))
+            _set_outline(self.fields[key][1], outline)
+        self.focus_ring.refresh()
         self.results.show_result(self.result, self.prefs)
         self.output.setHtml(
             result_html(calc, self.result, self.prefs, scheme, include_results=False)
@@ -1314,9 +1342,10 @@ class MainWindow(QMainWindow):
         for key, (setting, edit) in self.setting_fields.items():
             pending = self.pending_settings.get((domain.id, key))
             problem = None if pending is None else self._setting_problem(setting, pending)
-            edit.setStyleSheet(_outline(error_outline()) if problem else "")
+            _set_outline(edit, error_outline() if problem else None)
             if problem:
                 problems.append(problem)
+        self.focus_ring.refresh()
         self.domain_note.setText(
             _domain_note_html(
                 domain,
@@ -1349,9 +1378,19 @@ _NOTE_TEXT = {NoteKind.LIMIT_EXCEEDED: "text_limit"}
 
 
 def _outline(outline: Outline) -> str:
-    """Return a style sheet outlining an input field, in its role's colour for the scheme."""
+    """Return a style sheet outlining an input field, in its role's colour for the scheme.
+
+    It has no ``:focus`` rule, which would hide the outline while the field has focus;
+    the window's ``FocusRing`` adds focus outside the outline instead.
+    """
     color = role_color(outline.role, current_scheme())
     return f"QLineEdit {{ border: {outline.width:g}px {outline.style} {color}; }}"
+
+
+def _set_outline(edit: QLineEdit, outline: Outline | None) -> None:
+    """Outline an input, or clear its outline, and mark it for the focus ring."""
+    edit.setStyleSheet("" if outline is None else _outline(outline))
+    edit.setProperty(OUTLINED, outline is not None)
 
 
 def _error_html(errors: list[str], scheme: Scheme = "light") -> str:

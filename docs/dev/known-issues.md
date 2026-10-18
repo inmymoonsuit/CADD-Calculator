@@ -184,6 +184,20 @@ by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
+### KI-022: Values are always written with "." as the decimal point (Low)
+
+The app writes every number with ".", on screen and when copying (ADR-0017 F5). A copied
+value, or Copy all's rows, pasted into a spreadsheet set to a comma-decimal locale, such as
+German or French, can be read as text or a date rather than a number. Typed input
+accepts only "." too.
+
+* **Workaround:** set the spreadsheet's import or paste to "." as the decimal separator,
+  or paste into a cell formatted as text and convert it.
+* **Planned fix:** the localization ADR in draft (ADR-0020, its L4) takes the separator
+  from the user's regional settings on screen, in typed input, and in copies, and adds a
+  "Copy for CAD" form that keeps ".". Everything that reads a shown number's decimals
+  already asks one helper, `core.formatting.decimal_separator()`.
+
 ## Resolved
 
 ### KI-021: The cone's course method took a bottom diameter no larger than the thickness (resolved 2026-10-17)
