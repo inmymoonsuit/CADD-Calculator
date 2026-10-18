@@ -24,6 +24,18 @@ def _source_language() -> Iterator[None]:
     i18n.use(())
 
 
+@pytest.fixture(autouse=True)
+def _gui_tests_run_with_qt(request: pytest.FixtureRequest) -> None:
+    """A test marked ``gui`` runs with the ``qt`` fixture, as if it had asked for it.
+
+    So no GUI test touches Qt before an application exists, which crashes. A
+    ``usefixtures`` mark added in a collection hook wouldn't do: by then each test's
+    fixtures are settled, and the mark is ignored.
+    """
+    if request.node.get_closest_marker("gui") is not None:
+        request.getfixturevalue("qt")
+
+
 @pytest.fixture
 def qt(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     """The Qt widgets module, with an application running offscreen; skips without PySide6.

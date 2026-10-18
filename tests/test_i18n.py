@@ -530,7 +530,7 @@ QUOTED = {
     "0.445": "FAA-H-8083-31B's K for aircraft aluminum (p. 4-63)",
     "0.4": "EDD5's instructional K (p. 783)",
     "19.12": "EDD5's figure number, its worked example (p. 785)",
-    "0.35": "derived, not published: Eq. (32)'s 0.55 over 1.57, said to be the same arc's K",
+    "0.35": "derived, not published: Eq. (32)'s 0.55 over 1.57, the K of the arc's form it has",
     "0.41": "derived, not published: Eq. (33)'s 0.64 over 1.57, to two places",
     "0.45": "derived, not published: Eq. (34)'s 0.71 over 1.57, to two places",
     "0.4074": "derived, not published: the K that gives Eq. (33)'s 0.64·T with π/2 exact",

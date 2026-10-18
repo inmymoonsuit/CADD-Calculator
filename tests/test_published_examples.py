@@ -57,6 +57,8 @@ def test_edd5_fig19_12_single_bend_k_factor() -> None:
 
     B = 12.250, A = 4.875, R = C = 0.125, K = 0.4, one 90° bend, dimensioned to the outside.
     The book rounds π to 3.14 (Z = .275, flat = 16.900). With exact π, flat = 16.899889.
+    Each leg is bent at its first end, then at its second, so "verified at 90°" covers a
+    segment's bend at either end (S&R's note).
     """
     common = {"thickness": 0.125, "inside_radius": 0.125, "k_factor": 0.4}
     z = run_inches(BendAllowance(), "k_factor", **common, bend_angle=90)["bend_allowance"]
@@ -68,6 +70,13 @@ def test_edd5_fig19_12_single_bend_k_factor() -> None:
     flat = leg_b["flat_length"] + leg_a["flat_length"]
     assert flat == printed(16.900)
     assert flat == pytest.approx(16.625 + 0.0875 * math.pi, rel=1e-12)
+
+    end_2 = {**common, "bend_angle_1": 0, "bend_angle_2": 90}
+    leg_a_2 = run_inches(seg, "k_factor", **end_2, formed_dimension=4.875)["flat_length"]
+    leg_b_2 = run_inches(seg, "k_factor", **end_2, formed_dimension=12.250)["flat_length"]
+    assert leg_a_2 == printed(4.762445, 6)
+    assert leg_b_2 + leg_a_2 == printed(16.899889, 6)
+    assert leg_b_2 + leg_a_2 == printed(16.900)
 
 
 def test_edd5_cone_sector_rule_on_one_surface() -> None:

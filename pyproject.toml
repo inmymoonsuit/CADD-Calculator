@@ -71,7 +71,7 @@ exclude = ["/src/caddcalc/locale/**/*.po", "/src/caddcalc/locale/*.pot"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
-markers = ["gui: needs PySide6 (skipped when it is not installed)"]
+markers = ["gui: needs PySide6, and runs with the qt fixture (skipped without PySide6)"]
 
 [tool.ruff]
 line-length = 100

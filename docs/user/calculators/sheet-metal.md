@@ -218,7 +218,7 @@ The fixed K-factor is the formula taught in the original coursework, *Machinery'
 Handbook* (31st ed.) Eq. (33), p. 1421: the neutral-axis arc with K fixed at about 0.408
 and π/2 rounded to 1.57. It is for 90° bends in half-hard copper and brass, soft steel,
 and aluminum, and is scaled by A/90 for other angles. The Handbook's Eqs (32) and (34)
-are the same arc with K about 0.35 and 0.45. With K = 0.4074 the K-factor method gives
+have the same form as the arc, with K about 0.35 and 0.45. With K = 0.4074 the K-factor method gives
 the same T term and a radius term 0.05% larger, so the two can differ in the fourth
 decimal. For other materials, or for production work, use the K-factor method with your
 shop's measured K.

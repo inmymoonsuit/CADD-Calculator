@@ -59,8 +59,8 @@ The maintainer: "We can promote the verified methods based on the published data
 * **Still unverified:** the course method in `segment_flat_length`, which no published
   example runs through for a segment's flat length; the cone methods (KI-001, KI-007);
   and the V-die rules (KI-003, KI-004).
-* **The course method stays legacy** (`legacy=True`), so its status reads "verified ·
-  reproduces legacy" in `bend_allowance`, and "unverified · reproduces legacy" in
+* **The course method stays legacy** (`legacy=True`), so its status reads "verified for
+  BA · reproduces legacy" in `bend_allowance`, and "unverified · reproduces legacy" in
   `segment_flat_length`. Verification and legacy are independent (ADR-0004).
 * **The default method is unchanged:** the course method is still listed first in both
   calculators. The decision above says a legacy method isn't the default where a
@@ -76,13 +76,15 @@ The maintainer: "We can promote the verified methods based on the published data
 
 ### 2026-10-18: the course method renamed "Fixed K-factor (≈ 0.41)" (maintainer)
 
-* **The maintainer's decision,** relayed by the project-management session: the course
-  method stays a method of its own, since it reproduces the course's answers digit for
-  digit, and its name says what it does. Its formula, 0.64T + 1.57R, is the neutral-axis
-  arc with K fixed at about 0.408 (0.64/1.57) and π/2 rounded to 1.57.
+* **The maintainer:** "I approved keeping the course method as its own method, renamed
+  'Fixed K-factor (≈ 0.41)'." It stays a method of its own, since it reproduces the
+  course's answers digit for digit, and its name says what it does. Its formula,
+  0.64T + 1.57R, is the neutral-axis arc with K fixed at about 0.408 (0.64/1.57) and π/2
+  rounded to 1.57.
 * **Unchanged:** its key, `course`, so saved command lines and JSON keep working;
   `legacy=True`; the golden tests; and the default method.
-* **Its notes** say that the Handbook's Eqs (32) to (34) are the same arc with K about
+* **Its notes** say that the Handbook's Eqs (32) to (34) have the same form as the arc,
+  with K about
   0.35, 0.41 and 0.45, and that with K = 0.4074 the K-factor method gives the same 0.64·T
   and a radius term 0.05% larger, π/2 against 1.57, so the two can differ in the fourth
   decimal. The CLI's and JSON's method label follow the name.

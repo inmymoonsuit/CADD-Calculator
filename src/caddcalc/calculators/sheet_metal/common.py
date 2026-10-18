@@ -137,7 +137,8 @@ COURSE_METHOD = Method(
         "bronze, hard copper, cold-rolled steel, and spring steel.",
         "For other angles the Handbook multiplies the 90° value by A/90, where A is the angle "
         "actually bent through.",
-        "The Handbook's Eqs (32) to (34) are the same arc, with K about 0.35, 0.41 and 0.45.",
+        "The Handbook's Eqs (32) to (34) have the same form as the arc, with K about 0.35, "
+        "0.41 and 0.45.",
         "With K = 0.4074, the K-factor method gives the same 0.64·T, and a radius term 0.05% "
         "larger, π/2 against 1.57, so the two can differ in the fourth decimal.",
     ),
