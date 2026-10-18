@@ -150,6 +150,30 @@ class Context:
         """Record a value computed in Python (e.g. a table lookup), with a note explaining it."""
         return self._record(Step(symbol, label, dimension, value, None, note), output)
 
+    def given(self, symbol: str, *, output: str) -> float:
+        """Report the input ``symbol`` as the output ``output``, unchanged, and return it.
+
+        For an output that a method takes as an input, such as a circle's diameter in its
+        diameter method: it's shown with the results, and adds no work, since the inputs
+        show it already.
+
+        Raises:
+            SpecError: ``symbol`` isn't an input of this run, ``output`` isn't an output
+                of the calculator, or the two measure different things.
+        """
+        param = next((p for p in self.calculator.params if p.symbol == symbol), None)
+        if param is None or param.key not in self.inputs:
+            raise SpecError(f"{self.calculator.id}: {symbol!r} isn't an input of this run")
+        declared = next((o for o in self.calculator.outputs if o.key == output), None)
+        if declared is None:
+            raise SpecError(f"{self.calculator.id}: {output!r} isn't an output")
+        if declared.dimension is not param.dimension:
+            raise SpecError(
+                f"{self.calculator.id}: input {symbol!r} isn't {declared.dimension.with_article}"
+            )
+        self.outputs[output] = self.inputs[param.key]
+        return self.outputs[output]
+
     def note(
         self,
         text: str,

@@ -442,6 +442,7 @@ marked yet either:
   under 12", "isn't degrees, minutes and seconds …", "has a part of 60 or more …"). They
   reach the user through `describe_error`, which will translate them by template.
 * **Calculator labels, help, notes and errors** that the sweep covers calculator by
-  calculator, as §6 says.
+  calculator, as §6 says: the sheet-metal calculators', and the Geometry calculators'
+  (ADR-0018's m1), whose names and summaries are marked.
 
 Spoken forms, unit names and the fractions' words are marked (ADR-0019, u3 and u3b).

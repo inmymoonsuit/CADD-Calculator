@@ -1,0 +1,93 @@
+# Geometry calculators
+
+Each Geometry calculator takes the dimensions that define a shape and gives every common
+property of it at once, so you don't choose "area" or "perimeter" first. Lengths can be
+typed in any unit, including feet and inches (`1'-4 3/16"`); areas show in the square of
+your length unit (in² or mm²), to 6 significant figures. Angles are in degrees.
+
+Input that describes no real shape is refused with a message, never computed: every
+length must be greater than zero, and each calculator's own limits are below.
+
+## Sources
+
+The formulas are from *Machinery's Handbook*, 31st edition (Industrial Press, 2020),
+Mathematics: "Dimensions of Plane Figures" (printed pp. 75–82) and "Solution of
+Triangles" (pp. 96–101). The triangles also cite the NIST Digital Library of
+Mathematical Functions, §4.42. π comes from the computer's full-precision value, not the
+Handbook's rounded constants.
+
+**For students:** the *Machinery's Handbook Pocket Companion* (32nd edition, Industrial
+Press, 2024) covers the same figures more briefly: "Dimensions of Plane Figures",
+pp. 1–6, and the triangles, pp. 16–19. Each method lists it last, as "see also"; the
+31st edition is the source of record.
+
+None of these methods is marked *verified* yet: that needs a published worked example
+in the test suite (see the user guide's [status table](../index.md#how-to-read-a-result)).
+
+## Circle
+
+| Method | You give | You get |
+|---|---|---|
+| From the diameter | diameter D | radius r = D/2, circumference C = π·D, area S = π·D²/4 |
+| From the radius | radius r | diameter D = 2·r, circumference C = 2·π·r, area S = π·r² |
+
+## Rectangle
+
+Give the length L and width W. You get the perimeter P = 2·(L + W), the area S = L·W,
+and the diagonal d = √(L² + W²).
+
+## Triangle (three sides)
+
+Give the three sides a, b and c. You get the perimeter, the area, and the three angles
+A, B and C, each opposite the side of the same letter.
+
+* **The sides must make a triangle:** the longest must be shorter than the other two
+  together. A flat "triangle", whose longest side equals the other two, is refused too.
+* **Each angle comes from the law of cosines** (p. 96). The Handbook's procedure for
+  three known sides (p. 101) takes its second angle from the law of sines instead, which
+  can't give an angle over 90°: for sides 3, 7 and 5 it would give 60° where the angle
+  is 120°. This calculator departs from the Handbook there on purpose.
+* **The area** is Heron's formula, arranged as W. Kahan shows so that a needle-thin
+  triangle keeps its digits: sides 10, 10 and 0.0000001 give an area of 0.0000005.
+
+## Right triangle
+
+Legs a and b meet at the right angle, c is the hypotenuse, and A and B are the acute
+angles opposite a and b. Give any two of them, as long as one is a length:
+
+| Method | You give |
+|---|---|
+| Two legs | a and b |
+| A leg and the hypotenuse | a and c; c must be longer than a |
+| A leg and its opposite angle | a and A |
+| The hypotenuse and an angle | c and A |
+
+An acute angle must be greater than 0° and less than 90°. Two angles alone fix no size,
+so they aren't a method. You get all three sides, both acute angles, the area and the
+perimeter.
+
+## Regular polygon
+
+Give the number of sides N, a whole number of 3 or more, and one of its sizes:
+
+* the **side** a
+* **across flats (inscribed circle)**: the inscribed circle's diameter, 2r
+* **across corners (circumscribed circle)**: the circumscribed circle's diameter, 2R
+
+You get the other two sizes, the perimeter and the area. A hexagon with sides of 1 in is
+1.7321 in across flats and 2 in across corners.
+
+With an **odd** number of sides, no two flats are parallel, so a caliper across the
+polygon doesn't read the across-flats size: it reads r + R, which the result's note
+gives.
+
+## Arc and sector
+
+Give the radius r and the included angle A, greater than 0° and up to 360°; past 180° is
+the major arc. You get:
+
+* the arc length, π·r·A/180°
+* the chord, 2·r·sin(A/2)
+* the sagitta, or rise, from the chord's middle to the arc: 2·r·sin²(A/4), the
+  Handbook's r·(1 − cos(A/2)) written so a small angle keeps its digits
+* the sector area, π·r²·A/360°

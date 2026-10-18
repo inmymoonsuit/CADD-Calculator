@@ -7,6 +7,16 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **The Geometry family (ADR-0018 §2),** listed first: Circle, Rectangle, Triangle (three
+  sides), Right triangle, Regular polygon, and Arc and sector. Each gives every property
+  of its shape at once, cites *Machinery's Handbook* (31st ed.), and points students to
+  the *Pocket Companion* (32nd ed.). Input that describes no shape is refused, such as a
+  flat triangle or a hypotenuse no longer than its leg. Triangle angles all come from the
+  law of cosines, a deliberate departure from the Handbook's three-sides procedure, and
+  the formulas are arranged to keep their digits for needle-thin triangles and small
+  arcs. See the user guide's [Geometry calculators](docs/user/calculators/geometry.md).
+- `Context.given` reports an input as an output, unchanged, for a method that takes as
+  input what another method gives, such as a circle's diameter.
 - **Feet and inches (ADR-0019 U3; KI-009 resolved).** Type a length as `1'-4 3/16"`,
   `1'-4-3/16"`, `1'4-3/16"`, `1' 4 3/16"`, `1′ 4 3/16″` or `1 ft 4 3/16 in`. A result in
   feet and inches shows `1'-4 3/16"`, copies `1'4-3/16"`, and is read aloud as "1 foot 4
@@ -438,6 +448,11 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **Families are listed in their declared order,** general tools first: Geometry, then
+  Sheet Metal, with a plugin's families after the built-ins. They were sorted by name.
+- **The command line reads an input's exact key or symbol first,** then in any case, so
+  `a=3` is a side and `A=30` an angle in the same calculator. A name that matches two
+  inputs only in different cases is refused, naming both.
 - **The course formula is named for what it does: "Fixed K-factor (≈ 0.41)"**, the
   neutral-axis arc with K fixed at about 0.408 and π/2 rounded to 1.57 (ADR-0010,
   amendments). Its key is still `course`, so saved command lines and JSON keep working,

@@ -1,6 +1,7 @@
 # ADR-0018: Geometry and Conversions families
 
-* **Status:** **Accepted** (not built). The maintainer approved the scope below on
+* **Status:** **Accepted**; the units it needs (u2, u3) and the Geometry family (m1) are
+  built (see Amendments). The maintainer approved the scope below on
   2026-10-17 ("Go with your recommendations for both families: names, starting
   calculators, and one converter per kind of quantity"). Revised with Support & Review's
   sources check (formula locators, input to refuse, numerical notes), and built after the
@@ -123,3 +124,62 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   stays on p. 96; "Solution of Right Triangles" is p. 98, and "All Three Sides Known"
   p. 101 (MH29's p. 102), with the same law-of-sines step we don't follow.
 * The *Pocket Companion* (32nd ed.) is added as the help's pointer for students.
+
+### 2026-10-18: the Geometry family, as built (m1)
+
+* **`calculators/geometry/`**: `Circle`, `Rectangle`, `Triangle`, `RightTriangle`,
+  `RegularPolygon` and `ArcSector`, with these public IDs and method keys:
+
+  | ID | Methods |
+  |---|---|
+  | `geometry.circle` | `diameter`, `radius` |
+  | `geometry.rectangle` | `standard` |
+  | `geometry.triangle` | `three_sides` |
+  | `geometry.right_triangle` | `legs`, `leg_hypotenuse`, `leg_angle`, `hypotenuse_angle` |
+  | `geometry.regular_polygon` | `side`, `across_flats`, `across_corners` |
+  | `geometry.arc_sector` | `standard` |
+
+* **Symbols.** An area is S in every calculator, since A is an angle in the triangles and
+  the arc. The right triangle's legs are a and b, its hypotenuse c, and its acute angles
+  A and B opposite a and b; its angle method takes A, opposite leg a. A polygon's side is
+  a, across flats AF and across corners AC.
+* **Refused,** as §2 says: a length that isn't finite and greater than 0 (each length
+  parameter's range); a flat or impossible triangle, compared after sorting the sides; a
+  hypotenuse no longer than its leg; an acute angle outside (0°, 90°); an N that isn't
+  whole, or under 3; an arc angle outside (0°, 360°]. Each method takes at least one
+  length, so two angles alone are never a method.
+* **Formulas,** each through `ctx.calc`:
+  * The three-sided triangle sorts its sides in the work itself, longest x, middle y and
+    shortest z (the middle one as `max(min(a, b), min(max(a, b), c))`, exactly), for
+    Kahan's area. It cites Kahan's lecture notes, beside MH31 p. 76.
+  * Each angle is `acosd(max(-1, min(1, cos)))`. A test finds a real triangle whose
+    cosine rounds to 1.0000000000000002, which acos alone refuses.
+  * A right triangle's angles from two sides are `atan2d`, which keeps its digits at
+    either end of the range, and the other angle from one is 90° − A.
+  * A polygon's area is N·a·AF/4, MH31's n·S·r/2 with r = AF/2.
+* **Outputs a method takes as input.** A circle's diameter is an output of its radius
+  method and an input of its diameter method, as the right triangle's and polygon's parts
+  are. `Context.given(symbol, output=key)` reports the input as the output unchanged,
+  with no step, since the inputs show it already; it checks the input exists in this
+  run and measures what the output does.
+* **The odd polygon's caliper reading** is a warning on the result, with the reading,
+  r + R, as a value in the user's units, and the method's note says why.
+* **The Pocket Companion** is each method's last reference, its detail starting "see
+  also, for students", so it's shown with the sources and can't be taken for one. A
+  family's own references aren't shown anywhere yet, so it isn't one.
+* **Verification:** every method is unverified, with a note saying so: no published
+  worked example with its figures was available to this build to put in
+  `test_published_examples.py` (ADR-0010). The exact identities in `tests/test_geometry.py`
+  (a 3-4-5 triangle's area of 6, a hexagon's √3, the sector's 5π) check the formulas, not
+  a source's example.
+* **The order of the families** (§1) is now the order they're registered, built-ins as
+  `BUILTIN_DOMAINS` gives them, then plugins' as they load. `Registry` sorted them by
+  name, which would have put Conversions first; calculators are still sorted by name
+  within a family. The window opens on the first built-in calculator, now the circle.
+* **The command line** reads an input's exact key or symbol before matching in any
+  case: the right triangle's `a` and `A` are a leg and an angle. Matching in any case
+  alone made both "unknown".
+* **Marked for translation:** the names and summaries, as the sheet-metal calculators'
+  are. Labels, help and notes wait for the string sweep, with the sheet-metal ones
+  (ADR-0020's list).
+* **A limitation,** KI-025: N is a ratio, so it shows as `6.0000`.

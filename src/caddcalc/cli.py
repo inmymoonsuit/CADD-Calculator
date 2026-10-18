@@ -190,8 +190,21 @@ def _cmd_show(args: argparse.Namespace) -> int:
 
 
 def _resolve_param(calc: Calculator, name: str) -> Param:
+    """Return the input ``name`` names: by its exact key or symbol, else in any case.
+
+    An exact match comes first, so ``a`` and ``A`` can be a side and an angle.
+
+    Raises:
+        InputError: No input has the name, or, in any case, several do.
+    """
+    exact = [p for p in calc.params if name in (p.key, p.symbol)]
+    if len(exact) == 1:
+        return exact[0]
     matches = [p for p in calc.params if name.lower() in (p.key.lower(), p.symbol.lower())]
-    if len(matches) != 1:
+    if len(matches) > 1:
+        names = ", ".join(f"{p.symbol}/{p.key}" for p in matches)
+        raise InputError(f"Input {name!r} for {calc.id} could be {names}; give one exactly")
+    if not matches:
         options = ", ".join(f"{p.symbol}/{p.key}" for p in calc.params)
         raise InputError(f"Unknown input {name!r} for {calc.id}. Inputs: {options}")
     return matches[0]

@@ -15,7 +15,9 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │               TruncatedConeLayout                                        │
 │               gauge choice: gauges.py and data/gauges.toml (ADR-0014)    │
 │               materials: materials.py and data/materials.toml            │
-│  (future)   tolerancing, fasteners, structural, geometry, ...            │
+│  geometry:  Circle, Rectangle, Triangle, RightTriangle, RegularPolygon,  │
+│             ArcSector                                                    │
+│  (future)   tolerancing, fasteners, structural, ...                      │
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼
 ┌───────────────────── caddcalc.core  (stdlib only) ───────────────────────┐

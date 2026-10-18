@@ -48,8 +48,9 @@ def k_factor(window: Any) -> TypedValue | None:
 def test_a_family_row_opens_its_settings_page() -> None:
     window = open_window()
     assert window.calculator is not None, "a calculator is shown at first"
-    family = window.tree.topLevelItem(0)
-    assert family.text(0) == "Sheet Metal"
+    families = [window.tree.topLevelItem(i) for i in range(window.tree.topLevelItemCount())]
+    assert [f.text(0) for f in families] == ["Geometry", "Sheet Metal"]
+    family = families[1]
     window.tree.setCurrentItem(family)
 
     assert window.domain is SHEET_METAL
@@ -219,8 +220,8 @@ def test_a_family_with_no_calculators_is_listed_and_marked() -> None:
     registry = default_registry(load_plugins=False)
     registry.register_domain(ACME)
     window = open_window(registry)
-    family = window.tree.topLevelItem(0)
-    assert family.text(0) == "Acme Tools"
+    family = window.tree.topLevelItem(window.tree.topLevelItemCount() - 1)
+    assert family.text(0) == "Acme Tools", "a plugin's family follows the built-ins"
     placeholder = family.child(0)
     assert (family.childCount(), placeholder.text(0)) == (1, "No calculators loaded")
     assert placeholder.flags() == Qt.ItemFlag.NoItemFlags

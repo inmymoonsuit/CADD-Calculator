@@ -195,6 +195,14 @@ need checking by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
+### KI-025: A count is shown as a ratio, with four decimals (Low)
+
+The regular polygon's number of sides, N, is a ratio, the one unitless dimension, so the
+inputs and the work show it as `6.0000`, though it must be whole: the calculator refuses
+`6.5`. A count dimension, shown with no decimals, would be a reviewed core change
+(ADR-0019 §5: dimensions are a closed set in core), and would come with ADR-0005's
+amendment. `test_a_number_of_sides_that_isnt_whole_is_refused` pins the refusal.
+
 ## Resolved
 
 ### KI-009: No feet-and-inches input (resolved 2026-10-18)

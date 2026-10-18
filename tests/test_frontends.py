@@ -200,3 +200,45 @@ def test_an_explicit_registry_is_kept_even_with_no_calculators() -> None:
         window.tree.topLevelItem(i).text(0) for i in range(window.tree.topLevelItemCount())
     ] == ["Acme Tools"]
     window.close()
+
+
+def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
+    """A side ``a`` and an angle ``A`` both read; only a name that's both in any case fails."""
+    from caddcalc.calculators.geometry import RightTriangle
+    from caddcalc.cli import parse_inputs
+    from caddcalc.core import (
+        Calculator,
+        Dimension,
+        InputError,
+        Method,
+        Output,
+        Param,
+        Verification,
+    )
+
+    values = parse_inputs(RightTriangle(), ["a=3", "A=30", "C=5", "LEG_B=4"], "in")
+    assert values == {
+        "leg_a": pytest.approx(76.2),
+        "angle_a": 30,
+        "hypotenuse": pytest.approx(127),
+        "leg_b": pytest.approx(101.6),
+    }
+
+    class Twins(Calculator):
+        id = "test.twins"
+        name = "Twins"
+        domain = "test"
+        summary = "Two inputs named alike but for case."
+        params = (
+            Param("first", "aB", "First", Dimension.LENGTH, default="1 in"),
+            Param("second", "Ab", "Second", Dimension.LENGTH, default="1 in"),
+        )
+        outputs = (Output("same", "Y", "Same", Dimension.LENGTH),)
+        methods = (Method("only", "Only", "Y", Verification.UNVERIFIED),)
+
+        def compute(self, ctx: Any) -> None:
+            ctx.calc("Y", "aB", label="Same", dimension=Dimension.LENGTH, output="same")
+
+    with pytest.raises(InputError, match=r"'ab' for test\.twins could be aB/first, Ab/second"):
+        parse_inputs(Twins(), ["ab=1"], "in")
+    assert parse_inputs(Twins(), ["Ab=1"], "in") == {"second": pytest.approx(25.4)}

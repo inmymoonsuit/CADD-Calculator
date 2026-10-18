@@ -80,7 +80,8 @@ class MyCalc(Calculator):
    converter's millimetre row (ADR-0018 §3). A new `Dimension` needs an ADR-0005
    amendment.
 3. Formulas go in `ctx.calc` strings. Use `tand`, `sind`, and so on for degree-based trig.
-   Values computed in Python go through `ctx.record(..., note="why")`.
+   Values computed in Python go through `ctx.record(..., note="why")`. An output that
+   one method takes as an input is reported with `ctx.given("D", output="diameter")`.
 4. Warn about engineering hazards with `ctx.warn(...)`. Lead with the verdict, and name
    any value as a field, e.g. `ctx.warn("Radius {R} is under {T}.", quantities={"R":
    (r, LENGTH), "T": (t, LENGTH)}, detail="Why it matters.")`, so it's shown in the

@@ -25,6 +25,20 @@ msgstr ""
 msgid "About {product}: version, license, and terms"
 msgstr ""
 
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Arc and sector"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Arc length, chord, sagitta (rise), and sector area, from the radius and the included angle."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/domain.py
+msgid ""
+"Areas, perimeters, and angles of plane figures: circles, rectangles, triangles, regular polygons,"
+" and arcs."
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "Bend allowance & deduction"
 msgstr ""
@@ -35,6 +49,14 @@ msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/domain.py
 msgid "Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Circle"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Circumference, area, radius, and diameter of a circle."
 msgstr ""
 
 #: src/caddcalc/gui/welcome.py
@@ -54,16 +76,54 @@ msgstr ""
 msgid "Flat-pattern length of one segment, dimensioned to the outside, with a bend at one or both ends."
 msgstr ""
 
+#: src/caddcalc/calculators/geometry/domain.py
+msgid "Geometry"
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/cone.py
 msgid "Inside radius, outside radius, and sweep angle of the flat pattern for a cone frustum."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid ""
+"Legs, hypotenuse, acute angles, area, and perimeter of a right triangle, from any two of its "
+"sides, or a side and an acute angle."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Perimeter, area, and diagonal of a rectangle."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid "Perimeter, area, and the three angles of a triangle, from its three sides."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Rectangle"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Regular polygon"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid "Right triangle"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/domain.py
 msgid "Sheet Metal"
 msgstr ""
 
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Side, across flats, across corners, perimeter, and area of a regular polygon."
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "Suggested female (V) die opening for air bending on a press brake."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid "Triangle (three sides)"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/cone.py
