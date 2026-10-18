@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import sys
+import traceback
 from collections.abc import Mapping, Sequence
 
 from caddcalc import __version__
@@ -71,7 +72,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return int(args.handler(args))
     except CaddCalcError as exc:
         # Only running a calculator raises range errors, and _cmd_run words them itself.
+        _write_cause(exc)
         return _fail(str(exc))
+
+
+def _write_cause(exc: CaddCalcError) -> None:
+    """Write a wrapped bug's traceback, such as a plugin's error in a SpecError."""
+    if exc.__cause__ is not None:
+        traceback.print_exception(exc, file=sys.stderr)
 
 
 def _fail(message: str) -> int:
@@ -219,6 +227,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     try:
         result = calc.run(parse_inputs(calc, args.inputs, args.units), method=args.method)
     except CaddCalcError as exc:
+        _write_cause(exc)
         return _fail(describe_error(exc, prefs))
     if args.json:
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))

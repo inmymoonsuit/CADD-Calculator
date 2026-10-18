@@ -350,7 +350,10 @@ All notable changes are recorded here. The format follows
 - A method whose calculation failed unexpectedly, such as a plugin's bug, left the
   previous method's results on screen under the new method's name. Now its result fields
   go blank and the error shows in the work, the command line exits with the error, and
-  an error nothing else catches is shown in a message box rather than lost.
+  an error nothing else catches is shown in a message box rather than lost. The same
+  holds for a plugin family's own code, in its calculators and on its settings page,
+  which shows the error in place of its settings. The work says "The calculation
+  failed:" for these, and keeps "Check the inputs:" for an input you can fix.
 - **The welcome screen was slow to appear on a machine with many fonts:** about 2.7 s
   from launch, most of it resolving the display face's fallback fonts, which are for a
   face that didn't load. They're now used only then, and the card appears in about

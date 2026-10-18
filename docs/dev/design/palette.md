@@ -62,7 +62,7 @@ and dark themes. A test keeps hex colors out of the GUI code except the palette 
 
 | Role | Light | Dark | Used for |
 |---|---|---|---|
-| `text_error` | crimson | white (crimson on ink is too faint) | "Check the inputs" and "Not applied" |
+| `text_error` | crimson | white (crimson on ink is too faint) | "Check the inputs", "The calculation failed", "Not applied", and "The settings couldn't be shown" |
 | `text_warning` | ink (amber on white is too faint) | amber | the Notes heading in results |
 | `outline_error` | crimson | white | the border of a field whose text can't be used. It equals `outline_limit` on purpose: an unreadable input stops the calculation, so no limit note can share its field |
 | `outline_note` | ink (amber on white is too faint) | amber | the border of a field a result note concerns |

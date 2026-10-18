@@ -16,6 +16,18 @@ Template:
 
 ---
 
+## 2026-10-18: Clearing a failed settings page at once
+**Tried:** when a family's code failed on its settings page, removing the form's rows
+(`QFormLayout.removeRow`) straight away, in the boundary that caught the error.
+**Outcome:** failed on Linux, fixed before it was committed: the test segfaulted where
+it picks a plate. Windows passed by chance.
+**Why:** the failure came from the plate box's own `currentIndexChanged`. Removing the
+row deleted the box while Qt was still emitting its signal, so control returned into a
+deleted object.
+**Instead:** hide the form at once, and clear it with `QTimer.singleShot(0, …)` once
+control is back in the event loop, unless the page was built again since. Never delete
+a widget from inside its own signal.
+
 ## 2026-10-18: Sampling the art under the welcome panes on a regular grid
 **Tried:** in ADR-0016's slice i, each pane measured at least 4096 art pixels on a fixed
 grid, each the nearest pixel, at one pixel per logical pixel.

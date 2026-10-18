@@ -1,13 +1,16 @@
-"""A calculator's unexpected error is reported everywhere, never a stale result.
+"""A calculator's or a family's unexpected error is reported everywhere, never stale.
 
-The core wraps a compute's error that isn't caddcalc's own as a SpecError, the window's
-recalculation is an isolation boundary, and the app shows an error nothing caught
-(S&R's review of f97d230; ADR-0006 and ADR-0017 §4, amendments).
+The core wraps an error that isn't caddcalc's own, from a compute or from a domain's
+resolver or details, as a SpecError. The window's recalculation, its form and its
+settings page are isolation boundaries, and the app shows an error nothing caught
+(S&R's reviews of f97d230 and a1f0735; ADR-0006 and ADR-0017 §4, amendments).
 """
 
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping, Sequence
+from html import unescape
 from typing import Any, override
 
 import pytest
@@ -15,17 +18,24 @@ import pytest
 from caddcalc.calculators import default_registry
 from caddcalc.core import (
     Calculator,
+    Choice,
     Context,
+    DerivedValue,
+    Domain,
+    Fact,
     InputError,
     Method,
     Output,
     Param,
     Registry,
     SpecError,
+    StartingValue,
     Verification,
 )
+from caddcalc.core.choices import Option
 from caddcalc.core.units import Dimension
 from tests.qt_helpers import open_window, settle, type_into
+from tests.test_choices import SETTINGS, _Bend, _Plates
 from tests.test_domains import ACME
 
 L = Dimension.LENGTH
@@ -91,9 +101,9 @@ def test_the_cli_exits_with_the_error(
     monkeypatch.setattr(cli, "default_registry", _registry)
     for extra in ([], ["--json"]):
         assert cli.main(["run", "acme.flaky", "X=2", "--method", "failing", *extra]) == 2
-        assert "compute failed: ZeroDivisionError: the plugin's own error" in (
-            capsys.readouterr().err
-        )
+        err = capsys.readouterr().err
+        assert "compute failed: ZeroDivisionError: the plugin's own error" in err
+        assert "Traceback" in err, "the plugin's author gets where it failed (S&R's note)"
     assert cli.main(["run", "acme.flaky", "X=2", "--method", "good", "--json"]) == 0
 
 
@@ -110,6 +120,7 @@ def test_the_window_blanks_the_results_and_shows_the_error_then_recovers() -> No
     settle(window)
     assert window.result is None
     assert value.text() in ("", "—")
+    assert "The calculation failed:" in window.output.toPlainText()
     assert "compute failed: ZeroDivisionError" in window.output.toPlainText()
     window.method_box.setCurrentIndex(0)
     settle(window)
@@ -178,3 +189,193 @@ def test_an_error_nothing_caught_is_shown_once(monkeypatch: pytest.MonkeyPatch) 
     message, details = shown[0]
     assert message == "ZeroDivisionError: in a slot"
     assert "Traceback" in details and "in a slot" in details
+
+
+class _FaultyPlates(_Plates):
+    """The test plates' resolver, with a bug to switch on in either of its calls."""
+
+    def __init__(self) -> None:
+        super().__init__(domain="faulty")
+        self.failing: set[str] = set()
+
+    @override
+    def options(self, choice: str, _selections: Mapping[str, str]) -> Sequence[Option]:
+        if "options" in self.failing:
+            raise ZeroDivisionError("options' own error")
+        return super().options(choice, _selections)
+
+    @override
+    def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
+        if "derive" in self.failing:
+            raise ZeroDivisionError("derive's own error")
+        return super().derive(selections)
+
+
+class _FaultyDetails:
+    """Details with a bug to switch on in either call."""
+
+    def __init__(self) -> None:
+        self.failing: set[str] = set()
+
+    def facts(self, _selections: Mapping[str, str]) -> Sequence[Fact]:
+        if "facts" in self.failing:
+            raise ZeroDivisionError("facts' own error")
+        return ()
+
+    def starting_values(self, _selections: Mapping[str, str]) -> Sequence[StartingValue]:
+        if "starting_values" in self.failing:
+            raise ZeroDivisionError("starting values' own error")
+        return ()
+
+
+class _FaultyBend(_Bend):
+    id = "faulty.bend"
+    domain = "faulty"
+
+
+def _faulty() -> tuple[Domain, _FaultyPlates, _FaultyDetails]:
+    resolver, details = _FaultyPlates(), _FaultyDetails()
+    domain = Domain(
+        "faulty",
+        "Faulty",
+        "A plugin family whose code can fail.",
+        settings=SETTINGS,
+        choices=(Choice("plate", "Plate"),),
+        resolver=resolver,
+        details=details,
+    )
+    return domain, resolver, details
+
+
+@pytest.mark.parametrize(
+    ("call", "what"),
+    [
+        ("options", "its resolver's options for 'plate'"),
+        ("derive", "its resolver's derive"),
+        ("facts", "its details' facts"),
+        ("starting_values", "its details' starting values"),
+    ],
+)
+def test_the_core_wraps_a_domains_unexpected_error(call: str, what: str) -> None:
+    """S&R's review of a1f0735: a family's own code, as a compute's (ADR-0006)."""
+    domain, resolver, details = _faulty()
+    resolver.failing.add(call)
+    details.failing.add(call)
+    calls = {
+        "options": lambda: domain.options("plate"),
+        "derive": lambda: domain.derived({"plate": "std:1"}),
+        "facts": lambda: domain.facts({}),
+        "starting_values": lambda: domain.starting_values({}),
+    }
+    with pytest.raises(SpecError, match=rf"Domain 'faulty': {what} failed: ZeroDivisionError") as e:
+        calls[call]()
+    assert isinstance(e.value.__cause__, ZeroDivisionError)
+
+
+def _faulty_window() -> tuple[Any, Domain, _FaultyPlates]:
+    domain, resolver, _details = _faulty()
+    registry = default_registry(load_plugins=False)
+    registry.register_domain(domain)
+    registry.register(_FaultyBend)
+    window = open_window(registry)
+    window.domain_settings = window.domain_settings.set_choice(domain, "plate", "std:1")
+    return window, domain, resolver
+
+
+@pytest.mark.gui
+def test_a_family_that_fails_to_derive_blanks_the_calculator(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Its fields are read inside the window's boundary, and its form is one too."""
+    window, _domain, resolver = _faulty_window()
+    window.select_calculator("faulty.bend")
+    settle(window)
+    value = window.results.fields["total"].value
+    assert value.text() not in ("", "—")
+    resolver.failing.add("derive")
+    window.recompute()
+    settle(window)
+    assert window.result is None and value.text() in ("", "—"), "never the value from before"
+    work = window.output.toPlainText()
+    assert "The calculation failed:" in work
+    assert "its resolver's derive failed: ZeroDivisionError: derive's own error" in work
+    assert "The above exception was the direct cause" in capsys.readouterr().err
+    window.method_box.setCurrentIndex(1)  # the form asks what its fields inherit
+    settle(window)
+    assert window.form.rowCount() == 0, "never a half-built form"
+    assert "its resolver's derive failed" in window.output.toPlainText()
+    resolver.failing.clear()
+    window.method_box.setCurrentIndex(0)
+    settle(window)
+    assert window.form.rowCount() > 0 and value.text() not in ("", "—")
+    window.close()
+
+
+@pytest.mark.gui
+def test_a_family_that_fails_shows_its_error_in_place_of_its_settings() -> None:
+    """The settings page is a boundary: its error, never a half-built form."""
+    window, _domain, resolver = _faulty_window()
+    resolver.failing.add("options")
+    window.select_domain("faulty")
+    settle(window)
+    note = unescape(window.domain_note.text())
+    assert "The settings couldn't be shown:" in note
+    assert "its resolver's options for 'plate' failed: ZeroDivisionError" in note
+    assert window.settings_form.rowCount() == 0 and window.settings_box.isHidden()
+    resolver.failing.clear()
+    window.select_domain("faulty")
+    settle(window)
+    assert window.settings_form.rowCount() > 0 and not window.settings_box.isHidden()
+    assert "couldn't be shown" not in unescape(window.domain_note.text())
+
+    resolver.failing.add("derive")
+    box = window.choice_rows["plate"][1]
+    box.setCurrentIndex(box.findData("std:2"))  # through the box's signal, as a user's pick
+    settle(window)
+    assert window.settings_form.rowCount() == 0
+    assert "its resolver's derive failed" in unescape(window.domain_note.text())
+    window.close()
+
+
+@pytest.mark.gui
+def test_an_input_to_fix_and_a_failed_calculation_are_headed_apart() -> None:
+    """S&R's L1: "Check the inputs:" only where the user can fix an input."""
+    window = open_window(_registry())
+    window.select_calculator("acme.flaky")
+    type_into(window.fields["length"][1], "abc")
+    settle(window)
+    work = window.output.toPlainText()
+    assert "Check the inputs:" in work and "The calculation failed:" not in work
+    window.close()
+
+
+@pytest.mark.gui
+@pytest.mark.parametrize("guard", ["about to quit", "closing down", "not an Exception"])
+def test_the_hook_only_writes_out_when_a_box_cant_or_shouldnt_show(
+    guard: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S&R's notes 2 and 3: from aboutToQuit on, while closing down, and for KeyboardInterrupt."""
+    from PySide6.QtWidgets import QApplication
+
+    from caddcalc.gui.app import install_error_hook
+
+    written: list[BaseException] = []
+    monkeypatch.setattr(sys, "excepthook", lambda _kind, error, _tb: written.append(error))
+    shown: list[str] = []
+    app = QApplication.instance()
+    assert isinstance(app, QApplication)
+    restore = install_error_hook(app, lambda message, _details: shown.append(message))
+    try:
+        error: BaseException = ZeroDivisionError("late")
+        if guard == "about to quit":
+            app.aboutToQuit.emit()
+        elif guard == "closing down":
+            monkeypatch.setattr(QApplication, "closingDown", staticmethod(lambda: True))
+        else:
+            error = KeyboardInterrupt()
+        sys.excepthook(type(error), error, None)
+    finally:
+        monkeypatch.undo()
+        restore()
+    assert written == [error], "still written out"
+    assert shown == []

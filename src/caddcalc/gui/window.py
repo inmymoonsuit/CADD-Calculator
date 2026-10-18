@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import math
 import sys
 import traceback
@@ -13,7 +14,7 @@ from enum import Enum
 from functools import cache
 from html import escape
 from itertools import pairwise
-from typing import Any, cast, override
+from typing import Any, Concatenate, cast, override
 
 from PySide6.QtCore import (
     QEvent,
@@ -22,6 +23,7 @@ from PySide6.QtCore import (
     QPersistentModelIndex,
     QSignalBlocker,
     Qt,
+    QTimer,
     QUrl,
 )
 from PySide6.QtGui import (
@@ -135,6 +137,10 @@ ID_ROLE = Qt.ItemDataRole.UserRole
 DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Tree item data holding a family row's domain id."""
 NO_CALCULATORS = "No calculators loaded"
+CHECK_INPUTS = "Check the inputs:"
+"""Heads the work when an input can't be used: the user can fix it."""
+CALCULATION_FAILED = "The calculation failed:"
+"""Heads the work when the calculation itself failed, such as a plugin's bug."""
 """Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
@@ -260,6 +266,26 @@ class ResultsBrowser(PageDocument):
                 if (TABLER_DIR / f"{icon_name}.svg").is_file():
                     return render(icon_name, role_color(role, cast(Scheme, scheme)), ICON_PX)
         return super().loadResource(type, name)
+
+
+def _settings_boundary[**P](
+    action: Callable[Concatenate[MainWindow, P], None],
+) -> Callable[Concatenate[MainWindow, P], None]:
+    """Make a settings-page action an isolation boundary (ADR-0006, amendments).
+
+    The page runs the family's code, perhaps a plugin's: its options, the values it
+    derives, its facts and starting values. If that fails, the page shows the error in
+    place of the form, never a half-built one.
+    """
+
+    @functools.wraps(action)
+    def guarded(window: MainWindow, /, *args: P.args, **kwargs: P.kwargs) -> None:
+        try:
+            action(window, *args, **kwargs)
+        except Exception as exc:  # noqa: BLE001
+            window._settings_page_failed(exc)
+
+    return guarded
 
 
 class MainWindow(QMainWindow):
@@ -496,6 +522,8 @@ class MainWindow(QMainWindow):
             "Unset every setting of this family, and return each choice to its default."
         )
         self.clear_settings_button.clicked.connect(self._clear_domain_settings)
+        self.settings_failed = False
+        """Whether the settings page shows why it couldn't be built, in place of its form."""
         self.domain_note = QLabel()
         self.domain_note.setWordWrap(True)
         self.domain_note.setTextFormat(Qt.TextFormat.RichText)
@@ -843,9 +871,24 @@ class MainWindow(QMainWindow):
     # A field inheriting a set family value is read-only; only unticking its box overrides.
 
     def _rebuild_form(self) -> None:
-        calc = self.calculator
-        if calc is None:
+        """Build the calculator's form for its method, then recompute.
+
+        An isolation boundary: building the form asks the family's code, perhaps a
+        plugin's, what its shared fields inherit. If that fails, the form is cleared and
+        the error shows, never a half-built form (ADR-0006, amendments).
+        """
+        if self.calculator is None:
             return
+        try:
+            self._build_form(self.calculator)
+        except Exception as exc:  # noqa: BLE001
+            self._clear_form()
+            self._report_failure(exc)
+            return
+        self._chain_tabs()
+        self.recompute()
+
+    def _clear_form(self) -> None:
         for _p, old in self.fields.values():
             old.blockSignals(True)  # removing a field mustn't edit it mid-rebuild
         while self.form.rowCount():
@@ -853,6 +896,9 @@ class MainWindow(QMainWindow):
         self.fields.clear()
         self.inherit_boxes.clear()
         self.override_notes.clear()
+
+    def _build_form(self, calc: Calculator) -> None:
+        self._clear_form()
         domain = self.registry.domain(calc.domain)
         self.example_button.setVisible(any(m.legacy for m in calc.methods))
         for p in calc.params_for(self.method_key):
@@ -892,8 +938,6 @@ class MainWindow(QMainWindow):
                 self.override_notes[p.key] = note
             self.form.addRow(f"{p.label} ({p.symbol})", row)
             self.fields[p.key] = (p, edit)
-        self._chain_tabs()
-        self.recompute()
 
     def _chain_tabs(self) -> None:
         """Tab down the page: the inputs, each result's copy button, Copy all, the document."""
@@ -1251,15 +1295,16 @@ class MainWindow(QMainWindow):
         calc = self.calculator
         if calc is None:
             return
-        problems = self._refresh_fields(calc)
         self.result = None
-        if problems:
-            self._show_failure(problems)
-            return
-        # An isolation boundary: whatever goes wrong running or showing it, the fields go
-        # blank and the error shows; a result from before never stays on screen
-        # (ADR-0017 §4, amendments).
+        # An isolation boundary: whatever goes wrong reading the fields, running, or
+        # showing the result, the fields go blank and the error shows; a result from
+        # before never stays on screen (ADR-0017 §4, amendments). The fields' state comes
+        # from the family's values, which a plugin's code may derive.
         try:
+            problems = self._refresh_fields(calc)
+            if problems:
+                self._show_failure(problems, CHECK_INPUTS)
+                return
             inputs, labels, notes, settings = self._run_arguments(calc)
             result = calc.run(
                 inputs,
@@ -1275,23 +1320,29 @@ class MainWindow(QMainWindow):
                 result_html(calc, result, self.prefs, current_scheme(), include_results=False)
             )
             self.result = result
-        except CaddCalcError as exc:
-            self._show_failure([describe_error(exc, self.prefs)])
         except Exception as exc:  # noqa: BLE001
-            traceback.print_exception(exc, file=sys.stderr)
-            self._show_failure([f"Unexpected error: {type(exc).__name__}: {exc}"])
+            self._report_failure(exc)
 
-    def _show_failure(self, errors: list[str]) -> None:
+    def _report_failure(self, exc: Exception) -> None:
+        """Show why there's no result: an input to fix, or a calculation that failed."""
+        _write_bug(exc)
+        if isinstance(exc, InputError):
+            self._show_failure([describe_error(exc, self.prefs)], CHECK_INPUTS)
+        else:
+            self._show_failure([_failure_text(exc, self.prefs)], CALCULATION_FAILED)
+
+    def _show_failure(self, errors: list[str], heading: str) -> None:
         """Blank the results, and show why there are none in the work."""
         self.result = None
         self.results.show_result(None, self.prefs)
-        self.output.setHtml(_error_html(errors, current_scheme()))
+        self.output.setHtml(_error_html(errors, current_scheme(), heading))
 
     # --- domain settings page -------------------------------------------------------------
     # Fields apply on Enter or when focus leaves them, and are checked as the user types.
     # Applying every keystroke would store passing prefixes ("1" on the way to "15") in
     # values that calculators the user can't see from here will use.
 
+    @_settings_boundary
     def _rebuild_domain_form(self) -> None:
         """Build a row per choice and per setting of ``self.domain``.
 
@@ -1301,20 +1352,8 @@ class MainWindow(QMainWindow):
         domain = self.domain
         if domain is None:
             return
-        for _setting, old in self.setting_fields.values():
-            old.blockSignals(True)  # removing a focused field mustn't apply it mid-rebuild
-        for boxes in self.choice_rows.values():
-            for box in boxes:
-                if box is not None:
-                    box.blockSignals(True)
-        while self.settings_form.rowCount():
-            self.settings_form.removeRow(0)
-        self.setting_fields.clear()
-        self.setting_abouts.clear()
-        self.choice_rows.clear()
-        self.start_rows.clear()
-        self.start_buttons.clear()
-        self.facts_label = None
+        self.settings_failed = False
+        self._clear_settings_form()
         for choice in domain.choices:
             self._add_choice_row(domain, choice)
         if domain.details is not None:
@@ -1356,6 +1395,42 @@ class MainWindow(QMainWindow):
         self.clear_settings_button.setEnabled(bool(domain.settings or domain.choices))
         self._refresh_domain_details()
         self._show_setting_problems()
+
+    def _clear_settings_form(self) -> None:
+        for _setting, old in self.setting_fields.values():
+            old.blockSignals(True)  # removing a focused field mustn't apply it mid-rebuild
+        for boxes in self.choice_rows.values():
+            for box in boxes:
+                if box is not None:
+                    box.blockSignals(True)
+        while self.settings_form.rowCount():
+            self.settings_form.removeRow(0)
+        self.setting_fields.clear()
+        self.setting_abouts.clear()
+        self.choice_rows.clear()
+        self.start_rows.clear()
+        self.start_buttons.clear()
+        self.facts_label = None
+
+    def _settings_page_failed(self, exc: Exception) -> None:
+        """Show why the family's settings can't be shown, in place of the whole form."""
+        _write_bug(exc)
+        self.settings_failed = True
+        # Hidden at once, and cleared once control is back in the event loop: the failure
+        # can come from a signal of one of the form's own boxes, which mustn't be deleted
+        # while it's emitting.
+        self.settings_box.hide()
+        QTimer.singleShot(0, self, self._clear_failed_settings)
+        color = role_color("text_error", current_scheme())
+        message = escape(_failure_text(exc, self.prefs))
+        self.domain_note.setText(
+            f"<p style='color:{color}'><b>The settings couldn't be shown:</b></p>"
+            f"<ul><li>{message}</li></ul>"
+        )
+
+    def _clear_failed_settings(self) -> None:
+        if self.settings_failed:  # not if the page was built again since
+            self._clear_settings_form()
 
     def _add_choice_row(self, domain: Domain, choice: Choice) -> None:
         """Add a choice's row: a group box when its options are grouped, and an option box."""
@@ -1460,6 +1535,7 @@ class MainWindow(QMainWindow):
         if domain is not None:
             self._change_choice(domain, key, self.choice_rows[key][1].currentData())
 
+    @_settings_boundary
     def _change_choice(self, domain: Domain, key: str, option: str | None) -> None:
         """Choose ``option`` for the choice ``key``, or clear it, and show what follows.
 
@@ -1547,6 +1623,7 @@ class MainWindow(QMainWindow):
                 buttons.append(button)
             self.start_buttons[key] = buttons
 
+    @_settings_boundary
     def _apply_starting_value(self, start: StartingValue, *_checked: object) -> None:
         """Set a cited starting value as the user's own, keeping its citation and prompt.
 
@@ -1639,6 +1716,7 @@ class MainWindow(QMainWindow):
                 text, param.dimension, self.prefs, new_prefs
             )
 
+    @_settings_boundary
     def _clear_domain_settings(self) -> None:
         """Unset every setting of the shown family, and return each choice to its default."""
         domain = self.domain
@@ -1654,7 +1732,7 @@ class MainWindow(QMainWindow):
     def _show_setting_problems(self) -> None:
         """Outline each field whose text is refused, and explain why under the form."""
         domain = self.domain
-        if domain is None:
+        if domain is None or self.settings_failed:  # its note says why there's no form
             return
         problems = []
         for key, (setting, edit) in self.setting_fields.items():
@@ -1711,13 +1789,30 @@ def _set_outline(edit: QLineEdit, outline: Outline | None) -> None:
     edit.setProperty(OUTLINED, outline is not None)
 
 
-def _error_html(errors: list[str], scheme: Scheme = "light") -> str:
+def _error_html(errors: list[str], scheme: Scheme = "light", heading: str = CHECK_INPUTS) -> str:
     items = "".join(f"<li>{escape(e)}</li>" for e in errors)
     return (
         f"<p style='color:{role_color('text_error', scheme)}'>"
         f"{_img('alert-circle', 'icon_error', scheme)}"
-        f"<b>Check the inputs:</b></p><ul>{items}</ul>"
+        f"<b>{escape(heading)}</b></p><ul>{items}</ul>"
     )
+
+
+def _failure_text(exc: Exception, prefs: DisplayPrefs) -> str:
+    """Return a failure's message for users: caddcalc's own as worded, else its type too."""
+    if isinstance(exc, CaddCalcError):
+        return describe_error(exc, prefs)
+    return f"Unexpected error: {type(exc).__name__}: {exc}"
+
+
+def _write_bug(exc: Exception) -> None:
+    """Write a bug's traceback to stderr, its cause's included, for whoever wrote the code.
+
+    That's an error that isn't caddcalc's own, or one caddcalc wrapped, such as a
+    plugin's error in a SpecError; an input the user can fix isn't a bug.
+    """
+    if not isinstance(exc, CaddCalcError) or exc.__cause__ is not None:
+        traceback.print_exception(exc, file=sys.stderr)
 
 
 def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayPrefs) -> str:

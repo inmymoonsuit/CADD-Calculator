@@ -82,3 +82,28 @@ nothing in the packaged app, while the window showed the previous method's resul
   box's signal, so a page that fails to show is left out with a warning (ADR-0021,
   amendments). A compute's error no longer reaches it: the page shows the error, and is
   measured so.
+
+### 2026-10-18: a plugin family's code too (Support & Review's review of a1f0735)
+
+A plugin domain supplies code of its own: its resolver (`options`, `derive`) and its
+details (`facts`, `starting_values`). S&R found the window reached it outside every
+boundary: reading a calculator's fields before the recalculation's boundary, building
+the calculator's form, and the whole settings page. With `derive` raising, the window
+kept 0.3119 under the new method, a stale result again.
+
+* **The core wraps it.** `Domain.options`, `derived`, `facts` and `starting_values` run
+  the domain's code through one helper, which raises an error that isn't caddcalc's own
+  as a `SpecError`, "Domain 'id': its resolver's derive failed: …", from the original.
+* **The window's boundaries cover it.** The recalculation reads the fields inside its
+  boundary. Building the calculator's form is a boundary too: if it fails, the form is
+  cleared and the error shows. Each settings-page action is one, through a decorator
+  (`_settings_boundary`): opening the page, a choice's change, applying a setting or a
+  starting value, and clearing the settings. If it fails, the page shows the error in
+  place of its form, never a half-built one, until it's built again. The form is hidden
+  at once and cleared once control is back in the event loop, since the failure can come
+  from a signal of one of its own boxes (engineering log, 2026-10-18).
+* **A bug's traceback goes to stderr,** with its cause: an error that isn't caddcalc's
+  own, or a wrapped one, in the window and in the CLI. So a plugin's author can find
+  where it failed; an input the user can fix stays a one-line message.
+* **The error hook** writes to stderr only, from the application's `aboutToQuit` on, as
+  well as while it closes down, so no box shows during teardown (KI-019).

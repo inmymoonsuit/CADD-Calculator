@@ -53,7 +53,7 @@ pyside6-deploy spec.
 | `calculator` | icon | calculators in the list |
 | `info-circle` | icon | Help > About, and "no applicable value" notes in results |
 | `alert-triangle` | icon_warning | the Notes heading and warning notes in results |
-| `alert-circle` | icon_error | "Check the inputs", and "limit exceeded" and "not makeable" notes in results |
+| `alert-circle` | icon_error | "Check the inputs" and "The calculation failed", and "limit exceeded" and "not makeable" notes in results |
 | `x` | icon_active | the welcome screen's close button |
 | `copy` | icon | a result field's copy button, named by the token `result_field.copy_icon` |
 | `check` | icon | a result field's copy button once it has copied (`result_field.copied_icon`) |

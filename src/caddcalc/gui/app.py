@@ -123,20 +123,24 @@ def install_error_hook(
     An error raised in a Qt slot goes to ``sys.excepthook``, past every isolation
     boundary, and the default hook writes it only to stderr, which a packaged app hasn't
     got. This one still writes it there, and then shows it, with its traceback in the
-    details, while the application runs: not as it closes down, when its windows are
-    going (KI-019), and never a second box while one shows.
+    details, while the application runs: not once it's about to quit or closing down,
+    when its windows are going (KI-019), and never a second box while one shows.
 
     Args:
         app: The application.
         show: Shows a message and its details; a message box when ``None``.
     """
     previous = sys.excepthook
-    showing = False
+    showing = quitting = False
+
+    def on_quit() -> None:
+        nonlocal quitting
+        quitting = True
 
     def hook(kind: type[BaseException], error: BaseException, tb: TracebackType | None) -> None:
         nonlocal showing
         previous(kind, error, tb)
-        if showing or app.closingDown() or not issubclass(kind, Exception):
+        if showing or quitting or app.closingDown() or not issubclass(kind, Exception):
             return
         showing = True
         try:
@@ -146,9 +150,11 @@ def install_error_hook(
             showing = False
 
     sys.excepthook = hook
+    app.aboutToQuit.connect(on_quit)
 
     def restore() -> None:
         sys.excepthook = previous
+        app.aboutToQuit.disconnect(on_quit)
 
     return restore
 

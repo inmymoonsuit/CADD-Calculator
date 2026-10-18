@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Protocol
 
 from caddcalc.core import expr
 from caddcalc.core.choices import OPTION_KEY, Choice, ChoiceResolver, DerivedValue, Option
-from caddcalc.core.errors import InputError, SpecError, UsageError
+from caddcalc.core.errors import CaddCalcError, InputError, SpecError, UsageError
 from caddcalc.core.notes import Note
 from caddcalc.core.refdata import ReferenceTable, ReferenceValue, TableSpec
 from caddcalc.core.reference import Reference
@@ -93,13 +93,21 @@ class Domain:
 
         Raises:
             UsageError: The domain has no such choice.
-            SpecError: The resolver gives a malformed or repeated option key, an option
-                without a label, or more than one option marked as the default. Each is
-                a bug in the domain.
+            SpecError: The resolver raises an error that isn't caddcalc's own, or gives a
+                malformed or repeated option key, an option without a label, or more than
+                one option marked as the default. Each is a bug in the domain.
         """
         choice = self.choice(key)
         parents = MappingProxyType({p: selections[p] for p in choice.depends_on if p in selections})
-        options = () if self.resolver is None else tuple(self.resolver.options(key, parents))
+        resolver = self.resolver
+        options = (
+            ()
+            if resolver is None
+            else self._own_code(
+                f"its resolver's options for {key!r}",
+                lambda: tuple(resolver.options(key, parents)),
+            )
+        )
         seen: set[str] = set()
         for option in options:
             if not OPTION_KEY.fullmatch(option.key) or option.key in seen:
@@ -122,11 +130,13 @@ class Domain:
         """Return what the domain shows about ``selections``, such as a material's data.
 
         Raises:
-            SpecError: A fact's text and quantities don't match, a bug in the domain.
+            SpecError: The details raise an error that isn't caddcalc's own, or a fact's
+                text and quantities don't match: a bug in the domain.
         """
-        if self.details is None:
+        details = self.details
+        if details is None:
             return ()
-        facts = tuple(self.details.facts(selections))
+        facts = self._own_code("its details' facts", lambda: tuple(details.facts(selections)))
         for fact in facts:
             if fact.text.count("{}") != len(fact.quantities):
                 raise SpecError(
@@ -139,13 +149,16 @@ class Domain:
         """Return the cited starting values the domain offers under ``selections``, checked.
 
         Raises:
-            SpecError: A starting value is for a setting the domain doesn't have, measures
-                something else, or isn't an entry of one of the domain's tables. Each is
-                a bug in the domain.
+            SpecError: The details raise an error that isn't caddcalc's own, or a starting
+                value is for a setting the domain doesn't have, measures something else, or
+                isn't an entry of one of the domain's tables. Each is a bug in the domain.
         """
-        if self.details is None:
+        details = self.details
+        if details is None:
             return ()
-        offered = tuple(self.details.starting_values(selections))
+        offered = self._own_code(
+            "its details' starting values", lambda: tuple(details.starting_values(selections))
+        )
         for start in offered:
             setting = self.find_setting(start.setting)
             if setting is None or setting.dimension is not start.entry.dimension:
@@ -158,6 +171,22 @@ class Domain:
             except UsageError as exc:
                 raise SpecError(f"Domain {self.id!r} offers {start.label!r}: {exc}") from exc
         return offered
+
+    def _own_code[T](self, what: str, call: Callable[[], T]) -> T:
+        """Run the domain's own code, such as a plugin's resolver, and return what it gives.
+
+        An error that isn't caddcalc's own is the domain's bug, so it's raised as a
+        ``SpecError`` from it, as a calculator's compute error is: every front end reports
+        it, and none shows a value from before (ADR-0006, amendments).
+        """
+        try:
+            return call()
+        except CaddCalcError:
+            raise
+        except Exception as exc:
+            raise SpecError(
+                f"Domain {self.id!r}: {what} failed: {type(exc).__name__}: {exc}"
+            ) from exc
 
     def check_origin(self, origin: ValueOrigin, value: float) -> None:
         """Check that ``origin`` is an entry of one of this domain's tables, giving ``value``.
@@ -201,13 +230,14 @@ class Domain:
         """Return the values ``selections`` give this domain's settings, checked.
 
         Raises:
-            SpecError: The resolver gives a value for a key that isn't a setting, one
-                outside its setting's range, or one whose source names another domain.
-                Each is a bug in the domain.
+            SpecError: The resolver raises an error that isn't caddcalc's own, or gives a
+                value for a key that isn't a setting, one outside its setting's range, or
+                one whose source names another domain. Each is a bug in the domain.
         """
-        if not selections or self.resolver is None:
+        resolver = self.resolver
+        if not selections or resolver is None:
             return MappingProxyType({})
-        derived = dict(self.resolver.derive(selections))
+        derived = self._own_code("its resolver's derive", lambda: dict(resolver.derive(selections)))
         for key, value in derived.items():
             setting = self.find_setting(key)
             if setting is None:

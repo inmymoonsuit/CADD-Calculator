@@ -595,3 +595,13 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **Tests:** a plugin method whose compute raises blanks the fields and shows the error,
   and choosing a good method again shows its results; an error while showing a result
   blanks it too.
+
+### 2026-10-18: what failed, said plainly (Support & Review's review of a1f0735)
+
+* **Two headings.** "Check the inputs:" heads the work only when an input can't be used,
+  as the user can fix that. "The calculation failed:" heads every other failure: a
+  compute's or a family's error, an unexpected one, a calculation that couldn't be
+  evaluated.
+* **The whole recalculation is the boundary,** reading the fields included: their state
+  comes from the family's values, which a plugin's code may derive (ADR-0006,
+  amendments).
