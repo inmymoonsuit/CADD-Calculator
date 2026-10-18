@@ -1,31 +1,103 @@
-"""Page containers: the scroll area a page scrolls in, and a stack sized to its shown page.
+"""Page containers: the scroll area a page scrolls in, its document, and the page stack.
 
-A calculator's page never clips its results on their own: when the window is too short for
-the inputs, every result field, and the document's least height, the whole page scrolls
-(ADR-0017 R3, as amended).
+A calculator's page never clips its results on their own, and never puts a scroll inside a
+scroll (ADR-0017 R3, as amended):
+* While the page fits the window, its document takes the height that's left, at least its
+  least height, and scrolls on its own.
+* When the window is too short for the inputs, every result field, and the document's
+  least height, the whole page scrolls, and the document shows in full, with no scroll
+  bar of its own.
 """
 
 from __future__ import annotations
 
+import math
 from typing import override
 
-from PySide6.QtCore import QEvent, QObject, QSize, Qt
-from PySide6.QtWidgets import QFrame, QScrollArea, QStackedWidget, QWidget
+from PySide6.QtCore import QEvent, QObject, QSize, QSizeF, Qt
+from PySide6.QtGui import QResizeEvent
+from PySide6.QtWidgets import QFrame, QScrollArea, QStackedWidget, QTextBrowser, QWidget
+
+
+class PageDocument(QTextBrowser):
+    """A page's document: it fills the height the page leaves, or shows in full.
+
+    Its page's ``PageScrollArea`` decides which. Filling, it asks for only ``least``, so a
+    page that's laid out at its preferred height gives its room to everything else first.
+    In full, it asks for its whole content's height and has no scroll bar.
+    """
+
+    def __init__(self, least: int, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.least = least
+        """The least height it fills; below that, its page scrolls."""
+        self.full = False
+        """Whether it shows in full, because its page scrolls."""
+        layout = self.document().documentLayout()
+        layout.documentSizeChanged.connect(self._on_content_resized)
+
+    def set_full(self, full: bool) -> None:
+        """Show in full, with no scroll bar of its own, or fill the height that's left."""
+        if full is self.full:
+            return
+        self.full = full
+        bars = Qt.ScrollBarPolicy
+        self.setVerticalScrollBarPolicy(bars.ScrollBarAlwaysOff if full else bars.ScrollBarAsNeeded)
+        self.updateGeometry()
+
+    def _on_content_resized(self, _size: QSizeF) -> None:
+        if self.full:
+            self.updateGeometry()  # new content, or a new width: a new full height
+
+    def _height(self) -> int:
+        if not self.full:
+            return self.least
+        return math.ceil(self.document().size().height()) + 2 * self.frameWidth()
+
+    @override
+    def sizeHint(self) -> QSize:
+        return QSize(super().sizeHint().width(), self._height())
+
+    @override
+    def minimumSizeHint(self) -> QSize:
+        return QSize(super().minimumSizeHint().width(), self._height())
+
+
+def _needed_height(page: QWidget, width: int) -> int:
+    """The height ``page`` needs at ``width``, as a resizable scroll area measures it."""
+    least = page.minimumSizeHint().height()
+    layout = page.layout()
+    if layout is not None and layout.hasHeightForWidth():
+        return max(least, page.heightForWidth(width))
+    return least
 
 
 class PageScrollArea(QScrollArea):
     """A frameless area that scrolls its page vertically, and is never narrower than it.
 
     With no horizontal scrolling, a narrower area would clip the page's right side, so the
-    area asks for the page's least width plus room for the vertical scroll bar.
+    area asks for the page's least width plus room for the vertical scroll bar. It also
+    decides whether the page's document fills or shows in full (``PageDocument``).
     """
 
-    def __init__(self, page: QWidget, parent: QWidget | None = None) -> None:
+    def __init__(
+        self, page: QWidget, document: PageDocument | None = None, parent: QWidget | None = None
+    ) -> None:
         super().__init__(parent)
+        self.document = document
         self.setWidget(page)
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+    def _fit(self) -> None:
+        """Show the document in full exactly when the page can't fit with it filling."""
+        document, page = self.document, self.widget()
+        if document is None or page is None or not document.isVisibleTo(page):
+            return
+        needed = _needed_height(page, self.viewport().width())
+        filling = needed - document.sizeHint().height() + document.least
+        document.set_full(filling > self.viewport().height())
 
     @override
     def minimumSizeHint(self) -> QSize:
@@ -38,10 +110,17 @@ class PageScrollArea(QScrollArea):
         return QSize(max(hint.width(), width), hint.height())
 
     @override
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._fit()
+
+    @override
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        # The page's least width can change (another calculator's form); pass it on.
         if watched is self.widget() and event.type() == QEvent.Type.LayoutRequest:
+            # The page's sizes changed (another calculator, new results, a document's
+            # new full height): pass its least width on, and fit its document again.
             self.updateGeometry()
+            self._fit()
         return super().eventFilter(watched, event)
 
 

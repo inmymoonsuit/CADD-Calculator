@@ -22,9 +22,17 @@ token, so the specification can't drift from the code.
   the remaining width, elided with a tooltip when it's too long.
 * The value in bold, tabular figures, aligned on the decimal point across the panel, and
   selectable by mouse; the unit beside it, in a column as wide as the widest unit.
+* A unit written close up, the degree sign, joins its number, as the document writes it:
+  `132.70°`, not `132.70  °`. Its width counts in the decimal alignment, so the points
+  still line up.
 * A copy button with the Tabler "copy" icon, which shows a "check" for a moment once
   it has copied.
 * Lines follow the welcome screen's rule: whole device pixels, never under one.
+* **Spacing as seen.** Each field keeps the focus ring's room, `focus_width` 2 plus
+  `focus_gap` 1, inside its edges, so its frame sits 3 px in. Between two frames that
+  makes a visible 12 px gap (`stack_gap` 6, plus 3 px on each side), and the frames sit
+  a visible 19 px in from the panel's sides (`panel_inset` 16, plus 3). The "Results"
+  title is indented the same 3 px, in line with the frames. A test measures both.
 
 ## The panel
 
@@ -37,12 +45,18 @@ token, so the specification can't drift from the code.
   output's own presentation (ADR-0018) will apply there.
 * **Results are never obscured.** The panel is always exactly as tall as its title and
   every field, and has no scroll bar of its own.
-* The document under the panel starts at Notes. It takes the height that's left, never
-  less than `document_min_height`, and scrolls on its own.
-* When the window is too short for the inputs, every field, and the document's least
-  height, the page scrolls as a whole: title, options, inputs, results, and document,
-  vertically only (`gui/pages.py`). The page is never narrower than its content, and a
-  family page isn't made to scroll by the calculator page hidden behind it.
+* The document under the panel starts at Notes, listed strongest first by the outlines'
+  ranking: a cited limit, then a warning or an impossibility, then a check that
+  couldn't be made. So a short document always opens with the note that matters most.
+* **One scroll bar, never a scroll inside a scroll** (`gui/pages.py`):
+  * While the page fits the window, the document takes the height that's left, never
+    less than `document_min_height`, and scrolls on its own.
+  * When the window is too short for the inputs, every field, and the document's least
+    height, the page scrolls as a whole: title, options, inputs, results, and document,
+    vertically only. The document then shows at its full height, with no scroll bar of
+    its own, so the wheel over it scrolls the page.
+  * The page is never narrower than its content, and a family page isn't made to
+    scroll by the calculator page hidden behind it.
 * The status bar's disclaimer is a widget, so a passing message covers it for a moment
   and it comes back.
 * A test keeps layout numbers and colours out of `result_fields.py`, as out of

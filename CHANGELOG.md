@@ -342,7 +342,10 @@ All notable changes are recorded here. The format follows
   field shows "—". Every field always shows in full: the notes, inputs, and work below
   take the height that's left, never less than 96 px, with their own scroll bar. In a
   window too short for all of it, the whole calculator page scrolls, results included,
-  never the results alone.
+  never the results alone, and the notes, inputs, and work show in full, so there's only
+  one scroll bar. Notes are listed strongest first: a cited limit, then a warning or an
+  impossibility, then a check that couldn't be made. An angle's degree sign sits against
+  its number.
 - An input field a note concerns is outlined 2 px, not 1 px, so the outline reads without
   its colour; result fields will share it (ADR-0017).
 - **Welcome screen refinements (ADR-0016, amendments).**

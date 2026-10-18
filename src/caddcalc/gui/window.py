@@ -9,7 +9,7 @@ from enum import Enum
 from html import escape
 from typing import Any, cast, override
 
-from PySide6.QtCore import QEvent, QObject, QSize, Qt, QUrl
+from PySide6.QtCore import QEvent, QObject, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSplitter,
-    QTextBrowser,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -85,8 +84,8 @@ from caddcalc.gui.icons import (
     render,
     role_color,
 )
-from caddcalc.gui.outlines import Outline, error_outline, strongest
-from caddcalc.gui.pages import PageScrollArea, PageStack
+from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
+from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack
 from caddcalc.gui.result_fields import ResultsPanel
 from caddcalc.gui.ui_style import ui_style
 from caddcalc.gui.welcome import WelcomeScreen
@@ -181,7 +180,7 @@ class _WheelGuard(QObject):
         return event.type() == QEvent.Type.Wheel
 
 
-class ResultsBrowser(QTextBrowser):
+class ResultsBrowser(PageDocument):
     """A results pane that can show the vendored icons inline.
 
     It serves ``icon:<scheme>/<role>/<name>`` image URLs (written by ``_img``) by rendering
@@ -201,13 +200,6 @@ class ResultsBrowser(QTextBrowser):
                 if (TABLER_DIR / f"{icon_name}.svg").is_file():
                     return render(icon_name, role_color(role, cast(Scheme, scheme)), ICON_PX)
         return super().loadResource(type, name)
-
-    @override
-    def sizeHint(self) -> QSize:
-        # It asks for its least height and grows into whatever the page leaves. A page
-        # that scrolls lays out at its preferred height, so a taller hint here would be
-        # page height the results could have had.
-        return QSize(super().sizeHint().width(), self.minimumHeight())
 
 
 class MainWindow(QMainWindow):
@@ -357,10 +349,9 @@ class MainWindow(QMainWindow):
         example_row.addWidget(self.example_button)
         example_row.addStretch(1)
         self.results = ResultsPanel()
-        self.output = ResultsBrowser()
-        # The document takes the height the results leave, and never less than its
-        # least; below that, the page scrolls, never the results alone (ADR-0017 R3).
-        self.output.setMinimumHeight(round(ui_style().result_field.document_min_height))
+        # The document fills the height the results leave, down to its least; below
+        # that, the page scrolls and the document shows in full (ADR-0017 R3).
+        self.output = ResultsBrowser(round(ui_style().result_field.document_min_height))
         self.output.setOpenExternalLinks(True)
         self.calculator_page = QWidget()
         calc_col = QVBoxLayout(self.calculator_page)
@@ -409,7 +400,7 @@ class MainWindow(QMainWindow):
 
         # Too short a window scrolls the page as a whole: title, options, inputs,
         # every result field, and the document's least height (ADR-0017 R3).
-        self.page_scroll = PageScrollArea(right)
+        self.page_scroll = PageScrollArea(right, self.output)
         splitter = QSplitter()
         splitter.addWidget(self.tree)
         splitter.addWidget(self.page_scroll)
@@ -1500,7 +1491,7 @@ def result_html(
         warn = "".join(
             f"<li{_text_style(note.kind, scheme)}>{_img(*_NOTE_ICONS[note.kind], scheme)}"
             f"{escape(describe_note(note))}</li>"
-            for note in result.notes
+            for note in strongest_first(result.notes)
         )
         parts.append(
             f"<h3 style='color:{role_color('text_warning', scheme)}'>"

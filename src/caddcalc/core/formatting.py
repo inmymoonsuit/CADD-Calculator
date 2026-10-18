@@ -49,9 +49,13 @@ def _shown_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
     return "°" if dimension is Dimension.ANGLE else display_unit(dimension, prefs).symbol
 
 
+_CLOSE_UP = frozenset({"°"})
+"""Units written against their number, as in ``90°``, rather than after a space."""
+
+
 def _suffix(unit: str) -> str:
     """Return ``unit`` as written after a number: a degree sign close up, others spaced."""
-    if unit == "°":
+    if unit in _CLOSE_UP:
         return unit
     return f" {unit}" if unit else ""
 
@@ -127,6 +131,11 @@ class ValueParts:
     def with_unit(self) -> str:
         """The number and its unit, e.g. ``"0.3119 in"`` or ``"120.00°"``, without the fraction."""
         return self.number + _suffix(self.unit)
+
+    @property
+    def unit_close_up(self) -> bool:
+        """Whether the unit is written against the number, as ``°`` is, with no space."""
+        return self.unit in _CLOSE_UP
 
 
 def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> ValueParts:

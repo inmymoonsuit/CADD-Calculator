@@ -98,6 +98,8 @@ def test_the_unit_joins_spaced_except_a_degree_sign() -> None:
     assert ValueParts("0.3119", "in").with_unit == "0.3119 in"
     assert ValueParts("120.00", "°").with_unit == "120.00°"
     assert ValueParts("0.4400", "").with_unit == "0.4400"
+    close_up = {unit: ValueParts("1", unit).unit_close_up for unit in ("in", "°", "", "ksi")}
+    assert close_up == {"in": False, "°": True, "": False, "ksi": False}
 
 
 @pytest.mark.parametrize(

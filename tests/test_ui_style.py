@@ -106,6 +106,21 @@ def test_a_field_takes_the_strongest_of_its_notes_outlines() -> None:
     assert "elsewhere" not in outlines, "only the fields that can show it"
 
 
+def test_notes_are_listed_strongest_first_in_the_calculators_order_within_a_rank() -> None:
+    """A short document opens with the note that matters most (ADR-0017)."""
+    from caddcalc.gui.outlines import strongest_first
+
+    gap = _note(NoteKind.NO_APPLICABLE_VALUE, "a")
+    warning, impossible = _note(NoteKind.WARNING, "b"), _note(NoteKind.INFEASIBLE, "c")
+    limit = _note(NoteKind.LIMIT_EXCEEDED, "d")
+    later_warning = _note(NoteKind.WARNING, "e")
+    ordered = strongest_first([gap, warning, impossible, limit, later_warning])
+    assert ordered == [limit, warning, impossible, later_warning, gap]
+    assert [note_outline(n.kind).rank for n in ordered] == sorted(
+        (note_outline(n.kind).rank for n in ordered), reverse=True
+    ), "the same ranking as the outlines"
+
+
 def test_every_outline_is_heavier_than_a_fields_border() -> None:
     border = ui_style().result_field.border_width
     for kind in NoteKind:

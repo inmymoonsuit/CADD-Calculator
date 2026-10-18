@@ -140,8 +140,9 @@ class ResultField(QWidget):
             self.copy_button.setEnabled(False)
             self.copy_button.setToolTip(NO_VALUE_TIP)
         else:
-            self.value.setText(parts.number)
-            self.unit.setText(parts.unit)
+            close_up = parts.unit_close_up  # "132.70°", as the document writes it
+            self.value.setText(parts.with_unit if close_up else parts.number)
+            self.unit.setText("" if close_up else parts.unit)
             self.fraction.setText("" if parts.fraction is None else f'(≈ {parts.fraction}")')
             self.fraction.setVisible(parts.fraction is not None)
             self.copy_button.setEnabled(True)
@@ -229,6 +230,9 @@ class ResultsPanel(QWidget):
         title_font = QFont(self.title.font())
         title_font.setBold(True)
         self.title.setFont(title_font)
+        # In line with the fields' frames, which sit inside the focus ring's room.
+        ring = self.tokens.focus_width + self.tokens.focus_gap
+        self.title.setContentsMargins(round(ring), 0, 0, 0)
         column.addWidget(self.title)
         self._column = column
         # Exactly the title's and the fields' height: never squeezed, never stretched.
@@ -277,14 +281,11 @@ class ResultsPanel(QWidget):
         symbol = max(f.symbol.sizeHint().width() for f in fields)
         unit = max(QFontMetricsF(f.unit.font()).horizontalAdvance(f.unit.text()) for f in fields)
         metrics = QFontMetricsF(fields[0].value.font())
-        digit, point = metrics.horizontalAdvance("0"), metrics.horizontalAdvance(".")
-        places = [_decimals(f.value.text()) for f in fields]
-        most = max(places) if self.tokens.decimal_align else 0
+        tails = [_tail(f.parts, metrics) for f in fields]
+        most = max(tails) if self.tokens.decimal_align else 0.0
         widths = []
-        for field, decimals in zip(fields, places, strict=True):
-            pad = 0.0
-            if self.tokens.decimal_align and most:
-                pad = (most - decimals) * digit + (point if decimals == 0 else 0)
+        for field, tail in zip(fields, tails, strict=True):
+            pad = most - tail if self.tokens.decimal_align else 0.0
             field.value.setContentsMargins(0, 0, round(pad), 0)
             widths.append(metrics.horizontalAdvance(field.value.text()) + round(pad))
         value = max(widths)
@@ -292,6 +293,20 @@ class ResultsPanel(QWidget):
             field.symbol.setFixedWidth(symbol)
             field.unit.setFixedWidth(round(unit))
             field.value.setFixedWidth(round(value))
+
+
+def _tail(parts: ValueParts | None, metrics: QFontMetricsF) -> float:
+    """Return how far a value reaches right of where its decimal point starts.
+
+    That's the point and its decimals, and a unit written close up, such as "°". A whole
+    number's point would start at its right edge, so only a close-up unit reaches past it.
+    Padding every value out to the longest tail lines the points up.
+    """
+    if parts is None:
+        return 0.0
+    places = _decimals(parts.number)
+    tail = metrics.horizontalAdvance("." + "0" * places) if places else 0.0
+    return tail + (metrics.horizontalAdvance(parts.unit) if parts.unit_close_up else 0.0)
 
 
 def _decimals(number: str) -> int:

@@ -402,3 +402,28 @@ Seen in the current pane (`results/results-notes-light.png`).
   height, and every field can be scrolled into full view; the document still scrolls on
   its own; the page is never narrower than its content; and a family page isn't made to
   scroll by the hidden calculator page.
+
+### 2026-10-17: layout refinements from the design review (k3c)
+
+From UI/UX & Design's review of k3b:
+* **Notes strongest first.** The document lists notes by the outlines' ranking
+  (`gui/outlines.py`, `RANKS`, `strongest_first`): a cited limit, then a warning or an
+  impossibility, then a check that couldn't be made, in the calculator's order within a
+  rank. An impossibility ranks with a warning because it already shares a warning's
+  outline, so the order and the outlines can't disagree. The CLI and JSON keep the
+  calculator's order.
+* **One scroll bar, never a scroll inside a scroll.** When the page scrolls, the
+  document shows at its full height, with no scroll bar of its own, so the wheel over it
+  scrolls the page. When the page fits, the document fills the height that's left and
+  scrolls on its own, as before. `gui/pages.py`'s `PageScrollArea` decides: the document
+  (`PageDocument`) shows in full exactly when the page couldn't fit with it at its least
+  height.
+* **The "Results" title** is indented by the focus ring's room, 3 px, in line with the
+  frames. The design doc records the spacing as seen: a visible 12 px between frames and
+  a visible 19 px side inset, both measured by a test.
+* **A close-up unit joins its number.** The degree sign sat 27 px from its number in its
+  own column; it now joins the value, as the document writes it, by the rule
+  `ValueParts.unit_close_up` exposes, and counts in the decimal alignment.
+* Tests: the switch from bend allowance to the cone and back shows every field in full
+  each time; both document states, with the wheel in each; a page that grows tall again
+  goes back to filling; the note order; the title and spacing; the degree sign.
