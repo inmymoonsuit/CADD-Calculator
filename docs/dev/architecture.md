@@ -17,6 +17,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │               materials: materials.py and data/materials.toml            │
 │  geometry:  Circle, Rectangle, Triangle, RightTriangle, RegularPolygon,  │
 │             ArcSector                                                    │
+│  conversions: LengthConverter, AngleConverter, AreaConverter,            │
+│               StressConverter                                            │
 │  (future)   tolerancing, fasteners, structural, ...                      │
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼

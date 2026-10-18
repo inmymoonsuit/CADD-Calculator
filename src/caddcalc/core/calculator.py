@@ -545,6 +545,8 @@ def _check_output_unit(owner: str, output: Output) -> None:
             )
         return
     if not output.unit:
+        if output.precision is not None:
+            raise SpecError(f"{owner}: output {output.key!r} gives a precision but no unit")
         return
     try:
         unit = get_unit(output.unit, output.dimension)

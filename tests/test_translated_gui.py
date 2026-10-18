@@ -109,14 +109,20 @@ def test_a_list_name_too_long_for_its_row_shows_whole_in_its_tooltip(
     animated = QApplication.isEffectEnabled(Qt.UIEffect.UI_AnimateTooltip)
     QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateTooltip, False)
     window = open_window()
-    window.tree.setMinimumWidth(0)  # below the list's least width, so every name elides
+    # Below the list's least width and size hint, and its column's least width, so every
+    # name elides, a short one such as "Area" too.
+    window.tree.setMinimumWidth(1)
+    window.tree.header().setMinimumSectionSize(1)
     window.resize(2400, 800)
     window.show()
     splitter = window.centralWidget()
     try:
         for row in _rows(window):
             name, summary = row.text(0), row.toolTip(0)
-            splitter.setSizes([90, 2310])
+            splitter.setSizes([60, 2340])
+            settle(window)
+            # The stretched column keeps its width when the list narrows, so it's narrowed too.
+            window.tree.header().resizeSection(0, window.tree.viewport().width())
             settle(window)
             assert _tooltip(window.tree, row) == tip_text(name, summary), name
             splitter.setSizes([1200, 1200])

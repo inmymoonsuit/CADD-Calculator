@@ -8,15 +8,19 @@ exposes ``DOMAIN`` and a ``CALCULATORS`` tuple, and add them to ``BUILTIN_DOMAIN
 
 from importlib import metadata
 
-from caddcalc.calculators import geometry, sheet_metal
+from caddcalc.calculators import conversions, geometry, sheet_metal
 from caddcalc.calculators.sheet_metal.gauges import GAUGE_TABLE
 from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE
 from caddcalc.core.refdata import TableSpec
 from caddcalc.core.registry import EntryPointSource, Registry
 
-BUILTIN_DOMAINS = (geometry.DOMAIN, sheet_metal.DOMAIN)
+BUILTIN_DOMAINS = (geometry.DOMAIN, conversions.DOMAIN, sheet_metal.DOMAIN)
 """In the order they're listed: general tools first (ADR-0018 §1)."""
-BUILTIN_CALCULATORS = (*geometry.CALCULATORS, *sheet_metal.CALCULATORS)
+BUILTIN_CALCULATORS = (
+    *geometry.CALCULATORS,
+    *conversions.CALCULATORS,
+    *sheet_metal.CALCULATORS,
+)
 REFERENCE_TABLES: tuple[TableSpec, ...] = (GAUGE_TABLE, MATERIAL_TABLE)
 """Every reference table the built-in domains ship (ADR-0014 §1)."""
 

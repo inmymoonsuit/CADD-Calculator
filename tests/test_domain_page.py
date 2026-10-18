@@ -49,8 +49,8 @@ def test_a_family_row_opens_its_settings_page() -> None:
     window = open_window()
     assert window.calculator is not None, "a calculator is shown at first"
     families = [window.tree.topLevelItem(i) for i in range(window.tree.topLevelItemCount())]
-    assert [f.text(0) for f in families] == ["Geometry", "Sheet Metal"]
-    family = families[1]
+    assert [f.text(0) for f in families] == ["Geometry", "Conversions", "Sheet Metal"]
+    family = families[2]
     window.tree.setCurrentItem(family)
 
     assert window.domain is SHEET_METAL

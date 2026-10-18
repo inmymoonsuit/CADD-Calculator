@@ -175,20 +175,26 @@ class FeetInches(CompoundForm):
 
 def _spoken_feet(negative: bool, feet: int, whole: int, fraction: Fraction) -> str:
     """Say feet and inches in words, leaving out a part that's zero: "4 inches"."""
-    foot, inch = _builtin("ft"), _builtin("in")
-    measures = [_measure(str(feet), foot)] if feet else []
-    if fraction:
-        singular, plural = PARTS[fraction.denominator]
-        numerator = fraction.numerator
-        part = npgettext("fraction", singular, plural, numerator)
-        if whole:
-            inches = _(INCHES_MIXED_SPOKEN).format(inches=whole, numerator=numerator, part=part)
-        else:
-            inches = _(INCH_FRACTION_SPOKEN).format(numerator=numerator, part=part)
+    measures = [_measure(str(feet), _builtin("ft"))] if feet else []
+    inches = _spoken_inches(whole, fraction)
+    if inches:
         measures.append(inches)
-    elif whole:
-        measures.append(_measure(str(whole), inch))
-    return _said(measures or [_measure("0", inch)], negative)
+    return _said(measures or [_measure("0", _builtin("in"))], negative)
+
+
+def _spoken_inches(whole: int, fraction: Fraction) -> str:
+    """Say whole inches and a fraction in words, or return ``""`` for none.
+
+    For example "4 and 3 sixteenths inches", "3 sixteenths of an inch", or "4 inches".
+    """
+    if not fraction:
+        return _measure(str(whole), _builtin("in")) if whole else ""
+    singular, plural = PARTS[fraction.denominator]
+    numerator = fraction.numerator
+    part = npgettext("fraction", singular, plural, numerator)
+    if whole:
+        return _(INCHES_MIXED_SPOKEN).format(inches=whole, numerator=numerator, part=part)
+    return _(INCH_FRACTION_SPOKEN).format(numerator=numerator, part=part)
 
 
 @cache
@@ -280,6 +286,62 @@ def _dms_patterns() -> tuple[re.Pattern[str], re.Pattern[str]]:
     return strict, attempt
 
 
-FORMS: tuple[CompoundForm, ...] = (FeetInches(), DegreesMinutesSeconds())
-"""The built-in compound forms, at their default fineness: 1/16 inch, and hundredths of a
-second."""
+def nearest_inches(value: float, denominator: int) -> Fraction:
+    """Return a base-unit length's nearest 1/``denominator`` inch, in inches, exactly.
+
+    It's rounded once, half to even, so a value halfway between two fractions takes the
+    one with the even numerator.
+    """
+    return Fraction(round(Fraction(value) / INCH_MM * denominator), denominator)
+
+
+class NearestInches(CompoundForm):
+    """A length as its nearest drafting fraction of an inch: ``1 3/16"`` to the 1/16.
+
+    Shown with a space and copied with a hyphen, ``1-3/16"``, as feet and inches are
+    (ADR-0019 U3), with the inch mark, so a spreadsheet can't read ``3/16`` as a date.
+    Its ``fineness`` is the denominator: a power of two from 2 to 64. It reads nothing,
+    since the inch's own unit reads a typed fraction.
+    """
+
+    dimension = Dimension.LENGTH
+    full_unit = "in"
+
+    def __init__(self, fineness: int) -> None:
+        if fineness not in PARTS:
+            raise UsageError(f"An inch fraction is 1/2 to 1/64, not 1/{fineness}")
+        self.fineness = fineness
+        self.key = f"in_{fineness}"
+
+    @override
+    def parse(self, text: str, decimal: str = ".") -> float | None:
+        return None
+
+    @override
+    def text(self, value: float, decimal: str = ".") -> CompoundText:
+        if not math.isfinite(value):
+            raise UsageError(f"{value} can't be written as a fraction of an inch")
+        nearest = nearest_inches(value, self.fineness)
+        sign = MINUS if nearest < 0 else ""
+        whole, fraction = divmod(abs(nearest), 1)
+        if fraction:
+            frac = f"{fraction.numerator}/{fraction.denominator}"
+            shown = f'{sign}{whole} {frac}"' if whole else f'{sign}{frac}"'
+            copied = f'{sign}{whole}-{frac}"' if whole else shown
+        else:
+            shown = copied = f'{sign}{whole}"'
+        spoken = _said(
+            [_spoken_inches(int(whole), fraction) or _measure("0", _builtin("in"))], bool(sign)
+        )
+        return CompoundText(shown, copied, spoken)
+
+
+FORMS: tuple[CompoundForm, ...] = (
+    FeetInches(),
+    DegreesMinutesSeconds(),
+    NearestInches(16),
+    NearestInches(32),
+    NearestInches(64),
+)
+"""The built-in compound forms: feet and inches to 1/16 inch, degrees, minutes and seconds
+to hundredths of a second, and the nearest 1/16, 1/32 and 1/64 inch."""

@@ -12,7 +12,7 @@ from caddcalc.core.errors import InputError, SpecError
 from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import Dimension, base_text, parse_quantity
+from caddcalc.core.units import Dimension, Precision, base_text, parse_quantity
 
 
 class Verification(Enum):
@@ -143,6 +143,9 @@ class Output:
     """The key symbol of a unit it's always shown in, whatever the display preferences,
     e.g. ``"mm"`` for a converter's millimetre row (ADR-0018 §3); empty to follow them.
     It's shown with the registry's precision for that unit (``precision_for``)."""
+    precision: Precision | None = None
+    """The precision a fixed-unit output is shown with, where the unit's own doesn't suit
+    it, such as an error shown to fixed decimals; ``None`` for the registry's."""
     form: str = ""
     """The key of a compound form it's always shown in, e.g. ``"ft_in"`` for feet and
     inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.

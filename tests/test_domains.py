@@ -125,12 +125,12 @@ def test_calculators_are_grouped_by_domain_and_sorted_by_name() -> None:
     registry.register_domain(ACME)
     registry.register(_AcmeWidget)
     grouped = registry.by_domain()
-    assert [d.name for d in grouped] == ["Geometry", "Sheet Metal", "Acme Tools"]
+    assert [d.name for d in grouped] == ["Geometry", "Conversions", "Sheet Metal", "Acme Tools"]
     assert [c.id for c in grouped[ACME]] == ["acme.widget"]
-    for domain_id in ("geometry", "sheet_metal"):
+    for domain_id in ("geometry", "conversions", "sheet_metal"):
         names = [c.name for c in grouped[registry.domain(domain_id)]]
         assert names == sorted(names)
-    assert [d.id for d in registry.domains()] == ["geometry", "sheet_metal", "acme"]
+    assert [d.id for d in registry.domains()] == ["geometry", "conversions", "sheet_metal", "acme"]
 
 
 def test_the_built_in_families_are_listed_general_tools_first() -> None:

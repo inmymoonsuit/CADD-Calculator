@@ -16,6 +16,19 @@ Template:
 
 ---
 
+## 2026-10-18: Converting a converter's rows in exact arithmetic
+**Tried:** showing each fixed-unit row by converting the value's double to the row's unit
+in exact arithmetic and rounding once (`float(Fraction(value) / unit.exact)`), as
+ADR-0019 §2's "converters' exact path" suggested, so a row couldn't round twice.
+**Outcome:** reverted before it was committed (ADR-0018, m2 amendment).
+**Why:** the typed value is already a double, with the parser's rounding in it, so the
+exact conversion of that double is no closer to what was typed: 3 ft shown in feet read
+3.0000000000000004, where plain division gives 3.0. Either way the difference is past the
+row's six figures and the full copy's ten, so no test could tell them apart.
+**Instead:** rows use `from_base`, as every other value does; `core.units.convert` gives
+the exact conversion of an exact amount, for checks. Converting what was typed exactly
+would need the typed text's exact value carried to the calculator, which nothing does.
+
 ## 2026-10-18: Clearing a failed settings page at once
 **Tried:** when a family's code failed on its settings page, removing the form's rows
 (`QFormLayout.removeRow`) straight away, in the boundary that caught the error.

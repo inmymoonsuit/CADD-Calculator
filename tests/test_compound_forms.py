@@ -313,7 +313,7 @@ def test_degrees_minutes_and_seconds_are_spoken_in_words(
 
 def test_the_forms_are_registered_for_their_dimensions_only() -> None:
     units = registry()
-    assert [f.key for f in units.compounds_for(L)] == ["ft_in"]
+    assert [f.key for f in units.compounds_for(L)] == ["ft_in", "in_16", "in_32", "in_64"]
     assert [f.key for f in units.compounds_for(A)] == ["dms"]
     assert units.compounds_for(Dimension.AREA) == ()
     assert (units.compound("ft_in").fineness, units.compound("dms").fineness) == (16, 2)

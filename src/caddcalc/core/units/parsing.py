@@ -15,12 +15,13 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import NamedTuple
 
 from caddcalc.core.errors import InputError, UsageError
 from caddcalc.core.units.builtin import DIMENSIONS
 from caddcalc.core.units.builtin import UNITS as UNITS
-from caddcalc.core.units.model import Dimension, Unit
+from caddcalc.core.units.model import Dimension, Exact, Unit
 from caddcalc.core.units.numbers import MINUS_SIGN as MINUS_SIGN
 from caddcalc.core.units.numbers import parse_number as parse_number
 from caddcalc.core.units.unit_registry import registry
@@ -75,6 +76,23 @@ def from_base(value: float, unit: str | Unit) -> float:
     """Convert ``value`` from base units to ``unit``."""
     u = unit if isinstance(unit, Unit) else get_unit(unit)
     return value / u.factor
+
+
+def convert(amount: Exact | int, source: Unit, target: Unit) -> Fraction:
+    """Convert an exact ``amount`` of ``source`` to ``target``, exactly, from their definitions.
+
+    For checks and an exact amount (ADR-0019 §2): 3/16 in is 4.7625 mm, and 1 psi is
+    6.894 757 293 168 361 336 … kPa. A typed value is a double already, so a calculator
+    converts it with ``from_base``.
+
+    Raises:
+        UsageError: The units measure different things, or one has no exact factor.
+    """
+    if source.dimension is not target.dimension:
+        raise UsageError(f"{source.symbol!r} and {target.symbol!r} measure different things")
+    if source.exact is None or target.exact is None:
+        raise UsageError(f"{source.symbol!r} or {target.symbol!r} has no exact factor")
+    return Fraction(amount) * Fraction(source.exact) / Fraction(target.exact)
 
 
 class ParsedQuantity(NamedTuple):

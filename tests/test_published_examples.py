@@ -7,6 +7,8 @@ it can be promoted to Verification.VERIFIED (CONTRIBUTING.md).
 MH31 = Machinery's Handbook, 31st ed., Industrial Press, 2020, "Bending Sheet Metal".
 The same example is MH29's (29th ed.) Fig. 12, pp. 1347 and 1351, with the same numbers.
 EDD5 = Madsen & Madsen, Engineering Drawing and Design, 5th ed., Cengage, 2012.
+SP 811 = NIST Special Publication 811, 2008 Edition, Appendix B.8; it's public domain, and
+only its factors are used here.
 """
 
 from __future__ import annotations
@@ -16,13 +18,21 @@ import math
 import pytest
 
 from caddcalc.calculators import default_registry
+from caddcalc.calculators.conversions import (
+    AngleConverter,
+    AreaConverter,
+    LengthConverter,
+    StressConverter,
+)
+from caddcalc.calculators.conversions.converters import SP811_B8
 from caddcalc.calculators.sheet_metal import (
     BendAllowance,
     FormedSegmentFlatLength,
     TruncatedConeLayout,
 )
 from caddcalc.calculators.sheet_metal.common import EDD5_BEND_ALLOWANCE, MH31_FIG13
-from caddcalc.core import Reference, Verification
+from caddcalc.core import Calculator, Dimension, Reference, Verification, parse_quantity
+from caddcalc.core.formatting import CopyForm, DisplayPrefs, copy_output
 from tests.helpers import run_inches
 
 
@@ -101,6 +111,46 @@ def test_edd5_cone_sector_rule_on_one_surface() -> None:
     assert out["outside_radius"] == printed(13.362344, 6)
 
 
+def _full(calc: Calculator, typed: str, dimension: Dimension, row: str) -> str:
+    """A converter's row for ``typed``, copied at full precision (ten digits)."""
+    result = calc.run({"value": parse_quantity(typed, dimension)})
+    return copy_output(calc.output(row), result.outputs[row], DisplayPrefs(), CopyForm.FULL)
+
+
+def test_sp811_b8_inch_and_foot() -> None:
+    """NIST SP 811 (2008), Appendix B.8, "Factors for Units Listed Alphabetically".
+
+    The inch is 2.54 E-02 m and the foot 3.048 E-01 m, both printed as exact.
+    """
+    assert _full(LengthConverter(), "1 in", Dimension.LENGTH, "m") == "0.0254"
+    assert _full(LengthConverter(), "1 ft", Dimension.LENGTH, "m") == "0.3048"
+    assert _full(LengthConverter(), "0.0254 m", Dimension.LENGTH, "in") == "1"
+
+
+def test_sp811_b8_square_inch_and_foot() -> None:
+    """SP 811 Appendix B.8, the square inch and the square foot in square meters.
+
+    They're 6.4516 E-04 m² and 9.290 304 E-02 m², both printed as exact.
+    """
+    assert _full(AreaConverter(), "1 in²", Dimension.AREA, "m2") == "0.00064516"
+    assert _full(AreaConverter(), "1 ft²", Dimension.AREA, "m2") == "0.09290304"
+
+
+def test_sp811_b8_psi_and_ksi() -> None:
+    """SP 811 Appendix B.8, the pound-force and the kip per square inch in pascals.
+
+    They're 6.894 757 E+03 Pa and 6.894 757 E+06 Pa, printed rounded to seven digits.
+    """
+    calc = StressConverter()
+    assert float(_full(calc, "1 psi", Dimension.STRESS, "kpa")) == printed(6.894757, 6)
+    assert float(_full(calc, "1 ksi", Dimension.STRESS, "mpa")) == printed(6.894757, 6)
+
+
+def test_sp811_b8_degree() -> None:
+    """SP 811 Appendix B.8: the degree is 1.745 329 E-02 rad, printed rounded."""
+    assert float(_full(AngleConverter(), "1 deg", Dimension.ANGLE, "rad")) == printed(0.01745329, 8)
+
+
 VERIFIED: dict[tuple[str, str], tuple[str, Reference, str]] = {
     ("sheet_metal.bend_allowance", "course"): (
         "test_mh31_fig13_soft_steel_part",
@@ -117,12 +167,27 @@ VERIFIED: dict[tuple[str, str], tuple[str, Reference, str]] = {
         EDD5_BEND_ALLOWANCE,
         "at 90°",
     ),
+    ("conversions.length", "exact"): ("test_sp811_b8_inch_and_foot", SP811_B8, "for in and ft"),
+    ("conversions.area", "exact"): (
+        "test_sp811_b8_square_inch_and_foot",
+        SP811_B8,
+        "for in² and ft²",
+    ),
+    ("conversions.stress", "exact"): ("test_sp811_b8_psi_and_ksi", SP811_B8, "for psi and ksi"),
+    ("conversions.angle", "exact"): ("test_sp811_b8_degree", SP811_B8, "for the degree"),
 }
 """Each verified method, by calculator: the test of the published worked example that runs
 through that calculator, the method's reference to its source, and the scope its status
 writes, which is all the example covers (ADR-0010, amendments). No other method is
-verified: the cones (KI-001, KI-007), the V-die rules (KI-003, KI-004), and the fixed
-K-factor's flat length of a segment have no such example."""
+verified: the cones (KI-001, KI-007), the V-die rules (KI-003, KI-004), the fixed
+K-factor's flat length of a segment, and the Geometry calculators have no such example."""
+
+LOCATED = {
+    MH31_FIG13: ("13", "Fig. 13,"),
+    EDD5_BEND_ALLOWANCE: ("19.12", "Fig. 19.12,"),
+    SP811_B8: ("B.8", "Appendix B.8,"),
+}
+"""Where each source's example is: in its citation, and as its method's note names it."""
 
 
 def test_only_methods_a_published_example_runs_through_are_verified() -> None:
@@ -148,8 +213,8 @@ def test_each_status_says_what_its_example_covers() -> None:
         method = statuses[key]
         assert method.scope == scope and len(scope) <= 20, key
         assert method.status.startswith(f"verified {scope}"), method.status
-        figure = "13" if source is MH31_FIG13 else "19.12"  # the example's figure, cited
-        assert figure in source.detail and f"Fig. {figure}," in method.verification_note, key
+        cited, noted = LOCATED[source]  # where the example is, in the source and the note
+        assert cited in source.detail and noted in method.verification_note, key
     assert statuses["sheet_metal.bend_allowance", "course"].status == (
         "verified for BA · reproduces legacy"
     )

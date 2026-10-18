@@ -17,6 +17,16 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
+#: src/caddcalc/calculators/conversions/converters.py
+msgid ""
+"A length in inches, feet, millimeters, centimeters, meters, and feet and inches, and to the "
+"nearest 1/16, 1/32, and 1/64 inch, each with its error."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "A stress or pressure in psi, ksi, kPa, and MPa."
+msgstr ""
+
 #: src/caddcalc/gui/welcome.py
 msgctxt "button"
 msgid "About"
@@ -27,12 +37,28 @@ msgstr ""
 msgid "About {product}: version, license, and terms"
 msgstr ""
 
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "An angle in degrees, radians, and degrees, minutes, and seconds."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "An area in square inches, square feet, square millimeters, square centimeters, and square meters."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Angle"
+msgstr ""
+
 #: src/caddcalc/calculators/geometry/shapes.py
 msgid "Arc and sector"
 msgstr ""
 
 #: src/caddcalc/calculators/geometry/shapes.py
 msgid "Arc length, chord, sagitta (rise), and sector area, from the radius and the included angle."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Area"
 msgstr ""
 
 #: src/caddcalc/calculators/geometry/domain.py
@@ -70,6 +96,10 @@ msgstr ""
 msgid "Close (Esc)"
 msgstr ""
 
+#: src/caddcalc/calculators/conversions/domain.py
+msgid "Conversions"
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "Flat length of a formed segment"
 msgstr ""
@@ -90,6 +120,14 @@ msgstr ""
 msgid ""
 "Legs, hypotenuse, acute angles, area, and perimeter of a right triangle, from any two of its "
 "sides, or a side and an acute angle."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Length"
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/domain.py
+msgid "One value in every unit of its kind at once: lengths, angles, areas, and stresses."
 msgstr ""
 
 #: src/caddcalc/calculators/geometry/shapes.py
@@ -118,6 +156,10 @@ msgstr ""
 
 #: src/caddcalc/calculators/geometry/shapes.py
 msgid "Side, across flats, across corners, perimeter, and area of a regular polygon."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Stress and pressure"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/bends.py

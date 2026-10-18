@@ -352,7 +352,8 @@ def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValuePart
     if not output.unit:
         return value_parts(value, output.dimension, prefs)
     unit = output_unit(output, prefs)
-    return _parts(value, unit, registry().precision_for(unit), prefs)
+    precision = output.precision or registry().precision_for(unit)
+    return _parts(value, unit, precision, prefs)
 
 
 def format_output(output: Output, value: float, prefs: DisplayPrefs) -> str:

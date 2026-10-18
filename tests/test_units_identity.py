@@ -119,7 +119,7 @@ def _corpus() -> Iterator[tuple[str, Dimension, str | None]]:
         yield text, dimension, None
     for calc in default_registry(load_plugins=False):
         for param in calc.params:
-            if param.default is not None:
+            if param.default is not None and param.dimension in OLD_DIMENSIONS:
                 yield param.default, param.dimension, None
     for spec in REFERENCE_TABLES:
         for value in spec.values(spec.load()):

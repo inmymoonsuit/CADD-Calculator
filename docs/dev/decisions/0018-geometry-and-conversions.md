@@ -1,7 +1,7 @@
 # ADR-0018: Geometry and Conversions families
 
-* **Status:** **Accepted**; the units it needs (u2, u3) and the Geometry family (m1) are
-  built (see Amendments). The maintainer approved the scope below on
+* **Status:** **Accepted, and built:** the units it needs (u2, u3), the Geometry family
+  (m1), and the Conversions family (m2); see Amendments. The maintainer approved the scope below on
   2026-10-17 ("Go with your recommendations for both families: names, starting
   calculators, and one converter per kind of quantity"). Revised with Support & Review's
   sources check (formula locators, input to refuse, numerical notes), and built after the
@@ -183,3 +183,44 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   are. Labels, help and notes wait for the string sweep, with the sheet-metal ones
   (ADR-0020's list).
 * **A limitation,** KI-025: N is a ratio, so it shows as `6.0000`.
+
+### 2026-10-18: the Conversions family, as built (m2)
+
+* **`calculators/conversions/`**: `LengthConverter`, `AngleConverter`, `AreaConverter`
+  and `StressConverter`, IDs `conversions.length`, `.angle`, `.area` and `.stress`, each
+  with one method, `exact`, and one input, `value` (X), with no range: `Param.check`
+  refuses only a value that isn't finite, so zero and any sign pass.
+* **Each row is an output fixed in its unit,** `Output(unit=…)`, given the input
+  unchanged (`Context.given`), so the rows add no work; the registry shows each in its
+  unit to six significant figures. Length's feet and inches and Angle's degrees,
+  minutes and seconds are `Output(form=…)` rows.
+* **The nearest 1/16, 1/32 and 1/64 inch** are three more compound forms of a length,
+  `in_16`, `in_32` and `in_64` (`core.units.compound.NearestInches`), each rounding once,
+  half to even: shown `1 3/16"`, copied `1-3/16"` as U3 says inch fractions are, and
+  spoken "1 and 3 sixteenths inches". A form of the value only, they read nothing.
+* **Each fraction's error** is a row of its own, so it has its own Copy: the fraction,
+  recorded as a step (`N16`, the value rounded to the nearest 1/16 inch), less the value,
+  `E16 = N16 − X`, through `ctx.calc`. The fraction is built as the parser builds a
+  length typed in inches, so a value typed in inches as that fraction has an error of
+  exactly 0, where building it from the exact inch left a rounding's worth, shown as
+  `0.00000000000000223793 in`. An error's useful precision is absolute, so these rows
+  give their own, six decimals (`Output.precision`, which only a fixed-unit output may
+  give).
+* **Exactness.** `core.units.convert(amount, source, target)` converts an exact amount
+  from the units' exact definitions: 1 in is 25.4 mm and 1 ft² 92 903.04 mm² exactly,
+  and 1 psi is 6.894 757 293 168 361 kPa rounded once, the brief's test values. A row
+  converts the value as typed, which is already a double, with `from_base`, as every
+  other value is shown: 1 psi typed reads 6.894757293168362 kPa there, the same at the
+  row's six figures and the full copy's ten. Converting that double in exact arithmetic
+  was tried and dropped: it's no closer to what was typed (3 ft shown in feet would be
+  3.0000000000000004 where plain division gives 3.0), and invisible at either precision.
+* **Verified,** each for its scope, against NIST SP 811 Appendix B.8, a published
+  figure (`test_published_examples.py`): the inch and the foot in meters, and the square
+  inch and the square foot in square meters, which B.8 prints exact; and the pound-force
+  and the kip per square inch, and the degree, to B.8's printed digits.
+* **The launch height.** The Length converter's twelve rows make it the tallest built-in
+  page, which ADR-0021 §3 makes the launch height: offscreen, 996 px against Geometry's
+  765. Natively at 9 pt, about 970 px against 738, a change UI/UX & Design should rule
+  on. Putting each fraction and its error in one row would make nine rows.
+* **The CLI** needs nothing of its own: `caddcalc run conversions.length X=4.7625mm`
+  prints every row, and JSON gives each in base units.
