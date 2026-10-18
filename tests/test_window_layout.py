@@ -284,3 +284,117 @@ def test_windows_text_size_is_read_once_and_guarded(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(winreg, "OpenKey", missing)
     assert window_layout.system_text_scale() == 1.0
+
+
+CALCULATORS = (
+    "sheet_metal.bend_allowance",
+    "sheet_metal.segment_flat_length",
+    "sheet_metal.truncated_cone_layout",
+    "sheet_metal.v_die_opening",
+)
+
+
+def _too_short(window: Any) -> list[str]:
+    """Every shown part of the window's pages that's shorter than it needs at its width."""
+    from PySide6.QtWidgets import (
+        QAbstractButton,
+        QComboBox,
+        QGroupBox,
+        QLabel,
+        QLineEdit,
+        QWidget,
+    )
+
+    from caddcalc.gui.reflow import Reflow
+    from caddcalc.gui.result_fields import ResultField
+
+    kinds = (QLabel, QAbstractButton, QComboBox, QLineEdit, QGroupBox, Reflow, ResultField)
+    short = []
+    for page in (window.page_scroll.widget(), window.domain_page.widget()):
+        for widget in page.findChildren(QWidget):
+            if not widget.isVisible() or not isinstance(widget, kinds):
+                continue
+            if widget.hasHeightForWidth():
+                needed = widget.heightForWidth(widget.width())
+            else:
+                needed = widget.sizeHint().height()
+            if widget.height() < needed:
+                name = getattr(widget, "text", lambda: "")() or type(widget).__name__
+                short.append(f"{name}: {widget.height()} < {needed}")
+    return short
+
+
+@pytest.mark.usefixtures("qt")
+def test_every_part_of_every_page_is_as_tall_as_it_needs() -> None:
+    """At the launch size and the least: UI/UX's H1 (0 px choice boxes) and M1."""
+    window = open_window()
+    window.show()
+    pages = [("calculator", c) for c in CALCULATORS] + [("domain", "sheet_metal")]
+    for size in ("launch", "least"):
+        for kind, page_id in pages:
+            if kind == "calculator":
+                window.select_calculator(page_id)
+            else:
+                window.select_domain(page_id)
+            launch = window.launch_size()
+            window.resize(
+                *(round(launch.width), round(launch.height)) if size == "launch" else (1, 1)
+            )
+            _settle(window)
+            assert _too_short(window) == [], (size, page_id)
+    window.close()
+
+
+def test_the_method_row_grows_and_shrinks_with_its_status(qt_window: Any) -> None:
+    """Narrow, the status goes under the box and the row grows; wide again, it shrinks."""
+    row, reflow = qt_window.method_row, qt_window.method_status.parentWidget()
+    launch = qt_window.launch_size()
+    wide = qt_window.width()
+    assert not reflow.stacked
+    one_line = row.height()
+    qt_window.resize(1, round(launch.height))
+    _settle(qt_window)
+    assert reflow.stacked, "the least window is narrower than the box and its status"
+    assert row.height() > one_line
+    box = qt_window.method_box
+    assert box.height() >= box.sizeHint().height(), "the box isn't cut through its text"
+    qt_window.resize(wide, round(launch.height))
+    _settle(qt_window)
+    assert not reflow.stacked and row.height() == one_line
+
+
+@pytest.mark.usefixtures("qt")
+def test_the_segment_page_fits_1100_by_720() -> None:
+    """With the list at its 9 pt width, as the results tests have it (ADR-0021 §7)."""
+    from tests.test_result_fields import _shown_at
+
+    window = _shown_at(1100, 720, "sheet_metal.segment_flat_length")
+    assert window.page_scroll.verticalScrollBar().maximum() == 0
+    assert not window.output.full
+    window.close()
+
+
+DESIGN_LINE = 16
+"""The line spacing the layout's heights were measured in: 9 pt Segoe UI (ADR-0021 §3)."""
+
+
+@pytest.mark.usefixtures("qt")
+@pytest.mark.parametrize("calc_id", CALCULATORS)
+def test_no_page_scrolls_at_the_launch_size(calc_id: str) -> None:
+    """Every page fits the launch size, with lines at least the design's.
+
+    The launch height is in lines, but the fields' heights are in pixels, so shorter
+    lines than the design's give a window shorter than the pages need.
+    """
+    from caddcalc.gui.text_units import line_spacing
+
+    window = open_window()
+    if line_spacing(window.font()) < DESIGN_LINE:
+        window.close()
+        pytest.skip(f"this platform's lines are under the design's {DESIGN_LINE} px")
+    window.select_calculator(calc_id)
+    window.show()
+    _settle(window)
+    assert window.page_scroll.verticalScrollBar().maximum() == 0
+    assert not window.output.full
+    window.close()

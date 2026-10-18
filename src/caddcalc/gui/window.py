@@ -97,7 +97,7 @@ from caddcalc.gui.icons import (
     role_color,
 )
 from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
-from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack
+from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack, PageWidget
 from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
 from caddcalc.gui.style_tokens import Rect, Size
@@ -437,7 +437,7 @@ class MainWindow(QMainWindow):
         buttons.addStretch(1)
         # The page scrolls down, never sideways: a material's facts and a setting's help can
         # outgrow the window's height, and its rows reflow to its width (ADR-0021 §7).
-        domain_content = QWidget()
+        domain_content = PageWidget()
         self.domain_page = PageScrollArea(domain_content)
         domain_col = QVBoxLayout(domain_content)
         domain_col.setContentsMargins(0, 0, 0, 0)
@@ -450,7 +450,7 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.calculator_page)
         self.pages.addWidget(self.domain_page)
 
-        right = QWidget()
+        right = PageWidget()
         col = QVBoxLayout(right)
         col.addWidget(self.title)
         col.addWidget(self.summary)

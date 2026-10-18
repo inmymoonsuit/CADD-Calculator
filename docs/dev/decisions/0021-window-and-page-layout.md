@@ -51,7 +51,7 @@
 1. The preferred content size, in text units:
    * width: `ceil(list_width_chars · ch + handle + page_max_chars · ch)` (1100 at 9 pt:
      280.5 + 5 + 814 = 1099.5, rounded up)
-   * height: `launch_lines · line spacing` (720 at 9 pt)
+   * height: `launch_lines · line spacing` (736 at 9 pt; 720 as first approved, see Amendments)
 2. Fit it to the available geometry of the screen the welcome card is on (or the primary
    screen), less the platform frame (from the native window, before it's shown) and
    `screen_margin` on each side. The welcome card is to be checked to be centred on that
@@ -143,7 +143,7 @@ to.
 | `list_min_chars` | 24 | The list's least width (132 px at 9 pt) |
 | `page_max_chars` | 148 | The page's widest, scroll bar included (814 px at 9 pt) |
 | `panel_max_chars` | 148 | Replaces `panel_max_width`: the results panel's widest |
-| `launch_lines` | 45 | The launch content height, in line spacings (720 px at 9 pt) |
+| `launch_lines` | 46 | The launch content height, in line spacings (736 px at 9 pt; 45 as first approved, see Amendments) |
 | `screen_margin` | 16 | The least space between the frame and the screen's work area |
 | `method_min_chars` | measured | The method box's least width: the longest built-in method name, computed from the registry by a test, not typed in |
 | `right_pane_min_chars` | 58 | Future: a docked right pane's least width |
@@ -193,9 +193,9 @@ to.
   its size hints say so, so the page's one-scroll-bar fit reads the true height.
 * **What the disclaimer costs at the default size.** Natively, at 1100 × 720 and 9 pt, it
   adds 22 px to the results (one line and a gap). The cone's page had 16 px to spare, so
-  it no longer fits with the document filling: it scrolls as a whole, by about 6 px (rule
-  C). The other pages still fit. `launch_lines` = 46 would restore the cone's fit; it's
-  left at 45, as approved, for UI/UX to judge.
+  at 720 it scrolls as a whole by 6 px (rule C). So `launch_lines` is 46, 736 px at 9 pt,
+  on UI/UX's recommendation: every page fits the launch size, the default view is as it
+  was, and it fits every screen 45 did.
 * **Offscreen fonts.** On Windows the offscreen platform has no font database, so every
   character, the average included, is 12 px, and `ch` is 12 rather than 5.5. Tests of the
   results pin the list at 280 px, so they test the results, not the platform's font; the
@@ -204,3 +204,22 @@ to.
   narrower than its text lost the text's last pixel on Linux.
 * **KI-023,** the least-size shortfalls, is on the localization branch with its clipping
   test, which narrows its allowance once this is rebased under it.
+
+### 2026-10-18: the layout review's fixes (UI/UX)
+
+* **A reflowing row is a layout** (`ReflowLayout`), not a widget that measures itself.
+  Qt asks a widget's layout for its height at a width, never the widget, so the first
+  build's heights didn't reach the form: the settings page's choice boxes were 0 px tall
+  (H1), and the method row didn't grow when its status went under the box (M1).
+* **A page's least height is its height at its width** (`PageWidget`). Its layout's
+  least height takes each part at its narrowest, where a stacked row or wrapped text is
+  tallest, and a scroll area sizes its page by it, so a page scrolled by 22 px it didn't
+  need. The page's fit (`_needed_height`) uses its height for its width alone (M2).
+* **A limitation, KI-024:** the launch height is in lines, but the fields' heights are in
+  pixels. With a UI font whose lines are shorter than 9 pt Segoe UI's 16 px, the launch
+  window is shorter than the pages need, and the tallest page scrolls at launch.
+* **Tests** check that every part of every page is as tall as it needs, at the launch
+  size and the least; that the method row grows and shrinks; that the segment page fits
+  1100 × 720; and that no page scrolls at the launch size, where the lines are 16 px.
+* **The tests' clipboard is in memory.** A native run shared the system's clipboard with
+  every other program, so copying tests failed by turns, and overwrote the user's copy.

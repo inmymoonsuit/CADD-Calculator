@@ -16,11 +16,31 @@ def qt(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     At teardown it closes and deletes every top-level widget the test left, then delivers
     the deferred deletes while the application still runs, as pytest-qt's ``qtbot`` does.
     A window left to interpreter exit is torn down in no set order (KI-019).
+
+    The clipboard is the test's own, in memory: the system's is shared with every other
+    program on the machine, so on a native platform a test would read another program's
+    copy, or overwrite the user's. It's patched on the class, as an instance's patch is
+    undone after its window is deleted, which crashes Linux.
     """
     monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
     widgets = pytest.importorskip("PySide6.QtWidgets")
     from PySide6.QtCore import QEvent
+    from PySide6.QtGui import QClipboard
 
+    held = [""]
+
+    def set_text(_clipboard: object, text: str, *_mode: object) -> None:
+        held[0] = text
+
+    def text(_clipboard: object, *_mode: object) -> str:
+        return held[0]
+
+    def clear(_clipboard: object, *_mode: object) -> None:
+        held[0] = ""
+
+    monkeypatch.setattr(QClipboard, "setText", set_text)
+    monkeypatch.setattr(QClipboard, "text", text)
+    monkeypatch.setattr(QClipboard, "clear", clear)
     app = widgets.QApplication.instance() or widgets.QApplication([])
     before = set(app.topLevelWidgets())
     yield widgets

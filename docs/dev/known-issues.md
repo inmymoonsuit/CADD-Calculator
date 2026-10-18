@@ -207,6 +207,19 @@ accepts only "." too.
   Everything that reads a shown number's decimals already asks one helper,
   `core.formatting.decimal_separator()`.
 
+### KI-024: With shorter text lines, the tallest page can scroll at launch (Low)
+
+The window's launch height is `launch_lines` line spacings, 736 px with 9 pt Segoe UI's
+16 px lines (ADR-0021 §3), but the result fields' heights are in pixels (ADR-0017's
+tokens). With a UI font whose lines are shorter, such as the offscreen platform's 14 px,
+the launch window is shorter while the pages aren't, so the cone and segment pages scroll
+as a whole at launch (rule C) where on Windows they fit.
+
+* **Workaround:** make the window taller; nothing is lost, as the page scrolls.
+* **Possible fix:** give the fields' heights in text units too, or set the launch height
+  from the tallest page's need at the launch width, within the screen. Its test
+  (`test_no_page_scrolls_at_the_launch_size`) runs where the lines are 16 px or more.
+
 ## Resolved
 
 ### KI-021: The cone's course method took a bottom diameter no larger than the thickness (resolved 2026-10-17)

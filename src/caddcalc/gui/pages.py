@@ -63,13 +63,40 @@ class PageDocument(QTextBrowser):
         return QSize(super().minimumSizeHint().width(), self._height())
 
 
+class PageWidget(QWidget):
+    """A page whose least height is its height at its width.
+
+    Its layout's least height takes each part at its narrowest, where wrapped text and a
+    stacked row are tallest. A scroll area sizes its page by that least height, so the page
+    would scroll for room it doesn't need (ADR-0021 §7).
+    """
+
+    @override
+    def minimumSizeHint(self) -> QSize:
+        hint = super().minimumSizeHint()
+        layout = self.layout()
+        if layout is None or not layout.hasHeightForWidth() or self.width() <= 0:
+            return hint
+        return QSize(hint.width(), self.heightForWidth(self.width()))
+
+    @override
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if event.size().width() != event.oldSize().width():
+            self.updateGeometry()  # a new width: a new least height
+
+
 def _needed_height(page: QWidget, width: int) -> int:
-    """The height ``page`` needs at ``width``, as a resizable scroll area measures it."""
-    least = page.minimumSizeHint().height()
+    """The height ``page`` needs at ``width``.
+
+    A page whose height follows its width needs its height at that width, and no more: its
+    least height is its height at its narrowest, where wrapped text, such as the disclaimer,
+    takes the most lines, so it overstates the need at any other width (ADR-0021 §7).
+    """
     layout = page.layout()
     if layout is not None and layout.hasHeightForWidth():
-        return max(least, page.heightForWidth(width))
-    return least
+        return page.heightForWidth(width)
+    return page.minimumSizeHint().height()
 
 
 class PageScrollArea(QScrollArea):
