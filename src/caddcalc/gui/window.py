@@ -13,7 +13,15 @@ from html import escape
 from itertools import pairwise
 from typing import Any, cast, override
 
-from PySide6.QtCore import QEvent, QModelIndex, QObject, QPersistentModelIndex, Qt, QUrl
+from PySide6.QtCore import (
+    QEvent,
+    QModelIndex,
+    QObject,
+    QPersistentModelIndex,
+    QSignalBlocker,
+    Qt,
+    QUrl,
+)
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -587,7 +595,11 @@ class MainWindow(QMainWindow):
                     if index == 0:
                         self.select_calculator(calc.id)  # opens on its first method
                     else:
-                        self.method_box.setCurrentIndex(index)
+                        # Directly, not through the box's signal: an error raised in a
+                        # slot goes to sys.excepthook, past this boundary.
+                        with QSignalBlocker(self.method_box):
+                            self.method_box.setCurrentIndex(index)
+                        self._on_method_changed(index)
                     lay_out(page, width)
                     tallest = max(tallest, fit_height(page, width, self.output))
                 except Exception as exc:  # noqa: BLE001

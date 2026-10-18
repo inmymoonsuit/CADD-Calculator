@@ -297,6 +297,11 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   of its methods, within the same isolation boundary, now one per method, and the same
   screen cap. So no built-in calculator's page scrolls at the launch size with any of its
   methods, and changing the method never moves the row's controls.
+* **Each method is opened directly,** with the method box's signal blocked, not through
+  the signal: an error raised in a Qt slot goes to `sys.excepthook`, past the isolation
+  boundary, so a failing method's broken page would have been measured, unwarned.
+  Support & Review's test of one failing method found it: only the V-die's 8 × thickness
+  rule raises, one warning names it, and the percentage rule is still measured.
 * **What it costs.** On Windows at 9 pt the launch height is 738 px, the segment
   calculator's K-factor page with the window's bars, two more than `launch_lines`' 736.
   The window's build lays out twice as many pages, and took 777–814 ms against 740–769 ms

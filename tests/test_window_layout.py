@@ -571,6 +571,52 @@ def test_a_page_that_fails_to_measure_leaves_the_window_working(
     window.close()
 
 
+@pytest.mark.usefixtures("qt")
+def test_a_method_that_fails_to_measure_leaves_out_its_own_page_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Each method is its own isolation boundary (S&R's note on 1f5cec9).
+
+    The V-die's 8·T rule raising leaves out that page, with one warning that names it,
+    and its percentage rule is still measured.
+    """
+    import warnings
+
+    from caddcalc.calculators.sheet_metal import VDieOpening
+    from caddcalc.core import Context
+    from caddcalc.gui import window as window_module
+
+    compute = VDieOpening.compute
+
+    def failing_eight_t(self: VDieOpening, ctx: Context) -> None:
+        if ctx.method == "eight_t":
+            raise ZeroDivisionError("the 8·T rule's own error")
+        compute(self, ctx)
+
+    fit_height = window_module.fit_height
+    measured: list[tuple[str, str]] = []
+
+    def spy(page: Any, width: int, document: Any = None) -> int:
+        shell = page.window()
+        measured.append((shell.calculator.id, shell.method_key))
+        height: int = fit_height(page, width, document)
+        return height
+
+    monkeypatch.setattr(VDieOpening, "compute", failing_eight_t)
+    monkeypatch.setattr(window_module, "fit_height", spy)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        window = open_window()
+    monkeypatch.setattr(window_module, "fit_height", fit_height)
+    left_out = [str(w.message) for w in caught if "leaves out" in str(w.message)]
+    assert len(left_out) == 1, left_out
+    assert "(sheet_metal.v_die_opening) with its method" in left_out[0]
+    assert "(eight_t)" in left_out[0]
+    assert ("sheet_metal.v_die_opening", "radius_ratio") in measured
+    assert ("sheet_metal.v_die_opening", "eight_t") not in measured
+    window.close()
+
+
 @pytest.mark.parametrize("shorter", [False, True], ids=["platform-font", "shorter-lines"])
 @pytest.mark.parametrize("calc_id", CALCULATORS)
 def test_no_calculator_page_scrolls_at_the_launch_size(
