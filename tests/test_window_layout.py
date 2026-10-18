@@ -481,14 +481,16 @@ def test_each_calculator_page_is_measured_at_its_shown_height(
 
 
 @pytest.mark.usefixtures("qt")
-def test_a_failing_plugin_calculator_leaves_the_window_working() -> None:
-    """A plugin calculator whose own code raises is left out of the launch size.
+def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Building the window opens built-in pages only, and opens on a built-in one.
 
-    Measuring runs every calculator before the user chooses one. One plugin's error, of
-    any kind, mustn't stop the window, or the other calculators (ADR-0019).
+    A plugin's page runs the plugin's code, so a broken plugin fails only when chosen,
+    though its family sorts first ("Acme Tools") and the launch size is measured
+    (ADR-0019, ADR-0021 §3).
     """
     from caddcalc.calculators import default_registry
     from caddcalc.core import Context
+    from caddcalc.gui.window import BUILTIN_IDS, MainWindow
     from tests.test_domains import ACME, _AcmeWidget
 
     class Failing(_AcmeWidget):
@@ -502,8 +504,40 @@ def test_a_failing_plugin_calculator_leaves_the_window_working() -> None:
     registry = default_registry(load_plugins=False)
     registry.register_domain(ACME)
     registry.register(Failing)
-    with pytest.warns(UserWarning, match=r"leaves out Failing \(acme\.failing\)"):
-        window = open_window(registry)
+    opened: list[str] = []
+    select_calculator = MainWindow.select_calculator
+
+    def spy(window: MainWindow, calc_id: str) -> None:
+        opened.append(calc_id)
+        select_calculator(window, calc_id)
+
+    monkeypatch.setattr(MainWindow, "select_calculator", spy)
+    window = open_window(registry)
+    assert opened and set(opened) <= BUILTIN_IDS, opened
+    assert window.calculator is not None and window.calculator.id in BUILTIN_IDS
+    with pytest.raises(ZeroDivisionError):
+        window.select_calculator("acme.failing")  # only once it's chosen
+    window.select_calculator("sheet_metal.bend_allowance")
+    window.show()
+    _settle(window)
+    assert window.results.fields["bend_allowance"].value.text() not in ("", "—")
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_a_page_that_fails_to_measure_leaves_the_window_working(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The measure's isolation boundary: a page whose code raises is left out of it."""
+    from caddcalc.calculators.sheet_metal import VDieOpening
+    from caddcalc.core import Context
+
+    def failing(_self: Any, _ctx: Context) -> None:
+        raise ZeroDivisionError("a calculator's own error")
+
+    monkeypatch.setattr(VDieOpening, "compute", failing)
+    with pytest.warns(UserWarning, match=r"leaves out .*\(sheet_metal\.v_die_opening\)"):
+        window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
     window.show()
     _settle(window)

@@ -41,7 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from caddcalc.calculators import default_registry
+from caddcalc.calculators import BUILTIN_CALCULATORS, default_registry
 from caddcalc.core import (
     CaddCalcError,
     Calculator,
@@ -119,6 +119,10 @@ ID_ROLE = Qt.ItemDataRole.UserRole
 DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Tree item data holding a family row's domain id."""
 NO_CALCULATORS = "No calculators loaded"
+BUILTIN_IDS = frozenset(calc.id for calc in BUILTIN_CALCULATORS)
+"""The built-in calculators: the only ones whose pages open before the user chooses one.
+
+A plugin's page runs the plugin's code, so it opens only when chosen (ADR-0019)."""
 """Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
@@ -340,12 +344,15 @@ class MainWindow(QMainWindow):
         self.addAction(self.copy_all_action)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
-        # The launch height covers the tallest calculator page, measured once, here, while
-        # the welcome screen shows (ADR-0021 §3, amendments).
+        # The launch height covers the tallest built-in calculator page, measured once,
+        # here, while the welcome screen shows (ADR-0021 §3, amendments).
         self.launch_pages = self._tallest_calculator_page()
         launch = self.launch_size()
         self.resize(round(launch.width), round(launch.height))
-        first = next(self._calculator_items(), None)
+        # It opens on the first built-in calculator, though a plugin's family sorts first.
+        items = list(self._calculator_items())
+        first = next((i for i in items if i.data(0, ID_ROLE) in BUILTIN_IDS), None)
+        first = first or next(iter(items), None)
         if first is not None:
             self.tree.setCurrentItem(first)
 
@@ -517,23 +524,27 @@ class MainWindow(QMainWindow):
         return launch_size(layout, text_unit(font), line_spacing(font), handle, self.launch_pages)
 
     def _tallest_calculator_page(self) -> int:
-        """Return the window height the tallest calculator page needs at the launch width.
+        """Return the window height the tallest built-in calculator page needs to launch.
 
-        Each calculator's page is laid out, hidden, at the page's cap, and measured with
-        its document at its least: the height it fits in without scrolling. The window's
-        bars are added as its layout places them. A family's settings page doesn't count:
-        it has no results to keep in view, so it may scroll (ADR-0021 §3).
+        Each built-in calculator's page is laid out, hidden, at the page's cap, and
+        measured with its document at its least: the height it fits in without
+        scrolling. The window's bars are added as its layout places them. A plugin's page
+        isn't opened, as that would run its code before it's chosen; a taller one scrolls
+        as a whole (rule C). Nor does a family's settings page count: it has no results
+        to keep in view, so it may scroll (ADR-0021 §3).
 
-        A calculator whose page fails to show is left out, with a warning: it's measured
-        here only for the launch size, and would otherwise fail only when chosen.
+        A page that fails to show is left out, with a warning: it's measured here only for
+        the launch size, and would otherwise fail only when chosen.
         """
         page, width = self.page_scroll.widget(), self.page_scroll.maximumWidth()
         if page is None:
             return 0
         tallest = 0
         for calc in self.registry:
-            # An isolation boundary: a plugin's code runs here, before the user chose it,
-            # and its own error mustn't stop the window, or every other calculator.
+            if calc.id not in BUILTIN_IDS:
+                continue
+            # An isolation boundary, as a safety net: an error measuring one page mustn't
+            # stop the window, or every other calculator.
             try:
                 self.select_calculator(calc.id)
                 lay_out(page, width)

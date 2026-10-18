@@ -52,9 +52,10 @@
    * width: `ceil(list_width_chars · ch + handle + page_max_chars · ch)` (1100 at 9 pt:
      280.5 + 5 + 814 = 1099.5, rounded up)
    * height: `launch_lines · line spacing` (736 at 9 pt; 720 as first approved, see Amendments),
-     or the height the tallest calculator page needs at the launch width, with the window's
-     bars, if that's more (KI-024, see Amendments). Settings pages don't count: they have
-     no results to keep in view, so they may scroll.
+     or the height the tallest built-in calculator page needs at the launch width, with
+     the window's bars, if that's more (KI-024, see Amendments). Plugin pages aren't
+     measured, so no plugin code runs before it's chosen; settings pages don't count,
+     having no results to keep in view, so they may scroll.
 2. Fit it to the available geometry of the screen the welcome card is on (or the primary
    screen), less the platform frame (from the native window, before it's shown) and
    `screen_margin` on each side. The welcome card is to be checked to be centred on that
@@ -243,7 +244,8 @@ UI/UX ruled on KI-024 (its layout-fixes review): the launch shows every calculat
 without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
 
 * **The rule.** The launch height is `max(launch_lines · line spacing, the tallest
-  calculator page's height at the launch width)`, capped by the screen's fit as before.
+  built-in calculator page's height at the launch width)`, capped by the screen's fit
+  as before.
   A page's height is the height it fits in with its document at its least (rule C),
   plus the window's menu and status bars. `launch_lines` is now the floor.
 * **Calculator pages only.** A family's settings page has no results; it's a form with
@@ -260,11 +262,17 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   (`pages.lay_out`); the second pass gives exactly the heights the shown page has,
   where one pass overstates the first page measured. The fit test and the page scroll
   area share one measure (`pages.fit_height`).
-* **A failing calculator is left out.** Measuring runs every calculator's page before
-  the user chooses one, plugins included. One whose own code raises any error is left
-  out of the launch size, with a warning, as an isolation boundary: before, it failed
-  only when chosen, and it mustn't stop the window or the other calculators (Support &
-  Review's M1; ADR-0019).
+* **Built-in calculators only.** Measuring opens each page before the user chooses
+  it, and a plugin's page runs the plugin's code, so only built-in pages are measured:
+  no plugin code runs before its calculator is chosen, and the cost stays fixed as
+  plugins are added. A plugin page taller than the launch height scrolls as a whole
+  when opened (rule C). The window opens on the first built-in calculator, though a
+  plugin's family sorts first, so a broken plugin's page isn't the first one shown
+  (Support & Review).
+* **A failing page is left out.** As a safety net, a page whose code raises any error
+  while it's measured is left out of the launch size, with a warning, as an isolation
+  boundary: it mustn't stop the window or the other calculators (Support & Review's
+  M1; ADR-0019).
 * **What it does.** On Windows at 9 pt nothing changes: the tallest page, the cone's,
   needs 672 px plus 54 px of bars, 726, under 736. With the offscreen platform's 14 px
   lines, 644 px of lines became 672, and no page scrolls where the cone and segment
@@ -273,4 +281,6 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
 * **Tests.** No calculator page scrolls at the launch size, with the platform's font
   and with one whose lines are under 16 px, everywhere; a mutation back to lines alone
   fails both. Each page's measured height is its shown height, which one layout pass
-  fails, and a plugin calculator that raises leaves the window and the others working.
+  fails. Building the window opens no plugin page, and opens on a built-in one, though
+  the plugin's family sorts first; and a built-in page that raises while measured is
+  left out, the window and the others working.
