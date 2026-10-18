@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from itertools import pairwise
-from typing import Any
+from typing import Any, override
 
 import pytest
 
@@ -187,7 +187,7 @@ def test_fields_and_buttons_have_names_a_screen_reader_says_in_full() -> None:
     assert field.accessibleName() == "Bend allowance, BA: 0.3119 inches"
     assert field.copy_button.accessibleName() == "Copy Bend allowance"
     assert field.copy_button.toolTip() == "Copy Bend allowance", "the label as written"
-    assert field.copy_button.accessibleDescription() == field.accessibleName()
+    assert field.copy_button.accessibleDescription() == "BA: 0.3119 inches", "not the label twice"
     assert window.results.copy_all_button.accessibleName() == "Copy all results"
     window.select_calculator("sheet_metal.truncated_cone_layout")
     angle = window.results.fields["sweep_angle"]
@@ -209,13 +209,79 @@ def _next_tab_stop(widget: Any) -> Any:
     return None
 
 
-def test_tab_goes_through_the_inputs_then_each_copy_button_then_copy_all() -> None:
+def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
+    """Inputs, each copy button, Copy all, then the document (UI/UX's k4 M3)."""
+    from PySide6.QtCore import Qt
+
     window = _bend_window()
     stops = [edit for _p, edit in window.fields.values()]
     stops += [f.copy_button for f in window.results.fields.values()]
-    stops.append(window.results.copy_all_button)
+    stops += [window.results.copy_all_button, window.output]
     for before, after in pairwise(stops):
         assert _next_tab_stop(before) is after, (before, after)
+    assert window.page_scroll.focusPolicy() == Qt.FocusPolicy.NoFocus, "no focus-less stop"
+    window.close()
+
+
+def test_a_focused_copy_button_draws_no_focus_of_its_own() -> None:
+    """Its field's ring is the one focus indicator (UI/UX's k4 M2).
+
+    Whether a style draws a tool button's focus varies by style and platform, and none
+    does offscreen here, so this checks what the button asks its style to draw: a field's
+    button never asks for focus, and Copy all, which has no ring, still does.
+    """
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication, QProxyStyle, QStyle
+
+    class Recording(QProxyStyle):
+        def __init__(self) -> None:
+            super().__init__()
+            self.focused: list[bool] = []
+
+        @override
+        def drawComplexControl(
+            self, control: Any, option: Any, painter: Any, widget: Any = None
+        ) -> None:
+            if control == QStyle.ComplexControl.CC_ToolButton:
+                self.focused.append(bool(option.state & QStyle.StateFlag.State_HasFocus))
+            super().drawComplexControl(control, option, painter, widget)
+
+    window = _bend_window()
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+    for button, asks in (
+        (window.results.fields["bend_allowance"].copy_button, False),
+        (window.results.copy_all_button, True),
+    ):
+        style = Recording()
+        button.setStyle(style)
+        button.setFocus(Qt.FocusReason.TabFocusReason)
+        QApplication.processEvents()
+        assert button.hasFocus()
+        button.grab()
+        assert style.focused and set(style.focused) == {asks}, button.accessibleName()
+    window.close()
+
+
+def test_the_copied_message_stays_long_enough_to_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The check shows for copied_ms; the status bar's words for longer (UI/UX's k4 L1)."""
+    from caddcalc.gui.ui_style import ui_style
+
+    tokens = ui_style().result_field
+    window = _bend_window()
+    shown: list[tuple[str, int]] = []
+    # On the class, not the window's status bar: undoing a patch on a Qt object after the
+    # window is deleted writes to a deleted object, which crashes on Linux.
+    from PySide6.QtWidgets import QStatusBar
+
+    def record(_bar: Any, text: str, ms: int = 0) -> None:
+        shown.append((text, ms))
+
+    monkeypatch.setattr(QStatusBar, "showMessage", record)
+    window.results.fields["bend_allowance"].copy_button.click()
+    assert shown == [("Copied BA = 0.3119 to the clipboard", tokens.copied_status_ms)]
+    assert tokens.copied_status_ms > tokens.copied_ms
     window.close()
 
 

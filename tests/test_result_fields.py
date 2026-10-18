@@ -518,3 +518,45 @@ def test_the_window_never_shrinks_below_a_title_a_method_row_and_one_field() -> 
     least = window.title.sizeHint().height() + window.method_row.sizeHint().height() + field
     assert window.page_scroll.height() >= least
     window.close()
+
+
+def test_the_panel_is_capped_and_centred_in_a_wide_window() -> None:
+    """Approved 2026-10-18: nothing changes at 1100 × 720; wider, the panel stops growing."""
+    from caddcalc.gui.ui_style import ui_style
+
+    cap = ui_style().result_field.panel_max_width
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    panel = window.results
+    page = panel.parentWidget()
+    assert panel.width() < cap and panel.x() == 0, "the default window is as it was"
+    assert panel.width() == page.width(), "the whole page's width, as before"
+    window.resize(2200, 900)
+    _settle(window)
+    assert panel.width() == cap
+    left, right = panel.x(), page.width() - panel.x() - panel.width()
+    assert abs(left - right) <= 1, (left, right)
+    window.close()
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
+    """Sources in the Inputs grid and on a note's last line (UI/UX's k4 M1)."""
+    from caddcalc.core import Note, NoteKind, Reference
+    from caddcalc.gui.style_tokens import contrast, luminance, palette_color
+    from caddcalc.gui.ui_style import secondary_text
+    from caddcalc.gui.window import result_html
+
+    color = secondary_text(scheme)
+    background = palette_color("background", scheme)
+    assert contrast(luminance(color), luminance(background)) >= 4.5
+    expected = {"light": "#646662", "dark": "#BCBEBC"}[scheme]
+    assert color == expected, "UI/UX's figures: 5.80:1 and 8.32:1"
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    note = Note(NoteKind.LIMIT_EXCEEDED, "Too tight.", (Reference("Shop handbook"),))
+    result = window.result
+    from dataclasses import replace
+
+    html = result_html(window.calculator, replace(result, notes=(note,)), window.prefs, scheme)
+    assert "<small>" not in html
+    assert f"color:{color}'>default<" in html and f"color:{color}'>Sources: Shop handbook<" in html
+    window.close()

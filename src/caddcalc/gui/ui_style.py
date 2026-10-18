@@ -21,6 +21,7 @@ from caddcalc.gui.style_tokens import (
     ASSETS,
     Check,
     StyleError,
+    blend,
     check_bool,
     check_choice,
     check_number,
@@ -28,6 +29,7 @@ from caddcalc.gui.style_tokens import (
     check_spacing,
     check_spacing_pair,
     check_text,
+    palette_color,
     parse_tables,
 )
 
@@ -67,6 +69,8 @@ class ResultFieldTokens:
     """Between the frame and the focus ring, so the ring never merges with an outline."""
     copied_ms: int
     """How long the copied check shows, in milliseconds."""
+    copied_status_ms: int
+    """How long the status bar says what was copied, in milliseconds: long enough to read."""
     value_weight: str
     tabular_figures: bool
     decimal_align: bool
@@ -79,6 +83,12 @@ class ResultFieldTokens:
     title_scale: float
     """The "Results" title's size, a multiple of the body text's: the document's headings'
     size, so the panel's title reads as one of them."""
+    secondary_text_opacity: float
+    """Secondary text, such as a value's source, is ``text_role`` at this opacity over
+    ``fill_role``: lighter than the body text, at the body's size, and still 4.5:1."""
+    panel_max_width: float
+    """The widest the results panel gets; it's centred in a wider page, so a maximized
+    window doesn't spread each label and number far apart."""
 
 
 @dataclass(frozen=True)
@@ -139,6 +149,7 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "focus_width": _WIDTH,
             "focus_gap": _WIDTH,
             "copied_ms": check_number(100, 10_000, whole=True),
+            "copied_status_ms": check_number(100, 30_000, whole=True),
             "value_weight": check_choice(WEIGHTS),
             "tabular_figures": check_bool,
             "decimal_align": check_bool,
@@ -146,6 +157,8 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "copy_icon": check_icon,
             "copied_icon": check_icon,
             "title_scale": check_number(1, 3),
+            "secondary_text_opacity": check_number(0, 1),
+            "panel_max_width": check_number(320, 4096),
         },
     ),
     "note_outline": (
@@ -219,3 +232,14 @@ def load_ui_style(path: Path = STYLE_FILE) -> UiStyle:
 def ui_style() -> UiStyle:
     """Return the shipped tokens, read and checked once."""
     return load_ui_style()
+
+
+def secondary_text(scheme: str, tokens: ResultFieldTokens | None = None) -> str:
+    """Return secondary text's colour in ``scheme``, such as a value's source.
+
+    It's the text role at ``secondary_text_opacity`` over the fields' surface, ADR-0016's
+    role-plus-opacity pattern, so it's lighter without a new palette colour.
+    """
+    tokens = ui_style().result_field if tokens is None else tokens
+    text = palette_color(tokens.text_role, scheme)
+    return blend(text, palette_color(tokens.fill_role, scheme), tokens.secondary_text_opacity)

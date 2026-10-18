@@ -26,7 +26,7 @@ from caddcalc.core import (
     SourceKind,
     ValueOrigin,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_note, format_value
+from caddcalc.core.formatting import DisplayPrefs, describe_note, value_parts
 
 IN = 25.4
 PRACTICE = "Form across the grain where possible"
@@ -436,7 +436,7 @@ def test_a_limit_lead_keeps_its_scope_words_within_its_budget(
     assert "the recommended minimum this check uses" in text, "L1"
     assert f"for {name} at " in text, "L2: the material named as the data names it"
     assert limit.phrases["practice"] in text and "practice" in limit.phrases["practice"], "L2"
-    shown = [format_value(v, d, prefs) for v, d in limit.quantities.values()]
+    shown = [value_parts(v, d, prefs).with_unit for v, d in limit.quantities.values()]
     own = len(text) - sum(map(len, shown)) - len(name) - len(limit.phrases["practice"])
     assert own <= LEAD_WORDS, "L3: the template's own words"
     if (material, unit, fraction) == ("al:6061", "in", None):
@@ -448,6 +448,9 @@ def test_a_notes_values_are_named_fields_shown_in_the_display_units() -> None:
     (limit,) = notes(bend(0.063, 0.05, "al:6061"), LIMIT)
     assert set(limit.quantities) == {"R", "minimum", "T"}
     assert "0." not in limit.text, "the template holds no number"
+    fractions = DisplayPrefs(fraction_denominator=64)
+    assert "≈" not in said(limit, fractions), "no fraction inside a sentence (S&R's k4 M1)"
+    assert "inside radius 0.0500 in is below 0.1600 in," in lead(limit, fractions)
     assert "1.2700 mm" in lead(limit, DisplayPrefs(length_unit="mm"))
     data = limit.to_dict()
     assert data["quantities"]["R"] == {"value": 0.05 * IN, "unit": "mm", "dimension": "length"}

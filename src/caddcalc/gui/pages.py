@@ -89,6 +89,9 @@ class PageScrollArea(QScrollArea):
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # No Tab stop of its own: it would show no focus (WCAG 2.4.7), and Tab already
+        # scrolls each focused widget into view.
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
     def _fit(self) -> None:
         """Show the document in full exactly when the page can't fit with it filling."""

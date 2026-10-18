@@ -298,10 +298,11 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     line break inside a cell becomes a space, since tab-separated text can't escape them.
 
     A text cell that a spreadsheet would read as a formula, one starting with ``=``,
-    ``+``, ``-``, or ``@`` (or their full-width forms), after any spaces, gets a leading
-    apostrophe, which spreadsheets take as "this is text" (OWASP, "CSV Injection"). A
-    tab or line break, which OWASP also lists, is already a space here. The value cell
-    never gets one: a negative number must paste as a number.
+    ``+``, ``-``, or ``@`` (or their full-width forms), after any whitespace, gets a
+    leading apostrophe, which spreadsheets take as "this is text" (OWASP, "CSV
+    Injection"). So does one starting with ``"``, which a paste might take as the start of
+    a quoted field. A tab or line break, which OWASP also lists, is already a space here.
+    The value cell never gets one: a negative number must paste as a number.
     """
     rows = []
     for output in calc.outputs:
@@ -320,15 +321,16 @@ def _cell(text: str) -> str:
     return text.replace("\r\n", "\n").translate(_CELL_BREAKS)
 
 
-_FORMULA_STARTS = tuple("=+-@\uff1d\uff0b\uff0d\uff20")
+_FORMULA_STARTS = tuple('=+-@\uff1d\uff0b\uff0d\uff20"')
 """What a spreadsheet may read a cell as a formula from: = + - @, and the full-width
-forms some locales' spreadsheets take for them (OWASP, "CSV Injection")."""
+forms some locales' spreadsheets take for them (OWASP, "CSV Injection"), and a quote,
+which may open a quoted field."""
 
 
 def _text_cell(text: str) -> str:
     """Return ``text`` as one TSV text cell, never read as a formula."""
     cell = _cell(text)
-    return f"'{cell}" if cell.lstrip(" ").startswith(_FORMULA_STARTS) else cell
+    return f"'{cell}" if cell.lstrip().startswith(_FORMULA_STARTS) else cell
 
 
 FIELD_DECIMALS = 6
@@ -490,7 +492,9 @@ def describe_note(note: Note, prefs: DisplayPrefs) -> NoteText:
     """
 
     def show(value: float, dimension: Dimension) -> str:
-        return format_value(value, dimension, prefs)
+        # The number and its unit; a fraction beside it would break the sentence, and the
+        # result fields show it already.
+        return value_parts(value, dimension, prefs).with_unit
 
     cited = " · ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in note.references)
     return NoteText(

@@ -91,7 +91,7 @@ from caddcalc.gui.icons import (
 from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
 from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack
 from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
-from caddcalc.gui.ui_style import ui_style
+from caddcalc.gui.ui_style import secondary_text, ui_style
 from caddcalc.gui.welcome import WelcomeScreen
 
 ID_ROLE = Qt.ItemDataRole.UserRole
@@ -284,8 +284,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(PRODUCT_NAME)
         self.resize(1100, 720)
-        self.focus_ring = FocusRing()
-        """Focus around whichever outlined input has it (WCAG 2.4.7)."""
+        self.focus_ring = FocusRing(self)
+        """Focus around whichever outlined input has it (WCAG 2.4.7); the window owns it."""
         self._build_ui()
         self._build_menu()
         self._apply_icons()
@@ -371,7 +371,13 @@ class MainWindow(QMainWindow):
         calc_col.setContentsMargins(0, 0, 0, 0)
         calc_col.addLayout(example_row)
         calc_col.addWidget(self.form_box)
-        calc_col.addWidget(self.results)
+        # The panel grows to its cap, then stays centred: the space beyond is shared.
+        results_row = QHBoxLayout()
+        results_row.setContentsMargins(0, 0, 0, 0)
+        results_row.addStretch(0)
+        results_row.addWidget(self.results, 1)
+        results_row.addStretch(0)
+        calc_col.addLayout(results_row)
         calc_col.addWidget(self.output, 1)
 
         self.settings_box = QGroupBox("Family settings")
@@ -610,13 +616,13 @@ class MainWindow(QMainWindow):
         self.recompute()
 
     def _chain_tabs(self) -> None:
-        """Tab through the inputs, then each result's copy button, then Copy all (§5)."""
+        """Tab down the page: the inputs, each result's copy button, Copy all, the document."""
         stops: list[QWidget] = []
         for key, (_p, edit) in self.fields.items():
             stops.append(edit)
             if key in self.inherit_boxes:
                 stops.append(self.inherit_boxes[key])
-        stops += self.results.focus_chain()
+        stops += [*self.results.focus_chain(), self.output]
         for before, after in pairwise(stops):
             QWidget.setTabOrder(before, after)
 
@@ -625,8 +631,8 @@ class MainWindow(QMainWindow):
             self.results.copy_all()
 
     def _show_copied(self, message: str) -> None:
-        """Show a copy's message for as long as its check shows (R4)."""
-        self.statusBar().showMessage(message, round(ui_style().result_field.copied_ms))
+        """Show a copy's message long enough to read; its check shows for less (R4)."""
+        self.statusBar().showMessage(message, round(ui_style().result_field.copied_status_ms))
 
     def _inherits(self, calc: Calculator, p: Param) -> bool:
         """Whether ``p`` takes its domain's value in ``calc``, rather than overriding it."""
@@ -945,12 +951,21 @@ class MainWindow(QMainWindow):
         return problems
 
     def recompute(self) -> None:
-        """Run the calculator on the form's values, and show the result or the input errors."""
+        """Run the calculator on the form's values, and show the result or the input errors.
+
+        The focus ring follows the outlines only once the run is shown, so nothing about
+        the ring can stop a run or leave an old result on screen.
+        """
+        try:
+            self._recompute()
+        finally:
+            self.focus_ring.refresh()  # an outline may have come or gone
+
+    def _recompute(self) -> None:
         calc = self.calculator
         if calc is None:
             return
         problems = self._refresh_fields(calc)
-        self.focus_ring.refresh()  # an error outline came or went
         scheme = current_scheme()
         self.result = None
         if problems:
@@ -972,7 +987,6 @@ class MainWindow(QMainWindow):
             return
         for key, outline in strongest(self.result.notes, self.fields).items():
             _set_outline(self.fields[key][1], outline)
-        self.focus_ring.refresh()
         self.results.show_result(self.result, self.prefs)
         self.output.setHtml(
             result_html(calc, self.result, self.prefs, scheme, include_results=False)
@@ -1203,7 +1217,11 @@ class MainWindow(QMainWindow):
                         if key in self.overrides.get(calc.id, set())
                     ],
                     derived=_derived_html(
-                        setting, derived, overridden=key in family.values, prefs=self.prefs
+                        setting,
+                        derived,
+                        overridden=key in family.values,
+                        prefs=self.prefs,
+                        scheme=current_scheme(),
                     ),
                     applied=self.domain_settings.origin(domain, key),
                 )
@@ -1345,7 +1363,6 @@ class MainWindow(QMainWindow):
             _set_outline(edit, error_outline() if problem else None)
             if problem:
                 problems.append(problem)
-        self.focus_ring.refresh()
         self.domain_note.setText(
             _domain_note_html(
                 domain,
@@ -1355,6 +1372,7 @@ class MainWindow(QMainWindow):
                 scheme=current_scheme(),
             )
         )
+        self.focus_ring.refresh()  # last, once the page says what's wrong
 
 
 def _img(name: str, role: str, scheme: Scheme) -> str:
@@ -1432,7 +1450,12 @@ def _derived_entry(derived: DerivedValue, dimension: Dimension) -> TypedValue:
 
 
 def _derived_html(
-    setting: Param, derived: DerivedValue | None, *, overridden: bool, prefs: DisplayPrefs
+    setting: Param,
+    derived: DerivedValue | None,
+    *,
+    overridden: bool,
+    prefs: DisplayPrefs,
+    scheme: Scheme = "light",
 ) -> str:
     """Return what a choice derives for a setting: the value, its source, caution, and work."""
     if derived is None:
@@ -1444,7 +1467,7 @@ def _derived_html(
     else:
         lines = [f"<b>From {source}:</b> {value}"]
     if derived.note is not None:
-        lines.append(_note_html(derived.note, prefs))
+        lines.append(_note_html(derived.note, prefs, scheme))
     if derived.work is not None:
         symbolic, numeric, shown = render_step(derived.work, None, prefs)
         work = " = ".join(x for x in (f"{setting.symbol}", symbolic, numeric, shown) if x)
@@ -1529,11 +1552,16 @@ def _domain_note_html(
     return "".join(parts)
 
 
-def _note_html(note: Note, prefs: DisplayPrefs) -> str:
+def _secondary(text: str, scheme: Scheme) -> str:
+    """Return ``text``, escaped, in the secondary text colour: body size, lighter, 4.5:1."""
+    return f"<span style='color:{secondary_text(scheme)}'>{escape(text)}</span>"
+
+
+def _note_html(note: Note, prefs: DisplayPrefs, scheme: Scheme = "light") -> str:
     """Return a note as rich text: its heading and lead, its detail, then its sources.
 
-    The sources are set smaller, not in a fainter colour: the palette's muted role is
-    under 4.5:1 for text (ADR-0017 F1).
+    The sources are in the secondary text colour, at the body's size (ADR-0017,
+    amendments): the palette's muted role is under 4.5:1 for words.
     """
     text = describe_note(note, prefs)
     first = escape(text.lead)
@@ -1543,7 +1571,7 @@ def _note_html(note: Note, prefs: DisplayPrefs) -> str:
     if text.detail:
         lines.append(escape(text.detail))
     if text.sources:
-        lines.append(f"<small>{escape(text.sources)}</small>")
+        lines.append(_secondary(text.sources, scheme))
     return "<br>".join(lines)
 
 
@@ -1578,7 +1606,7 @@ def result_html(
         # The kind's icon marks each note; there's no list bullet as well (F2).
         warn = "".join(
             f"<tr><td valign='top'>{_img(*_NOTE_ICONS[note.kind], scheme)}</td>"
-            f"<td{_text_style(note.kind, scheme)}>{_note_html(note, prefs)}</td></tr>"
+            f"<td{_text_style(note.kind, scheme)}>{_note_html(note, prefs, scheme)}</td></tr>"
             for note in strongest_first(result.notes)
         )
         parts.append(
@@ -1592,11 +1620,11 @@ def result_html(
     for p in calc.params_for(result.method):
         shown = value_parts(result.inputs[p.key], p.dimension, prefs)
         number, unit = (shown.with_unit, "") if shown.unit_close_up else (shown.number, shown.unit)
-        source = escape(describe_source(result.source_of(p.key)))
+        source = _secondary(describe_source(result.source_of(p.key)), scheme)
         input_rows.append(
             f"<tr><td><b>{escape(p.symbol)}</b></td><td>{escape(p.label)}</td>"
             f"<td align='right'>{escape(number)}</td><td>{escape(unit)}</td>"
-            f"<td><small>{source}</small></td></tr>"
+            f"<td>{source}</td></tr>"
         )
     parts.append(f"<h3>Inputs</h3><table cellpadding='4'>{''.join(input_rows)}</table>")
     work = []

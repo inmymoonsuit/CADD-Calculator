@@ -181,6 +181,12 @@ by hand before a release on each platform:
   without one.
 * **Displays:** check 100%, 150%, and 200% scaling, and a small screen (e.g. 1366 × 768 at
   150%), where the card should shrink to fit.
+* **The result fields' menu keys (ADR-0017):** on a real Windows window, check that the
+  Menu key and Shift+F10 on a focused copy button open its menu of copy forms. Offscreen
+  tests send the menu event itself, not the platform's key-to-menu step.
+* **Screen readers (ADR-0017):** check that Narrator or NVDA reads a result field ("Bend
+  allowance, BA: 0.3119 inches"), its copy button with its value, and the announcement
+  after a copy. The tests check the names and the announcement calls, not the speech.
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
@@ -193,10 +199,12 @@ accepts only "." too.
 
 * **Workaround:** set the spreadsheet's import or paste to "." as the decimal separator,
   or paste into a cell formatted as text and convert it.
-* **Planned fix:** the localization ADR in draft (ADR-0020, its L4) takes the separator
-  from the user's regional settings on screen, in typed input, and in copies, and adds a
-  "Copy for CAD" form that keeps ".". Everything that reads a shown number's decimals
-  already asks one helper, `core.formatting.decimal_separator()`.
+* **Planned fix:** ADR-0020 (accepted, its L4). Numbers the app formats show, and are
+  typed, with the user's regional decimal separator; numbers quoted from a source stay
+  as published. Copy and Ctrl+C keep ".", which CAD reads; Copy all uses the locale's
+  separator, for a spreadsheet, and the menu gains a "Copy 0,3119" form. JSON keeps ".".
+  Everything that reads a shown number's decimals already asks one helper,
+  `core.formatting.decimal_separator()`.
 
 ## Resolved
 

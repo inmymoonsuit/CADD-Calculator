@@ -24,6 +24,7 @@ focus_role = "focus_ring"
 focus_width = 2
 focus_gap = 1                      # between the frame and the focus ring
 copied_ms = 1500                   # how long the copied check shows
+copied_status_ms = 4000            # how long the status bar says what was copied
 value_weight = "bold"
 tabular_figures = true
 decimal_align = true
@@ -31,6 +32,8 @@ document_min_height = 96           # the document's least height; below it, the 
 copy_icon = "copy"
 copied_icon = "check"
 title_scale = 1.2                  # the Results title: the document's h3, which Qt sets at 1.2×
+secondary_text_opacity = 0.70      # a source's text: the text role, lighter, still 4.5:1
+panel_max_width = 800              # the panel's widest; about its width at 1100 × 720
 
 [note_outline]                     # a field a note concerns, input or result alike
 width = 2                          # heavier than the 1 px border, so it reads without colour

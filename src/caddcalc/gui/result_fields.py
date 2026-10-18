@@ -44,6 +44,9 @@ from PySide6.QtWidgets import (
     QLabel,
     QMenu,
     QSizePolicy,
+    QStyle,
+    QStyleOptionToolButton,
+    QStylePainter,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -73,6 +76,8 @@ NO_VALUE_SPOKEN = "no value"
 TITLE = "Results"
 FIELD_NAME = "{label}, {symbol}: {value}"
 """A field's accessible name, e.g. "Bend allowance, BA: 0.3119 inches"."""
+VALUE_SPOKEN = "{symbol}: {value}"
+"""A copy button's accessible description, e.g. "BA: 0.3119 inches"."""
 COPY = "Copy {label}"
 """The copy button's tooltip and accessible name, e.g. "Copy Bend allowance"."""
 COPIED = "Copied {symbol} = {text} to the clipboard"
@@ -126,7 +131,29 @@ class _CopyButton(QToolButton):
     A tool button takes Space already; Enter and Copy (Ctrl+C, or Cmd+C on macOS) copy
     the focused field's value too, and nothing else, since the shortcut is the button's
     own key handling rather than a window-wide one.
+
+    Args:
+        parent: Its field, or the panel.
+        ringed: Whether its field's focus ring shows its focus, so it draws none of its
+            own; Copy all, which has no ring, keeps the style's.
     """
+
+    def __init__(self, parent: QWidget, *, ringed: bool) -> None:
+        super().__init__(parent)
+        self.ringed = ringed
+
+    @override
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self.ringed:
+            super().paintEvent(event)
+            return
+        # As QToolButton paints itself, less the focus state: one focus indicator, the
+        # field's ring, rather than the style's inside it too.
+        option = QStyleOptionToolButton()
+        self.initStyleOption(option)
+        option.state &= ~QStyle.StateFlag.State_HasFocus
+        painter = QStylePainter(self)
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ToolButton, option)
 
     @override
     def keyPressEvent(self, event: QKeyEvent) -> None:
@@ -212,7 +239,7 @@ class ResultField(QWidget):
         self.unit = QLabel(self)
         self.fraction = QLabel(self)
         self.fraction.hide()
-        self.copy_button = _CopyButton(self)
+        self.copy_button = _CopyButton(self, ringed=True)
         self.copy_button.setAutoRaise(True)
         button = round(tokens.button_size)
         self.copy_button.setFixedSize(button, button)
@@ -264,9 +291,12 @@ class ResultField(QWidget):
             self.copy_button.setEnabled(True)
             self.copy_button.setToolTip(COPY.format(label=self.output.label))
         spoken = NO_VALUE_SPOKEN if parts is None else spoken_value(parts)
-        name = FIELD_NAME.format(label=self.output.label, symbol=self.output.symbol, value=spoken)
-        self.setAccessibleName(name)
-        self.copy_button.setAccessibleDescription(name)  # said with the button's name
+        symbol = self.output.symbol
+        self.setAccessibleName(
+            FIELD_NAME.format(label=self.output.label, symbol=symbol, value=spoken)
+        )
+        # Said after the button's name, "Copy Bend allowance", so not the label again.
+        self.copy_button.setAccessibleDescription(VALUE_SPOKEN.format(symbol=symbol, value=spoken))
         self.update()
 
     def copy(self, form: CopyForm = CopyForm.VALUE) -> str | None:
@@ -413,7 +443,7 @@ class ResultsPanel(QWidget):
         title_font.setBold(True)
         title_font.setPointSizeF(title_font.pointSizeF() * self.tokens.title_scale)
         self.title.setFont(title_font)
-        self.copy_all_button = _CopyButton(self)
+        self.copy_all_button = _CopyButton(self, ringed=False)
         self.copy_all_button.setText(COPY_ALL)
         self.copy_all_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.copy_all_button.setAutoRaise(True)
@@ -434,8 +464,10 @@ class ResultsPanel(QWidget):
         header.addWidget(self.copy_all_button)
         column.addLayout(header)
         self._column = column
-        # Exactly the title's and the fields' height: never squeezed, never stretched.
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        # Exactly the title's and the fields' height, never squeezed or stretched; as
+        # wide as the page, up to its cap, centred beyond it (ADR-0017, amendments).
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMaximumWidth(round(self.tokens.panel_max_width))
         self.restyle()
         self._sync_copy_all()
 

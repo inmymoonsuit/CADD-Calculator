@@ -49,6 +49,9 @@ token, so the specification can't drift from the code.
   output's own presentation (ADR-0018) will apply there.
 * **Results are never obscured.** The panel is always exactly as tall as its title and
   every field, and has no scroll bar of its own.
+* **Its width is capped** at `panel_max_width`, about its width at 1100 × 720, and it's
+  centred in a wider page, so a maximized window doesn't spread each label and number
+  far apart. The default window is unchanged.
 * The document under the panel starts at Notes, listed strongest first by the outlines'
   ranking: a cited limit, then a warning or an impossibility, then a check that
   couldn't be made. So a short document always opens with the note that matters most.
@@ -83,20 +86,25 @@ token, so the specification can't drift from the code.
   leading apostrophe; the value never does, so a negative number stays a number
   (OWASP, "CSV Injection").
 * **Feedback:** the button's icon becomes a check for `copied_ms`, and nothing else
-  moves; the status bar says, for as long, e.g. "Copied BA = 0.3119 to the clipboard";
-  and screen readers are told the same, politely (`QAccessibleAnnouncementEvent`).
+  moves; the status bar says, for `copied_status_ms`, long enough to read, e.g. "Copied
+  BA = 0.3119 to the clipboard"; and screen readers are told the same, politely
+  (`QAccessibleAnnouncementEvent`).
 
 ## Keyboard and screen readers
 
-* **Tab** goes through the inputs, then each field's copy button in output order, then
-  Copy all.
+* **Tab** goes down the page: the inputs, each field's copy button in output order,
+  Copy all, then the document. The page's scroll area is no Tab stop: it would show no
+  focus, and Tab scrolls each focused widget into view anyway.
+* **One focus indicator:** a field's copy button paints without the style's focus state,
+  so the field's ring alone shows its focus. Copy all, which has no ring, keeps the
+  style's.
 * **Accessible names** are whole sentences with named fields, so they can be translated
   as written, and keep each label as it's written:
   * a field: "Bend allowance, BA: 0.3119 inches", or "…: no value". The unit is said in
     full (`Unit.spoken`), singular only after a shown "1": "1.0000 in" is "1.0000
     inches". A ratio is only its number.
-  * its button: "Copy Bend allowance", with the field's name as its description, so a
-    screen reader says the value with the button
+  * its button: "Copy Bend allowance", described by its value, "BA: 0.3119 inches", so
+    a screen reader says the value with the button and the label only once
   * Copy all: "Copy all results"
 * Every message is a module constant in `result_fields.py`.
 
@@ -111,12 +119,16 @@ token, so the specification can't drift from the code.
     three lines, the detail and sources indented under the lead.
 * **Inputs** (F3) on the fields' grid: symbol, label, value right-aligned, unit, with
   the source after them, set smaller.
-* "Smaller" stands in for muted: the palette's muted role, slate, is under 4.5:1 for
-  text, so it's never used for words.
+* **Sources are lighter, not smaller:** the Inputs' source column and a note's
+  "Sources:" line are at the body's size, in the text role at `secondary_text_opacity`
+  over the fill: #646662 on white (5.80:1) and #BCBEBC on ink (8.32:1), both above
+  4.5:1, and tested. The palette's muted role, slate, is under 4.5:1 for words, so it's
+  never used for them.
 * The document has the fields' surface, `fill_role`, in both themes, so in dark it
   matches the fields rather than Qt's lighter text-pane grey. The "Results" title is
   the size of the document's headings (`title_scale`).
-* The window can't be shorter than a page's title, its method row, and one result field.
+* The window can't be shorter than the least the page shows: the title and the method
+  row, with room for one field.
 
 ## States
 
@@ -167,6 +179,7 @@ heavier than the border.
 | `result_field.focus_width` | 2 | Its width |
 | `result_field.focus_gap` | 1 | Between the frame and the ring |
 | `result_field.copied_ms` | 1500 | How long the copied check shows, in milliseconds |
+| `result_field.copied_status_ms` | 4000 | How long the status bar says what was copied, long enough to read |
 | `result_field.value_weight` | bold | The value's weight |
 | `result_field.tabular_figures` | true | Digits of one width, so columns line up |
 | `result_field.decimal_align` | true | Align the values on their decimal points |
@@ -174,6 +187,8 @@ heavier than the border.
 | `result_field.copy_icon` | copy | The copy button's icon |
 | `result_field.copied_icon` | check | Its icon once it has copied |
 | `result_field.title_scale` | 1.2 | The "Results" title's size against the body text: the document's headings', so it reads as one of them |
+| `result_field.secondary_text_opacity` | 0.7 | Secondary text, such as a value's source, is the text role at this opacity over the fill: #646662 on white (5.80:1) and #BCBEBC on ink (8.32:1) |
+| `result_field.panel_max_width` | 800 | The results panel's widest, centred in a wider page; about its width at 1100 × 720, so the default window is unchanged |
 | `note_outline.width` | 2 | Every note outline's width, on input and result fields |
 | `note_outline.limit_role` | outline_limit | A cited limit is exceeded |
 | `note_outline.limit_style` | solid | Its line |

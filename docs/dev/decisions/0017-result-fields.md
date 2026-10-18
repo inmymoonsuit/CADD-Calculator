@@ -1,10 +1,11 @@
 # ADR-0017: Result fields, one boxed, copyable component for every calculator
 
-* **Status:** **Accepted, and built** (slices k1–k5, 2026-10-17; see Amendments). On
+* **Status:** **Accepted, and built** (slices k1–k6, 2026-10-17 and 18; see Amendments). On
   2026-10-17 the maintainer approved R1–R6 as recommended, and the optional findings
-  F1–F3 as in scope, and later refined R3 (results are never obscured). F4 is a
-  follow-up, and F5 is KI-022, with ADR-0020's L4 as its planned fix. Drafted by the
-  UI/UX & Design session; the Engine checked it against the code and built it.
+  F1–F3 as in scope, and later refined R3 (results are never obscured) and capped the
+  panel's width. F4 is a follow-up, and F5 is KI-022, with ADR-0020's L4 (accepted) as
+  its planned fix. Drafted by the UI/UX & Design session; the Engine checked it against
+  the code and built it.
 * **Date:** 2026-10-17
 * **Builds on:** ADR-0016 (the style-token discipline), ADR-0004 (Result and provenance),
   ADR-0005 (units and display), ADR-0003 (layers), [design/palette.md](../design/palette.md)
@@ -497,10 +498,11 @@ From UI/UX & Design's reviews of k2b and k3:
   is a style sheet border, which replaces the native frame and its focus indicator, and a
   `QLineEdit:focus` rule would hide the outline while focused. So one `FocusRing` per
   window (`gui/focus_ring.py`) follows the keyboard focus and draws the result fields'
-  ring, `focus_ring`, 2 px, 1 px gap, outside an input marked `OUTLINED`. It's a child of
-  the input's parent, so it scrolls and clips with it, and ignores the mouse. Every
-  outline goes through `window._set_outline()`, which sets the style sheet and the mark,
-  and the ring refreshes after outlines change.
+  ring, `focus_ring`, 2 px, 1 px gap, outside an input marked `OUTLINED`, and ignores
+  the mouse. The window owns it; while it rings an input it's a child of that input's
+  parent, so it scrolls and clips with the input, and it goes back to the window when
+  that parent goes (as amended in k6). One helper in `gui/window.py` sets every outline
+  and its mark, and the ring refreshes after outlines change.
 * **k2b L1, L3–L6:** the stale "focus rings" wording on amber is gone from palette.toml
   and palette.md; palette.md says `outline_error` equals `outline_limit` on purpose; the
   ΔE test adds the hover border role, read from `ui_style`; the doc-quote test runs both
@@ -516,11 +518,54 @@ From UI/UX & Design's reviews of k2b and k3:
   (`painting.frame_within`), which also stops the ring losing a row at its top and left
   at 150%, where 2 px of ring and 1 px of gap need 5 device pixels, not the 4.5 the
   layout keeps.
-* **The k3b check:** the window's least height is a page's title, its method row, and
-  one result field; with the page scroll, it had fallen to 112 px.
+* **The k3b check:** the window's least height is the least the page shows: the title
+  and the method row, with room for one field. With the page scroll, it had fallen to
+  112 px.
 * **Docs:** the user guide's "Results and copying"; KI-022 for the decimal separator (F5);
   this ADR's status.
 * Tests check each fix, and each was checked by removing it: the ring and the outline
   together, the ring following focus and outlines, the title against the document's
   heading, the document's surface in dark, the dashes, the ring at 150%, and the least
   height.
+
+### 2026-10-18: the reviews of k3c–k5, and the width cap (k6)
+
+From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, and k5:
+* **The focus ring's lifecycle (S&R k5 H1, M1).** A form rebuilt while the ring showed,
+  for example by a change of units, left it holding a deleted input, so every later
+  refresh raised and results stopped updating: a stale result on screen.
+  * The ring now follows its input's `destroyed` signal, and checks that an input still
+    exists before letting it go.
+  * `recompute()` refreshes the ring only after the run is shown, in a `finally`, so
+    nothing about the ring can stop a run.
+  * The window owns the ring, which goes back to the window when an input's parent goes,
+    so it's deleted with the window and never outlives it (KI-019's class).
+  * Tests: a change of units while the ring shows, then live results; the ring deleted
+    with its window, ringing or not; closing with the ring showing, then another window.
+* **Notes and copying (S&R k4):**
+  * A note's values are filled with their number and unit only, never the "(≈ 3/64")"
+    fraction, which broke the sentence; the result fields show it. The budget test reads
+    them the same way.
+  * A note's fields are names alone: a format (`{R:.2f}`) or a conversion (`{R!r}`) is
+    refused, since values are filled as text.
+  * Copy all's formula guard looks past any whitespace, and also guards a leading `"`.
+* **What people see (UI/UX k4):**
+  * Sources are at the body's size, set apart by colour: the text role at
+    `secondary_text_opacity` 0.70, #646662 on white (5.80:1) and #BCBEBC on ink
+    (8.32:1). That also fixes their 2 px baseline lift, and corrects F1's "muted".
+  * A field's copy button paints without the style's focus state, so the field's ring is
+    the one focus indicator. Whether a style draws a tool button's focus varies, so the
+    test checks the state the button hands its style.
+  * Tab goes on from Copy all to the document, and the page's scroll area, which showed
+    no focus, is no longer a Tab stop.
+  * The status message has its own duration, `copied_status_ms` (4 s), long enough to
+    read; the check stays at `copied_ms`.
+  * A copy button's description is the value alone, "BA: 0.3119 inches", so the label
+    isn't said twice.
+* **The width cap,** approved by the maintainer on 2026-10-18 ("Approve all"): the
+  panel's width is capped at `panel_max_width`, 800 px, about its width at the default
+  1100 × 720 window, where it's 798 px, so nothing changes there. In a wider page it's
+  centred. A test checks both.
+* **Docs:** the user page takes UI/UX's edits; KI-020 lists the manual checks the tests
+  can't make (the Menu key and Shift+F10 on a real Windows window, and a screen reader's
+  speech); the k5 amendment above names what owns the ring, and no private name.

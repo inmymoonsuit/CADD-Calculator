@@ -30,9 +30,17 @@ class NoteKind(Enum):
     """The inputs describe something that can't be made. The numbers are still shown."""
 
 
-def _field_names(template: str) -> list[str | None]:
-    """Return the replacement fields of ``template``; ``""`` for a positional one."""
-    return [name for _text, name, _spec, _conv in Formatter().parse(template) if name is not None]
+def _fields(template: str) -> list[tuple[str, str, str | None]]:
+    """Return each replacement field of ``template``: its name, format spec, and conversion.
+
+    A positional field's name is ``""``.
+    """
+    parsed = Formatter().parse(template)
+    return [
+        (name, spec or "", conversion)
+        for _text, name, spec, conversion in parsed
+        if name is not None
+    ]
 
 
 @dataclass(frozen=True)
@@ -47,9 +55,9 @@ class Note:
 
     Raises:
         SpecError: A ``LIMIT_EXCEEDED`` note cites no reference, so "limit" would not mean a
-            cited limit; or a field is positional, unnamed by ``quantities`` or
-            ``phrases``, or named by both. The code that makes such a note is a calculator
-            or domain bug.
+            cited limit; or a field is positional, has a format or a conversion, is
+            unnamed by ``quantities`` or ``phrases``, or is named by both. The code that
+            makes such a note is a calculator or domain bug.
     """
 
     kind: NoteKind
@@ -79,12 +87,16 @@ class Note:
         known = self.quantities.keys() | self.phrases.keys()
         for template in (self.text, self.detail):
             try:
-                names = _field_names(template)
+                fields = _fields(template)
             except ValueError as exc:
                 raise SpecError(f"Note text {template!r} isn't a template: {exc}") from None
-            for name in names:
+            for name, spec, conversion in fields:
                 if not name:
                     raise SpecError(f"Note text {template!r} has an unnamed field")
+                if spec or conversion:
+                    # Values are filled as text in the user's units: a format or a
+                    # conversion would fail, or show quotes.
+                    raise SpecError(f"Note text {template!r}: {name!r} must be a name alone")
                 if name not in known:
                     raise SpecError(f"Note text {template!r} names {name!r}, which isn't given")
 

@@ -155,6 +155,8 @@ def test_a_spreadsheet_never_reads_a_text_cell_as_a_formula() -> None:
     for text in ("=SUM(A1)", "+1", "-x", "@cmd", "\uff1dSUM(A1)", "\uff20cmd", "  =x"):
         assert _text_cell(text) == f"'{text}"
     assert _text_cell("\t=x") == "' =x", "a tab, which OWASP also lists, is a space here"
+    for text in (" =x", "　=x", '"=x', '"x'):
+        assert _text_cell(text) == f"'{text}", "any whitespace first, and a leading quote"
     assert _text_cell("BA") == "BA" and _text_cell("") == ""
     calc = _Formula()
     rows = results_tsv(calc, calc.run(), DisplayPrefs()).splitlines()

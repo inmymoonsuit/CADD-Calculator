@@ -288,6 +288,8 @@ def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_jso
         ("Radius {0} is tight.", {"R": (1.0, Dimension.LENGTH)}, "names '0'"),
         ("Radius {S} is tight.", {"R": (1.0, Dimension.LENGTH)}, "names 'S'"),
         ("Radius {R is tight.", {"R": (1.0, Dimension.LENGTH)}, "isn't a template"),
+        ("Radius {R:.2f} is tight.", {"R": (1.0, Dimension.LENGTH)}, "must be a name alone"),
+        ("Radius {R!r} is tight.", {"R": (1.0, Dimension.LENGTH)}, "must be a name alone"),
     ],
 )
 def test_a_notes_fields_must_be_named_and_given(

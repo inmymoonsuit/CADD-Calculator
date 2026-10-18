@@ -249,3 +249,11 @@ def contrast(first: float, second: float) -> float:
     """Return the contrast ratio of two relative luminances, from 1 to 21."""
     high, low = max(first, second), min(first, second)
     return (high + 0.05) / (low + 0.05)
+
+
+def blend(top: str, bottom: str, opacity: float) -> str:
+    """Return ``top`` at ``opacity`` over ``bottom``, as ``#RRGGBB``, as Qt paints it."""
+    channels = (
+        round(t * opacity + b * (1 - opacity)) for t, b in zip(rgb(top), rgb(bottom), strict=True)
+    )
+    return "#" + "".join(f"{c:02X}" for c in channels)

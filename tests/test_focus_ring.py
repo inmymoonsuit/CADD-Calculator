@@ -90,3 +90,72 @@ def test_a_settings_field_with_an_error_gets_the_ring_too() -> None:
     type_into(edit, "abc", enter=False)
     assert window.focus_ring.isVisible() and window.focus_ring.target is edit
     window.close()
+
+
+def _raised(monkeypatch: pytest.MonkeyPatch) -> list[BaseException]:
+    """Collect what a slot raises: Qt hands it to ``sys.excepthook`` rather than up."""
+    import sys
+
+    raised: list[BaseException] = []
+    monkeypatch.setattr(sys, "excepthook", lambda _type, exc, _tb: raised.append(exc))
+    return raised
+
+
+def test_a_rebuild_while_the_ring_shows_leaves_results_live(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """S&R's k5 H1: units changed while an outlined input has focus rebuild the form."""
+    raised = _raised(monkeypatch)
+    window = _outlined_window()
+    _focus(window.fields["thickness"][1])
+    assert window.focus_ring.isVisible()
+    window.units_box.setCurrentText("mm")  # rebuilds the form, deleting the ringed input
+    assert window.focus_ring.target is None or window.focus_ring.target in [
+        e for _p, e in window.fields.values()
+    ]
+    before = window.result.outputs["bend_allowance"]
+    type_into(window.fields["inside_radius"][1], "8")  # R > T: a new run, a new result
+    assert window.result.outputs["bend_allowance"] != pytest.approx(before)
+    assert window.results.fields["bend_allowance"].parts is not None
+    window.select_calculator("sheet_metal.segment_flat_length")  # another rebuild
+    window.select_calculator("sheet_metal.bend_allowance")
+    assert raised == []
+    window.close()
+
+
+@pytest.mark.parametrize("ringing", [False, True])
+def test_the_ring_is_deleted_with_its_window(ringing: bool) -> None:
+    """S&R's k5 M1: the window owns the ring, so it never outlives it (KI-019)."""
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+    from shiboken6 import isValid
+
+    window = _outlined_window()
+    if ringing:
+        _focus(window.fields["thickness"][1])
+        assert window.focus_ring.parentWidget() is window.fields["thickness"][1].parentWidget()
+    ring = window.focus_ring
+    window.close()
+    window.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    assert not isValid(window) and not isValid(ring)
+
+
+def test_closing_the_window_while_an_outlined_input_has_focus_is_clean(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """S&R's lifecycle set: close with the ring showing, then use another window."""
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+
+    raised = _raised(monkeypatch)
+    first = _outlined_window()
+    _focus(first.fields["thickness"][1])
+    first.close()
+    first.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    second = _outlined_window()
+    _focus(second.fields["inside_radius"][1])
+    _focus(second.fields["bend_angle"][1])
+    assert raised == [] and not second.focus_ring.isVisible()
+    second.close()

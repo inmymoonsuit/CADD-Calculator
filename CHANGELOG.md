@@ -7,6 +7,8 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- ADR-0018 (Geometry and Conversions), ADR-0019 (a units registry), and ADR-0020
+  (localization), all accepted, are in `docs/dev/decisions/`.
 - **Copying results (ADR-0017).** Each result field's copy button copies its value as
   shown, without its unit, ready for a spreadsheet cell or a CAD dimension box; so do
   Space, Enter, and Ctrl+C (Cmd+C) on the focused button. Its menu (right-click or the
@@ -317,6 +319,10 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- Changing the units, or another calculator, while an outlined input had keyboard focus
+  could leave the results unchanged after later edits. The focus ring around an outlined
+  input now lets go of an input that's gone, and can never stop a calculation; it's also
+  deleted with its window.
 - An input outlined by a note showed no keyboard focus, since its outline replaced the
   native frame. It now gets the result fields' blue focus ring outside its outline
   (WCAG 2.4.7).
@@ -381,7 +387,16 @@ All notable changes are recorded here. The format follows
   CLI prints the same three lines. Notes have no list bullets, only their icons, and the
   document's Inputs sit on the result fields' grid, with each value's source after it.
 - In JSON, each note's `text` is now its lead alone, with its values in base units; its
-  `detail` and `quantities` (each named value, in base units with its unit) are new.
+  `detail` and `quantities` (each named value, in base units with its unit) are new. A
+  script that wants the whole note joins `text` and `detail`, and reads numbers from
+  `quantities`.
+- Sources, in the Inputs list and on a note's last line, are now in lighter text at the
+  body's size, rather than smaller. A note's values show without the nearest fraction,
+  which the result fields show. The "Copied" status message stays for 4 seconds, long
+  enough to read. A copy button's own focus box is gone; the blue ring around its field
+  shows focus. Tab now goes on from Copy all to the notes, inputs, and work.
+- In a wide window, the results stop growing at about their width in the default window,
+  and stay centred.
 - **Welcome screen refinements (ADR-0016, amendments).**
   * The name is VT323 at 50 px, snapped to the face's pixel grid at every display
     scale, drawn regular, and centred on its capitals. `typography.display_weight`
