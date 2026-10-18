@@ -602,3 +602,38 @@ def test_build_checks_every_catalog_ours_and_qts_is_bundled(
     assert build_script.missing_catalogs(tmp_path) == []
     [include] = [a for a in build_script.nuitka_args(None) if a.startswith("--include-data-files")]
     assert include.endswith("qtbase_*.qm=PySide6/translations/"), include
+
+
+@pytest.mark.gui
+def test_the_build_fails_with_no_catalog_to_check(
+    build_script: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S&R's i5 L2: with no .po, there'd be no list of ours to check the build against."""
+    monkeypatch.setattr(build_script, "CATALOGS", tmp_path / "locale")
+    with pytest.raises(build_script.BuildError, match="no catalog to check"):
+        build_script.missing_catalogs(tmp_path)
+
+
+@pytest.mark.gui
+def test_no_build_ships_the_catalogs_sources(build_script: ModuleType, tmp_path: Path) -> None:
+    """The .po and .pot stay in the sdist; the app reads only the .mo (i5b)."""
+    import fnmatch
+
+    args = build_script.nuitka_args(None)
+    patterns = [a.partition("=")[2] for a in args if a.startswith("--noinclude-data-files=")]
+    assert patterns == ["caddcalc/locale/*.po", "caddcalc/locale/*.pot"]
+    files = {
+        "caddcalc/locale/caddcalc.pot": False,
+        "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.po": False,
+        "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.mo": True,
+    }
+    for name, ships in files.items():  # as Nuitka matches them: where each would go
+        assert any(fnmatch.fnmatch(name, p) for p in patterns) is not ships, name
+    assert build_script.catalog_sources(tmp_path) == []
+    for name in files:
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_bytes(b"")
+    assert build_script.catalog_sources(tmp_path) == [
+        "caddcalc/locale/caddcalc.pot",
+        "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.po",
+    ]

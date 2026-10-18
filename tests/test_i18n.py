@@ -474,15 +474,35 @@ def test_a_plurals_forms_are_checked_one_by_one() -> None:
     ("text", "refused"),
     [
         ("{value} of {limit}", False),
+        ("{a}{b}", False),
+        ("{{literal}} braces", False),
         ("10% grade", False),
+        ("50% each", False),
+        ("100%", False),
+        ("a %% b", False),
         ("{} of {}", True),
+        ("{0} of {1}", True),
+        ("{0.real}", True),
+        ("unbalanced {", True),
+        ("a } alone", True),
         ("Load %(name)s now", True),
         ("Load %s now", True),
         ("%d fields", True),
+        ("%x", True),
+        ("%X", True),
+        ("%o", True),
+        ("%c", True),
+        ("%.2e", True),
+        ("%E", True),
+        ("%g", True),
+        ("%G", True),
     ],
 )
 def test_marked_text_names_its_fields(text: str, refused: bool) -> None:
-    """S&R's i1 L1: a positional or printf placeholder can't be checked or reordered."""
+    """S&R's i1 L1 and i4b L1: a field named by position or printf can't be reordered.
+
+    Unbalanced braces can't be read for fields at all, so they're refused too.
+    """
     tools = tooling()
     template = Catalog(domain="caddcalc")
     template.add(text)
@@ -490,22 +510,24 @@ def test_marked_text_names_its_fields(text: str, refused: bool) -> None:
 
 
 QUOTED = {
-    "0.64": "Machinery's Handbook's formula, 0.64T + 1.57R, as published",
-    "1.57": "the same formula",
-    "0.55": "the Handbook's coefficient for soft brass and copper",
-    "0.71": "the Handbook's coefficient for bronze and hard metals",
-    "0.408": "K implied by the Handbook's formula, said beside it",
-    "0.452": "K implied by the Handbook's Eq. (34), said beside it",
-    "0.445": "FAA-H-8083-31B's K for aircraft aluminum",
-    "0.4": "EDD5's instructional K",
-    "0.5": "the limit K approaches, as the sources say",
+    "0.64": "Machinery's Handbook's Eq. (33), 0.64T + 1.57R, as published (MH31 p. 1421)",
+    "1.57": "the same equation",
+    "0.55": "Eq. (32)'s coefficient, for soft brass and soft copper",
+    "0.71": "Eq. (34)'s coefficient, for bronze, hard copper, cold-rolled steel, and spring steel",
+    "0.408": "derived, not published: Eq. (33)'s 0.64 over its 1.57, said to be implied by it",
+    "0.452": "derived, not published: Eq. (34)'s 0.71 over 1.57, said to be implied by it",
+    "0.445": "FAA-H-8083-31B's K for aircraft aluminum (p. 4-63)",
+    "0.4": "EDD5's instructional K (p. 783)",
+    "0.5": "mid-thickness, where FAA-H-8083-31B (p. 4-59) says the neutral axis is often assumed",
     "0.156": "the course's hard-coded P",
     "0.1046": "the course example's thickness, 12 ga",
     "0.0747": "the course example's thickness, 14 ga",
 }
-"""Numbers typed into the calculators' prose, each quoted from a source, which stay as
-published (ADR-0020 §4). Any other number the app writes is a value, formatted where it's
-shown in the user's mark: a note names it as a field (``Method.quantities``)."""
+"""Numbers typed into the calculators' prose, each quoted from a source or derived from
+quoted ones, which stay as written (ADR-0020 §4). A derived one is said to be implied by
+its source where it's shown, never to be published there. Any other number the app
+writes is a value, formatted where it's shown in the user's mark: a note names it as a
+field (``Method.quantities``)."""
 
 
 def test_the_calculators_prose_holds_no_number_of_the_apps_own() -> None:
@@ -530,3 +552,16 @@ def test_the_shipped_languages_are_those_with_a_compiled_catalog(tmp_path: Path)
     assert i18n.shipped_languages(tmp_path) == ("en_001", "en_CA")
     (tmp_path / "fr" / "LC_MESSAGES").mkdir(parents=True)  # a .po alone isn't shipped
     assert i18n.shipped_languages(tmp_path) == ("en_001", "en_CA")
+
+
+def test_compiling_no_catalog_fails_rather_than_ship_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """S&R's i5 L2: with no .po, a wheel or a build would ship no catalogs, unnoticed."""
+    tools = tooling()
+    monkeypatch.setattr(tools, "LOCALE", tmp_path / "locale")
+    with pytest.raises(tools.CatalogError, match="no catalog to compile"):
+        tools.compile_catalogs(tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+    assert tools.main(["compile"]) == 1
+    assert "no catalog to compile" in capsys.readouterr().out

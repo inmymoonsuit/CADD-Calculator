@@ -63,6 +63,8 @@ path = "src/caddcalc/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/caddcalc"]
+# The catalogs' sources stay in the sdist, for translators; the wheel takes the .mo
+exclude = ["/src/caddcalc/locale/**/*.po", "/src/caddcalc/locale/*.pot"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]  # hatch_build.py: the compiled catalogs
 

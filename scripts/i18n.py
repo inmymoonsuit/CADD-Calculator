@@ -7,8 +7,8 @@
     uv run python scripts/i18n.py check      # exit 1 if any catalog is out of step
 
 The template (``caddcalc.pot``) and each language's ``.po`` are committed; ``.mo`` files are
-compiled, in the build and in the tests, and never committed. Babel is a development
-dependency only: the app reads ``.mo`` files with the standard library.
+compiled, in the builds and in the tests, and never committed. Babel is needed only to
+develop and to build: the app reads ``.mo`` files with the standard library.
 """
 
 from __future__ import annotations
@@ -108,6 +108,10 @@ def init(language: str) -> Path:
     return path
 
 
+class CatalogError(Exception):
+    """The catalogs can't be compiled: there's none to compile."""
+
+
 def languages() -> Iterator[Path]:
     """Yield each language's .po file, in ``locale/<language>/LC_MESSAGES``."""
     yield from sorted(LOCALE.glob(f"*/LC_MESSAGES/{DOMAIN}.po"))
@@ -128,28 +132,40 @@ def _singular(message: Message) -> str:
     return message.id[0] if isinstance(message.id, tuple | list) else message.id
 
 
+UNBALANCED = "<unbalanced braces>"
+
+
 def placeholders(text: str) -> set[str]:
     """Return the named fields in ``text``, such as ``{value}``; a text with none, none.
 
-    A positional ``{}`` is ``""``, and unbalanced braces are ``"<unbalanced braces>"``.
+    A positional ``{}`` is ``""``, a numbered one is its number, as ``"0"``, and unbalanced
+    braces are ``UNBALANCED``.
     """
     try:
         return {name for _t, name, _s, _c in Formatter().parse(text) if name is not None}
     except ValueError:
-        return {"<unbalanced braces>"}
+        return {UNBALANCED}
 
 
-PRINTF = re.compile(r"%(?:\([^)]*\))?[-#0+]*\d*(?:\.\d+)?[sdifr]")
-"""A printf-style placeholder, such as ``%s`` or ``%(name)s``. A "%" in prose, as in "10%
-grade", isn't one."""
+def _by_position(field: str) -> bool:
+    """Whether a field is filled by its position: ``{}``, ``{0}``, or ``{0.real}``."""
+    head = re.split(r"[.\[]", field, maxsplit=1)[0]
+    return not head or head.isdigit()
+
+
+PRINTF = re.compile(r"%(?:\([^)]*\))?[-#0+]*\d*(?:\.\d+)?[sdifrxXeEgGco]")
+"""A printf-style placeholder, such as ``%s``, ``%(name)s`` or ``%.2e``: any of printf's
+conversions but ``%%``, which is a literal "%". A "%" in prose, as in "10% grade", isn't
+one."""
 
 
 def source_problems(template: Catalog) -> list[str]:
     """Return every marked text whose placeholders aren't named fields alone.
 
     A translation reorders the fields, so each must be named (``{value}``): a positional
-    ``{}`` has nothing to keep it in its place, and a printf-style ``%s`` isn't checked
-    for at all.
+    ``{}`` has nothing to keep it in its place, nor has a numbered ``{0}``, which the
+    app's ``format(**fields)`` can't fill, and a printf-style ``%s`` isn't checked for at
+    all. Unbalanced braces can't be read for fields, so they can't be checked either.
     """
     problems = []
     for message in template:
@@ -157,8 +173,11 @@ def source_problems(template: Catalog) -> list[str]:
             continue
         sources = message.id if isinstance(message.id, tuple | list) else (message.id,)
         for source in sources:
-            if "" in placeholders(source):
-                problems.append(f"{source!r} has a positional {{}}; name it")
+            fields = placeholders(source)
+            if UNBALANCED in fields:
+                problems.append(f"{source!r} has unbalanced braces; write a literal one twice")
+            elif any(_by_position(field) for field in fields):
+                problems.append(f"{source!r} has a positional {{}} or a numbered {{0}}; name it")
             if PRINTF.search(source):
                 problems.append(f"{source!r} has a printf-style placeholder; use {{name}}")
     return problems
@@ -212,9 +231,19 @@ def compile_catalogs(folder: Path = LOCALE) -> list[Path]:
 
     Each goes to ``<folder>/<language>/LC_MESSAGES/caddcalc.mo``, where ``core.i18n`` reads
     it. ``folder`` is the source tree's locale folder, or a wheel's staging folder.
+
+    Raises:
+        CatalogError: There's no language's ``.po`` to compile, so a build would ship
+            none, and nothing downstream could tell.
     """
+    sources = list(languages())
+    if not sources:
+        where = LOCALE.relative_to(ROOT) if LOCALE.is_relative_to(ROOT) else LOCALE
+        raise CatalogError(
+            f"no catalog to compile: no <language>/LC_MESSAGES/{DOMAIN}.po in {where}"
+        )
     written = []
-    for path in languages():
+    for path in sources:
         target = folder / path.parents[1].name / "LC_MESSAGES" / f"{DOMAIN}.mo"
         compile_to(read(path), target)
         written.append(target)
@@ -277,7 +306,12 @@ def main(argv: list[str]) -> int:
             catalog.update(template)
             path.write_bytes(po_text(catalog))
     elif command == "compile":
-        for path in compile_catalogs():
+        try:
+            written = compile_catalogs()
+        except CatalogError as exc:
+            print(exc)
+            return 1
+        for path in written:
             print(path.relative_to(ROOT))
     elif command == "check":
         problems = check()

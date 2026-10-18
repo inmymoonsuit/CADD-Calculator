@@ -8,13 +8,40 @@ editable install reads the source tree, where ``scripts/i18n.py compile`` puts t
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
-import sys
 import tempfile
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+
+TOOL_NAME = "caddcalc_i18n_tool"
+"""The catalog tool's module name here: its own, so no installed ``i18n`` stands in."""
+
+
+def catalog_tool(root: Path) -> ModuleType:
+    """Load the project's catalog tool, ``scripts/i18n.py``, by its path.
+
+    Raises:
+        RuntimeError: Babel, which the tool compiles with, isn't installed.
+    """
+    path = root / "scripts" / "i18n.py"
+    spec = importlib.util.spec_from_file_location(TOOL_NAME, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"can't load the catalog tool, {path}")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except ModuleNotFoundError as exc:
+        if (exc.name or "").partition(".")[0] != "babel":
+            raise
+        raise RuntimeError(
+            "compiling the catalogs needs Babel, a build requirement in pyproject.toml: "
+            "build with isolation, the default, or install babel first"
+        ) from exc
+    return module
 
 
 class CatalogsHook(BuildHookInterface):  # type: ignore[type-arg]
@@ -23,15 +50,23 @@ class CatalogsHook(BuildHookInterface):  # type: ignore[type-arg]
     PLUGIN_NAME = "custom"
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
-        """Compile every language's catalog, and include each in the wheel."""
+        """Compile every language's catalog, and include each in the wheel.
+
+        The tool fails when there's no ``.po`` to compile, so a wheel never ships
+        without its catalogs.
+        """
         if self.target_name != "wheel" or version == "editable":
             return
-        sys.path.insert(0, str(Path(self.root) / "scripts"))
-        import i18n as tools  # the project's catalog tool, which needs only Babel
-
-        self._staging = Path(tempfile.mkdtemp(prefix="caddcalc-catalogs-"))
-        for path in tools.compile_catalogs(self._staging):
-            inside = path.relative_to(self._staging).as_posix()
+        tool = catalog_tool(Path(self.root))
+        staging = Path(tempfile.mkdtemp(prefix="caddcalc-catalogs-"))
+        try:
+            written = tool.compile_catalogs(staging)
+        except BaseException:
+            shutil.rmtree(staging, ignore_errors=True)  # a failed build never finalizes
+            raise
+        self._staging = staging
+        for path in written:
+            inside = path.relative_to(staging).as_posix()
             build_data["force_include"][str(path)] = f"caddcalc/locale/{inside}"
 
     def finalize(

@@ -26,6 +26,16 @@ The first build downloads Nuitka's C compiler (MinGW-w64 gcc, about 270 MB) and 
 Walker into Nuitka's cache. Later builds take 20 to 45 seconds because ccache keeps the
 compiled C.
 
+## The wheel and the sdist
+
+`uv build` makes both. The sdist carries the catalogs' sources, each language's `.po`
+and the `.pot`, for translators. The wheel carries only the compiled `.mo`, which its
+build hook (`hatch_build.py`) compiles from them. Babel (BSD-3-Clause) is a build
+requirement for that, and nothing from it ships. pip and uv fetch it into the build's
+isolated environment automatically, except offline, or for a distribution packager
+building without isolation: there it must be installed first (often as
+`python3-babel`).
+
 ## Editions
 
 | Command | Edition | Branding |
@@ -124,8 +134,9 @@ KI-016 for what the notices still lack.
    `caddcalc/locale`, where they're package data (`scripts/i18n.py compile`).
 3. Writes `work/pysidedeploy.spec`: the Qt modules (`Core,Gui,Widgets`), the icon, and
    the Nuitka options. Those include Windows version info, `--include-package-data=caddcalc`
-   for the generic icon and the catalogs, Qt's `qtbase_*.qm` catalogs into
-   `PySide6/translations/` (and no other Qt translation), and, for a branded build,
+   for the generic icon and the catalogs (the `.mo`, not their `.po` and `.pot`
+   sources), Qt's `qtbase_*.qm` catalogs into `PySide6/translations/` (and no other Qt
+   translation), and, for a branded build,
    `--include-data-dir=<staged pack>=branding`.
 4. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
    mode. Nuitka must already be installed by uv (the `build` dependency group).
@@ -134,7 +145,8 @@ KI-016 for what the notices still lack.
    in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
    bundled (`--include-package-data=caddcalc` carries them), as is every file the display
    face's `manifest.toml` lists: the font and its license, and every catalog: each
-   language's `.mo`, and every `qtbase_*.qm` (ADR-0009's checklist).
+   language's `.mo`, and every `qtbase_*.qm` (ADR-0009's checklist). It fails if there's
+   no `.po` to check against, or if a `.po` or `.pot` was bundled.
 6. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
    run opens the welcome screen and the window, loads every reference table, writes the
    report, and exits. The script checks the reported name, edition, icon, that the

@@ -121,8 +121,8 @@ gauge number can produce a wrong part.
   * The FAA bend-allowance formula, (0.01743R + 0.0078T)·N, implies k ≈ 0.447. Source:
     FAA-H-8083-31B pp. 4-63–4-64, public domain; aluminum, bench forming.
   * MH31 Eqs (32)–(34), printed p. 1421 (cite-only; MH29's p. 1347), imply about 0.35,
-    0.407, and 0.452
-    for three material classes.
+    0.408, and 0.452 for three material classes: each one's coefficient of T over its
+    1.57.
   * *Engineering Drawing and Design* (5th ed., Ch. 19) uses 0.4 as an instructional
     value.
   * The neutral axis approaches mid-thickness (K → 0.5) as R/T grows.

@@ -59,6 +59,10 @@ NOTICE_WORDS = ("NOTICE", "LICENSE", "LICENCE", "COPYING")
 COMPANY = "CADD Calculator contributors"
 CATALOGS = ROOT / "src" / "caddcalc" / "locale"
 """The source catalogs: each language's .po, compiled to its .mo for the build."""
+LOCALE_DIR = "caddcalc/locale"
+"""Where a build keeps our compiled catalogs, as the package does."""
+CATALOG_SOURCES = (".po", ".pot")
+"""The catalogs' sources, which no build ships: the app reads only the compiled .mo."""
 QT_CATALOG = "qtbase"
 """Qt's own text, such as standard buttons and a field's context menu, comes from its
 ``qtbase_<language>.qm`` catalogs, which ship beside it (ADR-0020 §1)."""
@@ -224,12 +228,15 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
     """Return the Nuitka options for an edition, passed through pyside6-deploy's spec.
 
     Of Qt's translations, only its ``qtbase`` catalogs ship: they're the text Qt shows
-    in our window. The rest, for Qt modules we don't use, stay out.
+    in our window. The rest, for Qt modules we don't use, stay out. Of our catalogs, only
+    the compiled ``.mo`` ship; their ``.po`` and ``.pot`` sources stay in the sdist, for
+    translators (Nuitka matches them by where they'd go, ``*`` crossing folders).
     """
     qt_folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
     args = [
         "--noinclude-qt-translations",
         f"--include-data-files={qt_folder / f'{QT_CATALOG}_*.qm'}={QT_CATALOGS_DIR}/",
+        *(f"--noinclude-data-files={LOCALE_DIR}/*{suffix}" for suffix in CATALOG_SOURCES),
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
         "--include-package-data=caddcalc",  # the generic icon and the reference tables
         f"--company-name={COMPANY}",
@@ -348,6 +355,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
                 raise BuildError(f"the display face's {missing} is missing from the build")
             for missing in missing_catalogs(exe.parent):
                 raise BuildError(f"the catalog {missing} is missing from the build")
+            for source in catalog_sources(exe.parent):
+                raise BuildError(f"the catalog source {source} is in the build; only .mo ship")
 
     files = [p for p in output.rglob("*") if p.is_file()] if output.is_dir() else [output]
     return {
@@ -401,13 +410,25 @@ def missing_catalogs(app_dir: Path) -> list[str]:
 
     Ours are every language a .po exists for, compiled; Qt's are every ``qtbase`` catalog
     the build's PySide6 has (ADR-0009, the build's checklist).
+
+    Raises:
+        BuildError: There's no .po at all, so no list of ours to check the build against.
     """
-    ours = [
-        f"caddcalc/locale/{path.parents[1].name}/LC_MESSAGES/caddcalc.mo"
-        for path in sorted(CATALOGS.glob("*/LC_MESSAGES/caddcalc.po"))
-    ]
+    sources = sorted(CATALOGS.glob("*/LC_MESSAGES/caddcalc.po"))
+    if not sources:
+        raise BuildError(
+            f"no catalog to check: no <language>/LC_MESSAGES/caddcalc.po in {CATALOGS}"
+        )
+    ours = [f"{LOCALE_DIR}/{path.parents[1].name}/LC_MESSAGES/caddcalc.mo" for path in sources]
     qt = [f"{QT_CATALOGS_DIR}/{path.name}" for path in qt_catalogs()]
     return [name for name in (*ours, *qt) if not (app_dir / name).is_file()]
+
+
+def catalog_sources(app_dir: Path) -> list[str]:
+    """Return the catalogs' sources, ``.po`` and ``.pot``, that a build's folder holds."""
+    folder = app_dir / LOCALE_DIR
+    found = [p for p in folder.rglob("*") if p.suffix in CATALOG_SOURCES] if folder.is_dir() else []
+    return sorted(p.relative_to(app_dir).as_posix() for p in found)
 
 
 def locate_output(edition_dir: Path, name: str, mode: str) -> tuple[Path, Path]:

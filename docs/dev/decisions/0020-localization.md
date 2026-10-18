@@ -372,6 +372,11 @@ together.
 * **Moot:** S&R's i2 L2, the clipping test's broad third allowance, went with the
   allowance (KI-023). S&R's i3 L1, the plural rule of the first catalog rather than the
   message's, waits for the next language with its own rule.
+* **Later:** a region that implies a script (S&R's i4b L3). `zh-TW` and `zh_HK`, with
+  no script written, read `zh_TW` and `zh_HK`, and fall back to `zh`, Simplified, where
+  CLDR's likely subtags say Traditional; `sr_ME` is likewise Latin in CLDR. It's moot
+  until a Chinese or Serbian catalog ships; then the script that
+  `likely_subtags[language_REGION]` implies is added, as for a written one.
 
 ### 2026-10-18: the catalogs in every build (i5)
 
@@ -385,3 +390,24 @@ together.
 * **`scripts/i18n.py compile`** writes them into the source tree, for an editable install
   and the frozen build; they stay git-ignored. `core.i18n.shipped_languages()` lists the
   languages a folder has compiled catalogs for.
+
+### 2026-10-18: the reviews' findings on i4b and i5 (i5b)
+
+* **The catalog check** (S&R's i4b L1) also refuses a numbered field, `{0}`, which the
+  app's `format(**fields)` can't fill, and unbalanced braces, which can't be read for
+  fields; and it knows every printf conversion (`[sdifrxXeEgGco]`), not five.
+* **The calculators' quoted numbers** (S&R's i4b L2): the string sweep's table names
+  each one's source as published. 0.408 and 0.452 are the project's derivation, each
+  coefficient over 1.57, and the prose says they're implied by the Handbook, never
+  published there. 0.5 is mid-thickness, where FAA-H-8083-31B (p. 4-59) says the
+  neutral axis is often assumed.
+* **Qt's translations are in the notices** (S&R's i5 L1): `THIRD_PARTY_NOTICES.md` and
+  KI-016 name them, LGPL-3.0, with Qt's libraries.
+* **No catalog, no build** (S&R's i5 L2): with no `.po`, compiling fails, so the wheel's
+  hook and the frozen build do, and the build's check has nothing to check against, so
+  it fails too. Neither ships without catalogs, unnoticed.
+* **The sources stay in the sdist:** the wheel and the frozen build carry the `.mo`
+  only. Nothing reads a `.po` or the `.pot` at run time.
+* **The hook loads the catalog tool by its path,** under its own module name, so an
+  installed `i18n` (python-i18n has one) can't stand in for it, and says Babel is needed
+  when it's missing. `docs/dev/packaging.md` says when Babel must be installed first.

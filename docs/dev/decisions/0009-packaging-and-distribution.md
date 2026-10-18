@@ -110,7 +110,7 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
 |---|---|---|
 | The reference tables | `--include-package-data=caddcalc` | `missing_tables`; the smoke report's `reference_tables` (each loaded and built) |
 | The display face and its OFL license | the same | `missing_fonts`; the report's `display_font` |
-| **Our catalogs**, each language's `.mo` | compiled from the committed `.po` by the build (`scripts/i18n.py compile`), before Nuitka reads the package data | `missing_catalogs`; the report's `catalogs`, the languages the built app finds |
+| **Our catalogs**, each language's `.mo` | compiled from the committed `.po` by the build (`scripts/i18n.py compile`), before Nuitka reads the package data; their `.po` and `.pot` sources left out (`--noinclude-data-files`) | `missing_catalogs`, which fails with no `.po` to check against; `catalog_sources`, none bundled; the report's `catalogs`, the languages the built app finds |
 | **Qt's `qtbase_*.qm` catalogs** | `--include-data-files` from the build's PySide6 into `PySide6/translations/`, where its Qt looks; every other Qt translation stays out | `missing_catalogs`; the report's `qt_catalog`, that Qt loads its German catalog from the build |
 | `LICENSE.md` and `THIRD_PARTY_NOTICES.md` | copied into the folder | (copied; what the notices still lack is KI-016) |
 | The branding pack, or none | `--include-data-dir`, branded builds only | a generic build has no `branding/`, a branded one has its `branding.toml`; the report's name, edition, icon, and welcome art |
@@ -118,7 +118,8 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
 * **The wheel** takes our catalogs too: `hatch_build.py`, hatchling's build hook,
   compiles them into a staging folder and includes each in `caddcalc/locale`. So Babel is
   a build requirement, beside hatchling; an editable install reads the source tree, where
-  `scripts/i18n.py compile` puts them.
+  `scripts/i18n.py compile` puts them. The hook fails with no `.po` to compile, and the
+  wheel leaves out the `.po` and `.pot`, which the sdist keeps.
 * **Qt's catalogs for languages we don't have yet** ship anyway. The window loads one only
   with a catalog of ours for the same language (ADR-0020, amendments), so until then
   they cost space: 33 files, 5.8 MB, in PySide6 6.12. In return, a new language needs
