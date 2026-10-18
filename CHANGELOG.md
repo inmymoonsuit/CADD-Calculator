@@ -7,6 +7,13 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Groundwork for translation (ADR-0020).** `caddcalc.core.i18n` translates text where
+  it's shown, through GNU gettext catalogs; text stays in US English, the source
+  language, until a language is chosen and wherever a catalog lacks a string. It also
+  gives the plural category of a number as shown ("1 inch", but "1.0000 inches").
+  `scripts/i18n.py` extracts, updates, compiles, and checks the catalogs, with Babel as a
+  development dependency, and CONTRIBUTING's "Translating" gives the rule for new text.
+  Nothing is translated yet.
 - ADR-0018 (Geometry and Conversions), ADR-0019 (a units registry), and ADR-0020
   (localization), all accepted, are in `docs/dev/decisions/`.
 - **Copying results (ADR-0017).** Each result field's copy button copies its value as

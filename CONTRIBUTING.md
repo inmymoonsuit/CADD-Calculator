@@ -129,3 +129,35 @@ The full standard is [docs/dev/engineering-guidelines.md](docs/dev/engineering-g
 * Comments explain *why*. History, measurements, and status go in the docs, and the code
   points there.
 * Prefer clarity over cleverness: formulas should read like the textbook.
+
+## Translating
+
+The app's text is translated with GNU gettext, through `caddcalc.core.i18n` (ADR-0020).
+The source language is US English.
+
+**New user-facing text is marked from now on.** Text that's already there is marked in a
+later sweep, calculator by calculator.
+
+* Mark text with `N_()` where it's declared, which returns it unchanged, and translate it
+  with `_()` where it's shown. Calculator modules are imported before the language is
+  chosen, so a declaration never calls `_()`.
+* Give a short or ambiguous word a context: `pgettext("unit", "in")`,
+  `pgettext("button", "Copy")`.
+* Write one template per sentence, with named placeholders: `"{value} is below {limit}"`,
+  never a sentence pieced together from parts. A translation may reorder the
+  placeholders, but never drop, add, or rename one; a test checks.
+* Choose a plural form with `ngettext` for a whole count. A number shown with decimals
+  chooses by `plural_category`, from its text: "1 inch", but "1.0000 inches".
+* Put a note for translators on the line before the text, starting `# Translators:`.
+
+The template, `src/caddcalc/locale/caddcalc.pot`, and each language's `.po` file are
+committed. `.mo` files are compiled, in the build and the tests, and never committed.
+After changing marked text, update the template, then the languages:
+
+```bash
+uv run python scripts/i18n.py extract
+uv run python scripts/i18n.py update
+```
+
+`uv run python scripts/i18n.py check`, which the tests also run, fails while a catalog is
+out of step.

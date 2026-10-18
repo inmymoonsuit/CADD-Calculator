@@ -28,6 +28,9 @@ htmlcov/
 deployment/
 *.spec
 
+# --- Translations: .mo files are compiled from the committed .po (ADR-0020 §1) ---
+*.mo
+
 # --- Docs site output ---
 /site/
 

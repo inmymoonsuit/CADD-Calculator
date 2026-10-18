@@ -50,8 +50,9 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
    * a one-line comment pointing to the `KI-` entry
 4. **No hidden state.** No monkeypatching of third-party code, no import-time side
    effects, and no module-level mutable state except caches with an explicit way to clear
-   them. Pass dependencies in (a registry, branding, display preferences, a plugin
-   entry-point source) rather than reaching for globals.
+   them, and the display language, which a front end chooses once at startup with
+   `core.i18n.use()` (ADR-0020). Pass dependencies in (a registry, branding, display
+   preferences, a plugin entry-point source) rather than reaching for globals.
 5. **Errors.**
    * Raise specific exceptions from the `CaddCalcError` hierarchy, and catch only what
      you can handle. Each kind of error has one meaning: `InputError` for user input
@@ -88,6 +89,11 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
    * Every formula has a cited worked example.
    * Tests are deterministic, run offline, and don't depend on the machine (fonts, paths,
      installed software). GUI tests run offscreen.
+10. **Text for people is marked for translation** (ADR-0020). New user-facing text is
+    marked from now on: `N_()` where it's declared, `_()` where it's shown, a context for
+    a short word (`pgettext("unit", "in")`), one template per sentence with named
+    placeholders, and a plural form chosen from the number as shown. CONTRIBUTING's
+    "Translating" has the details and the commands. **[CI: the catalog check]**
 
 ## 3. Comments and docstrings
 

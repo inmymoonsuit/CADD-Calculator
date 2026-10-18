@@ -1,6 +1,7 @@
 # ADR-0020: Localization, starting with a skeleton
 
-* **Status:** **Accepted** (not built). The maintainer asked on 2026-10-17 for spelling to
+* **Status:** **Accepted**; the skeleton is being built, so far its `core.i18n` module and
+  catalog tooling (i1; see Amendments). The maintainer asked on 2026-10-17 for spelling to
   follow the user's language settings, and for the localization system's skeleton to be
   built now. After UI/UX's and Support & Review's reviews, the maintainer approved L1–L5
   as recommended on 2026-10-18 ("Approve all").
@@ -166,3 +167,38 @@ kept for the record.
 * Translators work in standard .po files, which common tools support.
 * A comma-locale user sees and types their own decimal mark, and a one-click copy still
   pastes correctly into CAD.
+
+## Amendments
+
+### 2026-10-18: `core.i18n` and the catalog tooling as built (i1)
+
+* **The API.** `N_`, `_`, `pgettext`, `ngettext` and `npgettext` are functions of
+  `core/i18n.py` that look up the cached translator on each call, not one object's bound
+  methods (§1): a bound method taken at import would keep the old catalog after
+  `clear()`. `_` and `pgettext` return `""` for `""`.
+* **The translator** chains one `GNUTranslations` per catalog found, most wanted first,
+  each language before its base (`en_GB`, then `en`), with `NullTranslations` last. So a
+  string or a whole catalog that's missing gives the source text, never an error.
+* **Choosing languages.** `use(languages, *, directories=())` takes language tags in
+  either form, BCP 47 from Qt (`en-GB`) or POSIX from the environment (`en_GB.UTF-8`), and
+  `posix_language` turns them into gettext's catalog names, dropping any script. The
+  `directories` are searched before the shipped catalogs, for tests and the coming
+  pseudo-locale. The chosen languages are the module's one piece of state besides its
+  cache: the front end sets them once, at startup (§3), and `use(())` goes back to the
+  source. The engineering guidelines (§2, item 4) name this exception.
+* **Plurals (§5).** `ngettext` and `npgettext` refuse a count that isn't an `int`, a
+  `bool` included, with a `UsageError`, where Python would only warn.
+  `plural_category(shown, language)` has English's CLDR rule ("one" for i = 1 and v = 0).
+  A language without a rule of its own takes English's until its catalog ships with one.
+* **Where catalogs are.** `caddcalc/locale/<language>/LC_MESSAGES/caddcalc.mo`, read
+  through `importlib.resources`; the template is `caddcalc/locale/caddcalc.pot`. What the
+  wheel and the frozen builds take is i5's, on ADR-0009's checklist.
+* **The tooling.** `scripts/i18n.py` has `extract`, `update`, `compile` and `check`, on
+  Babel (the dev group). The template is written sorted, without line numbers, and with a
+  fixed creation date, so extracting again changes it only when marked text changes.
+  `check` compares the template with the code and each language with the template,
+  checks that each translation keeps its source's placeholders, and compiles each
+  language; the tests run it.
+* **Nothing is marked yet,** so the template is only a header. The British catalog (i2)
+  and the units' names (i3) come next. The rule for new text is in CONTRIBUTING
+  ("Translating") and the engineering guidelines (§2, item 10).

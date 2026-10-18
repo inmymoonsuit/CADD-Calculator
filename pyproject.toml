@@ -44,6 +44,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "import-linter>=2.15",
+    "babel>=2.18",
 ]
 # Packaging only: `uv sync --extra gui --group build` (docs/dev/packaging.md).
 # Nuitka is pinned deliberately; see ADR-0009. pyside6-deploy needs patchelf on Linux.

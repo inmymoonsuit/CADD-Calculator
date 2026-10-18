@@ -1,0 +1,17 @@
+# Translations template for CADD Calculator.
+# Distributed under the project's license, Apache-2.0. See CONTRIBUTING.md,
+# "Translating", and ADR-0020.
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CADD Calculator VERSION\n"
+"Report-Msgid-Bugs-To: https://github.com/inmymoonsuit/CADD-Calculator/issues\n"
+"POT-Creation-Date: 2026-10-18 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
