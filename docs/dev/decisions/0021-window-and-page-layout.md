@@ -53,7 +53,8 @@
      280.5 + 5 + 814 = 1099.5, rounded up)
    * height: `launch_lines · line spacing` (736 at 9 pt; 720 as first approved, see Amendments),
      or the height the tallest built-in calculator page needs at the launch width, with
-     the window's bars, if that's more (KI-024, see Amendments). Plugin pages aren't
+     any of its methods and the window's bars, if that's more (KI-024, see Amendments).
+     Plugin pages aren't
      measured, so no plugin code runs before it's chosen; settings pages don't count,
      having no results to keep in view, so they may scroll.
 2. Fit it to the available geometry of the screen the welcome card is on (or the primary
@@ -257,7 +258,7 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   shrink toward WCAG 2.5.8's 24 px minimum, and the focus ring and borders are whole
   device pixels by rule.
 * **How it's measured.** When the window is built, each calculator's page is laid out
-  hidden at the page's cap and measured. A hidden page is laid out only when shown, and
+  hidden at the page's cap and measured, with each of its methods (below). A hidden page is laid out only when shown, and
   the results panel's height follows its own width, so the page is laid out twice
   (`pages.lay_out`); the second pass gives exactly the heights the shown page has,
   where one pass overstates the first page measured. The fit test and the page scroll
@@ -284,3 +285,19 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   fails. Building the window opens no plugin page, and opens on a built-in one, though
   the plugin's family sorts first; and a built-in page that raises while measured is
   left out, the window and the others working.
+
+### 2026-10-18: every method's page in the launch height (UI/UX's labels review, M1)
+
+* **What UI/UX found.** The launch measure took each built-in calculator with its first
+  method only. The segment calculator's K-factor method adds the K field, and its page
+  then needed 618 px with its document at its least, so at the launch size it scrolled.
+  The scroll bar narrowed the page, from 814 to 802 px, so choosing that method moved the
+  Units box, from x 1024 to 1012.
+* **The rule now.** The tallest page is measured over every built-in calculator and each
+  of its methods, within the same isolation boundary, now one per method, and the same
+  screen cap. So no built-in calculator's page scrolls at the launch size with any of its
+  methods, and changing the method never moves the row's controls.
+* **What it costs.** On Windows at 9 pt the launch height is 738 px, the segment
+  calculator's K-factor page with the window's bars, two more than `launch_lines`' 736.
+  The window's build lays out twice as many pages, and took 777–814 ms against 740–769 ms
+  before, over six launches each, natively; it runs hidden, after the card's first paint.

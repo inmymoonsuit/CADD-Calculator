@@ -49,7 +49,8 @@ def test_the_launch_height_covers_the_tallest_calculator_page() -> None:
     """``launch_lines`` is the floor; a taller calculator page raises it (KI-024)."""
     layout = ui_style().layout
     assert launch_size(layout, 5.5, 16, 5).height == 736
-    assert launch_size(layout, 5.5, 16, 5, pages=726).height == 736, "Windows at 9 pt"
+    assert launch_size(layout, 5.5, 16, 5, pages=726).height == 736, "a shorter page"
+    assert launch_size(layout, 5.5, 16, 5, pages=738).height == 738, "Windows at 9 pt"
     assert launch_size(layout, 5.5, 14, 5, pages=672).height == 672, "14 px lines"
 
 
@@ -473,10 +474,11 @@ DESIGN_LINE = 16
 def test_each_calculator_page_is_measured_at_its_shown_height(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Laid out hidden, each page measures what it needs once shown (``pages.lay_out``).
+    """Laid out hidden, each page and method measures what it needs once shown.
 
-    The results panel's height follows its own width, which a hidden page doesn't have
-    until it's laid out once; a single pass overstates the first page measured.
+    That's ``pages.lay_out``'s two passes, for each of a calculator's methods. The results
+    panel's height follows its own width, which a hidden page doesn't have until it's
+    laid out once; a single pass overstates the first page measured.
     """
     from caddcalc.gui import window as window_module
 
@@ -491,15 +493,16 @@ def test_each_calculator_page_is_measured_at_its_shown_height(
     monkeypatch.setattr(window_module, "fit_height", spy)
     window = open_window()
     monkeypatch.setattr(window_module, "fit_height", fit_height)
-    ids = [calc.id for calc in window.registry]
-    assert len(measured) == len(ids)
+    pages = [(calc.id, index) for calc in window.registry for index in range(len(calc.methods))]
+    assert len(measured) == len(pages)
     window.show()
-    for calc_id, height in zip(ids, measured, strict=True):
+    for (calc_id, index), height in zip(pages, measured, strict=True):
         window.select_calculator(calc_id)
+        window.method_box.setCurrentIndex(index)
         settle(window)
         view = window.page_scroll.viewport()
         shown = fit_height(window.page_scroll.widget(), view.width(), window.output)
-        assert shown == height, calc_id
+        assert shown == height, (calc_id, window.method_key)
     window.close()
 
 
@@ -573,11 +576,13 @@ def test_a_page_that_fails_to_measure_leaves_the_window_working(
 def test_no_calculator_page_scrolls_at_the_launch_size(
     qt: Any, calc_id: str, shorter: bool
 ) -> None:
-    """Every calculator page fits the launch size, whatever the font's lines (KI-024).
+    """Every calculator page fits the launch size, with each method, whatever the font.
 
-    The fields' heights are in pixels, so with lines shorter than the design's,
+    KI-024. The fields' heights are in pixels, so with lines shorter than the design's,
     ``launch_lines`` alone would give a window shorter than the pages need. The launch
-    height covers the tallest calculator page instead.
+    height covers the tallest calculator page instead, over every method: one with more
+    inputs, as the K-factor's K, makes a taller page. So changing the method never brings
+    a scroll bar, which would narrow the page and move the Units box (UI/UX's M1).
     """
     from caddcalc.gui.text_units import line_spacing
 
@@ -593,9 +598,15 @@ def test_no_calculator_page_scrolls_at_the_launch_size(
             assert line_spacing(window.font()) < DESIGN_LINE
         window.select_calculator(calc_id)
         window.show()
-        settle(window)
-        assert window.page_scroll.verticalScrollBar().maximum() == 0
-        assert not window.output.full
+        units = set()
+        for index in range(window.method_box.count()):
+            window.method_box.setCurrentIndex(index)
+            settle(window)
+            method = window.method_key
+            assert window.page_scroll.verticalScrollBar().maximum() == 0, method
+            assert not window.output.full, method
+            units.add(window.units_box.mapTo(window, window.units_box.rect().topLeft()).x())
+        assert len(units) == 1, units
         window.close()
     finally:
         app.setFont(base)

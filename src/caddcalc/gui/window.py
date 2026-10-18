@@ -550,8 +550,8 @@ class MainWindow(QMainWindow):
         """Return the window's preferred content size, in its font's text units.
 
         That's the list at its launch width, its handle, and a page at its cap, by
-        ``launch_lines`` line spacings, or the tallest calculator page's height if that's
-        more: 1100 × 736 at 9 pt (ADR-0021 §3).
+        ``launch_lines`` line spacings, or the tallest calculator page's height, with any
+        of its methods, if that's more. ADR-0021 §3 and its amendments give the sizes.
         """
         font = self.font()
         handle = self.splitter.handleWidth()
@@ -561,12 +561,14 @@ class MainWindow(QMainWindow):
     def _tallest_calculator_page(self) -> int:
         """Return the window height the tallest built-in calculator page needs to launch.
 
-        Each built-in calculator's page is laid out, hidden, at the page's cap, and
-        measured with its document at its least: the height it fits in without
-        scrolling. The window's bars are added as its layout places them. A plugin's page
-        isn't opened, as that would run its code before it's chosen; a taller one scrolls
-        as a whole (rule C). Nor does a family's settings page count: it has no results
-        to keep in view, so it may scroll (ADR-0021 §3).
+        Each built-in calculator's page is laid out, hidden, at the page's cap, with each
+        of its methods, since one with more inputs, as the K-factor's K, is taller: so
+        changing the method never brings a scroll bar, which would narrow the page and
+        move the row's controls. Each is measured with its document at its least: the
+        height it fits in without scrolling. The window's bars are added as its layout
+        places them. A plugin's page isn't opened, as that would run its code before it's
+        chosen; a taller one scrolls as a whole (rule C). Nor does a family's settings
+        page count: it has no results to keep in view, so it may scroll (ADR-0021 §3).
 
         A page that fails to show is left out, with a warning: it's measured here only for
         the launch size, and would otherwise fail only when chosen.
@@ -578,18 +580,22 @@ class MainWindow(QMainWindow):
         for calc in self.registry:
             if calc.id not in builtin_ids():
                 continue
-            # An isolation boundary, as a safety net: an error measuring one page mustn't
-            # stop the window, or every other calculator.
-            try:
-                self.select_calculator(calc.id)
-                lay_out(page, width)
-                tallest = max(tallest, fit_height(page, width, self.output))
-            except Exception as exc:  # noqa: BLE001
-                warnings.warn(
-                    f"The launch size leaves out {calc.name} ({calc.id}), whose page "
-                    f"failed to show: {exc!r}",
-                    stacklevel=2,
-                )
+            for index, method in enumerate(calc.methods):
+                # An isolation boundary, as a safety net: an error measuring one page
+                # mustn't stop the window, or every other calculator.
+                try:
+                    if index == 0:
+                        self.select_calculator(calc.id)  # opens on its first method
+                    else:
+                        self.method_box.setCurrentIndex(index)
+                    lay_out(page, width)
+                    tallest = max(tallest, fit_height(page, width, self.output))
+                except Exception as exc:  # noqa: BLE001
+                    warnings.warn(
+                        f"The launch size leaves out {calc.name} ({calc.id}) with its method "
+                        f"{method.label} ({method.key}), whose page failed to show: {exc!r}",
+                        stacklevel=2,
+                    )
         window_layout = self.layout()
         if window_layout is not None:
             window_layout.activate()  # the bars, at the heights the window gives them

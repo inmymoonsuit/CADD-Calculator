@@ -209,8 +209,12 @@ font whose lines are shorter, such as the offscreen platform's 14 px, the launch
 was shorter while the pages weren't, so the cone and segment pages scrolled as a whole at
 launch (rule C) where on Windows they fit. The launch height now also covers the tallest
 built-in calculator page at the launch width, within the screen, on UI/UX's ruling
-(ADR-0021 §3, amendments). On Windows at 9 pt it's unchanged. `test_no_calculator_page_scrolls_at_the_launch_size`
-runs everywhere, with lines under 16 px too.
+(ADR-0021 §3, amendments). On Windows at 9 pt it was unchanged.
+`test_no_calculator_page_scrolls_at_the_launch_size` runs everywhere, with lines under
+16 px too. Each calculator is now measured with each of its methods (UI/UX's labels
+review, M1): the segment calculator's K-factor page, with its K field, had scrolled at
+launch and moved the Units box. On Windows at 9 pt the launch height is now 738 px, two
+more than `launch_lines`' 736.
 
 ### KI-023: Three things didn't fit a window at its least size (resolved 2026-10-18)
 

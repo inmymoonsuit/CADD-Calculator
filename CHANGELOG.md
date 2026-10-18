@@ -427,6 +427,9 @@ All notable changes are recorded here. The format follows
 - A method's status says what its verification covers, and its tooltip names the source,
   or says why the method isn't verified there. The status keeps one width, so changing
   the method no longer shifts the row.
+- The window opens tall enough for every built-in calculator with any of its methods.
+  Choosing the K-factor in Flat length of a formed segment no longer brings a scroll bar,
+  which moved the Units box; on Windows at 9 pt the window opens 2 px taller, at 738 px.
 - Citations of *Machinery's Handbook* move from the 29th edition to the 31st (2020): the
   course formula (p. 1421), the angle rule and its worked example (p. 1421, Fig. 13), and
   the 41.82 steel basis (Table 2, p. 2706), so the gauge table is version 3. The
