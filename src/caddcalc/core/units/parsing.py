@@ -77,9 +77,32 @@ _MIXED = re.compile(r"([-+]?)(\d+)[\s-]+(\d+)/(\d+)")
 _FRACTION = re.compile(r"([-+]?)(\d+)/(\d+)")
 
 
-def parse_number(text: str) -> float:
-    """Parse a decimal or drafting-style fraction: ``0.1046``, ``1/8``, ``1-1/2``, ``1 1/2``."""
-    s = text.strip()
+MINUS_SIGN = "\u2212"
+"""U+2212, the minus sign: it's read as ``-`` (ADR-0020 §4)."""
+
+
+def parse_number(text: str, decimal: str = ".") -> float:
+    """Parse a decimal or drafting-style fraction: ``0.1046``, ``1/8``, ``1-1/2``, ``1 1/2``.
+
+    The decimal mark is ``"."`` or ``decimal``, the locale's, and a number has one at
+    most. Digits are never grouped, so ``1.234`` is 1.234 in every locale, and a comma
+    that isn't the locale's mark is refused, never read as grouping (ADR-0020 §4).
+
+    Raises:
+        InputError: The text isn't a number.
+    """
+    s = text.strip().replace(MINUS_SIGN, "-")
+    if decimal != ".":
+        if s.count(".") + s.count(decimal) > 1:
+            raise InputError(f"{text!r} has more than one decimal mark; digits aren't grouped")
+        s = s.replace(decimal, ".")
+    if "," in s:
+        raise InputError(
+            f"{text!r} has a comma, which isn't a decimal mark here: the decimal mark is "
+            f"{decimal!r}, and digits aren't grouped"
+        )
+    if "_" in s:
+        raise InputError(f"{text!r} is not a number; digits aren't grouped")
     for pattern in (_MIXED, _FRACTION):
         m = pattern.fullmatch(s)
         if m:
@@ -111,19 +134,22 @@ class ParsedQuantity(NamedTuple):
     """Whether the text named its unit, as in ``"3 mm"``."""
 
 
-def parse_quantity(text: str, dimension: Dimension, default_unit: str | None = None) -> float:
+def parse_quantity(
+    text: str, dimension: Dimension, default_unit: str | None = None, *, decimal: str = "."
+) -> float:
     """Parse text such as ``0.1046 in``, ``3mm``, ``1-1/2"``, ``90°`` and return base units.
 
     ``default_unit`` applies when the text has no unit. It defaults to the base unit.
+    ``decimal`` is the locale's decimal mark, read besides ``"."`` (``parse_number``).
 
     Raises:
         InputError: The text isn't a valid value of ``dimension``.
     """
-    return parse_quantity_detailed(text, dimension, default_unit).value
+    return parse_quantity_detailed(text, dimension, default_unit, decimal=decimal).value
 
 
 def parse_quantity_detailed(
-    text: str, dimension: Dimension, default_unit: str | None = None
+    text: str, dimension: Dimension, default_unit: str | None = None, *, decimal: str = "."
 ) -> ParsedQuantity:
     """Parse text like ``parse_quantity``, and also report the unit that was applied.
 
@@ -138,7 +164,7 @@ def parse_quantity_detailed(
     number_text = stripped[: len(stripped) - (named[1] if named else len(word))].rstrip()
     if not number_text:
         raise InputError(f"Cannot read a value from {text!r}")
-    number = parse_number(number_text)
+    number = parse_number(number_text, decimal)
     if named is not None:
         unit = named[0]
     else:
@@ -171,11 +197,16 @@ class TypedValue:
     """The unit applied: the one the text named, or else the default unit."""
     explicit_unit: bool
     """Whether the text named its unit, as in ``"3 mm"``."""
+    decimal: str = "."
+    """The locale's decimal mark the text was read with, besides ``"."``: ``","`` for
+    ``"0,0625"`` typed in a comma locale (ADR-0020 §4)."""
 
     def __post_init__(self) -> None:
         # Re-reading the user's own text is safe; re-reading rounded display text isn't (§9).
         try:
-            parsed = parse_quantity_detailed(self.text, self.dimension, self.unit.symbol)
+            parsed = parse_quantity_detailed(
+                self.text, self.dimension, self.unit.symbol, decimal=self.decimal
+            )
         except InputError as exc:
             raise UsageError(f"TypedValue text {self.text!r} is not a value: {exc}") from None
         agrees = (
@@ -196,11 +227,20 @@ class TypedValue:
         return self.unit.dimension
 
     @classmethod
-    def parse(cls, text: str, dimension: Dimension, default_unit: str | None = None) -> TypedValue:
+    def parse(
+        cls,
+        text: str,
+        dimension: Dimension,
+        default_unit: str | None = None,
+        *,
+        decimal: str = ".",
+    ) -> TypedValue:
         """Parse ``text`` as a ``dimension`` value; ``default_unit`` applies if it has no unit.
+
+        ``decimal`` is the locale's decimal mark, read besides ``"."``.
 
         Raises:
             InputError: The text isn't a valid value of that dimension.
         """
-        parsed = parse_quantity_detailed(text, dimension, default_unit)
-        return cls(parsed.value, text.strip(), parsed.unit, parsed.explicit_unit)
+        parsed = parse_quantity_detailed(text, dimension, default_unit, decimal=decimal)
+        return cls(parsed.value, text.strip(), parsed.unit, parsed.explicit_unit, decimal)

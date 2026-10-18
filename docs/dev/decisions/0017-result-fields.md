@@ -3,8 +3,8 @@
 * **Status:** **Accepted, and built** (slices k1–k6, 2026-10-17 and 18; see Amendments). On
   2026-10-17 the maintainer approved R1–R6 as recommended, and the optional findings
   F1–F3 as in scope, and later refined R3 (results are never obscured) and capped the
-  panel's width. F4 is a follow-up, and F5 is KI-022, with ADR-0020's L4 (accepted) as
-  its planned fix. Drafted by the UI/UX & Design session; the Engine checked it against
+  panel's width. F4 is a follow-up, and F5 was KI-022, resolved by ADR-0020's L4
+  (its i4). Drafted by the UI/UX & Design session; the Engine checked it against
   the code and built it.
 * **Date:** 2026-10-17
 * **Builds on:** ADR-0016 (the style-token discipline), ADR-0004 (Result and provenance),

@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from caddcalc.calculators import REFERENCE_TABLES
+from caddcalc.core.formatting import POINT
 from caddcalc.gui import branding as branding_module
 from caddcalc.gui.app import _split_smoke_test
 from caddcalc.gui.branding import (
@@ -391,7 +392,7 @@ def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path
 
     app = qt.QApplication.instance()
     b = load_branding(make_pack(tmp_path / "pack"))
-    window = MainWindow(branding=b)
+    window = MainWindow(branding=b, symbols=POINT)
     assert window.windowTitle() == PRODUCT_NAME, "one name in every edition (ADR-0016, S4)"
     html = about_html(b)
     assert (

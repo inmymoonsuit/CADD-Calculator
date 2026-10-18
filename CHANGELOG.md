@@ -7,6 +7,17 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Numbers in your regional format (ADR-0020 §4).** The desktop app shows numbers with
+  your regional format's decimal mark, such as `0,3119`, and takes it when you type, with
+  "." always accepted too. Digits are never grouped, and a comma that isn't your mark is
+  refused with a message saying why. Copy and Ctrl+C still write ".", which CAD reads;
+  Copy all writes your mark, for a spreadsheet, and in comma locales the copy menu adds
+  "Copy 0,3119". The work's formulas and values are written in your mark too. JSON and
+  the command line's numbers keep ".". This resolves KI-022.
+- **The language follows your system (ADR-0020 §3).** The desktop app reads the display
+  language and the regional format when it starts, for its own text and for Qt's, such
+  as dialog buttons; a change applies at the next start. The command line takes
+  `--lang`, then `CADDCALC_LANG`, `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` or `LANG`.
 - **Groundwork for translation (ADR-0020).** `caddcalc.core.i18n` translates text where
   it's shown, through GNU gettext catalogs; text stays in US English, the source
   language, until a language is chosen and wherever a catalog lacks a string. It also
@@ -41,8 +52,6 @@ All notable changes are recorded here. The format follows
   readers hear each result in full, e.g. "Bend allowance, BA: 0.3119 inches".
 - The user guide's [Results and copying](docs/user/results.md): the result fields,
   copying, the keyboard, and how a short window scrolls.
-- KI-022: values are always written with "." as the decimal point, with a workaround for
-  comma-decimal spreadsheets.
 - Groundwork for result fields (ADR-0017): their design tokens in
   `gui/assets/ui_style.toml`, documented in `docs/dev/design/result-fields.md`; a new
   palette colour, focus blue, for keyboard focus, kept well apart from every warning
@@ -417,6 +426,9 @@ All notable changes are recorded here. The format follows
   shows the method's name, with its status beside it, or under it when narrow; the open
   list shows both. The family settings page reflows to a narrow window instead of
   scrolling sideways.
+- A typed number may use the minus sign `−`, and may no longer use `_` between digits,
+  which was read as grouping: `1_000` was 1000.
+- An elided calculator name shows in bold in its tooltip, above its summary.
 - Units' names, which screen readers say, are US English, the source language
   ("millimeters"), and come in British spelling from the British catalog ("millimetres",
   "per cent"). Each is singular only after a number shown as a whole 1.

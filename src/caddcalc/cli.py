@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from caddcalc import __version__
 from caddcalc.calculators import default_registry
-from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result
+from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result, i18n
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
@@ -31,12 +32,37 @@ from caddcalc.core.formatting import (
 from caddcalc.core.i18n import _
 from caddcalc.core.units import parse_quantity
 
+LANGUAGE_VARIABLES = ("CADDCALC_LANG", "LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG")
+"""Where the CLI finds its language after ``--lang``: ours, then the variables Python's
+gettext reads, in its order (ADR-0020 §3)."""
+
+
+def cli_languages(lang: str | None, environ: Mapping[str, str]) -> list[str]:
+    """Return the languages the CLI writes in, most wanted first; empty for the source.
+
+    ``--lang`` wins, then the first of ``LANGUAGE_VARIABLES`` that's set. Each is a list
+    of languages separated by colons, as ``LANGUAGE`` is, and ``C`` or ``POSIX`` in it
+    means the source language from there on, as gettext reads it.
+    """
+    for value in (lang, *(environ.get(name) for name in LANGUAGE_VARIABLES)):
+        if value:
+            languages = []
+            for name in value.split(":"):
+                if name.split(".", 1)[0] in ("C", "POSIX"):
+                    break
+                if name:
+                    languages.append(name)
+            return languages
+    return []
+
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``caddcalc`` command line and return the exit status."""
     _ensure_unicode_output()
     parser = _build_parser()
     args = parser.parse_args(argv)
+    # Words follow the language; numbers keep "." for scripts (ADR-0020 §§3-4).
+    i18n.use(cli_languages(args.lang, os.environ))
     if args.command is None:
         parser.print_help()
         return 0
@@ -56,6 +82,12 @@ def _fail(message: str) -> int:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="caddcalc", description="CADD drafting calculators.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--lang",
+        metavar="LANG",
+        help="the language to write in, e.g. en_GB (default: CADDCALC_LANG, then LANGUAGE, "
+        "LC_ALL, LC_MESSAGES, LANG); numbers always use '.'",
+    )
     sub = parser.add_subparsers(dest="command")
 
     p_list = sub.add_parser("list", help="list available calculators")

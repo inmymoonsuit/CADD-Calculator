@@ -53,6 +53,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     from caddcalc import __version__
     from caddcalc.gui.actions import AppActions
     from caddcalc.gui.branding import PRODUCT_NAME, active_branding
+    from caddcalc.gui.regional import install_translations
     from caddcalc.gui.text_units import scaled_font
     from caddcalc.gui.welcome import WelcomeScreen
     from caddcalc.gui.window_layout import system_text_scale
@@ -70,8 +71,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     app.setOrganizationName("CADD Calculator")
     if branding.icon is not None:
         app.setWindowIcon(QIcon(str(branding.icon)))
-    # Before any widget: the user's text size, so every text-unit size follows it
-    # (ADR-0021 §2). It's put back on the way out, as main() found it, however it ends.
+    # Before any widget: our words and Qt's, in the user's language (ADR-0020 §3).
+    translator = install_translations(app)
+    # And the user's text size, so every text-unit size follows it (ADR-0021 §2). It's
+    # put back on the way out, as main() found it, however it ends.
     base_font = app.font()
     app.setFont(scaled_font(base_font, system_text_scale()))
     try:
@@ -98,7 +101,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             app.processEvents()
             QTimer.singleShot(0, startup.build_main_window)
             status = int(app.exec())
-        _dispose(app, welcome, startup.window, actions)
+        _dispose(app, welcome, startup.window, actions, translator)
     finally:
         app.setFont(base_font)
     return status

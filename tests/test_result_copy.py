@@ -8,7 +8,7 @@ from typing import Any, override
 
 import pytest
 
-from caddcalc.core.formatting import DisplayPrefs, results_tsv
+from caddcalc.core.formatting import POINT, DisplayPrefs, results_tsv
 from tests.qt_helpers import open_window, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
@@ -351,7 +351,7 @@ def test_a_plugin_calculator_copies_with_no_code_of_its_own() -> None:
     registry = Registry()
     registry.register_domain(ACME)
     registry.register(_AcmeWidget)
-    window = MainWindow(registry=registry)
+    window = MainWindow(registry=registry, symbols=POINT)
     window.select_calculator("acme.widget")
     (field,) = window.results.fields.values()
     field.copy_button.click()

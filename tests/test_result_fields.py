@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from caddcalc.core.formatting import DisplayPrefs, output_parts
+from caddcalc.core.formatting import POINT, DisplayPrefs, output_parts
 from tests.qt_helpers import open_window, results_text, settle, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
@@ -406,7 +406,7 @@ def test_a_plugin_calculator_gets_fields_with_no_code_of_its_own() -> None:
     registry = Registry()
     registry.register_domain(ACME)
     registry.register(_AcmeWidget)
-    window = MainWindow(registry=registry)
+    window = MainWindow(registry=registry, symbols=POINT)
     window.select_calculator("acme.widget")
     (field,) = window.results.fields.values()
     assert (field.symbol.text(), field.value.text(), field.unit.text()) == ("Y", "1.0000", "in")

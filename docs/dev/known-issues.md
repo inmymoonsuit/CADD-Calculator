@@ -198,22 +198,6 @@ need checking by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
-### KI-022: Values are always written with "." as the decimal point (Low)
-
-The app writes every number with ".", on screen and when copying (ADR-0017 F5). A copied
-value, or Copy all's rows, pasted into a spreadsheet set to a comma-decimal locale, such as
-German or French, can be read as text or a date rather than a number. Typed input
-accepts only "." too.
-
-* **Workaround:** set the spreadsheet's import or paste to "." as the decimal separator,
-  or paste into a cell formatted as text and convert it.
-* **Planned fix:** ADR-0020 (accepted, its L4). Numbers the app formats show, and are
-  typed, with the user's regional decimal separator; numbers quoted from a source stay
-  as published. Copy and Ctrl+C keep ".", which CAD reads; Copy all uses the locale's
-  separator, for a spreadsheet, and the menu gains a "Copy 0,3119" form. JSON keeps ".".
-  Everything that reads a shown number's decimals already asks one helper,
-  `core.formatting.decimal_separator()`.
-
 ### KI-023: Three things don't fit a window at its least size (Low)
 
 The window's least size comes from the calculator page, which scrolls rather than
@@ -245,6 +229,15 @@ launch (rule C) where on Windows they fit. The launch height now also covers the
 built-in calculator page at the launch width, within the screen, on UI/UX's ruling
 (ADR-0021 §3, amendments). On Windows at 9 pt it's unchanged. `test_no_calculator_page_scrolls_at_the_launch_size`
 runs everywhere, with lines under 16 px too.
+
+### KI-022: Values were always written with "." as the decimal point (resolved 2026-10-18)
+
+The app wrote every number with ".", on screen and when copying (ADR-0017 F5), so Copy
+all's rows pasted into a comma-decimal spreadsheet could read as text or dates, and
+typing took only ".". ADR-0020's L4, built as i4, resolves it: the desktop app shows and
+takes the regional format's decimal mark, with "." always accepted too; Copy and Ctrl+C
+keep ".", for CAD; Copy all uses the locale's mark, and the menu adds "Copy 0,3119".
+JSON, the command line's numbers, and numbers quoted from a source keep ".".
 
 ### KI-021: The cone's course method took a bottom diameter no larger than the thickness (resolved 2026-10-17)
 

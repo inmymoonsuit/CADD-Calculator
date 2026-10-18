@@ -5,7 +5,6 @@ from __future__ import annotations
 import builtins
 import gettext
 import re
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -14,14 +13,6 @@ from babel.messages.catalog import Catalog
 from caddcalc.core import i18n
 from caddcalc.core.errors import UsageError
 from tests.catalogs import shipped, tooling
-
-
-@pytest.fixture(autouse=True)
-def _source_language() -> Iterator[None]:
-    """Every test starts, and leaves, in the source language."""
-    i18n.use(())
-    yield
-    i18n.use(())
 
 
 def _british(folder: Path) -> Path:

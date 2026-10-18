@@ -16,6 +16,12 @@
 Units can be typed by name, in US or British spelling: `3 millimeters` or
 `3 millimetres`, `1 meter` or `1 metre`, `44 percent` or `44 per cent`.
 
+Type your regional format's decimal mark, or "." in any format: in German, `0,125` and
+`0.125` are the same. Digits are never grouped, so `1.234` is always 1.234, and a comma
+where your format's mark is "." is refused rather than guessed at. The minus sign `−`
+works as `-` does. Numbers the app fills in, such as the course example, are written in
+your format; what you typed stays as you typed it.
+
 Not supported yet: combined feet and inches such as `3'-4 1/2"`.
 
 ## Precision and rounding

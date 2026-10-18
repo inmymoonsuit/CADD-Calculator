@@ -70,6 +70,7 @@ from caddcalc.core import (
 from caddcalc.core.formatting import (
     HEADED,
     DisplayPrefs,
+    NumberSymbols,
     describe_error,
     describe_note,
     describe_override,
@@ -110,6 +111,7 @@ from caddcalc.gui.pages import (
     lay_out,
 )
 from caddcalc.gui.reflow import Reflow
+from caddcalc.gui.regional import number_symbols
 from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
 from caddcalc.gui.style_tokens import Rect, Size
 from caddcalc.gui.text_units import line_spacing, text_unit
@@ -259,6 +261,7 @@ class MainWindow(QMainWindow):
         registry: Registry | None = None,
         branding: Branding = GENERIC,
         actions: AppActions | None = None,
+        symbols: NumberSymbols | None = None,
         *,
         build: bool = True,
     ) -> None:
@@ -269,6 +272,8 @@ class MainWindow(QMainWindow):
                 ``None``.
             branding: The app's identity, for the title and About.
             actions: The app's shared commands; the window makes its own when ``None``.
+            symbols: How numbers are written and typed; the system's regional format
+                when ``None`` (ADR-0020 §4).
             build: Build its contents now. Startup makes the window's shell first, so the
                 welcome card can be its owned window before the card shows, and builds it
                 once the card has painted (ADR-0015, amendments).
@@ -281,7 +286,7 @@ class MainWindow(QMainWindow):
         """Whether its contents are built (``build``)."""
         self.branding = branding
         self.app_actions = actions if actions is not None else AppActions(branding, self)
-        self.prefs = DisplayPrefs()
+        self.prefs = DisplayPrefs(symbols=number_symbols() if symbols is None else symbols)
         self.calculator: Calculator | None = None
         """The calculator whose page is shown, if one is."""
         self.domain: Domain | None = None
@@ -771,7 +776,7 @@ class MainWindow(QMainWindow):
     def _on_units_changed(self, unit: str) -> None:
         self._apply_setting_edits()
         self._finish_field_edits()
-        prefs = DisplayPrefs(length_unit=unit)
+        prefs = replace(self.prefs, length_unit=unit)
         self._name_pending_units(prefs)
         self.prefs = prefs
         if self.domain is not None:
@@ -914,11 +919,16 @@ class MainWindow(QMainWindow):
         value = self._value_in_use(calc, p)
         return "" if value is None else field_text(value, p.dimension, self.prefs)
 
+    @property
+    def _decimal(self) -> str:
+        """The regional format's decimal mark, which typing may use besides "."."""
+        return self.prefs.symbols.decimal
+
     def _field_problem(self, p: Param, text: str) -> str | None:
         """Return why ``text`` can't be read as a value of ``p``, or ``None`` if it can."""
         default_unit = entry_unit(p.dimension, self.prefs)
         try:
-            TypedValue.parse(text, p.dimension, default_unit)
+            TypedValue.parse(text, p.dimension, default_unit, decimal=self._decimal)
         except InputError as exc:
             return f"{p.label}: {exc}"
         return None
@@ -952,7 +962,8 @@ class MainWindow(QMainWindow):
         else:
             self.pending_fields.pop((calc.id, key), None)
             default_unit = entry_unit(p.dimension, self.prefs)
-            own[key] = FieldEntry(TypedValue.parse(text, p.dimension, default_unit))
+            typed = TypedValue.parse(text, p.dimension, default_unit, decimal=self._decimal)
+            own[key] = FieldEntry(typed)
             if p.shared:
                 overrides.add(key)
         self.recompute()
@@ -979,7 +990,7 @@ class MainWindow(QMainWindow):
             unchanged = True
         else:
             default_unit = entry_unit(p.dimension, self.prefs)
-            value = TypedValue.parse(text, p.dimension, default_unit).value
+            value = TypedValue.parse(text, p.dimension, default_unit, decimal=self._decimal).value
             unchanged = text.strip() == start.shown or value == start.in_use
         if unchanged:
             own = self.entries.setdefault(calc.id, {})
@@ -1504,7 +1515,9 @@ class MainWindow(QMainWindow):
             return None
         default_unit = entry_unit(setting.dimension, self.prefs)
         try:
-            self.domain_settings.set_text(domain, setting.key, text, default_unit)
+            self.domain_settings.set_text(
+                domain, setting.key, text, default_unit, decimal=self._decimal
+            )
         except InputError as exc:
             message = describe_error(exc, self.prefs)
             if isinstance(exc, OutOfRangeError):  # a range error already names the setting
@@ -1530,7 +1543,9 @@ class MainWindow(QMainWindow):
         if self._setting_problem(setting, text) is None:
             if text.strip():
                 default_unit = entry_unit(setting.dimension, self.prefs)
-                updated = self.domain_settings.set_text(domain, key, text, default_unit)
+                updated = self.domain_settings.set_text(
+                    domain, key, text, default_unit, decimal=self._decimal
+                )
             else:
                 updated = self.domain_settings.clear(domain, key)
             self.domain_settings = updated
@@ -1656,7 +1671,8 @@ def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayP
     if typed_in == display_unit(dimension, new):
         return text
     try:
-        parsed = parse_quantity_detailed(text, dimension, typed_in.symbol)
+        mark = old.symbols.decimal
+        parsed = parse_quantity_detailed(text, dimension, typed_in.symbol, decimal=mark)
     except InputError:
         return text
     return text if parsed.explicit_unit else f"{text.strip()} {typed_in.symbol}"

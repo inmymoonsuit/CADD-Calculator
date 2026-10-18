@@ -7,7 +7,9 @@ from typing import Any
 
 import pytest
 
-from caddcalc.cli import main
+from caddcalc.cli import LANGUAGE_VARIABLES, cli_languages, main
+from caddcalc.core import i18n
+from caddcalc.core.formatting import POINT
 
 
 def test_cli_list(capsys: pytest.CaptureFixture[str]) -> None:
@@ -42,6 +44,43 @@ def test_cli_run_shows_work(capsys: pytest.CaptureFixture[str]) -> None:
     assert "0.3119 in" in out
     assert "unverified · reproduces legacy" in out
     assert "0.1046 in  (entered)" in out
+
+
+@pytest.mark.parametrize(
+    ("lang", "environ", "languages"),
+    [
+        ("en_GB", {"CADDCALC_LANG": "fr", "LANG": "de_DE.UTF-8"}, ["en_GB"]),
+        (None, {"CADDCALC_LANG": "fr", "LANGUAGE": "de", "LANG": "de_DE.UTF-8"}, ["fr"]),
+        (None, {"LANGUAGE": "fr:en_GB", "LC_ALL": "de_DE.UTF-8"}, ["fr", "en_GB"]),
+        (None, {"LC_ALL": "de_DE.UTF-8", "LANG": "fr_FR"}, ["de_DE.UTF-8"]),
+        (None, {"LC_MESSAGES": "pt_BR", "LANG": "fr_FR"}, ["pt_BR"]),
+        (None, {"LANG": "en_AU.UTF-8"}, ["en_AU.UTF-8"]),
+        (None, {"LANG": "C.UTF-8"}, []),
+        (None, {"LANGUAGE": "fr:C:en_GB"}, ["fr"]),
+        (None, {"LANG": "POSIX"}, []),
+        (None, {}, []),
+    ],
+)
+def test_the_cli_language_comes_from_lang_then_the_environment(
+    lang: str | None, environ: dict[str, str], languages: list[str]
+) -> None:
+    """--lang, CADDCALC_LANG, then gettext's own variables in its order (ADR-0020 §3)."""
+    assert cli_languages(lang, environ) == languages
+
+
+def test_the_cli_writes_words_in_its_language_and_numbers_with_a_point(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scripts read the CLI's numbers, so they keep "." whatever the language."""
+    for name in LANGUAGE_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("LANG", "de_DE.UTF-8")
+    args = ["run", "sheet_metal.bend_allowance", "T=0.1046", "R=0.156", "A=90"]
+    assert main([*args, "--method", "course"]) == 0
+    assert i18n.languages() == ("de_DE",)
+    assert main(["--lang", "en_GB", *args, "--method", "course"]) == 0
+    assert i18n.languages() == ("en_GB",)
+    assert "0.3119 in" in capsys.readouterr().out
 
 
 def test_cli_run_json_and_metric(capsys: pytest.CaptureFixture[str]) -> None:
@@ -106,7 +145,7 @@ def test_gui_window_computes(qt: Any) -> None:
     from tests.qt_helpers import results_text
 
     app = qt.QApplication.instance()
-    window = MainWindow()
+    window = MainWindow(symbols=POINT)
     window.select_calculator("sheet_metal.bend_allowance")
     window.method_box.setCurrentIndex(0)  # course
     assert "BA Bend allowance 0.3119 in" in results_text(window)
@@ -133,7 +172,7 @@ def test_a_window_is_freed_when_the_last_reference_goes() -> None:
 
     from caddcalc.gui.window import MainWindow
 
-    window = MainWindow()
+    window = MainWindow(symbols=POINT)
     window.select_calculator("sheet_metal.bend_allowance")
     window.select_domain("sheet_metal")
     window.select_calculator("sheet_metal.v_die_opening")
@@ -154,7 +193,7 @@ def test_an_explicit_registry_is_kept_even_with_no_calculators() -> None:
     registry = Registry()
     registry.register_domain(Domain("acme", "Acme Tools", "A domain with no calculators yet."))
     assert len(registry) == 0
-    window = MainWindow(registry=registry)
+    window = MainWindow(registry=registry, symbols=POINT)
     assert window.registry is registry
     assert [
         window.tree.topLevelItem(i).text(0) for i in range(window.tree.topLevelItemCount())

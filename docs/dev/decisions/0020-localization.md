@@ -1,8 +1,9 @@
 # ADR-0020: Localization, starting with a skeleton
 
 * **Status:** **Accepted**; the skeleton is being built, so far its `core.i18n` module and
-  catalog tooling (i1), the British catalog, the pseudo-locale and its tests (i2), and
-  units' names and plurals (i3; see Amendments). The maintainer asked on 2026-10-17 for spelling to
+  catalog tooling (i1), the British catalog, the pseudo-locale and its tests (i2),
+  units' names and plurals (i3), and numbers and the locale's wiring (i4; see
+  Amendments). The maintainer asked on 2026-10-17 for spelling to
   follow the user's language settings, and for the localization system's skeleton to be
   built now. After UI/UX's and Support & Review's reviews, the maintainer approved L1–L5
   as recommended on 2026-10-18 ("Approve all").
@@ -275,3 +276,43 @@ kept for the record.
 * **Spoken names** are in the British spelling where a British catalog is read, "0.3119
   millimetres", and US spelling otherwise, from the source. Until §3's locale wiring
   (i4), the app shows the source.
+
+### 2026-10-18: numbers and the locale's wiring (i4)
+
+* **`NumberSymbols`** in `DisplayPrefs` holds the decimal mark, one character that isn't
+  a digit, a sign or a space. The GUI reads it from `QLocale.system()`, which carries
+  the user's own changes to their regional format, as `QLocale()` doesn't. A mark Qt
+  gives as more than one character falls back to ".". The window takes the symbols as an
+  argument, so the tests don't follow the machine's format.
+* **On screen,** `format_number` writes the mark, so values, fields, notes' values and
+  range errors all take it. A line of work is math: it's built with "." and then
+  `typeset`, number by number, so the formula's own constants match the values in it
+  ("0,64·T + 1,57·R"). Where the mark is ",", a function's arguments are split with ";",
+  as comma-locale spreadsheets write them: "max(2,5; 0)". A step's note, and the notes'
+  phrases quoted from a source, are prose and stay as written.
+* **Typing** takes the locale's mark and ".", at most one mark in a number in a comma
+  locale. A comma that isn't the mark is refused, saying why. U+2212 reads as "-", and
+  "_", which Python's `float()` takes as grouping, is refused too. The identity test
+  allows the clearer message for "3,5 mm", which was refused before as well.
+* **Text in a field.** `TypedValue` keeps the mark it was read with, so it reads its own
+  text again. `entry_text` shows text read in another mark than the screen's, such as a
+  course example or a stated table value written with ".", converted into the locale's
+  mark; text the user typed was read in the screen's mark, so it stays as typed.
+* **Copying.** Copy, Ctrl+C, "with unit", "full precision" and "fraction" write ".".
+  `CopyForm.SHOWN` copies the number as shown; the menu offers it as "Copy 0,3119" only
+  where the mark isn't ".". Copy all writes the locale's mark. The status bar quotes
+  the copied text, as it did.
+* **Words.** `gui/regional.py` sets our languages from `uiLanguages()` in the underscore
+  form; Qt lists a script too ("en_Latn_GB"), which `posix_language` drops. It installs
+  Qt's `qtbase` translator with the same locale, before the first widget, and `main()`
+  deletes it with its windows. Both are read once, so a change applies at the next start.
+* **The CLI** chooses its words by `--lang`, then `CADDCALC_LANG`, then `LANGUAGE`,
+  `LC_ALL`, `LC_MESSAGES` and `LANG`; "C" or "POSIX" in a list means the source from
+  there on, as gettext reads it. Its numbers stay ".", for typing and output alike: its
+  output is read by scripts, and §3 has the CLI write "." until it reads the OS's own
+  setting. A regional mark for its plain-text output would come with that later step.
+* **Tests** run in the source language and with ".": `tests/conftest.py` resets the
+  language around every test, since `main()` sets the system's.
+* **KI-022 is resolved,** and ADR-0017's F5 with it.
+* **The calculator list's tooltip** gives an elided name in bold, escaped (UI/UX's i2
+  review).

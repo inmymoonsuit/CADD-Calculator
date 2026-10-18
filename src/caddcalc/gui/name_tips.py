@@ -7,6 +7,7 @@ whole name.
 
 from __future__ import annotations
 
+from html import escape
 from typing import override
 
 from PySide6.QtCore import QEvent, QModelIndex, QPersistentModelIndex, Qt
@@ -21,8 +22,13 @@ from PySide6.QtWidgets import (
 
 
 def tip_text(name: str, summary: str) -> str:
-    """Return the tooltip of a row whose ``name`` is elided: the name, then its summary."""
-    return f"{name}\n{summary}" if summary else name
+    """Return the tooltip of a row whose ``name`` is elided: the name in bold, then its summary.
+
+    It's rich text, so both are escaped: a name such as "Bend allowance & deduction" shows
+    its "&".
+    """
+    bold = f"<b>{escape(name)}</b>"
+    return f"{bold}<br>{escape(summary)}" if summary else bold
 
 
 class NameTips(QStyledItemDelegate):

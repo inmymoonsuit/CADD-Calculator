@@ -133,6 +133,9 @@ def test_every_text_reads_as_it_always_has() -> None:
         count += 1
         new = _reads(parse_quantity_detailed, text, dimension, default)
         was = _reads(old.parse_quantity_detailed, text, OLD_DIMENSIONS[dimension], default)
+        if "," in text:  # still refused, now saying why (ADR-0020 §4)
+            assert new[0] == was[0] == "InputError" and "has a comma" in new[1], (new, was)
+            continue
         if not _same(new, was):
             differ.append((text, dimension.value, default, new, was))
     assert count > 10_000, count

@@ -63,7 +63,13 @@ class DomainSettings:
         return self._origins.get(domain.id, {}).get(key)
 
     def set_text(
-        self, domain: Domain, key: str, text: str, default_unit: str | None = None
+        self,
+        domain: Domain,
+        key: str,
+        text: str,
+        default_unit: str | None = None,
+        *,
+        decimal: str = ".",
     ) -> DomainSettings:
         """Return a copy with ``key`` set from the user's text.
 
@@ -74,6 +80,7 @@ class DomainSettings:
             key: The setting key, e.g. ``"thickness"``.
             text: What the user typed, e.g. ``"1/8"`` or ``"3 mm"``.
             default_unit: The unit for text typed without one.
+            decimal: The locale's decimal mark, read besides ``"."``.
 
         Raises:
             UsageError: ``domain`` has no setting with that key.
@@ -81,7 +88,8 @@ class DomainSettings:
             OutOfRangeError: The value is outside the setting's range.
         """
         setting = domain.setting(key)
-        return self.set(domain, key, TypedValue.parse(text, setting.dimension, default_unit))
+        entry = TypedValue.parse(text, setting.dimension, default_unit, decimal=decimal)
+        return self.set(domain, key, entry)
 
     def set(
         self,

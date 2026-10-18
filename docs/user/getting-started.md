@@ -54,3 +54,11 @@ uv run caddcalc run sheet_metal.truncated_cone_layout --json        # machine-re
 
 Inputs can be given by symbol (`T`) or key (`thickness`). Anything you leave out uses the
 default shown by `caddcalc show`.
+
+## Language and number format
+
+The desktop app follows your system's display language and regional format, each read
+when it starts, so a change applies the next time it starts. English outside the US
+gets British spelling ("millimetre"). The command line writes in the language of
+`--lang`, or of `CADDCALC_LANG`, `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` or `LANG`, the first
+that's set; its numbers always use ".", for scripts.

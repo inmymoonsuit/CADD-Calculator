@@ -28,9 +28,9 @@ button.
 
 ## Copying
 
-* **Copy a value:** click a field's copy button. It copies the number exactly as shown,
-  without its unit, such as `0.3119`, ready for a spreadsheet cell or a CAD dimension
-  box working in the drawing's units. The button shows a check for a moment, and the
+* **Copy a value:** click a field's copy button. It copies the number as shown, without
+  its unit, such as `0.3119`, ready for a spreadsheet cell or a CAD dimension box working
+  in the drawing's units. The button shows a check for a moment, and the
   status bar says what was copied.
 * **Other forms:** right-click a field, or press the Menu key on its copy button, for:
   * **Copy with unit:** `0.3119 in`
@@ -42,8 +42,12 @@ button.
   spreadsheet, one per result: symbol, name, value, and unit, in columns. A name a
   spreadsheet would take for a formula, such as one starting with `=`, is kept as text.
 
-Values are always written with "." as the decimal point. A spreadsheet set to a
-comma-decimal locale may need its paste or import set to "." (known issue KI-022).
+Numbers on screen use your regional format's decimal mark, such as `0,3119` in German.
+Copying a value, with or without its unit, or at full precision, always writes ".", as
+`0.3119`, since CAD programs read it: AutoCAD takes a comma as the break between a
+point's coordinates. **Copy all** writes your decimal mark, for a spreadsheet set to your
+format. Where your mark isn't ".", the menu also copies the number exactly as shown, as
+**Copy 0,3119**. The status bar always quotes what was copied.
 
 ## The keyboard
 

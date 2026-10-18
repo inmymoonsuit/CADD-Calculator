@@ -7,8 +7,9 @@ the units registry (ADR-0019 §1), so it holds no unit tables of its own.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum
 from fractions import Fraction
@@ -29,8 +30,36 @@ DISCLAIMER = (
 
 
 @dataclass(frozen=True)
+class NumberSymbols:
+    """How the app writes a number it formats: only the decimal mark follows the locale.
+
+    Digits stay Latin, the minus sign stays an ASCII "-", and digits are never grouped, so
+    decimal alignment and pasting keep working (ADR-0020 §4). A front end takes the mark
+    from the user's regional format; core never reads the process locale.
+
+    Raises:
+        UsageError: The mark is empty, longer than one character, a digit, a sign, or a
+            space.
+    """
+
+    decimal: str = "."
+    """The decimal mark, such as ``"."`` or ``","``."""
+
+    def __post_init__(self) -> None:
+        mark = self.decimal
+        if len(mark) != 1 or mark.isdigit() or mark.isspace() or mark in "+-\u2212":
+            raise UsageError(
+                f"A decimal mark is one character, not a digit, sign or space: {mark!r}"
+            )
+
+
+POINT = NumberSymbols()
+"""The "." that text read by machines always has: copies for CAD, JSON, and data files."""
+
+
+@dataclass(frozen=True)
 class DisplayPrefs:
-    """How values are shown: length unit, decimals, and optional inch fractions.
+    """How values are shown: length unit, decimals, optional inch fractions, and symbols.
 
     Stresses follow the length unit (``display_unit``), so there is no stress unit here.
     """
@@ -41,6 +70,8 @@ class DisplayPrefs:
     stress_decimals: int = 1
     fraction_denominator: int | None = None
     """When set (e.g. 64) and the length unit is inches, also show the nearest fraction."""
+    symbols: NumberSymbols = POINT
+    """How numbers on screen are written: the locale's decimal mark (ADR-0020 §4)."""
 
     def decimals_for(self, dimension: Dimension) -> int:
         """Return the decimal places ``dimension`` is shown with.
@@ -111,19 +142,41 @@ def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> fl
 
 
 def decimal_separator(prefs: DisplayPrefs) -> str:
-    """Return the decimal separator values are shown with: ``"."`` for now.
+    """Return the decimal mark values are shown with: the locale's (ADR-0020 §4)."""
+    return prefs.symbols.decimal
 
-    Everything that reads a shown number's decimals asks here, so a separator preference
-    (ADR-0017 F5, KI-022) changes one place.
+
+def format_number(value: float, decimals: int, decimal: str = ".") -> str:
+    """Return ``value`` rounded to ``decimals`` places, never as negative zero.
+
+    Args:
+        value: The number.
+        decimals: Its decimal places.
+        decimal: The decimal mark to write it with.
     """
-    del prefs  # every preference writes "." until there's a separator preference
-    return "."
-
-
-def format_number(value: float, decimals: int) -> str:
-    """Return ``value`` rounded to ``decimals`` places, never as negative zero."""
     text = f"{value:.{decimals}f}"
-    return "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
+    text = "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
+    return text.replace(".", decimal)
+
+
+_DECIMAL_NUMBER = re.compile(r"(?<![\w.])(\d+)\.(\d+)")
+"""A number with decimals, as the app writes it, never part of a longer word."""
+
+
+def typeset(text: str, symbols: NumberSymbols) -> str:
+    """Return math the app wrote with ``"."``, such as a line of work, in ``symbols``.
+
+    Each number's decimal point becomes the locale's mark. Where that mark is ``","``,
+    the comma between a function's arguments becomes ``";"``, as comma-locale
+    spreadsheets write it, so ``max(2,5; 0)`` reads one way. Only math is typeset;
+    prose, and numbers quoted from a source, are never converted (ADR-0020 §4).
+    """
+    mark = symbols.decimal
+    if mark == ".":
+        return text
+    if mark == ",":
+        text = text.replace(",", ";")
+    return _DECIMAL_NUMBER.sub(lambda m: f"{m.group(1)}{mark}{m.group(2)}", text)
 
 
 @dataclass(frozen=True)
@@ -135,8 +188,8 @@ class ValueParts:
     """
 
     number: str
-    """The number, rounded in the display unit, e.g. ``"0.3119"``: an ASCII ``-`` and a
-    ``.`` decimal point, never a negative zero."""
+    """The number, rounded in the display unit, e.g. ``"0.3119"``: an ASCII ``-`` and the
+    locale's decimal mark (``DisplayPrefs.symbols``), never a negative zero."""
     unit: str
     """The unit's symbol, e.g. ``"in"``, ``"ksi"``, or ``"°"``; ``""`` for a ratio."""
     fraction: str | None = None
@@ -165,7 +218,7 @@ def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> Valu
     fraction = None
     if prefs.fraction_denominator and display_unit(dimension, prefs).fractions:
         fraction = to_fraction(shown, prefs.fraction_denominator)
-    number = format_number(shown, _decimals(dimension, prefs))
+    number = format_number(shown, _decimals(dimension, prefs), prefs.symbols.decimal)
     return ValueParts(number, _shown_unit(dimension, prefs), fraction)
 
 
@@ -226,7 +279,12 @@ class CopyForm(Enum):
 
     VALUE = "value"
     """The number as shown, without its unit, e.g. ``0.3119``: it pastes cleanly into a
-    spreadsheet cell or a CAD dimension box working in the drawing's units."""
+    spreadsheet cell or a CAD dimension box working in the drawing's units. Its decimal
+    mark is always ``"."``, which CAD reads: AutoCAD reads a comma as the separator
+    between coordinates (ADR-0020 §4)."""
+    SHOWN = "shown"
+    """The number exactly as shown, e.g. ``0,3119``, in the locale's decimal mark: for a
+    spreadsheet set to the same locale. It's offered only where that mark isn't ``"."``."""
     WITH_UNIT = "with_unit"
     """The number as shown, with its unit, e.g. ``0.3119 in``."""
     FULL = "full"
@@ -244,14 +302,15 @@ FULL_DIGITS = 10
 def copy_text(value: float, dimension: Dimension, prefs: DisplayPrefs, form: CopyForm) -> str:
     """Return a base-unit value as clipboard text, in ``form``.
 
-    Every number form writes plain decimals, never an exponent, with an ASCII ``-`` and a
-    ``.`` decimal point, and never a negative zero, so it pastes into a spreadsheet or a
-    CAD input as it reads. Only ``FRACTION`` copies the inch fraction.
+    Every number form writes plain decimals, never an exponent, with an ASCII ``-`` and
+    never a negative zero, so it pastes into a spreadsheet or a CAD input as it reads.
+    Each writes ``"."`` for its decimal point, but ``SHOWN``, which writes the locale's
+    mark. Only ``FRACTION`` copies the inch fraction.
 
     Raises:
         UsageError: ``FRACTION`` for a value shown without one.
     """
-    parts = value_parts(value, dimension, prefs)
+    parts = value_parts(value, dimension, _copy_prefs(prefs, form))
     return _copied(parts, display_value(value, dimension, prefs), form)
 
 
@@ -262,12 +321,17 @@ def copy_output(output: Output, value: float, prefs: DisplayPrefs, form: CopyFor
         UsageError: ``FRACTION`` for a value shown without one.
     """
     shown = display_value(value, output.dimension, prefs)
-    return _copied(output_parts(output, value, prefs), shown, form)
+    return _copied(output_parts(output, value, _copy_prefs(prefs, form)), shown, form)
+
+
+def _copy_prefs(prefs: DisplayPrefs, form: CopyForm) -> DisplayPrefs:
+    """Return the preferences a copy in ``form`` is written with: ``"."`` but for ``SHOWN``."""
+    return prefs if form is CopyForm.SHOWN else replace(prefs, symbols=POINT)
 
 
 def _copied(parts: ValueParts, shown: float, form: CopyForm) -> str:
     """Return a shown value's clipboard text in ``form``; ``shown`` is it unrounded."""
-    if form is CopyForm.VALUE:
+    if form in (CopyForm.VALUE, CopyForm.SHOWN):
         return parts.number
     if form is CopyForm.WITH_UNIT:
         return parts.with_unit
@@ -298,6 +362,8 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     Each row is the output's symbol, its label, its value as shown without its unit, and
     its unit, in the calculator's output order, each row ending in a line break. A tab or
     line break inside a cell becomes a space, since tab-separated text can't escape them.
+    The value has the locale's decimal mark, as a spreadsheet in that locale reads it;
+    tabs separate the cells, so a comma can't break a row (ADR-0020 §4).
 
     A text cell that a spreadsheet would read as a formula, one starting with ``=``,
     ``+``, ``-``, or ``@`` (or their full-width forms), after any whitespace, gets a
@@ -346,10 +412,12 @@ dimension, and more places would make every converted field long.
 def field_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> str:
     """Return a base-unit value as form-field text in the display unit, e.g. ``2.65684``.
 
-    It has no unit, because the field labels its unit, and no trailing zeros.
+    It has no unit, because the field labels its unit, and no trailing zeros. Its
+    decimal mark is the locale's: the app writes it into the field (ADR-0020 §4).
     """
-    shown = format_number(display_value(value, dimension, prefs), FIELD_DECIMALS)
-    return shown.rstrip("0").rstrip(".")
+    mark = prefs.symbols.decimal
+    shown = format_number(display_value(value, dimension, prefs), FIELD_DECIMALS, mark)
+    return shown.rstrip("0").rstrip(mark)
 
 
 def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:
@@ -358,8 +426,14 @@ def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:
     The user's own text is shown when it named its unit, or when its unit is still the
     display unit. Otherwise the value is shown converted, so a field never shows a bare
     number in a unit other than the one it labels. The value itself never changes.
+
+    Text read in another decimal mark than the screen's is the app's, such as a default
+    written with ".", so it's shown converted too, in the locale's mark; the user's own
+    text is read in the locale's mark, so it stays as typed (ADR-0020 §4).
     """
-    if entry.explicit_unit or entry.unit == display_unit(entry.dimension, prefs):
+    own_mark = entry.decimal == prefs.symbols.decimal or "." not in entry.text
+    as_typed = entry.explicit_unit or entry.unit == display_unit(entry.dimension, prefs)
+    if own_mark and as_typed:
         return entry.text
     return field_text(entry.value, entry.dimension, prefs)
 
@@ -389,8 +463,26 @@ def render_step(
     display unit, e.g. ``0.1046 in = 2.6568 mm``, so the substituted line stays true. A
     stated value is shown as stated, e.g. ``0.109375 in``, never rounded for display.
 
+    Each line is math, so its numbers take the locale's decimal mark (``typeset``); a
+    step's note is prose and stays as written.
+
     Raises:
         UsageError: ``result`` is ``None`` for a step that substitutes the run's values.
+    """
+    symbolic, substituted, value = _step_lines(step, result, replace(prefs, symbols=POINT))
+    value = typeset(value, prefs.symbols)
+    if substituted is None:
+        return (step.note, None, value)
+    return (typeset(symbolic, prefs.symbols), typeset(substituted, prefs.symbols), value)
+
+
+def _step_lines(
+    step: Step, result: Result | None, prefs: DisplayPrefs
+) -> tuple[str, str | None, str]:
+    """Return a step's formula, substitution, and value, with ``"."`` decimal points.
+
+    A step with no formula has neither: its formula is ``""`` and its substitution
+    ``None``.
     """
     value_text = format_value(step.value, step.dimension, prefs)
     if step.expression_unit is not None:
@@ -404,7 +496,7 @@ def render_step(
         elif step.stated is not None:
             value_text = step.stated
     if step.expression is None:
-        return (step.note, None, value_text)
+        return ("", None, value_text)
     symbolic = expr.render_symbolic(step.expression)
     if step.substitution is not None:
         return (symbolic, expr.render_numeric(step.expression, step.substitution), value_text)
@@ -562,4 +654,5 @@ def _quantity_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> s
     It keeps six significant digits rather than the display decimals, so a bound in a
     message isn't rounded to a value the rejected input seems to satisfy.
     """
-    return f"{display_value(value, dimension, prefs):g}{unit_suffix(dimension, prefs)}"
+    number = f"{display_value(value, dimension, prefs):g}"
+    return typeset(number, prefs.symbols) + unit_suffix(dimension, prefs)

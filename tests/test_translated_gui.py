@@ -19,13 +19,6 @@ from tests.qt_helpers import open_window, settle
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
 
-@pytest.fixture(autouse=True)
-def _source_language() -> Iterator[None]:
-    """Every test leaves the source language chosen."""
-    yield
-    i18n.use(())
-
-
 def _in(language: str, folder: Path) -> None:
     """Choose ``language``: en_XA, made into ``folder``, or the source for ``""``."""
     i18n.use([language] if language else [], directories=[pseudo_locale.write(folder)])

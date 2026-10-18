@@ -93,11 +93,14 @@ COPY_ALL_KEYS = QKeySequence("Ctrl+Shift+C")
 """Copy all, from anywhere in the window; Cmd+Shift+C on macOS."""
 MENU = {
     CopyForm.VALUE: "Copy value",
+    CopyForm.SHOWN: "Copy {number}",
     CopyForm.WITH_UNIT: "Copy with unit",
     CopyForm.FULL: "Copy full precision",
     CopyForm.FRACTION: "Copy fraction",
 }
-"""The context menu's copy forms (R6), in order; the fraction only when it's shown."""
+"""The context menu's copy forms (R6), in order. The fraction is there only when it's
+shown, and the number as shown, e.g. "Copy 0,3119", only where the decimal mark isn't "."
+(ADR-0020 §4): "Copy value" writes "." for CAD."""
 
 
 def _announce(widget: QWidget, message: str) -> None:
@@ -323,12 +326,16 @@ class ResultField(QWidget):
         self.copy()
 
     def context_menu(self) -> QMenu:
-        """Return the menu of copy forms (R6): the fraction only when it's shown."""
+        """Return the menu of copy forms (R6), as ``MENU`` lists them."""
         menu = QMenu(self)
+        point = decimal_separator(self.prefs) == "."
         for form, text in MENU.items():
             if form is CopyForm.FRACTION and (self.parts is None or self.parts.fraction is None):
                 continue
-            action = menu.addAction(text)
+            if form is CopyForm.SHOWN and (point or self.parts is None):
+                continue
+            number = "" if self.parts is None else self.parts.number
+            action = menu.addAction(text.format(number=number))
             action.setEnabled(self.parts is not None)
             action.triggered.connect(_copier(self, form))
         return menu

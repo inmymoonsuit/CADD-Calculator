@@ -10,20 +10,24 @@ from typing import Any
 
 from caddcalc.calculators import default_registry
 from caddcalc.core import Registry
+from caddcalc.core.formatting import POINT, NumberSymbols
 
 
-def open_window(registry: Registry | None = None) -> Any:
+def open_window(registry: Registry | None = None, *, symbols: NumberSymbols = POINT) -> Any:
     """A main window over the built-ins (no plugins), or over ``registry``.
 
-    It's placed on the primary screen. Shown unplaced, a window opens on the pointer's
-    screen, and on a desktop of mixed scales, Windows resizes it for that screen's
-    scale, so a native run's sizes would depend on where the pointer is.
+    Its numbers are written with ``symbols``, "." unless a test asks for a comma locale's
+    mark, so tests don't follow the machine's regional format. It's placed on the
+    primary screen: shown unplaced, a window opens on the pointer's screen, and on a
+    desktop of mixed scales, Windows resizes it for that screen's scale, so a native
+    run's sizes would depend on where the pointer is.
     """
     from PySide6.QtGui import QGuiApplication
 
     from caddcalc.gui.window import MainWindow
 
-    window = MainWindow(default_registry(load_plugins=False) if registry is None else registry)
+    calculators = default_registry(load_plugins=False) if registry is None else registry
+    window = MainWindow(calculators, symbols=symbols)
     screen = QGuiApplication.primaryScreen()
     if screen is not None:
         window.setScreen(screen)

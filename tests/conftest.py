@@ -8,6 +8,20 @@ from typing import Any
 
 import pytest
 
+from caddcalc.core import i18n
+
+
+@pytest.fixture(autouse=True)
+def _source_language() -> Iterator[None]:
+    """Every test starts, and leaves, in the source language, whatever the machine's is.
+
+    The app's ``main()`` chooses the system's languages (ADR-0020 §3), so a test that
+    runs it would leave them chosen for the tests after it.
+    """
+    i18n.use(())
+    yield
+    i18n.use(())
+
 
 @pytest.fixture
 def qt(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
