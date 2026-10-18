@@ -21,6 +21,7 @@ from caddcalc.core.units.model import (
     Dimension,
     DimensionSpec,
     Exact,
+    Precision,
     Unit,
     UnitSystem,
 )
@@ -128,15 +129,23 @@ SI, ACCEPTED, US, NONE = (
 )
 
 DIMENSIONS = (
-    DimensionSpec(LENGTH, "a length", "mm", 4, follows_length=True),
-    DimensionSpec(ANGLE, "an angle", "deg", 2),
-    DimensionSpec(RATIO, "a ratio", "", 4),
-    DimensionSpec(STRESS, "a stress", "MPa", 1, shown_with={US: "ksi"}),
-    DimensionSpec(AREA, "an area", "mm²", 4, follows_length=True, derivation=Derivation(LENGTH, 2)),
+    DimensionSpec(LENGTH, "a length", "mm", Precision(4), follows_length=True),
+    DimensionSpec(ANGLE, "an angle", "deg", Precision(2)),
+    DimensionSpec(RATIO, "a ratio", "", Precision(4)),
+    DimensionSpec(STRESS, "a stress", "MPa", Precision(1), shown_with={US: "ksi"}),
+    DimensionSpec(
+        AREA,
+        "an area",
+        "mm²",
+        Precision(6, significant=True),
+        follows_length=True,
+        derivation=Derivation(LENGTH, 2),
+    ),
 )
 """Every dimension. A stress follows the length choice: ksi beside inches or feet, MPa
 otherwise (ADR-0005, amendments). An area is the square of the length choice, in² beside
-inches (ADR-0018 §3). An angle shows in degrees, a ratio as a number."""
+inches (ADR-0018 §3), to six significant figures. An angle shows in degrees, a ratio as a
+number."""
 
 
 def _square(

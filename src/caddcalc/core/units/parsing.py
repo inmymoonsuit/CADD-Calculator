@@ -50,11 +50,12 @@ def get_unit(symbol: str, dimension: Dimension | None = None) -> Unit:
         dimension: The dimension it's expected to be of. Give it wherever it's known: a
             unit of that dimension wins where units of several share the name, and with
             none of that dimension, the unit of whatever dimension has it is returned.
+            With none given, a length wins: ``'`` and ``"`` are the foot and inch.
 
     Raises:
         InputError: The unit is unknown.
         UsageError: Units of several dimensions have that name, and none is of
-            ``dimension``.
+            ``dimension``, or, with none given, a length.
     """
     return registry().find(symbol, dimension)
 

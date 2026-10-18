@@ -19,7 +19,8 @@ All notable changes are recorded here. The format follows
 - **Areas (ADR-0018 §3, ADR-0019).** A new kind of quantity, the area, in in², ft², mm²,
   cm² and m², each the exact square of its length unit, so 1 ft² is 92 903.04 mm²
   exactly. Type `3 in²`, `3 in^2`, `3 in2`, `3 sq in` or `3 square inches`; it's always
-  written `in²`. Areas show in the square of your length unit, and JSON gives them in
+  written `in²`. Areas show in the square of your length unit, to 6 significant figures (`6451.60 mm²`,
+  `10.0000 in²`), and JSON gives them in
   mm², with `"dimension": "area"`. Messages that list the base units now end in "mm²".
 - **Results in a fixed unit.** A calculator's output may be shown in one unit always,
   whatever the unit system, to 6 significant figures (`Output.unit`), as the coming unit

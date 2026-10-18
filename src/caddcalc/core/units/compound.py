@@ -80,13 +80,32 @@ def _builtin(symbol: str) -> Unit:
     return next(u for u in UNITS if u.symbol == symbol)
 
 
-# Translators: a length in feet and inches, for a screen reader, e.g. "1 foot 4 inches".
-FEET_INCHES_SPOKEN = N_("{feet} {foot} {inches} {inch}")
-# Translators: feet and a mixed number of inches, e.g. "1 foot 4 and 3 sixteenths inches";
-# {part} is the fraction's denominator as a word, such as "sixteenths".
-FEET_MIXED_SPOKEN = N_("{feet} {foot} {inches} and {numerator} {part} inches")
-# Translators: feet and a fraction of an inch, e.g. "1 foot 3 sixteenths of an inch".
-FEET_FRACTION_SPOKEN = N_("{feet} {foot} {numerator} {part} of an inch")
+# Translators: a number and its unit, spoken, e.g. "4 inches" or "30 minutes".
+MEASURE_SPOKEN = N_("{number} {unit}")
+# Translators: two spoken measures of one value said together, e.g. "1 foot" and "4 inches"
+# as "1 foot 4 inches", as CLDR's unit list pattern joins them.
+TOGETHER_SPOKEN = N_("{first} {second}")
+# Translators: a negative value, spoken, e.g. "minus 1 foot 4 inches".
+NEGATIVE_SPOKEN = N_("minus {value}")
+# Translators: a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
+# is the fraction's denominator as a word, such as "sixteenths".
+INCHES_MIXED_SPOKEN = N_("{inches} and {numerator} {part} inches")
+# Translators: a fraction of an inch, spoken, e.g. "3 sixteenths of an inch".
+INCH_FRACTION_SPOKEN = N_("{numerator} {part} of an inch")
+
+
+def _measure(number: str, unit: Unit) -> str:
+    """Return a number and its unit's name as spoken, e.g. "4 inches"."""
+    return _(MEASURE_SPOKEN).format(number=number, unit=unit.spoken(number))
+
+
+def _said(measures: list[str], negative: bool) -> str:
+    """Return a value's spoken measures said together, and as negative if it is."""
+    text = measures[0]
+    for measure in measures[1:]:
+        text = _(TOGETHER_SPOKEN).format(first=text, second=measure)
+    return _(NEGATIVE_SPOKEN).format(value=text) if negative else text
+
 
 PARTS = {
     2: NP_("fraction", "half", "halves"),
@@ -151,25 +170,25 @@ class FeetInches(CompoundForm):
         else:
             shown = f"{sign}{feet}'-{whole}\""
             copied = f"{sign}{feet}'{whole}\""
-        return CompoundText(shown, copied, _spoken_feet(sign, feet, whole, fraction))
+        return CompoundText(shown, copied, _spoken_feet(bool(sign), feet, whole, fraction))
 
 
-def _spoken_feet(sign: str, feet: int, whole: int, fraction: Fraction) -> str:
+def _spoken_feet(negative: bool, feet: int, whole: int, fraction: Fraction) -> str:
+    """Say feet and inches in words, leaving out a part that's zero: "4 inches"."""
     foot, inch = _builtin("ft"), _builtin("in")
-    feet_text = f"{sign}{feet}"
-    fields = {"feet": feet_text, "foot": foot.spoken(feet_text)}
-    if not fraction:
-        return _(FEET_INCHES_SPOKEN).format(
-            **fields, inches=str(whole), inch=inch.spoken(str(whole))
-        )
-    singular, plural = PARTS[fraction.denominator]
-    numerator = fraction.numerator
-    part = npgettext("fraction", singular, plural, numerator)
-    if whole:
-        return _(FEET_MIXED_SPOKEN).format(
-            **fields, inches=str(whole), numerator=numerator, part=part
-        )
-    return _(FEET_FRACTION_SPOKEN).format(**fields, numerator=numerator, part=part)
+    measures = [_measure(str(feet), foot)] if feet else []
+    if fraction:
+        singular, plural = PARTS[fraction.denominator]
+        numerator = fraction.numerator
+        part = npgettext("fraction", singular, plural, numerator)
+        if whole:
+            inches = _(INCHES_MIXED_SPOKEN).format(inches=whole, numerator=numerator, part=part)
+        else:
+            inches = _(INCH_FRACTION_SPOKEN).format(numerator=numerator, part=part)
+        measures.append(inches)
+    elif whole:
+        measures.append(_measure(str(whole), inch))
+    return _said(measures or [_measure("0", inch)], negative)
 
 
 @cache
@@ -183,11 +202,6 @@ def _feet_inches_patterns() -> tuple[re.Pattern[str], re.Pattern[str]]:
     )
     attempt = re.compile(rf"[-+]?\d+ ?(?:{feet}) ?-? ?\S", re.IGNORECASE)
     return strict, attempt
-
-
-# Translators: an angle in degrees, minutes and seconds, for a screen reader, e.g.
-# "40 degrees 30 minutes 15.00 seconds".
-DMS_SPOKEN = N_("{degrees} {degree} {minutes} {minute} {seconds} {second}")
 
 
 class DegreesMinutesSeconds(CompoundForm):
@@ -243,15 +257,12 @@ class DegreesMinutesSeconds(CompoundForm):
         shown = f"{sign}{degrees}°{minutes}′{seconds.replace('.', decimal)}″"
         copied = f"{sign}{degrees}d{minutes}'{seconds}\""
         degree, minute, second = _builtin("deg"), _builtin("arcmin"), _builtin("arcsec")
-        degrees_text, seconds_text = f"{sign}{degrees}", seconds.replace(".", decimal)
-        spoken = _(DMS_SPOKEN).format(
-            degrees=degrees_text,
-            degree=degree.spoken(degrees_text),
-            minutes=str(minutes),
-            minute=minute.spoken(str(minutes)),
-            seconds=seconds_text,
-            second=second.spoken(seconds_text),
-        )
+        measures = [_measure(str(degrees), degree)] if degrees else []
+        if minutes:
+            measures.append(_measure(str(minutes), minute))
+        if rest:
+            measures.append(_measure(seconds.replace(".", decimal), second))
+        spoken = _said(measures or [_measure("0", degree)], bool(sign))
         return CompoundText(shown, copied, spoken)
 
 

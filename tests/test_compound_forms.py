@@ -167,17 +167,24 @@ def test_a_fineness_is_a_drafting_fraction_and_whole_inches_have_none() -> None:
         (16.1875, "1 foot 4 and 3 sixteenths inches"),
         (16, "1 foot 4 inches"),
         (13, "1 foot 1 inch"),
-        (24, "2 feet 0 inches"),
-        (4, "0 feet 4 inches"),
+        (24, "2 feet"),
+        (4, "4 inches"),
+        (1, "1 inch"),
+        (0, "0 inches"),
+        (0.1875, "3 sixteenths of an inch"),
+        (4.5, "4 and 1 half inches"),
         (12.1875, "1 foot 3 sixteenths of an inch"),
         (12.0625, "1 foot 1 sixteenth of an inch"),
         (16.5, "1 foot 4 and 1 half inches"),
         (16.75, "1 foot 4 and 3 quarters inches"),
         (16.125, "1 foot 4 and 1 eighth inches"),
-        (-16.1875, "-1 foot 4 and 3 sixteenths inches"),
+        (-16.1875, "minus 1 foot 4 and 3 sixteenths inches"),
+        (-4, "minus 4 inches"),
+        (-0.001, "0 inches"),
     ],
 )
 def test_feet_and_inches_are_spoken_in_words(inches: float, spoken: str) -> None:
+    """A zero part isn't said, and a negative is "minus" (UI/UX's u3 L2 and L3)."""
     assert FeetInches(16).text(inches * IN).spoken == spoken
 
 
@@ -283,12 +290,25 @@ def test_seconds_are_shown_in_the_locales_mark_and_copied_with_a_point() -> None
         DegreesMinutesSeconds(7)
 
 
-def test_degrees_minutes_and_seconds_are_spoken_in_words() -> None:
-    assert DegreesMinutesSeconds(2).text(1 + 1 / 60).spoken == ("1 degree 1 minute 0.00 seconds")
-    assert DegreesMinutesSeconds(0).text(1 + 1 / 60 + 1 / 3600).spoken == (
-        "1 degree 1 minute 1 second"
-    )
-    assert DegreesMinutesSeconds(2).text(-0.5).spoken == "-0 degrees 30 minutes 0.00 seconds"
+@pytest.mark.parametrize(
+    ("degrees", "fineness", "spoken"),
+    [
+        (40 + 30 / 60 + 15 / 3600, 2, "40 degrees 30 minutes 15.00 seconds"),
+        (1 + 1 / 60, 2, "1 degree 1 minute"),
+        (1 + 1 / 60 + 1 / 3600, 0, "1 degree 1 minute 1 second"),
+        (1 + 1 / 3600, 0, "1 degree 1 second"),
+        (90, 2, "90 degrees"),
+        (-0.5, 2, "minus 30 minutes"),
+        (-15.5 / 3600, 1, "minus 15.5 seconds"),
+        (0.0, 2, "0 degrees"),
+        (-1e-9, 2, "0 degrees"),
+    ],
+)
+def test_degrees_minutes_and_seconds_are_spoken_in_words(
+    degrees: float, fineness: int, spoken: str
+) -> None:
+    """A zero part isn't said, and a negative is "minus" (UI/UX's u3 L2 and L3)."""
+    assert DegreesMinutesSeconds(fineness).text(degrees).spoken == spoken
 
 
 def test_the_forms_are_registered_for_their_dimensions_only() -> None:
@@ -408,7 +428,8 @@ def test_an_output_naming_a_form_it_cant_be_shown_in_is_a_definition_error(
     [
         ("en_GB", 16.1875, "1 foot 4 and 3 sixteenths inches"),
         ("en_GB", 12.1875, "1 foot 3 sixteenths of an inch"),
-        ("en_CA", 24, "2 feet 0 inches"),
+        ("en_CA", 24, "2 feet"),
+        ("en_GB", -4, "minus 4 inches"),
     ],
 )
 def test_the_spoken_forms_are_marked_and_read_from_the_catalogs(
@@ -416,7 +437,7 @@ def test_the_spoken_forms_are_marked_and_read_from_the_catalogs(
 ) -> None:
     use([tag], directories=[shipped(shipped(tmp_path, "en_001"), "en_CA")])
     assert FeetInches().text(inches * IN).spoken == spoken
-    assert DegreesMinutesSeconds().text(1.5).spoken == "1 degree 30 minutes 0.00 seconds"
+    assert DegreesMinutesSeconds().text(1.5).spoken == "1 degree 30 minutes"
 
 
 TEST = Domain("test", "Test", "A domain for tests.")
@@ -425,7 +446,7 @@ TEST = Domain("test", "Test", "A domain for tests.")
 @pytest.mark.gui
 @pytest.mark.usefixtures("qt")
 def test_a_result_field_shows_copies_and_says_a_compound_form_with_no_code_of_its_own() -> None:
-    from PySide6.QtGui import QFontMetricsF, QGuiApplication
+    from PySide6.QtGui import QGuiApplication
 
     from caddcalc.gui.window import MainWindow
 
@@ -441,10 +462,47 @@ def test_a_result_field_shows_copies_and_says_a_compound_form_with_no_code_of_it
     assert feet.accessibleName() == "Feet and inches, FI: 1 foot 4 and 3 sixteenths inches"
     feet.copy_button.click()
     assert QGuiApplication.clipboard().text() == "1'4-3/16\""
-    # The DMS value's seconds and their mark reach past its point, and every other value
-    # is padded to line up with them.
-    metrics = QFontMetricsF(dms.value.font())
-    tail = metrics.horizontalAdvance(".00″")
-    assert feet.value.contentsMargins().right() == round(tail)
-    assert dms.value.contentsMargins().right() == 0
+    window.close()
+
+
+class _Mixed(_Forms):
+    """The compound rows beside a decimal one, for alignment."""
+
+    id = "test.mixed"
+    outputs = (*_Forms.outputs, Output("plain", "P", "Plain", L, unit="in"))
+
+    @override
+    def compute(self, ctx: Context) -> None:
+        super().compute(ctx)
+        ctx.calc("P", "X", label="Plain", dimension=L, output="plain")
+
+
+@pytest.mark.gui
+@pytest.mark.usefixtures("qt")
+def test_feet_and_inches_sit_flush_right_and_dms_aligns_on_its_seconds_point() -> None:
+    """UI/UX's u3 M1: with no point to align on, feet and inches end at the column's edge."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QFontMetricsF
+
+    from caddcalc.gui.window import MainWindow
+
+    calculators = Registry()
+    calculators.register_domain(TEST)
+    calculators.register(_Mixed)
+    window = MainWindow(registry=calculators, symbols=POINT)
+    window.select_calculator("test.mixed")
+    fields = window.results.fields
+    feet, dms, plain = fields["ft_in"], fields["dms"], fields["plain"]
+    assert plain.value.text() == "16.1875"
+    metrics = QFontMetricsF(feet.value.font())
+    for field in (feet, fields["negative"]):
+        assert field.value.contentsMargins().right() == 0
+        assert field.value.alignment() & Qt.AlignmentFlag.AlignRight
+        assert field.value.width() == plain.value.width(), "one column for every value"
+        assert metrics.horizontalAdvance(field.value.text()) <= field.value.width()
+    # The DMS seconds and the plain value line up on their points.
+    tails = {f: metrics.horizontalAdvance(t) for f, t in ((dms, ".00″"), (plain, ".1875"))}
+    most = max(tails.values())
+    for field, tail in tails.items():
+        assert field.value.contentsMargins().right() == round(most - tail)
     window.close()

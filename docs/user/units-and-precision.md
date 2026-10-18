@@ -49,7 +49,8 @@ seconds reads `40°30′15.00″`, and Copy gives `40d30'15.00"`. Rounding carri
   The CLI's `--decimals` changes this, and `--fraction 64` adds the nearest 1/64".
 * Stresses follow the unit system: ksi when it's `in`, MPa when it's `mm`.
 * Areas follow it too, as the square of the length unit: in² when it's `in`, mm² when
-  it's `mm`, to 4 decimals. They're always written `in²` and `mm²`, however you typed
+  it's `mm`, to 6 significant figures, such as `6451.60 mm²` or `10.0000 in²`. They're
+  always written `in²` and `mm²`, however you typed
   them.
 * Some results are always shown in one unit, whatever the unit system, such as each row
   of a unit converter. They show 6 significant figures, e.g. `25.4000 mm` or

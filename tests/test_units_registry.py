@@ -164,11 +164,22 @@ def test_names_are_unique_within_a_dimension_and_the_parser_knows_which() -> Non
     minute, second = test.find("arcmin"), test.find("arcsec")
     assert test.find("′", A) is minute and test.find("′", L).symbol == "ft"
     assert test.find('"', A) is second and test.find('"', L).symbol == "in"
-    with pytest.raises(UsageError, match="several dimensions"):
-        test.find("′")
+    assert test.find("′").symbol == "ft", "with no dimension given, a length (S&R's u3 L1)"
     assert test.ending("30′", A) == (minute, 1) and test.ending("30′", L)[0].symbol == "ft"
     assert (minute.exact, second.exact) == (Fraction(1, 60), Fraction(1, 3600))
     assert (minute.written, second.written, minute.close_up) == ("′", "″", True)
+
+
+@pytest.mark.parametrize(("mark", "symbol"), [("'", "ft"), ("′", "ft"), ('"', "in"), ("″", "in")])
+def test_a_lookup_with_no_dimension_still_finds_the_foot_and_inch(mark: str, symbol: str) -> None:
+    """S&R's u3 L1: get_unit, to_base and from_base are public, and read them as before."""
+    from caddcalc.core.units import from_base, to_base
+
+    unit = get_unit(mark)
+    assert unit.symbol == symbol and unit.dimension is L
+    assert to_base(2, mark) == 2 * unit.factor
+    assert from_base(unit.factor, mark) == 1
+    assert get_unit(mark, A).symbol == {"ft": "arcmin", "in": "arcsec"}[symbol]
 
 
 def test_a_frozen_registry_takes_no_more() -> None:
@@ -283,6 +294,27 @@ def test_the_british_spellings_are_reserved_like_every_built_in_name(spelling: s
     assert error.message.endswith("in any dimension")
 
 
+def test_a_name_two_units_share_with_no_length_needs_a_dimension() -> None:
+    """With no length among them, a shared name needs the dimension it's expected in."""
+    test = _fresh()
+    test.register(
+        Unit(
+            "pt",
+            "part",
+            Dimension.RATIO,
+            1.0,
+            ("rad",),
+            "parts",
+            exact=Fraction(1),
+            system=UnitSystem.NONE,
+            sources=get_unit("deg").sources,
+        )
+    )
+    with pytest.raises(UsageError, match="several dimensions"):
+        test.find("rad")
+    assert test.find("rad", A).symbol == "rad" and test.find("rad", Dimension.RATIO).symbol == "pt"
+
+
 def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -304,8 +336,7 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     clear_registry()
     try:
         assert registry() is forced
-        with pytest.raises(UsageError, match="several dimensions"):
-            get_unit("in")
+        assert get_unit("in").name == "inch", "with no dimension given, a length"
         assert get_unit("in", L).name == "inch" and get_unit("in", A).name == "incline"
         assert format_value(25.4, L, DisplayPrefs()) == "1.0000 in"
         parsed = parse_quantity_detailed("3", L, "in")

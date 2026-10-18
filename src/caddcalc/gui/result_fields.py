@@ -600,7 +600,8 @@ class ResultsPanel(QWidget):
         most = max(tails) if self.tokens.decimal_align else 0.0
         widths = []
         for field, tail in zip(fields, tails, strict=True):
-            pad = most - tail if self.tokens.decimal_align else 0.0
+            aligned = self.tokens.decimal_align and not _flush(field.parts, point)
+            pad = most - tail if aligned else 0.0
             field.value.setContentsMargins(0, 0, round(pad), 0)
             widths.append(metrics.horizontalAdvance(field.value.text()) + round(pad))
         value = max(widths)
@@ -610,6 +611,16 @@ class ResultsPanel(QWidget):
             field.symbol.setFixedWidth(symbol)
             field.unit.setFixedWidth(math.ceil(unit))
             field.value.setFixedWidth(math.ceil(value))
+
+
+def _flush(parts: ValueParts | None, point: str) -> bool:
+    """Whether a value is set flush right, rather than aligned on a decimal point.
+
+    A compound form with no point to align on, such as ``1'-4 3/16"``, isn't a decimal
+    number, so padding it as one would leave it short of the column's edge. One with a
+    point, as degrees, minutes and seconds has in its seconds, aligns on it.
+    """
+    return parts is not None and parts.compound is not None and point not in parts.number
 
 
 def _tail(parts: ValueParts | None, metrics: QFontMetricsF, point: str) -> float:

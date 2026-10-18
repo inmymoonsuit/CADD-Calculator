@@ -171,6 +171,12 @@ msgid_plural "millimeters"
 msgstr[0] "millimetre"
 msgstr[1] "millimetres"
 
+#. a negative value, spoken, e.g. "minus 1 foot 4 inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "minus {value}"
+msgstr ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "minute"
@@ -269,29 +275,29 @@ msgid_plural "thirty-seconds"
 msgstr[0] ""
 msgstr[1] ""
 
-#. an angle in degrees, minutes and seconds, for a screen reader, e.g.
-#. "40 degrees 30 minutes 15.00 seconds".
+#. two spoken measures of one value said together, e.g. "1 foot" and "4 inches"
+#. as "1 foot 4 inches", as CLDR's unit list pattern joins them.
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
-msgid "{degrees} {degree} {minutes} {minute} {seconds} {second}"
+msgid "{first} {second}"
 msgstr ""
 
-#. feet and a mixed number of inches, e.g. "1 foot 4 and 3 sixteenths inches";
-#. {part} is the fraction's denominator as a word, such as "sixteenths".
+#. a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
+#. is the fraction's denominator as a word, such as "sixteenths".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
-msgid "{feet} {foot} {inches} and {numerator} {part} inches"
+msgid "{inches} and {numerator} {part} inches"
 msgstr ""
 
-#. a length in feet and inches, for a screen reader, e.g. "1 foot 4 inches".
+#. a number and its unit, spoken, e.g. "4 inches" or "30 minutes".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
-msgid "{feet} {foot} {inches} {inch}"
+msgid "{number} {unit}"
 msgstr ""
 
-#. feet and a fraction of an inch, e.g. "1 foot 3 sixteenths of an inch".
+#. a fraction of an inch, spoken, e.g. "3 sixteenths of an inch".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
-msgid "{feet} {foot} {numerator} {part} of an inch"
+msgid "{numerator} {part} of an inch"
 msgstr ""
 

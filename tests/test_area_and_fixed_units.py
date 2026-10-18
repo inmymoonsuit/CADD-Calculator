@@ -18,6 +18,7 @@ from caddcalc.core import (
     Param,
     Registry,
     SpecError,
+    UsageError,
     Verification,
 )
 from caddcalc.core.formatting import (
@@ -144,14 +145,33 @@ def test_an_area_is_shown_in_the_square_of_the_length_choice(length: str, square
     assert display_unit(AREA, prefs).symbol == square
     assert unit_suffix(AREA, prefs) == f" {square}"
     parts = value_parts(get_unit(square).factor, AREA, prefs)
-    assert parts == ValueParts("1.0000", square), "never with an inch fraction"
-    assert prefs.decimals_for(AREA) == 4, "the registry's default, there's no preference"
+    assert parts == ValueParts("1.00000", square), "never with an inch fraction"
+    assert prefs.precision_for(AREA) == Precision(6, significant=True), "there's no preference"
+    with pytest.raises(UsageError, match="area is shown to significant figures"):
+        prefs.decimals_for(AREA)
+
+
+@pytest.mark.parametrize(
+    ("value", "length", "shown"),
+    [
+        (6451.6, "mm", "6451.60 mm²"),
+        (6451.6, "in", "10.0000 in²"),
+        (6451.6, "m", "0.00645160 m²"),
+        (92903.04 * 1234.5, "ft", "1234.50 ft²"),
+        (0.0, "in", "0.00000 in²"),
+    ],
+)
+def test_an_area_shows_six_significant_figures_whatever_its_size(
+    value: float, length: str, shown: str
+) -> None:
+    """UI/UX's u2 L1: 4 decimals would give 6451.6000 mm² and 0.0065 m²."""
+    assert format_value(value, AREA, DisplayPrefs(length_unit=length, decimals=2)) == shown
 
 
 def test_an_area_reads_the_users_decimal_mark_and_says_its_unit_in_full() -> None:
     prefs = DisplayPrefs(symbols=NumberSymbols(","))
-    assert format_value(92903.04 * 2.5, AREA, replace(prefs, length_unit="ft")) == "2,5000 ft²"
-    assert spoken_value(value_parts(645.16, AREA, DisplayPrefs())) == "1.0000 square inches"
+    assert format_value(92903.04 * 2.5, AREA, replace(prefs, length_unit="ft")) == "2,50000 ft²"
+    assert spoken_value(value_parts(645.16, AREA, DisplayPrefs())) == "1.00000 square inches"
     assert spoken_value(ValueParts("1", "ft²")) == "1 square foot"
     assert spoken_value(ValueParts("2", "ft²")) == "2 square feet"
 
@@ -270,6 +290,7 @@ def test_a_precision_is_some_decimal_places_or_at_least_one_significant_figure()
         (-0.0, 6, "0.00000"),
         (1e-9, 2, "0.0000000010"),
         (0.125, 2, "0.12"),
+        (123.4575, 6, "123.457"),
         (0.375, 2, "0.38"),
         (5.0, 1, "5"),
     ],

@@ -62,6 +62,10 @@ factor read from SP 811; the minute is 1/60 degree and the second 1/3600, exactl
 | arcmin | Table 6 (minute), §7.2 | |
 | arcsec | Table 6 (second), §7.2 | |
 
-* **Prepared by:** the Calculator Engine session, 2026-10-18, building u2 and u3. Not
-  yet reviewed or signed.
+* **Prepared by:** the Calculator Engine session, 2026-10-18, building u2 and u3.
+
+### Sign-off, version 2
+
+* Maintainer:
+* Review session (Support & Review):
 

@@ -428,3 +428,20 @@ together.
   large R/T" had no source. The help, the user guide, the glossary and the string
   sweep's table agree. The help texts aren't marked for translation yet, so no catalog
   changed.
+
+### 2026-10-18: text not yet marked, for the sweep
+
+New user-facing text is marked from the start (CONTRIBUTING, "Translating"). These are
+the exceptions left for the string sweep (§6), each because the text around it isn't
+marked yet either:
+
+* **The parser's messages** (`core/units/numbers.py`, `parsing.py`, `compound.py`): a
+  number that can't be read, a comma that isn't the mark, an unknown unit, a value of the
+  wrong dimension, and, since ADR-0019's u3, feet and inches or degrees, minutes and
+  seconds whose parts don't fit ("isn't feet and inches …", "has 13 inches; give inches
+  under 12", "isn't degrees, minutes and seconds …", "has a part of 60 or more …"). They
+  reach the user through `describe_error`, which will translate them by template.
+* **Calculator labels, help, notes and errors** that the sweep covers calculator by
+  calculator, as §6 says.
+
+Spoken forms, unit names and the fractions' words are marked (ADR-0019, u3 and u3b).

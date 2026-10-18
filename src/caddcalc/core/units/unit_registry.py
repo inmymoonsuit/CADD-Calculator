@@ -217,18 +217,22 @@ class UnitRegistry:
             dimension: The dimension it's expected to be of. A unit of that dimension wins
                 where units of several share the name; with none of that dimension, the
                 unit of whatever dimension has it is returned, so the caller can say it
-                measures the wrong thing.
+                measures the wrong thing. With none given, a length wins, so ``'`` is
+                the foot, as it always was, and not the minute of arc.
 
         Raises:
             InputError: No unit has that name.
-            UsageError: Units of several dimensions have it, and none is of ``dimension``.
+            UsageError: Units of several dimensions have it, and none is of ``dimension``
+                (or, with none given, a length).
         """
         key = text.strip()
         if key:
             named = [u for u in self._by_name.get(key.casefold(), ()) if _names(u, key)]
         else:
             named = [u for u in self._units if not u.symbol]  # "" is the unnamed ratio
-        own = [u for u in named if u.dimension is dimension]
+        # With no dimension given, a length: the foot and inch had ' and " before the
+        # minute and second of arc shared them (ADR-0019, u3 review).
+        own = [u for u in named if u.dimension is (dimension or Dimension.LENGTH)]
         found = own or named
         if not found:
             raise InputError(f"Unknown unit {text!r}")

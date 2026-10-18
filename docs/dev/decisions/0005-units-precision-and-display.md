@@ -93,7 +93,8 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
 
 * **`Dimension.AREA`**, base unit the square millimetre, with mm², cm², m², in² and ft²,
   each generated from its length unit in exact arithmetic. It shows in the square of the
-  length preference, to 4 decimals, and never with an inch fraction. ADR-0019's u2
+  length preference, to 6 significant figures (4 decimals as first built), and never
+  with an inch fraction. ADR-0019's u2
   amendment has the details.
 
 ### 2026-10-18: feet and inches, and degrees, minutes and seconds (ADR-0019, u3)

@@ -82,11 +82,12 @@ class DisplayPrefs:
     symbols: NumberSymbols = POINT
     """How numbers on screen are written: the locale's decimal mark (ADR-0020 §4)."""
 
-    def decimals_for(self, dimension: Dimension) -> int:
-        """Return the decimal places ``dimension`` is shown with.
+    def precision_for(self, dimension: Dimension) -> Precision:
+        """Return the precision ``dimension`` is shown with.
 
-        That's the user's choice for it, or, for a dimension with no choice of its own, the
-        default its declaration gives (ADR-0019 §2).
+        That's the user's choice of decimals for it, or, for a dimension with no choice of
+        its own, the precision its declaration gives (ADR-0019 §2): an area's six
+        significant figures.
         """
         chosen = {
             Dimension.LENGTH: self.decimals,
@@ -94,7 +95,18 @@ class DisplayPrefs:
             Dimension.ANGLE: self.angle_decimals,
             Dimension.STRESS: self.stress_decimals,
         }.get(dimension)
-        return registry().dimension(dimension).decimals if chosen is None else chosen
+        return registry().dimension(dimension).precision if chosen is None else Precision(chosen)
+
+    def decimals_for(self, dimension: Dimension) -> int:
+        """Return the decimal places ``dimension`` is shown with.
+
+        Raises:
+            UsageError: ``dimension`` is shown to significant figures, as an area is.
+        """
+        precision = self.precision_for(dimension)
+        if precision.significant:
+            raise UsageError(f"{dimension.value} is shown to significant figures, not decimals")
+        return precision.digits
 
 
 def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
@@ -140,11 +152,6 @@ def entry_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
     return display_unit(dimension, prefs).symbol
 
 
-def _decimals(dimension: Dimension, prefs: DisplayPrefs) -> int:
-    """Return the decimal places ``dimension`` is shown with (``DisplayPrefs.decimals_for``)."""
-    return prefs.decimals_for(dimension)
-
-
 def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> float:
     """Convert a base-unit value to the display unit, without rounding."""
     return from_base(value, display_unit(dimension, prefs))
@@ -171,8 +178,10 @@ def format_number(value: float, decimals: int, decimal: str = ".") -> str:
 def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     """Return ``value`` to ``digits`` significant figures, as plain decimals.
 
-    It keeps trailing zeros, which say how many figures are shown (``25.4000`` to six),
-    writes no exponent, and is never a negative zero. A rounding that carries into a new
+    It rounds the value's exact binary value, half to even, as ``format_number`` does,
+    so 123.4575, a little under that in binary, is ``123.457`` to six. It keeps trailing
+    zeros, which say how many figures are shown (``25.4000`` to six), writes no exponent,
+    and is never a negative zero. A rounding that carries into a new
     place keeps the count, so 9.999997 to six is ``10.0000``. Zero is ``0.00000`` to six.
 
     Args:
@@ -262,23 +271,16 @@ def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> Valu
         dimension: What the value measures.
         prefs: The display unit, decimals, and fraction preference.
     """
-    return _parts(value, display_unit(dimension, prefs), _decimals(dimension, prefs), prefs)
+    return _parts(value, display_unit(dimension, prefs), prefs.precision_for(dimension), prefs)
 
 
-def _parts(value: float, unit: Unit, precision: int | Precision, prefs: DisplayPrefs) -> ValueParts:
-    """Return a base-unit value as shown in ``unit``, to ``precision``, in parts.
-
-    ``precision`` is a number of decimal places, or a ``Precision``.
-    """
+def _parts(value: float, unit: Unit, precision: Precision, prefs: DisplayPrefs) -> ValueParts:
+    """Return a base-unit value as shown in ``unit``, to ``precision``, in parts."""
     shown = from_base(value, unit)
     fraction = None
     if prefs.fraction_denominator and unit.fractions:
         fraction = to_fraction(shown, prefs.fraction_denominator)
-    mark = prefs.symbols.decimal
-    if isinstance(precision, Precision):
-        number = format_precise(shown, precision, mark)
-    else:
-        number = format_number(shown, precision, mark)
+    number = format_precise(shown, precision, prefs.symbols.decimal)
     return ValueParts(number, unit.written, fraction)
 
 
@@ -578,8 +580,8 @@ def _step_lines(
         unit = get_unit(step.expression_unit, step.dimension)
         yielded = step.stated
         if yielded is None:
-            decimals = _decimals(step.dimension, prefs)
-            yielded = f"{format_number(from_base(step.value, unit), decimals)} {unit.symbol}"
+            precision = prefs.precision_for(step.dimension)
+            yielded = f"{format_precise(from_base(step.value, unit), precision)} {unit.symbol}"
         if unit.symbol != display_unit(step.dimension, prefs).symbol:
             value_text = f"{yielded} = {value_text}"
         elif step.stated is not None:

@@ -163,8 +163,10 @@ class DimensionSpec:
     """Its name with its indefinite article, e.g. ``"an angle"``."""
     base: str
     """Its base unit's key symbol: every calculation runs in it (ADR-0005)."""
-    decimals: int
-    """The decimal places it's shown with when no preference says otherwise."""
+    precision: Precision
+    """The precision it's shown with when no preference says otherwise: decimal places,
+    or, for an area, significant figures, since one area may be 6451.60 mm² and another
+    10.0000 in²."""
     follows_length: bool = False
     """Shown in the length unit the user chose, or, for a power of a length, in that
     unit's power: a length in inches, an area in square inches."""

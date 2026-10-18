@@ -318,3 +318,35 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
   refused before as a length, reads as minutes or seconds; and `1'4"` is 1 foot 4
   inches, or in an angle 1 minute 4 seconds. Every other text reads as before.
 
+### 2026-10-18: the reviews' findings on u2 and u3 (u3b)
+
+UI/UX & Design's and Support & Review's reviews of u2 and u3 passed both slices, with
+these fixes. The project manager relayed the maintainer's approval of the five choices
+u3 made, as built: the DMS copy form `40d30'15.00"`, both parts of feet and inches always
+shown, inches of 12 or more refused, the precisions (1/16 inch, hundredths of a second,
+six significant figures), and the new messages left unmarked until the sweep.
+
+* **Feet and inches sit flush right** (UI/UX's M1). Decimal alignment padded them as if
+  they had decimals, 31 px short of the value column's edge. A compound value with no
+  decimal point isn't padded; DMS still aligns on its seconds' point.
+* **Areas show six significant figures** (UI/UX's L1): `6451.60 mm²`, `10.0000 in²`,
+  `0.00645160 m²`, not 4 decimals. A dimension now declares a `Precision`, not a count of
+  decimals (`DimensionSpec.precision`), and `DisplayPrefs.precision_for` gives the user's
+  decimals or that; `decimals_for` refuses a dimension shown to significant figures.
+* **A zero part isn't spoken** (UI/UX's L2): "4 inches", "2 feet", "1 degree 1 minute",
+  and "0 inches" or "0 degrees" for zero. Each part is a measure, `{number} {unit}`, and
+  measures are said together by one translatable pattern, `{first} {second}`, as CLDR's
+  unit list pattern joins them, so a language can order or join them its own way.
+* **A negative is spoken "minus"** (UI/UX's L3), by one template, `minus {value}`:
+  "minus 1 foot 4 and 3 sixteenths inches", "minus 30 minutes".
+* **A lookup with no dimension takes a length** (S&R's L1). `get_unit`, `to_base` and
+  `from_base` are public, and with no dimension `'`, `"`, `′` and `″` gave the foot or the
+  inch before u3; u3 made them raise UsageError, since the minute and second share them.
+  With no dimension given, a length now wins, so they read as before. A name two units
+  share with no length among them still needs its dimension (u1's amendment).
+* **`format_significant`'s docstring** says it rounds the exact binary value, so 123.4575,
+  a little under that in binary, is `123.457` to six; a test holds it (S&R).
+* **The input grammar isn't loosened** (the maintainer, through the PM): the inch mark
+  stays required, so `5'9` and `5'9-1/2` are refused. Typed arithmetic may come later,
+  where a bare hyphen would read as subtraction, and the grammar will be settled in its
+  own decision first.
