@@ -103,7 +103,9 @@ def test_every_dimension_has_its_units_and_wording(dimension: Dimension) -> None
 
 def test_stress_units_come_from_the_exact_pound_and_inch() -> None:
     assert to_base(1, "ksi") == pytest.approx(KSI_IN_MPA, rel=1e-15)
-    assert get_unit("ksi").factor == 1000 * get_unit("psi").factor
+    # In exact arithmetic: each double is its definition rounded once (ADR-0019 §2), so
+    # 1000 times psi's double is a second rounding away from ksi's.
+    assert get_unit("ksi").exact == 1000 * get_unit("psi").exact
     assert get_unit("megapascals").symbol == "MPa"
 
 

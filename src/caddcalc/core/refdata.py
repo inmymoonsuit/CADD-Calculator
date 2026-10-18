@@ -4,7 +4,8 @@ A table is a TOML file with a ``[table]`` header, the ``[[publication]]`` list o
 cites, the ``[[source]]`` list of places in them, and the content keys its domain module
 declares. This module loads and checks the parts every table shares: the header, the
 publications and sources, the bands and conditions of the values a domain module builds,
-and the release-checklist rules that can be checked mechanically (ADR-0014 §5).
+and the release-checklist rules that can be checked mechanically (ADR-0014 §5). The citation
+model and the license rules it checks with are ``core.citations``'.
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ import json
 import math
 import re
 import tomllib
-import unicodedata
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -27,44 +27,23 @@ from importlib import resources
 from types import MappingProxyType
 from typing import Any
 
+from caddcalc.core.citations import (
+    MAX_CITE_ONLY_PER_PUBLICATION as MAX_CITE_ONLY_PER_PUBLICATION,
+)
+from caddcalc.core.citations import (
+    ONLINE,
+    Publication,
+    Source,
+    check_license,
+)
+from caddcalc.core.citations import License as License
+from caddcalc.core.citations import PublicationKind as PublicationKind
 from caddcalc.core.errors import SpecError, UsageError
 from caddcalc.core.reference import Reference
 from caddcalc.core.units import Dimension, TypedValue, base_text, get_unit
 
 SCHEMA_VERSION = 1
 """The table schema this module reads; ``[table] schema`` must equal it."""
-
-MAX_CITE_ONLY_PER_PUBLICATION = 1
-"""The most values one cite-only publication may define, in any table (ADR-0014 §5.1).
-
-It counts reference-data values, not the coefficients in a method's formula, which are
-cited and rated with their method (ADR-0014, amendments). Raising it takes a code change
-and an ADR-0014 amendment, so an isolated cited fact can't quietly grow into a value set
-drawn from one cite-only publication.
-"""
-
-
-class License(Enum):
-    """The terms a value ships under (ADR-0014 §5.1). There is deliberately no vendor value."""
-
-    PUBLIC_DOMAIN = "public_domain"
-    CITE_ONLY_FACT = "cite_only_fact"
-    """An isolated fact cited from a book or standard consulted in a legitimate copy."""
-    OWN_MEASUREMENT = "own_measurement"
-    """A value the project measured itself; only an own-measurement publication has it."""
-
-
-class PublicationKind(Enum):
-    """What a publication is. It decides which licenses and checks the publication needs."""
-
-    BOOK = "book"
-    STANDARD = "standard"
-    STATUTE = "statute"
-    GOVERNMENT_DOCUMENT = "government_document"
-    ARTICLE = "article"
-    WEBSITE = "website"
-    OWN_MEASUREMENT = "own_measurement"
-    """The project's own measurements, such as a test log; its license is ``OWN_MEASUREMENT``."""
 
 
 class Basis(Enum):
@@ -92,8 +71,6 @@ class TrustLevel(Enum):
     RULE_OF_THUMB = "rule_of_thumb"
 
 
-_EDITIONED = frozenset({PublicationKind.BOOK, PublicationKind.STANDARD})
-_ONLINE = frozenset({PublicationKind.ARTICLE, PublicationKind.WEBSITE})
 _PERMITS_REUSE = "permits_reuse"
 _TABLE_KEYS = frozenset({"schema", "name", "version"})
 _PUBLICATION_KEYS = frozenset(
@@ -101,60 +78,13 @@ _PUBLICATION_KEYS = frozenset(
     | {"third_party", "cite_only_cap", "terms_url", "terms_checked", "terms_outcome"}
 )
 _SOURCE_KEYS = frozenset({"id", "publication", "locator", "accessed", "scope", "detail", "remark"})
-_LEADING_NUMBER = re.compile(r"[0-9]+")
 _CONDITION_KEY = re.compile(r"[a-z][a-z0-9_]*")
 
 
-@dataclass(frozen=True)
-class TablePublication:
-    """One work a table cites, with the terms its values ship under (ADR-0014 §5).
-
-    The kind, license, terms, and cite-only cap belong to the publication, not to the
-    places in it that a table cites, so citing a book in several places can't raise its cap.
-    """
-
-    id: str
-    kind: PublicationKind
-    title: str
-    license: License
-    edition: str = ""
-    url: str = ""
-    third_party: bool = False
-    """Whether the publication credits the content to someone else (ADR-0014 §5.3)."""
-    public_domain_basis: str = ""
-    """Why it is public domain, e.g. ``"17 U.S.C. §105"`` or ``"published before 1930"``."""
-    cite_only_cap: int = 0
-    """How many values this cite-only publication may define, through any of its sources
-    (at most ``MAX_CITE_ONLY_PER_PUBLICATION``)."""
-    terms_url: str = ""
-    """Where an online publication's terms of use were read (ADR-0014 §5.2)."""
-    terms_checked: datetime.date | None = None
-    short_title: str = ""
-    """How labels and note texts name it, e.g. ``"FAA-H-8083-31B"``; empty for the title."""
-
-    @property
-    def work(self) -> tuple[str, str]:
-        """The title and edition, compared loosely, so one work can't be declared twice.
-
-        The title is casefolded, without spaces or punctuation. An edition that starts
-        with a number is that number, so "29", "29th", and "29th ed." are one edition.
-        """
-        edition = unicodedata.normalize("NFKC", self.edition).strip()
-        number = _LEADING_NUMBER.match(edition)
-        return _loosely(self.title), number.group() if number else _loosely(edition)
-
-
-@dataclass(frozen=True)
-class TableSource:
-    """One place in a publication that a table cites, such as a table on a page."""
-
-    id: str
-    publication: TablePublication
-    reference: Reference
-    """The citation: the publication's title, edition, and url, with this place's locator."""
-    remark: str = ""
-    """A note for reviewers, such as where an earlier edition has the same values. It is
-    never rendered: ``detail`` is for a sub-locator, which is part of the citation."""
+TablePublication = Publication
+"""A work a table cites; the citation model is ``core.citations.Publication``."""
+TableSource = Source
+"""A place a table cites; the citation model is ``core.citations.Source``."""
 
 
 @dataclass(frozen=True)
@@ -511,11 +441,6 @@ def _parse_publications(origin: str, entries: Any) -> dict[str, TablePublication
     return publications
 
 
-def _loosely(text: str) -> str:
-    """Return ``text`` for comparing titles: casefolded, without spaces or punctuation."""
-    return "".join(ch for ch in unicodedata.normalize("NFKC", text).casefold() if ch.isalnum())
-
-
 def _parse_publication(origin: str, entry: Any) -> TablePublication:
     if not isinstance(entry, dict):
         raise SpecError(f"{origin}: each [[publication]] must be a table")
@@ -535,9 +460,9 @@ def _parse_publication(origin: str, entry: Any) -> TablePublication:
         raise SpecError(f"{where}: short_title must be text")
     basis = str(entry.get("public_domain_basis", ""))
     url = str(entry.get("url", ""))
-    _check_license(where, kind, license_, third_party=third_party, edition=edition, basis=basis)
+    check_license(where, kind, license_, third_party=third_party, edition=edition, basis=basis)
     terms_url, terms_checked = "", None
-    if kind in _ONLINE:
+    if kind in ONLINE:
         terms_url, terms_checked = _check_terms(where, entry, url)
     cap = entry.get("cite_only_cap", 0)
     if not isinstance(cap, int) or isinstance(cap, bool) or cap < 0:
@@ -590,36 +515,6 @@ def _parse_source(
         short_title=publication.short_title,
     )
     return TableSource(entry["id"], publication, reference, str(entry.get("remark", "")))
-
-
-def _check_license(
-    where: str,
-    kind: PublicationKind,
-    license_: License,
-    *,
-    third_party: bool,
-    edition: str,
-    basis: str,
-) -> None:
-    """Hold a publication's license to what its kind allows (ADR-0014 §5.1, §5.3)."""
-    if kind in _EDITIONED and not edition.strip():
-        raise SpecError(f"{where} is a {kind.value}, so it needs an edition")
-    if license_ is License.PUBLIC_DOMAIN and not basis.strip():
-        raise SpecError(
-            f"{where}: a public-domain {kind.value} needs a public_domain_basis, "
-            'e.g. "17 U.S.C. §105" or "published before 1930"'
-        )
-    if basis.strip() and license_ is not License.PUBLIC_DOMAIN:
-        raise SpecError(f"{where}: only a public-domain publication has a public_domain_basis")
-    if (kind is PublicationKind.OWN_MEASUREMENT) != (license_ is License.OWN_MEASUREMENT):
-        raise SpecError(
-            f"{where}: the own_measurement license goes with the own_measurement kind, and "
-            "only with it"
-        )
-    if third_party and license_ is not License.CITE_ONLY_FACT:
-        raise SpecError(
-            f"{where} credits its content to a third party, so it is cite-only (ADR-0014 §5.3)"
-        )
 
 
 def _check_terms(where: str, entry: Mapping[str, Any], url: str) -> tuple[str, datetime.date]:

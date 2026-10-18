@@ -1,8 +1,8 @@
-"""Dimensions, units, and parsing of user-entered quantities.
+"""The units module and display rules as they were before the registry (ADR-0019 §7).
 
-Every calculation runs in canonical *base units*: millimetres for length, degrees for
-angle, plain numbers for ratios, and megapascals for stress. Values are converted only
-at the edges, when input is parsed and when output is formatted (ADR-0005).
+Kept only so the identity test can hold the registry to them: every parse and every
+display rule must give what these gave, except psi's factor, now rounded once from its
+exact definition. Not used by the app.
 """
 
 from __future__ import annotations
@@ -293,3 +293,36 @@ class TypedValue:
         """
         parsed = parse_quantity_detailed(text, dimension, default_unit)
         return cls(parsed.value, text.strip(), parsed.unit, parsed.explicit_unit)
+
+
+# The display rules core.formatting held before the registry.
+
+_SHOWN_IN = {Dimension.ANGLE: "deg", Dimension.RATIO: ""}
+_STRESS_WITH_LENGTH = {"in": "ksi", "ft": "ksi"}
+
+
+def display_unit(dimension: Dimension, length_unit: str) -> Unit:
+    """The unit values of ``dimension`` were shown in, for a length preference."""
+    if dimension is Dimension.LENGTH:
+        return get_unit(length_unit)
+    if dimension is Dimension.STRESS:
+        length = get_unit(length_unit).symbol
+        return get_unit(_STRESS_WITH_LENGTH.get(length, "MPa"))
+    return get_unit(_SHOWN_IN[dimension])
+
+
+def shown_symbol(dimension: Dimension, length_unit: str) -> str:
+    """The symbol written after a value: "°" for angles, else the display unit's."""
+    return "°" if dimension is Dimension.ANGLE else display_unit(dimension, length_unit).symbol
+
+
+def suffix(unit: str) -> str:
+    """A symbol as written after a number: a degree sign close up, others spaced."""
+    if unit == "°":
+        return unit
+    return f" {unit}" if unit else ""
+
+
+def shows_fraction(dimension: Dimension, length_unit: str) -> bool:
+    """Whether a value of ``dimension`` could show an inch fraction."""
+    return dimension is Dimension.LENGTH and get_unit(length_unit).symbol == "in"

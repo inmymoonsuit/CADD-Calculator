@@ -8,49 +8,21 @@ domain, built-in and plugin, before any calculator.
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from importlib import metadata
-from typing import Any, Protocol
 
 from caddcalc.core.calculator import Calculator
 from caddcalc.core.domain import Domain
 from caddcalc.core.errors import SpecError, UnknownCalculatorError, UnknownDomainError
+from caddcalc.core.plugins import EntryPointSource as EntryPointSource
+from caddcalc.core.plugins import PluginEntryPoint as PluginEntryPoint
+from caddcalc.core.plugins import PluginError as PluginError
+from caddcalc.core.plugins import load_group
 from caddcalc.core.spec import Method
 
 ENTRY_POINT_GROUP = "caddcalc.calculators"
 DOMAIN_ENTRY_POINT_GROUP = "caddcalc.domains"
-
-
-class PluginEntryPoint(Protocol):
-    """The parts of an installed package's entry point that the registry uses."""
-
-    @property
-    def name(self) -> str:
-        """The entry point's name."""
-
-    @property
-    def value(self) -> str:
-        """The object reference, e.g. ``"acme.tools:CALCULATORS"``."""
-
-    def load(self) -> Any:
-        """Import and return the object the entry point names."""
-
-
-class EntryPointSource(Protocol):
-    """Lists entry points by group, as ``importlib.metadata.entry_points`` does."""
-
-    def __call__(self, *, group: str) -> Iterable[PluginEntryPoint]:
-        """Return the entry points in ``group``."""
-
-
-@dataclass
-class PluginError:
-    """A plugin that failed to load, and the reason."""
-
-    source: str
-    """The entry point, as ``name = value``. An item of an iterable adds its index: ``name[1]``."""
-    message: str
 
 
 @dataclass
@@ -215,26 +187,8 @@ class Registry:
         self.register(item)
 
     def _load_group(self, group: str, single: type, register: Callable[[object], None]) -> None:
-        """Register what each entry point in ``group`` names, one item at a time.
-
-        An entry point names one item, an instance of ``single``, or an iterable of items.
-        """
-        for ep in self.entry_points(group=group):
-            source = f"{ep.name} = {ep.value}"
-            try:
-                loaded = ep.load()
-                if isinstance(loaded, single):
-                    items = [(source, loaded)]
-                else:
-                    items = [(f"{ep.name}[{i}] = {ep.value}", x) for i, x in enumerate(loaded)]
-            except Exception as exc:  # noqa: BLE001 (isolation boundary: a plugin must never crash the app)
-                self.plugin_errors.append(PluginError(source, str(exc)))
-                continue
-            for item_source, item in items:
-                try:
-                    register(item)
-                except Exception as exc:  # noqa: BLE001 (isolation boundary: one bad item must not drop the rest)
-                    self.plugin_errors.append(PluginError(item_source, str(exc)))
+        """Register what each entry point in ``group`` names, recording what fails."""
+        self.plugin_errors += load_group(self.entry_points, group, single, register)
 
     def _domain_hint(self, wanted: str) -> str:
         """Suggest domains whose ID or display name is close to ``wanted``."""

@@ -1,0 +1,37 @@
+# Release checklist record: the built-in units' citations
+
+The ADR-0014 §5 checklist, applied to the works the built-in units cite (ADR-0019 §4). The
+units aren't a reference table: their factors are definitions, declared in code
+(`src/caddcalc/core/units/builtin.py`), not measured values. But they ship cited, so the
+works they cite are held to the same checklist.
+
+* **Works cited:**
+  * NIST Special Publication 811, *Guide for the Use of the International System of
+    Units (SI)*, 2008 Edition (web version 3.2, July 2008), A. Thompson and B. N. Taylor,
+    https://www.nist.gov/pml/special-publication-811
+  * the National Bureau of Standards' notice "Refinement of Values for the Yard and the
+    Pound", *Federal Register* Vol. 24, No. 128, p. 5348 (24 FR 5348), 1959
+* **Prepared by:** the Calculator Engine session, 2026-10-18, building ADR-0019's u1.
+* **Not legal advice.** This records the checks; it isn't a legal review (ADR-0014 M7).
+
+| # | Item | Result | Evidence |
+|---|---|---|---|
+| 1 | Sources (copyright) | pass | Both are works of the U.S. government, public domain under 17 U.S.C. §105. SP 811 is a NIST Technical Series publication by NIST employees, and isn't Standard Reference Data under 15 U.S.C. §290e, which the SRD Act lets NIST copyright. The 1959 notice is a National Bureau of Standards notice in the *Federal Register*. What ships is facts: each unit's name, symbol, and factor, with its table or appendix as the locator; no text or table is copied. `test_every_unit_cites_its_definition_and_its_exact_factor` checks each citation's kind, licence, and basis through `core.citations.check_publication`. |
+| 2 | Online terms and license agreements | pass | Neither is an article or a website. SP 811's url is on nist.gov, on the public-domain host allowlist (`core.citations.PUBLIC_DOMAIN_HOSTS`). The 1959 notice is cited as printed, with no url, and is named on purpose in the test (`PRINTED`). |
+| 3 | Embedded third-party content | pass | SP 811 gives the SI as the CIPM and BIPM define it. Only definitions are used: the metre and its prefixes, the pascal, the radian, and the degree, which are facts. SP 811's own conversion factors in Appendix B.8 are rounded, so the inch-pound factors come from their exact definitions instead, the yard and pound of the 1959 notice and standard gravity, each cited. |
+| 4 | Safety rules | pass | Every factor is its exact definition, a rational, or for the radian 180/π to 50 digits, rounded once to a double. Factors built on others are held to their parts: the foot is 12 inches, psi is a pound-force on a square inch, and ksi is 1000 psi (`test_derived_factors_equal_their_definitions`). Every text that parsed before parses to the same value and unit, and every error reads the same, over more than 10,000 texts that include every parameter default and every value a shipped table states (`test_every_text_reads_as_it_always_has`). Rounding once moved one factor: psi, by one unit in the last place, recorded below. |
+| 5 | Liability labels | not applicable | A unit is a definition, not a limit or a recommendation, so there's no scope to label. Display rounding is said in the user guide's "Units and precision". |
+| 6 | Currency | pass, with a note | SP 811's 2008 edition predates the 2019 revision of the SI, which redefined the base units through fixed constants but changed none of the definitions cited here: the metre's length, the prefixes, the pascal, the radian, and the degree. NIST's page says the 2008 edition hasn't been updated for 2019 and points to SP 330 (2019) for the SI itself. The yard and pound of 1959 stand. **Note:** the notice's date is given as June 30, 1959 in NIST's list of *Federal Register* citations, and as July 1, 1959, its effective date, in NOAA's 2019 notice and a library catalogue record; the citation gives volume, number, and page, which agree. Re-check at each release. |
+| 7 | Corrections and removal | pass | CONTRIBUTING.md, "Reporting a wrong or rights-encumbered value", and `.github/ISSUE_TEMPLATE/reference_value.md` cover units as they do table values. Every unit names its source and locator. |
+
+## The one changed factor
+
+psi's factor was computed in doubles, `0.45359237 × 9.80665 / 25.4²`, which rounds three
+times. It's now its exact definition rounded once: 0.006894757293168362 MPa, one unit in
+the last place above the 0.006894757293168361 before. No value shown at display precision
+changes. ksi's factor, 1000 psi rounded once, is unchanged.
+
+## Sign-off
+
+* Maintainer: pending.
+* Review session (Support & Review): pending.

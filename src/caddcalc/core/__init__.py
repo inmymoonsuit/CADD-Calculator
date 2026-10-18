@@ -6,6 +6,7 @@ or any third-party package (ADR-0003).
 
 from caddcalc.core.calculator import Calculator, Context, Result, ResultCheck
 from caddcalc.core.choices import Choice, ChoiceResolver, DerivedValue, Option
+from caddcalc.core.citations import License, Publication, PublicationKind, Source
 from caddcalc.core.domain import (
     Domain,
     DomainValues,
@@ -28,8 +29,6 @@ from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.refdata import (
     Band,
     Basis,
-    License,
-    PublicationKind,
     ReferenceTable,
     ReferenceValue,
     TablePublication,
@@ -80,6 +79,7 @@ __all__ = [
     "Output",
     "Param",
     "ParsedQuantity",
+    "Publication",
     "PublicationKind",
     "Quantity",
     "Reference",
@@ -89,6 +89,7 @@ __all__ = [
     "Result",
     "ResultCheck",
     "SelectionDetails",
+    "Source",
     "SourceKind",
     "SpecError",
     "StartingValue",

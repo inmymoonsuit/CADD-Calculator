@@ -397,6 +397,17 @@ All notable changes are recorded here. The format follows
   shows the method's name, with its status beside it, or under it when narrow; the open
   list shows both. The family settings page reflows to a narrow window instead of
   scrolling sideways.
+- **Units come from one registry (ADR-0019).** `caddcalc.core.units` is now a package that
+  declares every dimension and unit once, with its exact definition and its NIST SP 811
+  citation, and reads typed units by asking that registry, rather than a list of
+  characters. Every text that read before reads the same, and every error says the same.
+  One factor changes: psi is now its exact definition rounded once, one unit in the last
+  place from before; no shown value changes. Plugins can add units through the
+  `caddcalc.units` entry-point group; one that clashes with a built-in is skipped, with an
+  error naming both.
+- `core.citations` holds the citation model, `Publication`, `Source`, `License`, and
+  `PublicationKind`, which the units and the reference tables share; `TablePublication`
+  and `TableSource` are still there, as its `Publication` and `Source`.
 - **Result fields (ADR-0017).** A calculator's results now show as boxed fields, one per
   output, in a Results panel between the inputs and the notes: the symbol, the label, the
   value aligned on its decimal point, and the unit, with a copy button. A note about an

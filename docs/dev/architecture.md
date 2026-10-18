@@ -19,7 +19,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼
 ┌───────────────────── caddcalc.core  (stdlib only) ───────────────────────┐
-│  units.py       Dimension, Unit, parse_quantity (fractions, suffixes)    │
+│  units/         the units registry (ADR-0019): declarations, parsing     │
+│  citations.py   Publication, Source, License: what the app cites         │
 │  expr.py        safe formula evaluator (float and exact) + rendering     │
 │  spec.py        Param, Output, Method, Verification, OutOfRangeError     │
 │  reference.py   Reference: a citation (title, detail, URL)               │
@@ -30,7 +31,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  refdata.py     ReferenceTable, sources, load_table, nominal (ADR-0014)  │
 │  domain.py      Domain: a calculator family and its shared settings      │
 │  choices.py     Choice, Option, DerivedValue: selections that derive     │
-│  registry.py    Registry of domains and calculators; plugin loading      │
+│  registry.py    Registry of domains and calculators                      │
+│  plugins.py     entry-point loading, shared by both registries           │
 │  settings.py    DomainSettings: domain settings for the session          │
 │  formatting.py  DisplayPrefs, rounding, fractions, copying, render_step  │
 └───────────────────────────────────────────────────────────────────────────┘
@@ -41,7 +43,8 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 1. A front end calls `caddcalc.calculators.default_registry()`, which registers the built-ins
    and any plugins, and looks up a calculator by ID (e.g. `sheet_metal.bend_allowance`).
 2. It builds a form or argument list from `calc.params_for(method)`.
-3. User text goes through `parse_quantity(text, dimension, default_unit)` and becomes **base units**.
+3. User text goes through `parse_quantity(text, dimension, default_unit)`, which finds its
+   unit in the units registry (ADR-0019), and becomes **base units**.
 4. `calc.run(inputs, method, settings=...)` picks each input by the precedence rule
    (explicit, then a shared parameter's domain setting, then the default; ADR-0013),
    range-checks it, records its source, and calls `compute(ctx)`.

@@ -1,4 +1,8 @@
-"""Turning base-unit values into display text. Rounding happens only here (ADR-0005)."""
+"""Turning base-unit values into display text. Rounding happens only here (ADR-0005).
+
+It formats numbers; which unit a value is shown in, and how that unit is written, it asks
+the units registry (ADR-0019 §1), so it holds no unit tables of its own.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +20,7 @@ from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output
 from caddcalc.core.steps import Step
-from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit
+from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit, registry
 
 DISCLAIMER = (
     "Results are for drafting and education. Verify against your shop's tooling, "
@@ -38,6 +42,20 @@ class DisplayPrefs:
     fraction_denominator: int | None = None
     """When set (e.g. 64) and the length unit is inches, also show the nearest fraction."""
 
+    def decimals_for(self, dimension: Dimension) -> int:
+        """Return the decimal places ``dimension`` is shown with.
+
+        That's the user's choice for it, or, for a dimension with no choice of its own, the
+        default its declaration gives (ADR-0019 §2).
+        """
+        chosen = {
+            Dimension.LENGTH: self.decimals,
+            Dimension.RATIO: self.decimals,
+            Dimension.ANGLE: self.angle_decimals,
+            Dimension.STRESS: self.stress_decimals,
+        }.get(dimension)
+        return registry().dimension(dimension).decimals if chosen is None else chosen
+
 
 def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
     """Return the unit text shown after a value, e.g. ``" in"``, ``" ksi"``, or ``"°"``."""
@@ -45,26 +63,21 @@ def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
 
 
 def _shown_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
-    """Return the unit symbol shown with a value: ``"°"`` for angles, else the display unit's."""
-    return "°" if dimension is Dimension.ANGLE else display_unit(dimension, prefs).symbol
+    """Return the symbol written after a value, e.g. ``"in"``, or ``"°"`` for an angle."""
+    return display_unit(dimension, prefs).written
 
 
-_CLOSE_UP = frozenset({"°"})
-"""Units written against their number, as in ``90°``, rather than after a space."""
+def _close_up(written: str) -> bool:
+    """Whether the unit written as ``written`` goes against its number, as ``°`` does."""
+    unit = registry().written(written)
+    return unit is not None and unit.close_up
 
 
 def _suffix(unit: str) -> str:
-    """Return ``unit`` as written after a number: a degree sign close up, others spaced."""
-    if unit in _CLOSE_UP:
+    """Return ``unit`` as written after a number: close up for °, spaced otherwise."""
+    if _close_up(unit):
         return unit
     return f" {unit}" if unit else ""
-
-
-_SHOWN_IN = {Dimension.ANGLE: "deg", Dimension.RATIO: ""}
-"""Display units of the dimensions whose unit doesn't follow the length preference."""
-
-_STRESS_WITH_LENGTH = {"in": "ksi", "ft": "ksi"}
-"""The stress unit shown with each inch-pound length unit; metric lengths show MPa."""
 
 
 def display_unit(dimension: Dimension, prefs: DisplayPrefs) -> Unit:
@@ -72,14 +85,10 @@ def display_unit(dimension: Dimension, prefs: DisplayPrefs) -> Unit:
 
     Lengths use the preferred unit. Stresses follow it: ksi with inches or feet, MPa
     with metric lengths, so one choice sets both (ADR-0005, amendments). Angles show in
-    degrees, and ratios as plain numbers.
+    degrees, and ratios as plain numbers. Each dimension declares its rule in the units
+    registry (ADR-0019 §2).
     """
-    if dimension is Dimension.LENGTH:
-        return get_unit(prefs.length_unit)
-    if dimension is Dimension.STRESS:
-        length = get_unit(prefs.length_unit).symbol
-        return get_unit(_STRESS_WITH_LENGTH.get(length, "MPa"))
-    return get_unit(_SHOWN_IN[dimension])
+    return registry().shown_unit(dimension, get_unit(prefs.length_unit))
 
 
 def entry_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
@@ -92,12 +101,8 @@ def entry_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
 
 
 def _decimals(dimension: Dimension, prefs: DisplayPrefs) -> int:
-    """Return the decimal places ``dimension`` is shown with."""
-    if dimension is Dimension.ANGLE:
-        return prefs.angle_decimals
-    if dimension is Dimension.STRESS:
-        return prefs.stress_decimals
-    return prefs.decimals
+    """Return the decimal places ``dimension`` is shown with (``DisplayPrefs.decimals_for``)."""
+    return prefs.decimals_for(dimension)
 
 
 def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> float:
@@ -145,7 +150,7 @@ class ValueParts:
     @property
     def unit_close_up(self) -> bool:
         """Whether the unit is written against the number, as ``°`` is, with no space."""
-        return self.unit in _CLOSE_UP
+        return _close_up(self.unit)
 
 
 def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> ValueParts:
@@ -158,11 +163,7 @@ def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> Valu
     """
     shown = display_value(value, dimension, prefs)
     fraction = None
-    if (
-        dimension is Dimension.LENGTH
-        and prefs.fraction_denominator
-        and get_unit(prefs.length_unit).symbol == "in"
-    ):
+    if prefs.fraction_denominator and display_unit(dimension, prefs).fractions:
         fraction = to_fraction(shown, prefs.fraction_denominator)
     number = format_number(shown, _decimals(dimension, prefs))
     return ValueParts(number, _shown_unit(dimension, prefs), fraction)
@@ -200,7 +201,8 @@ def spoken_value(parts: ValueParts) -> str:
     The unit is named in full, singular only after a shown ``1`` (``Unit.spoken``); a
     ratio is only its number.
     """
-    name = get_unit(parts.unit).spoken(parts.number)
+    unit = registry().written(parts.unit)
+    name = "" if unit is None else unit.spoken(parts.number)
     return SPOKEN.format(number=parts.number, unit=name) if name else parts.number
 
 
