@@ -35,4 +35,6 @@ changes. ksi's factor, 1000 psi rounded once, is unchanged.
 ## Sign-off
 
 * Maintainer:
-* Review session (Support & Review):
+* Review session (Support & Review): verified 84ceaba (rewritten from 55e20a7, with the same source code). All seven items pass: SP 811's licence basis (17 U.S.C. §105; NIST Technical Series, not Standard Reference Data under 15 U.S.C. §290e); each unit's locator in SP 811, and in 24 FR 5348 (July 1, 1959, govinfo) for the inch, foot, psi and ksi; every factor exact and rounded once; and every parse and display rule unchanged by an independent diff of 411,844 results against 1ed4f4c, apart from psi's recorded one-ulp change. Date: 2026-10-18
+* Rebased onto main on 2026-10-18: 84ceaba is now ac1d2c5. The units' source,
+  their citations, and this record are unchanged by the rebase.

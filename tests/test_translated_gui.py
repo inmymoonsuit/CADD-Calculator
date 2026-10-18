@@ -171,26 +171,13 @@ def test_nothing_clips_at_the_least_window_size(tmp_path: Path, language: str) -
     _in(language, tmp_path)
     window = open_window()
     window.show()
-
-    def known(widget: Any) -> str:
-        """Which of KI-023's three shortfalls ``widget`` is, or ``""`` for none."""
-        if widget is window.disclaimer:
-            return "the disclaimer, one line across the status bar"
-        if widget is window.method_box:
-            return "the method box, which elides its method"
-        if window.domain_page.isAncestorOf(widget):
-            return "the family settings page, which scrolls sideways"
-        return ""
-
     for row in _rows(window):
         if not row.flags():
             continue  # a placeholder row
         window.tree.setCurrentItem(row)
         window.resize(window.minimumSizeHint())
         settle(window)
-        # KI-023: three things don't fit yet; anything else that doesn't is new.
-        unknown = [widget for widget in _clipped(window) if not known(widget)]
-        assert unknown == [], (row.text(0), unknown)
+        assert _clipped(window) == [], row.text(0)
     window.close()
 
 

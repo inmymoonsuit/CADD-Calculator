@@ -35,7 +35,6 @@ All notable changes are recorded here. The format follows
   and `44 per cent` read as their units, in any case (ADR-0019 U5).
 - A test pseudo-locale, en_XA, and tests that every page fits at the window's least size
   in it and in English, and that the welcome card's version line stays in its safe area.
-  KI-023 lists the three things that don't fit yet.
 - `scripts/i18n.py init LANG` starts a language's catalog, and `check` reports a fuzzy
   translation.
 - ADR-0018 (Geometry and Conversions), ADR-0019 (a units registry), and ADR-0020

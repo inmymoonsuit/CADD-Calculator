@@ -316,3 +316,12 @@ kept for the record.
 * **KI-022 is resolved,** and ADR-0017's F5 with it.
 * **The calculator list's tooltip** gives an elided name in bold, escaped (UI/UX's i2
   review).
+
+### 2026-10-18: rebased onto the window layout
+
+* The localization commits, u1 to i4, were rebased onto main's window and page layout
+  (ADR-0021) and its later fixes. The British catalog's tooltip test lowers the list's
+  least width, which ADR-0021 added, so the names still elide.
+* **KI-023 is resolved.** ADR-0021 §7's fixes cover all three shortfalls i2's clipping
+  test allowed, so the test now allows nothing: every page fits at the least size, in
+  English and en_XA, offscreen and natively.

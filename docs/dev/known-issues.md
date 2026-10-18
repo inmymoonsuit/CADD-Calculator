@@ -198,25 +198,6 @@ need checking by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
-### KI-023: Three things don't fit a window at its least size (Low)
-
-The window's least size comes from the calculator page, which scrolls rather than
-squeezes. At that size, three things are cut short:
-
-* **The disclaimer** is one line across the status bar, so a window narrower than the
-  sentence cuts off its end.
-* **The method box** elides its method, e.g. "Course formula (0.64T + 1.57R) [unverif…".
-  Its list shows each method in full.
-* **The family settings page** is wider than the calculator page at its least, so it
-  scrolls sideways there.
-
-The pseudo-locale test (`tests/test_translated_gui.py`) allows only these three, so any
-new clipping fails it.
-
-* **Planned fix:** the window-layout work the maintainer approved on 2026-10-18 (a launch
-  size fitted to the screen, and a cap on the whole page), whose rules UI/UX is
-  writing. The test's allowance goes with each fix.
-
 ## Resolved
 
 ### KI-024: With shorter text lines, the tallest page could scroll at launch (resolved 2026-10-18)
@@ -229,6 +210,18 @@ launch (rule C) where on Windows they fit. The launch height now also covers the
 built-in calculator page at the launch width, within the screen, on UI/UX's ruling
 (ADR-0021 §3, amendments). On Windows at 9 pt it's unchanged. `test_no_calculator_page_scrolls_at_the_launch_size`
 runs everywhere, with lines under 16 px too.
+
+### KI-023: Three things didn't fit a window at its least size (resolved 2026-10-18)
+
+The window's least size comes from the calculator page, which scrolls rather than
+squeezes. At that size, three things were cut short: the disclaimer, one line across the
+status bar; the method box, which elided its method; and the family settings page, which
+scrolled sideways. ADR-0021 §7 fixed all three: the disclaimer wraps under the results,
+the method box is as wide as its longest name with the status beside it, and the settings
+page reflows. Natively, the disclaimer is 661 px, the least window 365, and the settings
+form 615; offscreen Windows' figures are wider, from its fallback font. The pseudo-locale
+test (`tests/test_translated_gui.py`) now allows nothing, in English and en_XA, offscreen
+and natively.
 
 ### KI-022: Values were always written with "." as the decimal point (resolved 2026-10-18)
 
