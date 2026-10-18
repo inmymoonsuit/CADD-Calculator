@@ -14,7 +14,7 @@ import pytest
 
 from caddcalc import __version__
 from caddcalc.gui.branding import GENERIC, Branding, load_branding
-from caddcalc.gui.welcome_layout import Rect
+from caddcalc.gui.welcome_layout import Rect, device_rect
 from caddcalc.gui.welcome_style import style
 
 ART_SIZE, MAX_ART_PX, WINDOW = style().art.slot, style().art.max_px, style().window
@@ -271,7 +271,8 @@ def measured(welcome: Any, pane: Any) -> tuple[float, float]:
 
     The card is grabbed with the pane hidden, as Qt renders it, so transparent art
     shows the card's background; the pane's fill is blended over it by Qt itself, and
-    every pixel under the pane counts, at the style's percentile.
+    every pixel under the pane counts, at the style's percentile. The grab is in device
+    pixels, so the pane's rectangle is taken in them too, at any display scale.
     """
     import math
 
@@ -286,7 +287,11 @@ def measured(welcome: Any, pane: Any) -> tuple[float, float]:
     pane.hide()
     shown = welcome.grab().toImage().convertToFormat(QImage.Format.Format_RGBX8888)
     pane.show()
-    area = QRect(pane.mapTo(welcome, QPoint(0, 0)), pane.size())
+    ratio = shown.devicePixelRatio()
+    shown.setDevicePixelRatio(1)  # painted and cropped in device pixels from here on
+    corner = pane.mapTo(welcome, QPoint(0, 0))
+    box = device_rect(Rect(corner.x(), corner.y(), pane.width(), pane.height()), ratio)
+    area = QRect(round(box.x), round(box.y), round(box.width), round(box.height))
     fill = QColor(role_color(fill_role, scheme))
     fill.setAlpha(alpha)
     p = QPainter(shown)
@@ -339,6 +344,80 @@ def test_the_panes_stay_quiet_and_readable_over_any_art(
         assert reading >= needed, pane.text
         assert spread <= panes.max_background_spread, (pane.text, spread)
     welcome.close()
+
+
+@pytest.mark.parametrize("art", ["saturated-blue", "saturated-red", "saturated-green"])
+def test_the_panes_read_over_fine_stripes_at_the_cards_full_size(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, art: str
+) -> None:
+    """At its full size, the art's 1 px stripes fall where a regular grid missed them.
+
+    A screen the card fits on shows it at full size, but the offscreen screen is
+    smaller and shrinks it, so the card is held at its full size here.
+    """
+    from caddcalc.gui.icons import current_scheme
+    from caddcalc.gui.welcome import WelcomeScreen
+
+    monkeypatch.setattr(WelcomeScreen, "_fit_scale", lambda _self: 1.0)
+    panes = style().panes
+    welcome = screen(pack(tmp_path / "pack", art=art))
+    welcome.show()
+    assert (welcome.width(), welcome.height()) == (round(WINDOW.width), round(WINDOW.height))
+    for pane, needed in ((welcome.art.name_pane, 3), (welcome.art.version_pane, 4.5)):
+        pane.fill(current_scheme())
+        reading, spread = measured(welcome, pane)
+        assert reading >= needed, (pane.text, reading)
+        assert spread <= panes.max_background_spread, (pane.text, spread)
+    welcome.close()
+
+
+SCALED_PANES = """
+import json
+from PySide6.QtWidgets import QApplication
+app = QApplication([])
+from caddcalc.gui.actions import AppActions
+from caddcalc.gui.branding import GENERIC
+from caddcalc.gui.welcome import WelcomeScreen
+from caddcalc.gui.welcome_layout import Rect, device_rect
+welcome = WelcomeScreen(GENERIC, AppActions(GENERIC))
+welcome.show()
+app.processEvents()
+found = []
+for pane in (welcome.art.name_pane, welcome.art.version_pane):
+    ratio, box = pane.devicePixelRatioF(), pane.geometry()
+    covered = device_rect(Rect(box.x(), box.y(), box.width(), box.height()), ratio)
+    found.append([ratio, len(pane.art), round(covered.width * covered.height)])
+welcome.close()
+print(json.dumps(found))
+"""
+
+
+def test_a_pane_measures_every_device_pixel_at_twice_the_scale(tmp_path: Path) -> None:
+    """At 200%, the art is drawn and measured in device pixels, four to a logical one.
+
+    Qt's scale is set before the application starts, so it runs in its own process.
+    """
+    import json
+    import os
+    import subprocess
+    import sys
+
+    script = tmp_path / "scaled_panes.py"
+    script.write_text(SCALED_PANES, encoding="utf-8")
+    env = {**os.environ, "QT_QPA_PLATFORM": os.environ.get("QT_QPA_PLATFORM", "offscreen")}
+    env["QT_SCALE_FACTOR"] = "2"
+    done = subprocess.run(  # noqa: S603  # this interpreter, on a script the test wrote
+        [sys.executable, str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    for ratio, measured_pixels, covered in json.loads(done.stdout.splitlines()[-1]):
+        assert ratio == 2
+        assert measured_pixels == covered, "every device pixel under the pane"
 
 
 def test_the_generic_look_is_unchanged_by_the_calm_rule() -> None:

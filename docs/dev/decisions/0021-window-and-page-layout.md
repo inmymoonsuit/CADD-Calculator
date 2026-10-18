@@ -223,3 +223,13 @@ to.
   1100 × 720; and that no page scrolls at the launch size, where the lines are 16 px.
 * **The tests' clipboard is in memory.** A native run shared the system's clipboard with
   every other program, so copying tests failed by turns, and overwrote the user's copy.
+
+### 2026-10-18: Support & Review's Lows
+
+* **The font is put back however `main()` ends** (L3), in a `finally`, so a failed
+  start or teardown can't leave the app's font scaled.
+* **Tests for what had none** (L2): a column whose text ends a fraction past a whole
+  pixel, in an unhinted face, is rounded up; a text size that isn't a DWORD gives 1;
+  each of the three `[layout]` cross-checks refuses; and `main()`, at 125%, builds the
+  window in scaled fonts, fits it to the welcome card's screen, and restores the font,
+  even when its teardown fails.

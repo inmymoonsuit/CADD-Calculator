@@ -119,6 +119,53 @@ def test_values_line_up_on_the_decimal_point() -> None:
     window.close()
 
 
+def test_a_column_is_never_narrower_than_its_text() -> None:
+    """A column a fraction of a pixel narrower than its text cuts off its last pixel.
+
+    Hinted text advances by whole pixels, and offscreen there may be no other font, so
+    the bundled display face is set on the values and units unhinted, at a size where
+    one of them ends under half a pixel past a whole one: rounding to the nearest pixel
+    would cut it.
+    """
+    import math
+
+    from PySide6.QtGui import QFont, QFontMetricsF
+
+    from caddcalc.gui.fonts import FALLBACK, display_family
+
+    family = display_family()
+    if family == FALLBACK:
+        pytest.skip("the display face couldn't be loaded")
+    window = open_window()
+    window.select_calculator("sheet_metal.bend_allowance")
+    window.show()
+    panel = window.results
+    labels = [label for f in panel.fields.values() for label in (f.value, f.unit)]
+
+    def unhinted(size: float) -> QFont:
+        font = QFont(family)
+        font.setPointSizeF(size)
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+        return font
+
+    def advance(label: Any, font: QFont) -> float:
+        return float(QFontMetricsF(font).horizontalAdvance(label.text()))
+
+    def cut_by_rounding(size: float) -> bool:
+        return any(0 < advance(label, unhinted(size)) % 1 < 0.5 for label in labels)
+
+    sizes = [size for size in (8 + i / 10 for i in range(120)) if cut_by_rounding(size)]
+    if not sizes:
+        pytest.skip("this platform's advances are whole pixels")
+    font = unhinted(sizes[0])
+    for label in labels:
+        label.setFont(font)
+    panel._align()
+    for label in labels:
+        assert label.width() >= math.ceil(advance(label, font)), label.text()
+    window.close()
+
+
 def _settle(window: Any) -> None:
     """Run the event loop until the page's layout stops changing.
 

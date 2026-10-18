@@ -20,7 +20,7 @@ import warnings
 from pathlib import Path
 from typing import override
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt
+from PySide6.QtCore import QEvent, QPointF, QRect, QRectF, QSize, Qt
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -53,6 +53,7 @@ from caddcalc.gui.welcome_layout import (
     contain_fit,
     cover_crop,
     device_line,
+    device_rect,
     display_pixels,
     fit_scale,
     logo_box,
@@ -64,10 +65,10 @@ from caddcalc.gui.welcome_style import (
     PaneTokens,
     TypographyTokens,
     WelcomeStyle,
+    every_pixel,
     opaque_fill,
     pane_fill,
     pane_pairs,
-    sample_grid,
     style,
 )
 
@@ -263,9 +264,9 @@ class _Pane(QWidget):
     It hugs its text and sits at its anchor corner. Each text role has its own fill, dark
     text on a light fill and light text on a dark one; the fill starts at the minimum
     opacity and rises only as far as its text needs to reach the pane's contrast over all
-    but a small share of the art beneath, every sampled pixel blended as the screen
-    blends it, and the background to be calm enough not to break the letters up. The
-    pair that needs the least wins.
+    but a small share of the art beneath, every pixel under it, at the display's
+    resolution, blended as the screen blends it, and the background to be calm enough
+    not to break the letters up. The pair that needs the least wins.
 
     The display face is drawn at a whole multiple of its pixel grid, and centred on its
     capitals: the padding is the space around the caps (ADR-0016, amendments). The text
@@ -283,7 +284,7 @@ class _Pane(QWidget):
         self.text = text
         self.scale = 1.0
         self.art: list[RGB] | None = None
-        """The art's colours under the pane, sampled, once measured."""
+        """The art's colours under the pane, every device pixel, once measured."""
         self.text_font = QFont()
         """The font its text is drawn in, at its size in device pixels."""
         self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
@@ -338,11 +339,21 @@ class _Pane(QWidget):
         self.scale, self._ratio, self._run, self.text_font = scale, ratio, run, font
 
     def measure(self, art: QImage) -> None:
-        """Measure the art under the pane, from ``art`` as the slot shows it."""
-        under = art.copy(self.geometry()).convertToFormat(QImage.Format.Format_RGBX8888)
+        """Measure every pixel of the art under the pane, from ``art`` as the slot shows it.
+
+        ``art`` is drawn at the display's device pixel ratio, so detail finer than a
+        logical pixel is measured as the screen shows it, not averaged away.
+        """
+        box = self.geometry()
+        logical = Rect(box.x(), box.y(), box.width(), box.height())
+        device = device_rect(logical, art.devicePixelRatio())
+        rect = QRect(round(device.x), round(device.y), round(device.width), round(device.height))
+        under = art.copy(rect.intersected(art.rect()))
+        under = under.convertToFormat(QImage.Format.Format_RGBX8888)
         pixels = bytes(under.constBits())  # under stays alive while its pixels are read
-        self.art = sample_grid(pixels, under.width(), under.height(), self.panes.min_samples)
+        self.art = every_pixel(pixels, under.width(), under.height())
         self._fills.clear()
+        self.fill(current_scheme())  # now, so the card's first paint doesn't wait on it
         self.update()
 
     @override
@@ -396,11 +407,14 @@ class _ArtSlot(QWidget):
         self.version_pane = _Pane(version, tokens, tokens.version_pane, self)
 
     def shown_art(self) -> QImage:
-        """Return the art as the slot shows it, one image pixel per logical pixel.
+        """Return the art as the slot shows it, one image pixel per device pixel.
 
         The image starts as the card's background, which shows through transparent art.
         """
-        image = QImage(self.size(), QImage.Format.Format_RGBX8888)
+        ratio = self.devicePixelRatioF()
+        size = QSize(math.ceil(self.width() * ratio), math.ceil(self.height() * ratio))
+        image = QImage(size, QImage.Format.Format_RGBX8888)
+        image.setDevicePixelRatio(ratio)
         image.fill(card_background(current_scheme()))
         p = QPainter(image)
         self._draw(p)

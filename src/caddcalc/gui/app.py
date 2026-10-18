@@ -71,31 +71,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     if branding.icon is not None:
         app.setWindowIcon(QIcon(str(branding.icon)))
     # Before any widget: the user's text size, so every text-unit size follows it
-    # (ADR-0021 §2). It's put back on the way out, as main() found it.
+    # (ADR-0021 §2). It's put back on the way out, as main() found it, however it ends.
     base_font = app.font()
     app.setFont(scaled_font(base_font, system_text_scale()))
+    try:
+        # The welcome screen shows first and paints, so startup is never blank; the main
+        # window is built after it (ADR-0015 §1, amendments).
+        actions = AppActions(branding, app)
+        welcome = WelcomeScreen(branding, actions)
+        startup = _Startup(app, branding, actions, welcome, smoke_test=smoke_test)
+        welcome.show()
+        app.processEvents()
 
-    # The welcome screen shows first and paints, so startup is never blank; the main
-    # window is built after it (ADR-0015 §1, amendments).
-    actions = AppActions(branding, app)
-    welcome = WelcomeScreen(branding, actions)
-    startup = _Startup(app, branding, actions, welcome, smoke_test=smoke_test)
-    welcome.show()
-    app.processEvents()
-
-    if smoke_test:
-        startup.build_main_window()
-        if startup.failed:
-            status = 1
+        if smoke_test:
+            startup.build_main_window()
+            if startup.failed:
+                status = 1
+            else:
+                ready = time.perf_counter() - started
+                window = startup.main_window()
+                _write_smoke_report(report_dir, app, window, branding, welcome, ready)
+                status = 0
         else:
-            ready = time.perf_counter() - started
-            _write_smoke_report(report_dir, app, startup.main_window(), branding, welcome, ready)
-            status = 0
-    else:
-        QTimer.singleShot(0, startup.build_main_window)
-        status = int(app.exec())
-    _dispose(app, welcome, startup.window, actions)
-    app.setFont(base_font)
+            QTimer.singleShot(0, startup.build_main_window)
+            status = int(app.exec())
+        _dispose(app, welcome, startup.window, actions)
+    finally:
+        app.setFont(base_font)
     return status
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -257,7 +258,7 @@ def test_the_welcome_card_is_centred_on_its_screen() -> None:
 
 
 def test_windows_text_size_is_read_once_and_guarded(monkeypatch: pytest.MonkeyPatch) -> None:
-    """125% gives 1.25; another platform, a missing value, or one out of range gives 1."""
+    """125% gives 1.25; another platform, or a value missing, out of range, or no DWORD, 1."""
     import sys
 
     from caddcalc.gui import window_layout
@@ -274,7 +275,11 @@ def test_windows_text_size_is_read_once_and_guarded(monkeypatch: pytest.MonkeyPa
         def __exit__(self, *_args: object) -> None:
             return None
 
-    for value, expected in (((125, winreg.REG_DWORD), 1.25), ((300, winreg.REG_DWORD), 1.0)):
+    for value, expected in (
+        ((125, winreg.REG_DWORD), 1.25),
+        ((300, winreg.REG_DWORD), 1.0),
+        (("125", winreg.REG_SZ), 1.0),  # compared as a number, it would raise at startup
+    ):
         monkeypatch.setattr(winreg, "OpenKey", lambda *_a: Key())
         monkeypatch.setattr(winreg, "QueryValueEx", lambda *_a, v=value: v)
         assert window_layout.system_text_scale() == expected
@@ -284,6 +289,52 @@ def test_windows_text_size_is_read_once_and_guarded(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(winreg, "OpenKey", missing)
     assert window_layout.system_text_scale() == 1.0
+
+
+@pytest.mark.gui
+def test_main_scales_the_text_and_fits_the_window_on_the_cards_screen(
+    qt: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """At 125% text, main() builds the window in fonts 1.25 times the size.
+
+    It fits the window to the welcome card's screen, and puts the font back on the way
+    out, even when the way out fails.
+    """
+    from caddcalc.gui import app as app_module
+    from caddcalc.gui import window_layout
+    from caddcalc.gui.window import MainWindow
+
+    app = qt.QApplication.instance()
+    base_font = app.font()
+    base = base_font.pointSizeF()
+    monkeypatch.setattr(window_layout, "system_text_scale", lambda: 1.25)
+    fitted: list[tuple[float, Any]] = []
+    fit_to_screen = MainWindow.fit_to_screen
+
+    def spy(window: MainWindow, screen: Any = None) -> None:
+        fitted.append((window.font().pointSizeF(), screen))
+        fit_to_screen(window, screen)
+
+    monkeypatch.setattr(MainWindow, "fit_to_screen", spy)
+    dispose = app_module._dispose
+
+    def failing(*objects: Any) -> None:
+        dispose(*objects)
+        raise RuntimeError("teardown failed")
+
+    try:
+        assert app_module.main([f"--smoke-test={tmp_path / 'scaled'}"]) == 0
+        [(size, screen)] = fitted
+        assert size == pytest.approx(base * 1.25)
+        assert screen is not None, "the welcome card's screen"
+        assert app.font().pointSizeF() == base, "put back"
+        monkeypatch.setattr(app_module, "_dispose", failing)
+        with pytest.raises(RuntimeError, match="teardown failed"):
+            app_module.main([f"--smoke-test={tmp_path / 'failing'}"])
+        assert app.font().pointSizeF() == base, "put back, though the teardown failed"
+    finally:
+        app.setApplicationDisplayName("")
+        app.setFont(base_font)
 
 
 CALCULATORS = (

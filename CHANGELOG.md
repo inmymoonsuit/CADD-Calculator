@@ -338,6 +338,11 @@ All notable changes are recorded here. The format follows
   0.063 in with R = 0.15 in and bends of 90° and 120° showed no limit, though the 90° bend
   needs 0.16 in. Bends up to 90° are now checked, and those past 90° get their own note.
   The rule of thumb speaks only when no bend was checked against a source.
+- **The welcome screen's panes could misjudge fine, regular art.** They sampled the
+  art on a fixed grid, which aliases with periodic detail: over 1 px stripes it could
+  see a fifth of their true share, so a fill could stop short. Each pane now measures
+  every pixel under it, at the display's resolution, so detail finer than a logical
+  pixel counts as the screen shows it. The `panes.min_samples` token is gone.
 - **The welcome screen measured transparent art wrongly.** The image it measured the art
   in started uninitialized, so where a pack's PNG art was transparent the panes read
   arbitrary memory, and could pick a fill that left the text at about 1.55:1. The art is
@@ -426,9 +431,9 @@ All notable changes are recorded here. The format follows
     logo it holds the app icon alone, in an 80 px square.
   * Both panes' text is drawn as its outline, grey antialiased, so the name and the
     version match on every platform. The title's grid size rounds ties down.
-  * The panes' contrast is exact: each pane samples at least 4096 pixels of the art
-    beneath, blends each under its fill, and holds 95% of them to the pane's
-    contrast, which the loader keeps at or above WCAG 2's floor. Saturated art, such
+  * The panes' contrast is exact: each pane measures every pixel of the art beneath,
+    at the display's resolution, blends each under its fill, and holds 95% of them to
+    the pane's contrast, which the loader keeps at or above WCAG 2's floor. Saturated art, such
     as pure blue, is now held to the contrast too. The background under a pane must
     also be calm (`panes.max_background_spread`, 1.5), so over busy art, such as a
     checker, the fill rises until the letters don't break up; calm art stays at 15%.

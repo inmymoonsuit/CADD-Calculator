@@ -13,10 +13,22 @@ from caddcalc.core import Registry
 
 
 def open_window(registry: Registry | None = None) -> Any:
-    """A main window over the built-ins (no plugins), or over ``registry``."""
+    """A main window over the built-ins (no plugins), or over ``registry``.
+
+    It's placed on the primary screen. Shown unplaced, a window opens on the pointer's
+    screen, and on a desktop of mixed scales, Windows resizes it for that screen's
+    scale, so a native run's sizes would depend on where the pointer is.
+    """
+    from PySide6.QtGui import QGuiApplication
+
     from caddcalc.gui.window import MainWindow
 
-    return MainWindow(default_registry(load_plugins=False) if registry is None else registry)
+    window = MainWindow(default_registry(load_plugins=False) if registry is None else registry)
+    screen = QGuiApplication.primaryScreen()
+    if screen is not None:
+        window.setScreen(screen)
+        window.move(screen.availableGeometry().topLeft())
+    return window
 
 
 def type_into(edit: Any, text: str, *, enter: bool = True) -> None:

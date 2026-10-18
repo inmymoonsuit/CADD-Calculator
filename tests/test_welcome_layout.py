@@ -10,6 +10,7 @@ from caddcalc.gui.welcome_layout import (
     contain_fit,
     cover_crop,
     device_line,
+    device_rect,
     display_pixels,
     fit_scale,
     logo_box,
@@ -121,3 +122,18 @@ def test_a_tie_rounds_down_to_keep_the_title_in_its_safe_area(ratio: float, grid
     """2.5 design-pixel multiples round to 2 and 3.5 to 3, where round-half-even gives 4."""
     assert display_pixels(50, 1, ratio, 25) == grid
     assert display_pixels(50, 1, 1.26, 25) == 3, "past the tie, it rounds up"
+
+
+@pytest.mark.parametrize(
+    ("rect", "ratio", "device"),
+    [
+        (Rect(604, 10, 332, 44), 1.0, Rect(604, 10, 332, 44)),
+        (Rect(604, 10, 332, 44), 2.0, Rect(1208, 20, 664, 88)),
+        (Rect(10, 10, 5, 5), 1.25, Rect(12, 12, 7, 7)),
+    ],
+)
+def test_a_pane_is_measured_in_every_device_pixel_it_covers(
+    rect: Rect, ratio: float, device: Rect
+) -> None:
+    """At 125%, a pane's edges cover parts of device pixels; those count too."""
+    assert device_rect(rect, ratio) == device

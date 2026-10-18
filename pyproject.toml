@@ -94,7 +94,7 @@ convention = "google"
 ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D1", "S101"]          # test names document behavior; pytest asserts
+"tests/**" = ["D1", "S101", "S311"]  # test names document behavior; pytest asserts; seeded data
 "packaging/**" = ["S603", "S607"]    # build tools run fixed developer executables
 
 [tool.mypy]

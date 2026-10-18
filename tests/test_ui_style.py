@@ -56,6 +56,12 @@ def test_every_token_table_has_its_typed_class() -> None:
         (edited("result_field", "icon_size", 32), "icon_size 32 is larger than its button_size"),
         (edited("note_outline", "width", 1), "note_outline.width 1 must be heavier"),
         (edited("note_outline", "limit_style", "dotted"), "must be one of dashed, solid"),
+        (edited("layout", "list_min_chars", 52), "list_min_chars 52 is more than .*list_width"),
+        (edited("layout", "panel_max_chars", 149), "panel_max_chars 149 is more than .*page_max"),
+        (
+            edited("layout", "right_pane_min_chars", 65),
+            "right_pane_min_chars 65 is more than .*right_pane_default",
+        ),
     ],
 )
 def test_the_loader_refuses_a_bad_token(data: dict[str, Any], message: str) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import math
+import random
 import re
 import tomllib
 from dataclasses import fields
@@ -13,21 +14,23 @@ from typing import Any
 import pytest
 
 from caddcalc.gui.welcome_style import (
+    _SAMPLE,
     RGB,
     SPACING,
     STYLE_FILE,
     Size,
     StyleError,
     WelcomeStyle,
+    _at_rank,
     art_contrast,
     background_spread,
     contrast,
+    every_pixel,
     luminance,
     pane_fill,
     pane_reads,
     parse_style,
     rgb,
-    sample_grid,
     style,
     with_overrides,
 )
@@ -220,17 +223,101 @@ def mixed(*parts: tuple[RGB, float], count: int = 4096) -> list[RGB]:
     return [colour for colour, share in parts for _ in range(round(share * count))]
 
 
-def test_the_sample_grid_keeps_real_pixels_and_enough_of_them() -> None:
+def test_every_pixel_is_measured_and_none_averaged() -> None:
     small = bytes([10, 20, 30, 0] * 6)
-    assert sample_grid(small, 3, 2, 4096) == [(10, 20, 30)] * 6, "every pixel when few"
+    assert every_pixel(small, 3, 2) == [(10, 20, 30)] * 6
     width, height = 400, 50
     pixels = bytearray()
     for y in range(height):
         for x in range(width):
             pixels += bytes([255 if (x + y) % 2 else 0] * 3 + [0])  # a one-pixel check
-    samples = sample_grid(bytes(pixels), width, height, 4096)
-    assert 4096 <= len(samples) < width * height
-    assert set(samples) <= {BLACK, WHITE}, "nearest pixels: nothing is averaged to grey"
+    measured = every_pixel(bytes(pixels), width, height)
+    assert len(measured) == width * height
+    assert measured.count(WHITE) == measured.count(BLACK), "nothing is averaged to grey"
+
+
+STRIPE = (255, 255, 255)
+BLUE = (20, 40, 200)
+
+
+def _stripes(x0: int, width: int, height: int, period: int = 17) -> bytes:
+    """1 px stripes every ``period`` px, as the pane at ``x0`` sees them, as RGBX rows."""
+    row = b"".join(bytes((*(STRIPE if (x0 + x) % period == 0 else BLUE), 0)) for x in range(width))
+    return row * height
+
+
+def test_the_measured_share_of_periodic_art_is_its_true_share() -> None:
+    """A regular grid of samples aliases with 1 px stripes; every pixel can't.
+
+    The pane's width is swept across 300-340 px and its position across one period, so
+    every alignment of a pane with the stripes is measured (ADR-0016, amendments).
+    """
+    worst = 0.0
+    for width in range(300, 341):
+        for x0 in range(17):
+            measured = every_pixel(_stripes(x0, width, 44), width, 44)
+            share = measured.count(STRIPE) / len(measured)
+            true = sum(1 for x in range(width) if (x0 + x) % 17 == 0) / width
+            worst = max(worst, abs(share - true) * 100)
+    assert worst <= 0.5, f"{worst:.2f} percentage points off"
+
+
+def _by_definition(values: list[float], counts: list[int], share: float) -> float:
+    """The value at ``share`` percent of the pixels, by nearest rank: every pixel, sorted."""
+    pixels = sorted(v for v, count in zip(values, counts, strict=True) for _ in range(count))
+    return pixels[max(math.ceil(share / 100 * len(pixels)), 1) - 1]
+
+
+def _misjudged(colours: int, top: bool) -> list[float]:
+    """Values whose sampled colours are all at one end, so the sample misjudges the tail."""
+    generator = random.Random(colours)
+    ordered = sorted((generator.random() for _ in range(colours)), reverse=top)
+    step = colours // _SAMPLE
+    taken = len(range(0, colours, step))  # the colours the sample takes
+    end, rest = iter(ordered[:taken]), iter(ordered[taken:])
+    return [next(end) if i % step == 0 else next(rest) for i in range(colours)]
+
+
+def _at_the_edge(colours: int, share: float) -> list[float]:
+    """Values, a pixel each, whose sampled tail holds exactly the pixels past the rank.
+
+    The tail is sampled as the selection samples it, so it's one pixel short of the
+    rank's own: it holds exactly ``beyond`` pixels, and everything must be sorted.
+    """
+    rank = max(math.ceil(share / 100 * colours), 1) - 1
+    top = rank >= colours - rank
+    beyond = colours - 1 - rank if top else rank
+    step = colours // _SAMPLE
+    sampled = len(range(0, colours, step))
+    near = math.ceil(2 * (beyond + 1) / colours * sampled)  # sampled values to the edge
+    generator = random.Random(colours)
+    ordered = sorted((generator.random() for _ in range(colours)), reverse=top)
+    # The `beyond` values nearest the rank's end: the sample's `near` of them, the last
+    # of which is the edge, and the rest unsampled.
+    end, rest = ordered[:beyond], ordered[beyond:]
+    taken = iter(end[beyond - near :] + rest[: sampled - near])
+    others = iter(end[: beyond - near] + rest[sampled - near :])
+    return [next(taken) if i % step == 0 else next(others) for i in range(colours)]
+
+
+@pytest.mark.parametrize("colours", [1, 40, 3000], ids=["one", "few", "many"])
+def test_a_percentile_over_the_tally_is_the_one_over_every_pixel(colours: int) -> None:
+    """Each colour is measured once, with its count, and only a tail is sorted.
+
+    Neither may change a result: from either end, with the tail found from a sample
+    (many colours) or not, and where the sample misjudges the tail, by far or by exactly
+    one pixel, it's the definition's.
+    """
+    generator = random.Random(colours)
+    values = [generator.random() for _ in range(colours)]
+    counts = [generator.choice([1, 1, 1, 2, 9]) for _ in range(colours)]
+    for share in (0, 1, 5, 25, 50, 75, 95, 99, 100):
+        assert _at_rank(values, counts, share) == _by_definition(values, counts, share)
+    if colours > 2 * _SAMPLE:
+        for share, top in ((5, False), (95, True)):
+            ones = [1] * colours
+            for values in (_misjudged(colours, top), _at_the_edge(colours, share)):
+                assert _at_rank(values, ones, share) == _by_definition(values, ones, share)
 
 
 CALM = [(225 + 15 * i // 4095, 220 + 12 * i // 4095, 205 + 10 * i // 4095) for i in range(4096)]

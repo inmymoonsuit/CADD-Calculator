@@ -16,6 +16,26 @@ Template:
 
 ---
 
+## 2026-10-18: Sampling the art under the welcome panes on a regular grid
+**Tried:** in ADR-0016's slice i, each pane measured at least 4096 art pixels on a fixed
+grid, each the nearest pixel, at one pixel per logical pixel.
+**Outcome:** replaced by every device pixel under the pane (ADR-0016, 2026-10-18).
+Support & Review first reported the name pane at 1.35:1 natively, at the card's full
+size, with the card's size and scale as the cause; UI/UX diagnosed the grid.
+**Why:** a regular grid aliases with periodic art. Over 1 px stripes every 17 px, it saw
+1.1% of them where 5.7% are, so the percentile was taken over the wrong pixels.
+**Instead:** measure every pixel, and make it cheap by tallying colours, not by sampling.
+
+## 2026-10-18: Sorting every colour at each opacity the panes try
+**Tried:** tallying the art's colours with their counts, then sorting the (value, count)
+pairs at each opacity, and then selecting the 5% tails with `heapq`.
+**Outcome:** both exact, but slow on art whose every pixel differs: about 1.1 s and
+0.46 s for a 200% name pane of noise.
+**Why:** a pane fill tries about 20 opacities, and sorting tuples, or a heap of a few
+thousand, costs several passes over the colours each time.
+**Instead:** a sample of the colours puts each tail's edge, and only the tail is sorted,
+with a full sort where the sample misjudges: 0.27 s for the same pane.
+
 ## 2026-10-17: Reading pytest's summary line as the result
 **Tried:** reporting the checks as passing from pytest's last line, e.g. "496 passed",
 through every slice from phase 1 to 2a.5.

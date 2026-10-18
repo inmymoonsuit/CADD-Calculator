@@ -174,9 +174,6 @@ by hand before a release on each platform:
   owns the `_NET_WM_CM_Sn` selection. On Windows 11, the system's own rounding doesn't
   apply to frameless windows, so the painted radius is what shows. Check that the
   corners are clean, with no dark or light fringe, at each display scale.
-* **Pane contrast at high DPI:** the panes measure the art at one sample per logical
-  pixel, from the art as drawn. At 150% and 200% scaling, check that the name and version
-  still read over the art; very fine detail is averaged in that sample.
 * **Keyboard focus:** Tab to the ⓘ and the X on each platform's real style and check
   that a focus ring shows; they are flat (auto-raise) buttons, which some styles draw
   without one.

@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import math
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from functools import cache
 from pathlib import Path
@@ -81,6 +82,7 @@ __all__ = [
     "art_contrast",
     "background_spread",
     "contrast",
+    "every_pixel",
     "load_style",
     "luminance",
     "opaque_fill",
@@ -90,7 +92,6 @@ __all__ = [
     "parse_style",
     "rgb",
     "rgb_luminance",
-    "sample_grid",
     "short_of",
     "style",
     "with_overrides",
@@ -190,8 +191,6 @@ class PaneStyle:
     percentile: float
     """The share of the art under a pane, in percent, that may fall short of the
     contrast: the contrast is held at this percentile of the pixels."""
-    min_samples: int
-    """The least number of art pixels sampled under a pane, on a fixed grid."""
     max_background_spread: float
     """The most the background under a pane may vary: its luminance at the high
     percentile over its luminance at the low one, each plus 0.05, so busy art can't
@@ -350,7 +349,6 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "fill_opacity_min": check_number(0, 1),
             "border_width": _WIDTH,
             "percentile": check_number(0, 50),
-            "min_samples": check_number(1, 1_000_000, whole=True),
             "max_background_spread": check_number(1, 21),
         },
     ),
@@ -516,32 +514,21 @@ Pair = tuple[RGB, RGB]
 # --- the panes' contrast guarantee (ADR-0016 §5) -------------------------------------------
 
 
-def sample_grid(rgbx: bytes, width: int, height: int, minimum: int) -> list[RGB]:
-    """Return the pixels on a fixed grid of at least ``minimum`` points, or every pixel.
+def every_pixel(rgbx: bytes, width: int, height: int) -> list[RGB]:
+    """Return every pixel's colour, row by row: nothing sampled, nothing averaged.
 
-    Each point takes its nearest pixel, and nothing is averaged, so the art's extremes
-    survive the sampling.
+    A regular grid of samples aliases with periodic art: over 1 px stripes it can see
+    almost any share of them, and so take the percentile over the wrong pixels
+    (ADR-0016, amendments). A pane is small, so every pixel under it is measured.
 
     Args:
         rgbx: Pixels as red, green, blue, and one unused byte each, row by row, as Qt's
             RGBX8888 images store them.
         width: The image's width, in pixels.
         height: The image's height, in pixels.
-        minimum: The least number of samples.
     """
-    if width * height <= minimum:
-        xs, ys = list(range(width)), list(range(height))
-    else:
-        columns = min(width, math.ceil(math.sqrt(minimum * width / height)))
-        rows = min(height, math.ceil(minimum / columns))
-        xs = [int((i + 0.5) * width / columns) for i in range(columns)]
-        ys = [int((j + 0.5) * height / rows) for j in range(rows)]
-    stride = 4 * width
-    return [
-        (rgbx[y * stride + 4 * x], rgbx[y * stride + 4 * x + 1], rgbx[y * stride + 4 * x + 2])
-        for y in ys
-        for x in xs
-    ]
+    view = memoryview(rgbx)[: 4 * width * height]
+    return list(zip(view[0::4], view[1::4], view[2::4], strict=True))
 
 
 _WEIGHTS = (0.2126, 0.7152, 0.0722)
@@ -562,60 +549,136 @@ def _blend_tables(fill: RGB, alpha: int) -> tuple[list[list[float]], list[list[f
     return darker, lighter
 
 
-def short_of(art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, needed: float) -> int:
-    """Return how many ``art`` colours leave ``text`` short of ``needed`` contrast.
+Art = Sequence[RGB] | Counter[RGB]
+"""The art under a pane: every pixel's colour, or each distinct colour with its count."""
+
+
+def tally(art: Art) -> Counter[RGB]:
+    """Return each distinct colour in ``art`` with how many pixels have it.
+
+    Every measure below depends only on how many pixels have each colour, so it's exact
+    on the tally, and each colour is blended once however many pixels share it.
+    """
+    return art if isinstance(art, Counter) else Counter(art)
+
+
+_SAMPLE = 512
+"""How many colours a tail's edge is estimated from, before the tail is sorted."""
+
+
+def _at_rank(values: list[float], counts: list[int], share: float) -> float:
+    """Return the value at ``share`` percent of the pixels, by nearest rank.
+
+    ``values`` is each colour's value and ``counts`` its pixels. Only the tail nearer
+    the rank is sorted. A sample of the colours puts the tail's edge past the rank, at
+    twice its share, well beyond the sample's error, and if the tail holds too few
+    pixels after all, everything is sorted instead. So a tail of a few percent costs a
+    pass over the values, not a sort of them, and the result is exact either way.
+    """
+    total = sum(counts)
+    rank = max(math.ceil(share / 100 * total), 1) - 1  # the pixels below the value
+    top = rank >= total - rank  # nearer the top, so counted down from there
+    beyond = total - 1 - rank if top else rank  # the pixels past it, from that end
+    pairs: Iterable[tuple[float, int]] = zip(values, counts, strict=True)
+    if len(values) > 2 * _SAMPLE:
+        step = len(values) // _SAMPLE
+        sample = sorted(zip(values[::step], counts[::step], strict=True), reverse=top)
+        wanted = 2 * (beyond + 1) / total * sum(counts[::step])
+        seen, edge = 0, sample[-1][0]
+        for value, count in sample:
+            seen += count
+            if seen >= wanted:
+                edge = value
+                break
+        if top:
+            tail = [(value, count) for value, count in pairs if value >= edge]
+        else:
+            tail = [(value, count) for value, count in pairs if value <= edge]
+        if sum(count for _, count in tail) > beyond:
+            pairs = tail
+        else:  # the sample put the edge short of the rank
+            pairs = zip(values, counts, strict=True)
+    seen = 0
+    for value, count in sorted(pairs, reverse=top):
+        seen += count
+        if seen > beyond:
+            return value
+    raise ValueError("no art under the pane")
+
+
+def _blended(counted: Counter[RGB], fill: RGB, alpha: int) -> tuple[list[float], list[float]]:
+    """Return each colour's luminance under ``fill`` at ``alpha``: rounded darker, lighter.
+
+    Each colour is blended as the screen blends it, each 8-bit channel to a whole level,
+    in the order ``counted`` lists them.
+    """
+    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
+    return (
+        [dr[r] + dg[g] + db[b] for r, g, b in counted],
+        [lr[r] + lg[g] + lb[b] for r, g, b in counted],
+    )
+
+
+def _short(
+    darker: list[float], lighter: list[float], counts: list[int], text: RGB, needed: float
+) -> int:
+    """Return how many pixels leave ``text`` short of ``needed``, at either rounding."""
+    luminance = rgb_luminance(text)
+    light_enough = needed * (luminance + 0.05) - 0.05
+    dark_enough = (luminance + 0.05) / needed - 0.05
+    return sum(
+        count
+        for dark, light, count in zip(darker, lighter, counts, strict=True)
+        if not (dark >= light_enough or light <= dark_enough)
+    )
+
+
+def _spread(
+    darker: list[float], lighter: list[float], counts: list[int], percentile: float
+) -> float:
+    """Return the background's spread: see ``background_spread``."""
+    return contrast(
+        _at_rank(lighter, counts, 100 - percentile), _at_rank(darker, counts, percentile)
+    )
+
+
+def short_of(art: Art, text: RGB, fill: RGB, alpha: int, needed: float) -> int:
+    """Return how many pixels of ``art`` leave ``text`` short of ``needed`` contrast.
 
     Each colour is blended under ``fill`` at ``alpha`` (0 to 255), as the screen blends it,
     and its luminance is compared with the text's. Either rounding of the blend must read.
     """
-    luminance = rgb_luminance(text)
-    light_enough = needed * (luminance + 0.05) - 0.05
-    dark_enough = (luminance + 0.05) / needed - 0.05
-    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
-    return sum(
-        1
-        for r, g, b in art
-        if not (dr[r] + dg[g] + db[b] >= light_enough or lr[r] + lg[g] + lb[b] <= dark_enough)
-    )
+    counted = tally(art)
+    return _short(*_blended(counted, fill, alpha), list(counted.values()), text, needed)
 
 
-def art_contrast(art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, percentile: float) -> float:
-    """Return the text's contrast at ``percentile`` of the ``art`` colours, by nearest rank.
+def art_contrast(art: Art, text: RGB, fill: RGB, alpha: int, percentile: float) -> float:
+    """Return the text's contrast at ``percentile`` of the ``art``'s pixels, by nearest rank.
 
     Each colour is blended under ``fill`` at ``alpha``, and the worse rounding counts.
     """
+    counted = tally(art)
     luminance = rgb_luminance(text)
-    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
-    values = sorted(
-        min(
-            contrast(luminance, dr[r] + dg[g] + db[b]),
-            contrast(luminance, lr[r] + lg[g] + lb[b]),
-        )
-        for r, g, b in art
-    )
-    return values[max(math.ceil(percentile / 100 * len(values)), 1) - 1]
+    darker, lighter = _blended(counted, fill, alpha)
+    values = [
+        min(contrast(luminance, dark), contrast(luminance, light))
+        for dark, light in zip(darker, lighter, strict=True)
+    ]
+    return _at_rank(values, list(counted.values()), percentile)
 
 
-def background_spread(art: Sequence[RGB], fill: RGB, alpha: int, percentile: float) -> float:
+def background_spread(art: Art, fill: RGB, alpha: int, percentile: float) -> float:
     """Return how much the background under a pane varies, blended under ``fill``.
 
     It's the ratio of the blended art's luminance at ``100 - percentile`` percent, taken
     at its lighter rounding, to that at ``percentile`` percent, at its darker rounding,
     each plus 0.05, as a contrast is. 1 is a flat background.
     """
-    (dr, dg, db), (lr, lg, lb) = _blend_tables(fill, alpha)
-    darker = sorted(dr[r] + dg[g] + db[b] for r, g, b in art)
-    lighter = sorted(lr[r] + lg[g] + lb[b] for r, g, b in art)
-
-    def rank(share: float) -> int:
-        return max(math.ceil(share / 100 * len(art)), 1) - 1
-
-    return contrast(lighter[rank(100 - percentile)], darker[rank(percentile)])
+    counted = tally(art)
+    return _spread(*_blended(counted, fill, alpha), list(counted.values()), percentile)
 
 
-def pane_reads(
-    art: Sequence[RGB], text: RGB, fill: RGB, alpha: int, panes: PaneStyle, needed: float
-) -> bool:
+def pane_reads(art: Art, text: RGB, fill: RGB, alpha: int, panes: PaneStyle, needed: float) -> bool:
     """Return whether ``text`` reads on ``fill`` at ``alpha`` over the ``art`` beneath.
 
     It does when its contrast reaches ``needed`` over all but ``panes.percentile`` percent
@@ -623,16 +686,17 @@ def pane_reads(
     background is calm: its spread is at most ``panes.max_background_spread``, so busy
     art can't break the letters up (ADR-0016, amendments).
     """
-    allowed = max(math.ceil(panes.percentile / 100 * len(art)), 1) - 1
+    counted = tally(art)
+    counts = list(counted.values())
+    darker, lighter = _blended(counted, fill, alpha)  # once, for both tests
+    allowed = max(math.ceil(panes.percentile / 100 * sum(counts)), 1) - 1
     return (
-        short_of(art, text, fill, alpha, needed) <= allowed
-        and background_spread(art, fill, alpha, panes.percentile) <= panes.max_background_spread
+        _short(darker, lighter, counts, text, needed) <= allowed
+        and _spread(darker, lighter, counts, panes.percentile) <= panes.max_background_spread
     )
 
 
-def pane_fill(
-    art: Sequence[RGB], pairs: Sequence[Pair], panes: PaneStyle, needed: float
-) -> tuple[int, int]:
+def pane_fill(art: Art, pairs: Sequence[Pair], panes: PaneStyle, needed: float) -> tuple[int, int]:
     """Choose a pane's text and fill, and the fill's opacity over the art (ADR-0016 §5, S3).
 
     Each pair is a text colour and its own fill: dark text on a light fill, light text on
@@ -643,10 +707,10 @@ def pane_fill(
     to 8-bit rounding. So the least opacity is found by bisection, and bisection returns
     only an opacity it has checked; where the rise isn't strict, that may be a little
     above the least. The pair that needs the least opacity wins; at the same opacity,
-    the one with more contrast.
+    the one with more contrast, and then the first.
 
     Args:
-        art: The art's colours under the pane, sampled.
+        art: The art's colours under the pane, every pixel.
         pairs: Each text colour, with its fill's colour.
         panes: The panes' style: the floor, the percentile, and the most spread.
         needed: The contrast the text must reach.
@@ -655,12 +719,13 @@ def pane_fill(
         The index of the pair in ``pairs``, and the fill's alpha, 0 to 255. If no pair
         reads even opaque, the fill is opaque, in the pair that contrasts most.
     """
+    counted = tally(art)  # once: the search below checks the art at every opacity it tries
     floor = math.ceil(panes.fill_opacity_min * LEVELS)
     candidates = []
     for index, (text, fill) in enumerate(pairs):
 
         def reads(alpha: int, text: RGB = text, fill: RGB = fill) -> bool:
-            return pane_reads(art, text, fill, alpha, panes, needed)
+            return pane_reads(counted, text, fill, alpha, panes, needed)
 
         if not reads(LEVELS):
             continue
@@ -672,11 +737,17 @@ def pane_fill(
             while high - low > 1:
                 middle = (low + high) // 2
                 low, high = (low, middle) if reads(middle) else (middle, high)
-        reached = art_contrast(art, text, fill, high, panes.percentile)
-        candidates.append((high, -reached, index))
+        candidates.append((high, index))
     if not candidates:
         return opaque_fill(pairs)
-    alpha, _contrast, index = min(candidates)
+    alpha = min(high for high, _index in candidates)
+    tied = [index for high, index in candidates if high == alpha]
+
+    def reached(index: int) -> float:
+        text, fill = pairs[index]
+        return art_contrast(counted, text, fill, alpha, panes.percentile)
+
+    index = tied[0] if len(tied) == 1 else max(tied, key=reached)  # max keeps the first
     return index, alpha
 
 

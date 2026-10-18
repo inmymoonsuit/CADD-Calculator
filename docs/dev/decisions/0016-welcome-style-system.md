@@ -375,3 +375,53 @@ texture. The project decided on a second condition in the same bisection.
   existing test passed without an edit.
 * `style_tokens` joins the import-linter contract that keeps Qt out of the core, the
   calculators, and the branding loader.
+
+### 2026-10-18: every pixel, at the display's resolution
+
+Support & Review first reported it: natively, at the card's full 960 × 572, the name
+pane read 1.35:1 over the striped test art, at the floor fill, and the card's size and
+scale were the cause (its layout verification, §8(b)). UI/UX diagnosed why: slice i's
+fixed grid aliases with periodic art. Over 1 px stripes every 17 px, 5.7% of the art, a
+pane's grid saw 1.1% of them, so the percentile was taken over the wrong pixels and the
+fill stopped short. Swept over pane widths of 300 to 340 px and every position in one
+period, the grid's share was up to 6.0 percentage points off. The project decided the
+fix.
+
+* **The rule.** Every pixel under a pane is measured, at the display's resolution. The
+  art is drawn for measuring at the window's device pixel ratio, one image pixel per
+  device pixel, and a pane covers every device pixel its rectangle touches
+  (`device_rect`). Nothing is sampled or averaged, so detail finer than a logical pixel
+  counts as the screen shows it.
+* **The token.** `panes.min_samples` is retired. A pack could never override it, so no
+  pack changes.
+* **Exact, and cheap.** Every measure depends only on how many pixels have each colour,
+  so the art is tallied: each distinct colour once, with its count, and blended once at
+  each opacity tried. The percentiles are tails of a few percent, so each is found by
+  an edge a sample of the colours puts past it, and only the tail is sorted; where the
+  sample misjudges, everything is. The results are exactly those over every pixel: they
+  matched the earlier every-value code in 43,200 random cases.
+* **What it costs** (Windows, native). The generic art under the name pane is 14,608 px
+  in 74 colours at 100%: measuring takes 2.5 ms and a fill 1.3 ms, where the grid's
+  fill, over 4224 samples, took 7.7 ms. At 200%, it's 56,588 px in 81 colours: 7.8 ms
+  and about 4 ms. The worst case is art whose every pixel differs, such as noise: 64 ms
+  at 14,608 px and 266 ms at 56,588, where the earlier code, given every pixel, took 115
+  and 432 ms.
+* **When.** The fills are chosen as soon as the art is measured, before the card
+  shows, so its first paint doesn't wait on them.
+* **KI-020** loses its high-DPI pane check, which this closes.
+* **Tests.** The stripes are measured at their true share, within 0.5 percentage
+  points, over the same sweep (the grid fails it); a pane's device rectangle at ratios
+  1, 2, and 1.25; and the tally's percentiles against their definition, from either
+  end, with and without a sample, and where the sample misjudges.
+* **At the card's full size.** The offscreen screen is smaller, so CI's card was
+  800 × 477, the art was drawn at another scale, and the grid happened to see the
+  stripes. A test now holds the card at its full size over the saturated striped arts;
+  the grid fails it offscreen too.
+* **At twice the scale,** in its own process, each pane measures exactly the device
+  pixels its rectangle covers, and the selection's fallback is pinned where the
+  sampled tail holds exactly the pixels past the rank (Support & Review's Lows).
+* **The test's own measure** crops the card's grab in device pixels, so it's right on
+  a scaled display, and test windows open on the primary screen, so a native run
+  doesn't depend on which screen the pointer is on (UI/UX and Support & Review).
+* **Superseded wording.** This replaces slice e's "one sample per logical pixel" and
+  slice i's grid of at least `panes.min_samples` nearest pixels.

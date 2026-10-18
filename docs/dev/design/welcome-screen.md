@@ -182,10 +182,10 @@ uv run python packaging/fetch_fonts.py --commit SHA
   roadmap's commissioned generic art replaces it.
 * **The panes stay quiet, and readable** (ADR-0016, S3). Each text has its own fill:
   ink text on a white fill, white text on an ink fill. The fill starts at 15% opacity.
-  When the screen opens, it samples the art under each pane, as it's drawn: at least
-  4096 pixels on a fixed grid, each the nearest pixel and none averaged, or every
-  pixel of a smaller pane. For each pair it raises the fill's opacity only as far as
-  the text needs to read over 95% of those pixels, each blended under the fill as the
+  When the screen opens, it measures every pixel under the pane, at the display's
+  resolution: the art as it's drawn, one device pixel at a time, none sampled and
+  none averaged. For each pair it raises the fill's opacity only as far as the text
+  needs to read over 95% of those pixels, each blended under the fill as the
   screen blends it: 3:1 for the name, which is large text, and 4.5:1 for the version
   (WCAG 2; the loader refuses less). The blended background must also be calm: its
   luminance at the 95th percentile, plus 0.05, over that at the 5th, plus 0.05, is at
@@ -242,7 +242,6 @@ hex values, so both themes and the palette's contrast tests apply.
 | `panes.fill_opacity_min` | 0.15 | The fill's least opacity |
 | `panes.border_width` | 1 | The panes' border, in the text's role |
 | `panes.percentile` | 5 | The share of the art under a pane, in percent, that may fall short of the contrast |
-| `panes.min_samples` | 4096 | The least number of art pixels sampled under a pane, on a fixed grid |
 | `panes.max_background_spread` | 1.5 | The most the blended background may vary, as a luminance ratio; at least 1 |
 | `name_pane.anchor` | top_right | The corner the name pane hugs |
 | `name_pane.inset` | 24 | Its distance from that corner's edges (spacing scale) |

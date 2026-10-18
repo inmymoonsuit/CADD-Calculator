@@ -129,6 +129,18 @@ def scaled(rect: Rect, scale: float) -> Rect:
     return Rect(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale)
 
 
+def device_rect(rect: Rect, ratio: float) -> Rect:
+    """Return the device pixels ``rect`` covers at device pixel ratio ``ratio``.
+
+    It takes every device pixel the logical rectangle touches, so the art under a pane
+    is measured at the display's resolution, partial pixels at its edges included.
+    """
+    left, top = math.floor(rect.x * ratio), math.floor(rect.y * ratio)
+    right = math.ceil((rect.x + rect.width) * ratio)
+    bottom = math.ceil((rect.y + rect.height) * ratio)
+    return Rect(left, top, right - left, bottom - top)
+
+
 def pane_rect(anchor: str, inset: float, size: Size, slot: Size) -> Rect:
     """Return where a pane of ``size`` sits, ``inset`` from the ``anchor`` corner of ``slot``."""
     x = inset if anchor.endswith("left") else slot.width - inset - size.width
