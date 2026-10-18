@@ -47,7 +47,8 @@ Copying a value, with or without its unit, or at full precision, always writes "
 `0.3119`, since CAD programs read it: AutoCAD takes a comma as the break between a
 point's coordinates. **Copy all** writes your decimal mark, for a spreadsheet set to your
 format. Where your mark isn't ".", the menu also copies the number exactly as shown, as
-**Copy 0,3119**. The status bar always quotes what was copied.
+**Copy 0,3119**, and each item is named by what it copies: **Copy 0.3119**, **Copy
+0,3119**, **Copy 0.3119 in**. The status bar always quotes what was copied.
 
 ## The keyboard
 

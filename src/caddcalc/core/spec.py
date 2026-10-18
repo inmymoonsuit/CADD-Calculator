@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
+from types import MappingProxyType
 
 from caddcalc.core.errors import InputError
+from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.units import Dimension, base_text, parse_quantity
@@ -149,8 +151,30 @@ class Method:
     verification: Verification
     references: tuple[Reference, ...] = ()
     notes: tuple[str, ...] = field(default_factory=tuple)
+    """What to know about the method, one sentence or two each. A note that gives values
+    writes them as named fields, filled from ``quantities`` where it's shown."""
     legacy: bool = False
     """Reproduces the original course spreadsheets exactly (pinned by golden tests, ADR-0010)."""
+    quantities: Mapping[str, Quantity] = field(default_factory=dict, hash=False)
+    """The values the notes' fields name, in base units, e.g. ``{"course": (132.70, ANGLE)}``.
+
+    So a note's numbers read in the user's units and number format, as the work's do; the
+    text never holds a formatted number of the app's own (ADR-0020 M4). Without any, the
+    notes are plain text, braces and all.
+    """
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "quantities", MappingProxyType(dict(self.quantities)))
+        if self.quantities:
+            for note in self.notes:
+                check_template(note, self.quantities.keys(), f"Method {self.key!r} note")
+
+    def notes_shown(self, show: Callable[[float, Dimension], str]) -> tuple[str, ...]:
+        """Return the notes with their values filled, each written by ``show``."""
+        if not self.quantities:
+            return self.notes
+        values = {name: show(*quantity) for name, quantity in self.quantities.items()}
+        return tuple(note.format_map(values) for note in self.notes)
 
     @property
     def status(self) -> str:

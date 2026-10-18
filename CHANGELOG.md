@@ -430,7 +430,22 @@ All notable changes are recorded here. The format follows
 - An elided calculator name shows in bold in its tooltip, above its summary.
 - Units' names, which screen readers say, are US English, the source language
   ("millimeters"), and come in British spelling from the British catalog ("millimetres",
-  "per cent"). Each is singular only after a number shown as a whole 1.
+  "per cent"). Each is singular only after a number shown as a whole 1. So screen readers
+  say "millimeters" in US English, and "millimetres" in English elsewhere.
+- **One language for the whole window.** Qt's own words, such as a field's Undo and
+  Copy, and its shortcut names, are in the language the app's words are in: the first of
+  your display languages the app has words for, or US English. A window never mixes
+  English words with another language's menus.
+- Where the decimal mark isn't ".", the copy menu names each item by what it copies:
+  "Copy 0.3119", "Copy 0,3119", "Copy 0.3119 in".
+- A method's notes give their own numbers in your units and decimal mark, as the cone's
+  course example does ("132,70°"); numbers quoted from a source stay as published.
+- "per cent" reads however its two words are spaced, a no-break space included.
+- Language tags keep a script that isn't the language's usual one, so Traditional
+  Chinese or Latin Serbian would never fall back to Simplified Chinese or Cyrillic; `C`
+  and `POSIX` mean the source language.
+- `scripts/i18n.py check` refuses a marked text with a positional `{}` or a printf
+  placeholder, and checks each plural form on its own.
 - **Units come from one registry (ADR-0019).** `caddcalc.core.units` is now a package that
   declares every dimension and unit once, with its exact definition and its NIST SP 811
   citation, and reads typed units by asking that registry, rather than a list of

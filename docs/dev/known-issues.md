@@ -218,8 +218,11 @@ squeezes. At that size, three things were cut short: the disclaimer, one line ac
 status bar; the method box, which elided its method; and the family settings page, which
 scrolled sideways. ADR-0021 §7 fixed all three: the disclaimer wraps under the results,
 the method box is as wide as its longest name with the status beside it, and the settings
-page reflows. Natively, the disclaimer is 661 px, the least window 365, and the settings
-form 615; offscreen Windows' figures are wider, from its fallback font. The pseudo-locale
+page reflows. Natively, before those fixes, the disclaimer was 661 px on one line, the
+least window 365 × 175, and the settings form's least width 615. After them, the least
+window is 577 × 175, wider by design for the method box's and the list's least widths;
+the disclaimer's 661 px of text wraps to 372 × 32; and the settings form is 263 wide.
+Offscreen Windows' figures are wider, from its fallback font. The pseudo-locale
 test (`tests/test_translated_gui.py`) now allows nothing, in English and en_XA, offscreen
 and natively.
 

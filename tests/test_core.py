@@ -837,3 +837,22 @@ def test_a_stated_value_is_shown_as_stated_in_either_unit() -> None:
         Step("T", "T", Dimension.LENGTH, 2.778125, "t", expression_unit="in", stated="2.778125 mm")
     with pytest.raises(SpecError, match="stated value"):
         Step("T", "T", Dimension.LENGTH, 2.778125, "t", expression_unit="in", stated="thick")
+
+
+def test_a_methods_notes_name_their_values_and_read_in_the_users_format() -> None:
+    """UI/UX's i4 L2: the app's own numbers in a note are values, filled where shown."""
+    from caddcalc.core.errors import SpecError
+    from caddcalc.core.formatting import DisplayPrefs, NumberSymbols, method_notes
+    from caddcalc.core.units import Dimension
+
+    angle = (132.70, Dimension.ANGLE)
+    method = Method(
+        "m", "M", "S", Verification.UNVERIFIED, notes=("gives {a}",), quantities={"a": angle}
+    )
+    assert method_notes(method, DisplayPrefs()) == ("gives 132.70°",)
+    assert method_notes(method, DisplayPrefs(symbols=NumberSymbols(","))) == ("gives 132,70°",)
+    plain = Method("m", "M", "S", Verification.UNVERIFIED, notes=("braces {kept}",))
+    assert method_notes(plain, DisplayPrefs()) == ("braces {kept}",), "no values: plain text"
+    for notes in (("gives {b}",), ("gives {}",), ("gives {a:.2f}",)):
+        with pytest.raises(SpecError):
+            Method("m", "M", "S", Verification.UNVERIFIED, notes=notes, quantities={"a": angle})

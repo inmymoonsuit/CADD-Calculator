@@ -599,6 +599,16 @@ def describe_note(note: Note, prefs: DisplayPrefs) -> NoteText:
     )
 
 
+def method_notes(method: Method, prefs: DisplayPrefs) -> tuple[str, ...]:
+    """Return a method's notes as users read them, their values in the display units.
+
+    Each value is written as the results write it, in the user's number format.
+    """
+    return method.notes_shown(
+        lambda value, dimension: value_parts(value, dimension, prefs).with_unit
+    )
+
+
 def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> list[str]:
     """Return one line per calculator that uses a domain setting, for the settings page.
 

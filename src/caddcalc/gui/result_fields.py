@@ -100,7 +100,8 @@ MENU = {
 }
 """The context menu's copy forms (R6), in order. The fraction is there only when it's
 shown, and the number as shown, e.g. "Copy 0,3119", only where the decimal mark isn't "."
-(ADR-0020 §4): "Copy value" writes "." for CAD."""
+(ADR-0020 §4): "Copy value" writes "." for CAD. Where it isn't, every item is named by
+what it copies, such as "Copy 0.3119" and "Copy 0.3119 in"."""
 
 
 def _announce(widget: QWidget, message: str) -> None:
@@ -334,8 +335,15 @@ class ResultField(QWidget):
                 continue
             if form is CopyForm.SHOWN and (point or self.parts is None):
                 continue
-            number = "" if self.parts is None else self.parts.number
-            action = menu.addAction(text.format(number=number))
+            if point or self.amount is None:
+                number = "" if self.parts is None else self.parts.number
+                label = text.format(number=number)
+            else:
+                # Two decimal marks are on offer, so each item says what it copies,
+                # "Copy 0.3119" beside "Copy 0,3119" (UI/UX's i4 review).
+                copied = copy_output(self.output, self.amount, self.prefs, form)
+                label = MENU[CopyForm.SHOWN].format(number=copied)
+            action = menu.addAction(label)
             action.setEnabled(self.parts is not None)
             action.triggered.connect(_copier(self, form))
         return menu

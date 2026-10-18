@@ -327,3 +327,13 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     finally:
         monkeypatch.undo()
         clear_registry()
+
+
+@pytest.mark.parametrize(
+    "typed", ["50 per cent", "50 per  cent", "50 per\u00a0cent", "50 Per Cent"]
+)
+def test_a_two_word_unit_reads_however_its_words_are_spaced(typed: str) -> None:
+    """S&R's i3 L2: two spaces, or a no-break space, between "per" and "cent" read as one."""
+    from caddcalc.core.units import Dimension, parse_quantity
+
+    assert parse_quantity(typed, Dimension.RATIO) == pytest.approx(0.5)

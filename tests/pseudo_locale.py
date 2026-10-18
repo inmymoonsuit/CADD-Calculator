@@ -49,6 +49,7 @@ def _protected() -> re.Pattern[str]:
         "|".join(
             (
                 r"\{\{|\}\}|\{[^{}]*\}",  # placeholders, and escaped braces
+                r"%(?:\([^)]*\))?[-#0+]*\d*(?:\.\d+)?[sdifr]",  # printf ones, %s and %(name)s
                 r"<[^<>]*>",  # markup
                 r"&(?:#\d+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]*);",  # character references
                 r"&&|&\S",  # a literal &, or a mnemonic and its letter

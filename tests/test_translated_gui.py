@@ -98,23 +98,33 @@ def test_a_list_name_too_long_for_its_row_shows_whole_in_its_tooltip(
     tmp_path: Path, language: str
 ) -> None:
     """A row's tooltip is its summary; once its name elides, the name comes first."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
     from caddcalc.gui.name_tips import tip_text
 
     _in(language, tmp_path)
+    # A native platform animates a tooltip in, so it isn't visible yet when it's asked
+    # for; without the animation it shows at once, as offscreen.
+    animated = QApplication.isEffectEnabled(Qt.UIEffect.UI_AnimateTooltip)
+    QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateTooltip, False)
     window = open_window()
     window.tree.setMinimumWidth(0)  # below the list's least width, so every name elides
     window.resize(2400, 800)
     window.show()
     splitter = window.centralWidget()
-    for row in _rows(window):
-        name, summary = row.text(0), row.toolTip(0)
-        splitter.setSizes([90, 2310])
-        settle(window)
-        assert _tooltip(window.tree, row) == tip_text(name, summary), name
-        splitter.setSizes([1200, 1200])
-        settle(window)
-        assert _tooltip(window.tree, row) == summary, name
-    window.close()
+    try:
+        for row in _rows(window):
+            name, summary = row.text(0), row.toolTip(0)
+            splitter.setSizes([90, 2310])
+            settle(window)
+            assert _tooltip(window.tree, row) == tip_text(name, summary), name
+            splitter.setSizes([1200, 1200])
+            settle(window)
+            assert _tooltip(window.tree, row) == summary, name
+    finally:
+        window.close()
+        QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateTooltip, animated)
 
 
 def _clipped(window: Any) -> list[Any]:

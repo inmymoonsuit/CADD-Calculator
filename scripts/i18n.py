@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 import datetime
 import io
+import re
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -128,17 +129,48 @@ def _singular(message: Message) -> str:
 
 
 def placeholders(text: str) -> set[str]:
-    """Return the named fields in ``text``, such as ``{value}``; a text with none, none."""
+    """Return the named fields in ``text``, such as ``{value}``; a text with none, none.
+
+    A positional ``{}`` is ``""``, and unbalanced braces are ``"<unbalanced braces>"``.
+    """
     try:
         return {name for _t, name, _s, _c in Formatter().parse(text) if name is not None}
     except ValueError:
         return {"<unbalanced braces>"}
 
 
+PRINTF = re.compile(r"%(?:\([^)]*\))?[-#0+]*\d*(?:\.\d+)?[sdifr]")
+"""A printf-style placeholder, such as ``%s`` or ``%(name)s``. A "%" in prose, as in "10%
+grade", isn't one."""
+
+
+def source_problems(template: Catalog) -> list[str]:
+    """Return every marked text whose placeholders aren't named fields alone.
+
+    A translation reorders the fields, so each must be named (``{value}``): a positional
+    ``{}`` has nothing to keep it in its place, and a printf-style ``%s`` isn't checked
+    for at all.
+    """
+    problems = []
+    for message in template:
+        if not message.id:
+            continue
+        sources = message.id if isinstance(message.id, tuple | list) else (message.id,)
+        for source in sources:
+            if "" in placeholders(source):
+                problems.append(f"{source!r} has a positional {{}}; name it")
+            if PRINTF.search(source):
+                problems.append(f"{source!r} has a printf-style placeholder; use {{name}}")
+    return problems
+
+
 def placeholder_mismatches(catalog: Catalog) -> list[str]:
     """Return every translation whose placeholders differ from its source's.
 
     A translation may reorder ``{value}`` and ``{limit}``, never drop, add, or rename one.
+    A plural's forms are checked one by one: each has its source's fields, but where the
+    language has more than one form, the first, for "one", may leave out a field, as
+    "one inch" leaves out the count.
     """
     problems = []
     for message in catalog:
@@ -147,8 +179,12 @@ def placeholder_mismatches(catalog: Catalog) -> list[str]:
         sources = message.id if isinstance(message.id, tuple | list) else (message.id,)
         strings = message.string if isinstance(message.string, tuple | list) else (message.string,)
         wanted = set().union(*(placeholders(s) for s in sources))
-        for translated in strings:
-            if translated and placeholders(translated) != wanted:
+        for form, translated in enumerate(strings):
+            if not translated:
+                continue
+            found = placeholders(translated)
+            singular = len(strings) > 1 and form == 0
+            if found != wanted and not (singular and found < wanted):
                 problems.append(f"{_singular(message)!r}: {translated!r} has other placeholders")
     return problems
 
@@ -186,6 +222,7 @@ def check() -> list[str]:
         return [f"{TEMPLATE.name} is missing; run: python scripts/i18n.py extract"]
     if keys(read(TEMPLATE)) != keys(template):
         problems.append(f"{TEMPLATE.name} is out of date; run: python scripts/i18n.py extract")
+    problems += source_problems(template)
     for path in languages():
         catalog = read(path)
         language = path.parents[1].name

@@ -53,6 +53,61 @@ def test_the_menu_offers_the_number_as_shown_in_a_comma_locale() -> None:
     assert window.statusBar().currentMessage() == "Copied BA = 0,3119 to the clipboard"
     menu.deleteLater()
     window.close()
+
+
+def test_in_a_comma_locale_each_copy_item_says_what_it_copies() -> None:
+    """UI/UX's i4 L1: "Copy 0.3119" beside "Copy 0,3119", so the menu explains itself."""
+    window = _bend_window()
+    menu = window.results.fields["bend_allowance"].context_menu()
+    names = []
+    for action in menu.actions():
+        action.trigger()
+        assert action.text() == f"Copy {_clipboard().text()}"
+        names.append(action.text())
+    assert names[:3] == ["Copy 0.3119", "Copy 0,3119", "Copy 0.3119 in"], names
+    menu.deleteLater()
+    window.close()
+
+
+def test_a_methods_note_writes_its_values_in_the_locales_mark() -> None:
+    """UI/UX's i4 L2: the cone's note gives the course example's angles as values."""
+    window = open_window(symbols=COMMA)
+    window.select_calculator("sheet_metal.truncated_cone_layout")
+    window.method_box.setCurrentIndex(window.method_box.findData("course"))
+    text = window.output.toPlainText()
+    assert "132,70° against 133,70°" in text, text
+    window.close()
+
+
+def test_a_range_errors_decimal_bound_is_written_in_the_locales_mark() -> None:
+    """UI/UX's i4 review: a bound the app writes, in a field's message, takes the mark."""
+    from caddcalc.core import Registry
+    from caddcalc.core.spec import Param
+    from caddcalc.core.units import Dimension, parse_quantity
+    from tests.test_domains import ACME, _AcmeWidget
+
+    class Bounded(_AcmeWidget):
+        params = (
+            Param(
+                "length",
+                "X",
+                "Length",
+                Dimension.LENGTH,
+                default="1 in",
+                minimum=parse_quantity("0.25 in", Dimension.LENGTH),
+            ),
+        )
+
+    registry = Registry()
+    registry.register_domain(ACME)
+    registry.register(Bounded)
+    window = open_window(registry, symbols=COMMA)
+    window.select_calculator("acme.widget")
+    _param, edit = window.fields["length"]
+    type_into(edit, "0,1 in")
+    message = edit.toolTip() + window.output.toPlainText()
+    assert "0,25 in" in message and "0.25" not in message, message
+    window.close()
     point = _bend_window(NumberSymbols("."))
     names = [a.text() for a in point.results.fields["bend_allowance"].context_menu().actions()]
     assert names == ["Copy value", "Copy with unit", "Copy full precision"], "no second value"
@@ -112,8 +167,20 @@ def test_the_regional_format_gives_the_decimal_mark() -> None:
     assert i18n.posix_language(tags[0]) == "en_GB", tags
 
 
-def test_startup_chooses_the_language_for_our_text_and_qts() -> None:
-    """Qt's standard buttons read the same languages our catalogs do (ADR-0020 §1)."""
+def _undo_text() -> str:
+    """The first item of a field's own context menu, as Qt words it."""
+    from PySide6.QtWidgets import QLineEdit
+
+    field = QLineEdit()
+    menu = field.createStandardContextMenu()
+    text = str(menu.actions()[0].text()).split("	", 1)[0]  # the label, not its shortcut
+    menu.deleteLater()
+    field.deleteLater()
+    return text
+
+
+def test_with_no_catalog_for_the_language_the_whole_window_stays_english() -> None:
+    """UI/UX's i4 M1: Qt's own text follows ours, so a window never mixes languages."""
     from PySide6.QtCore import QCoreApplication, QLocale
 
     from caddcalc.gui.regional import install_translations
@@ -121,10 +188,44 @@ def test_startup_chooses_the_language_for_our_text_and_qts() -> None:
     app = QCoreApplication.instance()
     translator = install_translations(app, QLocale("de_DE"))
     try:
-        assert i18n.languages()[0] == "de_DE"
+        assert i18n.languages()[0] == "de_DE" and i18n.text_language() == "en"
+        assert translator.isEmpty(), "no Qt catalog either"
+        assert _undo_text() == "&Undo"
+        assert QCoreApplication.translate("QPlatformTheme", "Cancel") == "Cancel"
+    finally:
+        app.removeTranslator(translator)
+        translator.deleteLater()
+
+
+def test_with_our_catalog_for_the_language_qts_text_is_in_it_too(tmp_path: Any) -> None:
+    """Our German catalog brings Qt's German, its shortcut names included (UI/UX's L3)."""
+    from babel.messages.catalog import Catalog
+    from babel.messages.mofile import write_mo
+    from PySide6.QtCore import QCoreApplication, QLocale
+    from PySide6.QtGui import QKeySequence
+
+    from caddcalc.gui.regional import install_translations
+    from caddcalc.gui.result_fields import COPY_ALL_KEYS
+
+    german = Catalog(locale="de", domain="caddcalc")
+    german.add("About", "Über", context="button")
+    path = tmp_path / "de" / "LC_MESSAGES" / "caddcalc.mo"
+    path.parent.mkdir(parents=True)
+    with path.open("wb") as stream:
+        write_mo(stream, german)
+    app = QCoreApplication.instance()
+    translator = install_translations(app, QLocale("de_DE"), directories=[tmp_path])
+    try:
+        assert i18n.text_language() == "de"
         if translator.isEmpty():
             pytest.skip("this Qt has no qtbase_de catalog")
         assert QCoreApplication.translate("QPlatformTheme", "Cancel") == "Abbrechen"
+        assert _undo_text() != "&Undo"
+        window = open_window()
+        tip = window.results.copy_all_button.toolTip()
+        assert COPY_ALL_KEYS.toString(QKeySequence.SequenceFormat.NativeText) in tip
+        assert "Strg" in tip, tip
+        window.close()
     finally:
         app.removeTranslator(translator)
         translator.deleteLater()

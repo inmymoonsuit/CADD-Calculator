@@ -49,6 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     from PySide6.QtCore import QTimer
+    from shiboken6 import isValid
 
     from caddcalc import __version__
     from caddcalc.gui.actions import AppActions
@@ -104,6 +105,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         _dispose(app, welcome, startup.window, actions, translator)
     finally:
         app.setFont(base_font)
+        if isValid(translator):  # _dispose deletes it, which takes it off the app too
+            app.removeTranslator(translator)  # as main() found the app, however it ends
     return status
 
 

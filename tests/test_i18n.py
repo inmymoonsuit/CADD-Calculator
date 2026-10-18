@@ -6,6 +6,7 @@ import builtins
 import gettext
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 from babel.messages.catalog import Catalog
@@ -73,6 +74,7 @@ def test_nothing_is_installed_into_builtins_or_gettexts_globals(tmp_path: Path) 
     assert gettext.textdomain() == "messages"
 
 
+ABOUT = "About {product}: version, license, and terms"
 BRITISH = "About {product}: version, licence, and terms"
 """A string the British catalog spells its own way."""
 
@@ -267,13 +269,121 @@ def test_a_plural_form_needs_a_whole_count(count: object) -> None:
         ("zh-Hans-CN", "zh_CN"),
         ("es-419", "es_419"),
         ("de_DE.UTF-8", "de_DE"),
-        ("sr@latin", "sr"),
         ("FR", "fr"),
         ("", ""),
+        # A script is kept only where it isn't the language's usual one (S&R's i1 L4).
+        ("zh-Hant-TW", "zh_Hant_TW"),
+        ("sr-Latn-RS", "sr_Latn_RS"),
+        ("sr-Cyrl-RS", "sr_RS"),
+        ("sr@latin", "sr_Latn"),
+        ("sr_RS@latin", "sr_Latn_RS"),
+        ("de_DE@euro", "de_DE"),
+        # No language at all: the source (S&R's i1 L5).
+        ("C", ""),
+        ("POSIX", ""),
+        ("C.UTF-8", ""),
+        ("x-pseudo", ""),
+        ("i-klingon", ""),
+        ("en-XA", "en_XA"),
     ],
 )
 def test_language_tags_are_named_as_gettext_names_catalogs(tag: str, posix: str) -> None:
     assert i18n.posix_language(tag) == posix
+
+
+@pytest.mark.parametrize(
+    ("tag", "lineage"),
+    [
+        ("zh-Hant-TW", ("zh_Hant_TW", "zh_Hant")),
+        ("sr_RS@latin", ("sr_Latn_RS", "sr_Latn")),
+        ("zh-Hans-CN", ("zh_CN", "zh")),
+    ],
+)
+def test_a_locale_in_another_script_never_falls_back_to_its_usual_script(
+    tag: str, lineage: tuple[str, ...]
+) -> None:
+    """Traditional Chinese never reads Simplified, nor Latin Serbian the Cyrillic."""
+    assert i18n.lineage(tag) == lineage
+
+
+def test_the_usual_scripts_are_cldrs() -> None:
+    """Every language CLDR has locales for in more than one script, with its usual one."""
+    babel = pytest.importorskip("babel")
+    from babel.core import get_global, parse_locale
+
+    multi = {
+        parse_locale(name)[0]
+        for name in babel.localedata.locale_identifiers()
+        if parse_locale(name)[2]
+    }
+    likely = get_global("likely_subtags")
+    usual = {language: parse_locale(likely[language])[2] for language in multi}
+    assert usual == i18n._SCRIPTS
+
+
+def test_a_lookup_begun_before_a_new_choice_never_answers_for_it(tmp_path: Path) -> None:
+    """S&R's i1 L2: a catalog read under the old choice is cached under the old choice."""
+    import threading
+
+    folder = shipped(tmp_path, "en_001")
+    i18n.use(["en_GB"], directories=[folder])
+    reading, chosen = threading.Event(), threading.Event()
+    catalog = i18n._catalog
+
+    def slow(language: str, directories: Any) -> Any:
+        if threading.current_thread() is not threading.main_thread():
+            reading.set()
+            assert chosen.wait(10)
+        return catalog(language, directories)
+
+    old: list[str] = []
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(i18n, "_catalog", slow)
+        lookup = threading.Thread(target=lambda: old.append(i18n._(ABOUT)))
+        lookup.start()
+        assert reading.wait(10)
+        i18n.use(["fr"], directories=[folder])
+        chosen.set()
+        lookup.join(10)
+    assert old == [BRITISH], "the old choice's lookup answered for the old choice"
+    assert i18n.languages() == ("fr",)
+    assert i18n._(ABOUT) == ABOUT, "and the new one reads its own catalogs"
+
+
+def test_nothing_is_translated_at_import_time() -> None:
+    """S&R's i1: text is translated where it's shown, never where it's declared (§1).
+
+    A call at module or class level would run as the module is imported, before a front
+    end has chosen the language.
+    """
+    import ast
+
+    calls = {"_", "gettext", "pgettext", "ngettext", "npgettext", "npgettext_shown", "use"}
+
+    def run_on_import(body: list[ast.stmt]) -> list[ast.AST]:
+        """What a module's or a class's body runs as it's defined: not functions' bodies."""
+        found: list[ast.AST] = []
+        for statement in body:
+            if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef):
+                args = statement.args
+                found += [*statement.decorator_list, *args.defaults, *args.kw_defaults]
+            elif isinstance(statement, ast.ClassDef):
+                found += [*statement.decorator_list, *statement.bases, *statement.keywords]
+                found += run_on_import(statement.body)
+            else:
+                found.append(statement)
+        return [node for node in found if node is not None]
+
+    found = []
+    for path in sorted((Path(i18n.__file__).parents[1]).rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for top in run_on_import(tree.body):
+            for node in ast.walk(top):
+                func = getattr(node, "func", None)
+                name = getattr(func, "id", None) or getattr(func, "attr", None)
+                if isinstance(node, ast.Call) and name in calls:
+                    found.append(f"{path.name}:{node.lineno}")
+    assert found == [], found
 
 
 @pytest.mark.parametrize(
@@ -344,3 +454,68 @@ def test_every_translation_keeps_its_sources_placeholders() -> None:
     assert len(problems) == 2 and "past the limit" in problems[0], problems
     for path in tools.languages():
         assert tools.placeholder_mismatches(tools.read(path)) == [], path
+
+
+def test_a_plurals_forms_are_checked_one_by_one() -> None:
+    """S&R's i1 L1: "one inch" may leave out the count; "inches" may not."""
+    tools = tooling()
+    catalog = Catalog(locale="en_GB", domain="caddcalc")
+    catalog.add(("{n} inch", "{n} inches"), ("one inch", "{n} inches"))
+    assert tools.placeholder_mismatches(catalog) == [], "the one form may leave it out"
+    catalog.add(("{n} foot", "{n} feet"), ("{n} foot", "feet"))
+    catalog.add(("{n} yard", "{n} yards"), ("{n} yard", "{n} yards {extra}"))
+    assert len(tools.placeholder_mismatches(catalog)) == 2
+    single = Catalog(locale="ja", domain="caddcalc")  # one form for every count
+    single.add(("{n} inch", "{n} inches"), ("inch",))
+    assert len(tools.placeholder_mismatches(single)) == 1, "its only form needs the count"
+
+
+@pytest.mark.parametrize(
+    ("text", "refused"),
+    [
+        ("{value} of {limit}", False),
+        ("10% grade", False),
+        ("{} of {}", True),
+        ("Load %(name)s now", True),
+        ("Load %s now", True),
+        ("%d fields", True),
+    ],
+)
+def test_marked_text_names_its_fields(text: str, refused: bool) -> None:
+    """S&R's i1 L1: a positional or printf placeholder can't be checked or reordered."""
+    tools = tooling()
+    template = Catalog(domain="caddcalc")
+    template.add(text)
+    assert bool(tools.source_problems(template)) is refused
+
+
+QUOTED = {
+    "0.64": "Machinery's Handbook's formula, 0.64T + 1.57R, as published",
+    "1.57": "the same formula",
+    "0.55": "the Handbook's coefficient for soft brass and copper",
+    "0.71": "the Handbook's coefficient for bronze and hard metals",
+    "0.408": "K implied by the Handbook's formula, said beside it",
+    "0.452": "K implied by the Handbook's Eq. (34), said beside it",
+    "0.445": "FAA-H-8083-31B's K for aircraft aluminum",
+    "0.4": "EDD5's instructional K",
+    "0.5": "the limit K approaches, as the sources say",
+    "0.156": "the course's hard-coded P",
+    "0.1046": "the course example's thickness, 12 ga",
+    "0.0747": "the course example's thickness, 14 ga",
+}
+"""Numbers typed into the calculators' prose, each quoted from a source, which stay as
+published (ADR-0020 §4). Any other number the app writes is a value, formatted where it's
+shown in the user's mark: a note names it as a field (``Method.quantities``)."""
+
+
+def test_the_calculators_prose_holds_no_number_of_the_apps_own() -> None:
+    """UI/UX's i4 L2: the string sweep, over method notes and summaries, and help texts."""
+    from caddcalc.calculators import default_registry
+
+    registry = default_registry(load_plugins=False)
+    texts = [m.summary for c in registry for m in c.methods]
+    texts += [note for c in registry for m in c.methods for note in m.notes]
+    texts += [p.help for c in registry for p in c.params]
+    texts += [s.help for d in registry.domains() for s in d.settings]
+    typed = {number for text in texts for number in re.findall(r"\d+[.,]\d+", text or "")}
+    assert typed <= QUOTED.keys(), sorted(typed - QUOTED.keys())

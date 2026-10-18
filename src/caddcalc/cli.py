@@ -27,6 +27,7 @@ from caddcalc.core.formatting import (
     entry_unit,
     format_output,
     format_value,
+    method_notes,
     render_step,
 )
 from caddcalc.core.i18n import _
@@ -173,7 +174,7 @@ def _cmd_show(args: argparse.Namespace) -> int:
     for m in calc.methods:
         print(f"  {m.key:<14} {m.label}  [{m.status}]")
         print(f"         {m.summary}")
-        for note in m.notes:
+        for note in method_notes(m, DisplayPrefs()):
             print(f"         Note: {note}")
         for ref in m.references:
             print(f"         Ref: {ref}")

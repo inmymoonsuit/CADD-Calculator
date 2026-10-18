@@ -35,6 +35,11 @@ changes. ksi's factor, 1000 psi rounded once, is unchanged.
 ## Sign-off
 
 * Maintainer:
-* Review session (Support & Review): verified 84ceaba (rewritten from 55e20a7, with the same source code). All seven items pass: SP 811's licence basis (17 U.S.C. §105; NIST Technical Series, not Standard Reference Data under 15 U.S.C. §290e); each unit's locator in SP 811, and in 24 FR 5348 (July 1, 1959, govinfo) for the inch, foot, psi and ksi; every factor exact and rounded once; and every parse and display rule unchanged by an independent diff of 411,844 results against 1ed4f4c, apart from psi's recorded one-ulp change. Date: 2026-10-18
-* Rebased onto main on 2026-10-18: 84ceaba is now ac1d2c5. The units' source,
-  their citations, and this record are unchanged by the rebase.
+* Review session (Support & Review): verified 84ceaba (rewritten from 55e20a7, with the same source code), and its rebased forms ac1d2c5 and 97f0f00, whose `core/units` and `citations.py` are identical to 84ceaba's by git tree. All seven items pass: SP 811's licence basis (17 U.S.C. §105; NIST Technical Series, not Standard Reference Data under 15 U.S.C. §290e); each unit's locator in SP 811, and in 24 FR 5348 (July 1, 1959, govinfo) for the inch, foot, psi and ksi; every factor exact and rounded once; and every parse and display rule unchanged by an independent diff of 411,844 results against 1ed4f4c, apart from psi's recorded one-ulp change. Date: 2026-10-18
+* Rebased onto main on 2026-10-18, more than once as main moved: u1b, signed as 84ceaba,
+  is now d9417f0, by way of ac1d2c5, 97f0f00 and 74c8ccc. Its `core/units` and
+  `citations.py` are still the same git trees as 84ceaba's (`6e1a9cad…` and
+  `4459e973…`), and this record is unchanged by the rebases. At the branch tip, every
+  built-in unit's definition, factor, system and sources are identical to ac1d2c5's; i3
+  changes their names to US spelling with British aliases, and i4 the parsing of typed
+  numbers, both by ADR-0020, reviewed separately.

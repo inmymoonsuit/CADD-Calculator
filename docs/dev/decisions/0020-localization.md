@@ -325,3 +325,50 @@ kept for the record.
 * **KI-023 is resolved.** ADR-0021 §7's fixes cover all three shortfalls i2's clipping
   test allowed, so the test now allows nothing: every page fits at the least size, in
   English and en_XA, offscreen and natively.
+
+### 2026-10-18: the reviews' findings on i1 to i4 (i4b)
+
+UI/UX's i4 review and Support & Review's reviews of i1 to i3 found these; they're built
+together.
+
+* **One language for the whole window** (UI/UX's M1). Qt's own text, such as a field's
+  context menu and a dialog's buttons, is in the language our text is in: the first
+  display language we have a catalog for (`i18n.text_language()`), or the source, US
+  English. Its Qt catalog is loaded for that language, not for the system's. A German
+  user sees an all-English window until we ship a German catalog, never English words
+  with German menus. Qt's shortcut names follow: with a German catalog, Copy all's
+  tooltip reads "Strg+Umschalt+C", from `QKeySequence.toString(NativeText)` (L3).
+* **A comma locale's copy menu names each item by what it copies** (L1): "Copy 0.3119",
+  "Copy 0,3119", "Copy 0.3119 in", and the full-precision value. A "." locale's names
+  are unchanged.
+* **A method's notes give the app's own numbers as values** (L2): `Method.quantities`
+  names them, in base units, for the notes' `{name}` fields, as a result's notes already
+  do, and they're written in the user's units and mark where shown
+  (`formatting.method_notes`). The cone's note gives the course example's angles so. The
+  string sweep, a test, finds every number typed into the calculators' prose, and each is
+  quoted from a source, which stays as published (§4).
+* **A decimal bound in a comma locale** reads in its mark in a field's message, through
+  the window as well as in core.
+* **The catalog check** (S&R's i1 L1) refuses a marked text with a positional `{}` or a
+  printf-style `%s` or `%(name)s`, which a translation can't reorder and the check
+  couldn't see, and checks a plural's forms one by one: the first may leave out the
+  count, as "one inch" does, where the language has more than one form. The
+  pseudo-locale keeps printf placeholders as they are too (S&R's i2 L1).
+* **The chosen languages are one value, replaced whole** (S&R's i1 L2), and the catalogs
+  are cached by it: a lookup begun before a `use()` caches under the old choice, and
+  can't answer for the new one. A test runs that race.
+* **Language tags** (S&R's i1 L4 and L5): a script is kept only where it isn't the
+  language's usual one, from CLDR's likely subtags, so `zh-Hant-TW` reads `zh_Hant_TW`
+  and then `zh_Hant`, never Simplified Chinese, and `sr@latin` reads `sr_Latn`; `en-Latn-GB`
+  is still `en_GB`. `C`, `POSIX` and private-use tags, such as `x-pseudo`, name no
+  language, so the source.
+* **Nothing is translated at import time,** a test checks: no translation call at a
+  module's or a class's level, in a decorator or a default (S&R's i1).
+* **"per cent" reads however its words are spaced** (S&R's i3 L2): a run of spaces of any
+  kind, a no-break space among them, reads as one space.
+* **The translator comes out in `main()`'s `finally`,** with the font, however it ends.
+* **Tests' tooltips** are shown at once natively: the test turns off Qt's tooltip
+  animation, which kept it from being visible yet.
+* **Moot:** S&R's i2 L2, the clipping test's broad third allowance, went with the
+  allowance (KI-023). S&R's i3 L1, the plural rule of the first catalog rather than the
+  message's, waits for the next language with its own rule.

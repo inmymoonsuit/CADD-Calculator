@@ -59,6 +59,8 @@ default shown by `caddcalc show`.
 
 The desktop app follows your system's display language and regional format, each read
 when it starts, so a change applies the next time it starts. English outside the US
-gets British spelling ("millimetre"). The command line writes in the language of
+gets British spelling ("millimetre"). The whole window is in one language: the first of
+your display languages the app has words for, or US English, with the menus and
+buttons Qt provides, such as Undo and Copy, in the same one. The command line writes in the language of
 `--lang`, or of `CADDCALC_LANG`, `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` or `LANG`, the first
 that's set; its numbers always use ".", for scripts.

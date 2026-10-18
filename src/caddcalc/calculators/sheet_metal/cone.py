@@ -87,9 +87,10 @@ class TruncatedConeLayout(Calculator):
             references=(LEGACY_LESSON_4,),
             notes=(
                 "The radii use the diameters as given, while the angle uses (Db − T). For the "
-                "course example this gives 132.70° against 133.70° for a mean-diameter "
+                "course example this gives {course} against {mean} for a mean-diameter "
                 "layout. See KI-001.",
             ),
+            quantities={"course": (132.70, Dimension.ANGLE), "mean": (133.70, Dimension.ANGLE)},
         ),
         Method(
             "mean_diameter",

@@ -148,6 +148,11 @@ def parse_quantity(
     return parse_quantity_detailed(text, dimension, default_unit, decimal=decimal).value
 
 
+_SPACES = re.compile(r"\s+")
+"""A run of spaces of any kind, a no-break space among them: it reads as one space, so a
+unit named in two words, such as "per cent", reads however they're spaced."""
+
+
 def parse_quantity_detailed(
     text: str, dimension: Dimension, default_unit: str | None = None, *, decimal: str = "."
 ) -> ParsedQuantity:
@@ -157,7 +162,7 @@ def parse_quantity_detailed(
         InputError: The text isn't a valid value of ``dimension``.
     """
     units = registry()
-    stripped = text.strip()
+    stripped = _SPACES.sub(" ", text).strip()
     named = units.ending(stripped, dimension)
     # Without a registered name at its end, any word there is an unknown unit, said as typed.
     word = "" if named is not None else units.trailing_word(stripped)

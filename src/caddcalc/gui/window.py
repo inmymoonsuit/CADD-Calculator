@@ -82,6 +82,7 @@ from caddcalc.core.formatting import (
     field_text,
     format_output,
     format_value,
+    method_notes,
     render_step,
     unit_suffix,
     value_parts,
@@ -1916,7 +1917,7 @@ def result_html(
     parts.append(f"<h3>Work</h3><p style=\"font-family: '{family}'\">")
     parts.append("<br><br>".join(work) + "</p>")
     refs = "".join(f"<li>{escape(str(r))}</li>" for r in method.references)
-    notes = "".join(f"<li>{escape(n)}</li>" for n in method.notes)
+    notes = "".join(f"<li>{escape(n)}</li>" for n in method_notes(method, prefs))
     parts.append(
         f"<h3>Method</h3><p><b>{escape(method.label)}</b>: {escape(method.summary)}<br>"
         f"Status: <b>{escape(method.status)}</b></p>"

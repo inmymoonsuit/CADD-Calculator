@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from string import Formatter
@@ -41,6 +41,34 @@ def _fields(template: str) -> list[tuple[str, str, str | None]]:
         for _text, name, spec, conversion in parsed
         if name is not None
     ]
+
+
+def check_template(template: str, known: Collection[str], what: str) -> None:
+    """Refuse a template whose fields aren't each a name alone, among ``known``.
+
+    Values are filled as text in the user's units: a format or a conversion would fail, or
+    show quotes, and an unnamed field can't be reordered by a translation.
+
+    Args:
+        template: The text with ``{name}`` fields.
+        known: The names the fields may use.
+        what: What the template is, for the message, e.g. ``"Note text"``.
+
+    Raises:
+        SpecError: The template isn't one, or one of its fields is unnamed, has a format
+            or a conversion, or names a value that isn't given.
+    """
+    try:
+        fields = _fields(template)
+    except ValueError as exc:
+        raise SpecError(f"{what} {template!r} isn't a template: {exc}") from None
+    for name, spec, conversion in fields:
+        if not name:
+            raise SpecError(f"{what} {template!r} has an unnamed field")
+        if spec or conversion:
+            raise SpecError(f"{what} {template!r}: {name!r} must be a name alone")
+        if name not in known:
+            raise SpecError(f"{what} {template!r} names {name!r}, which isn't given")
 
 
 @dataclass(frozen=True)
@@ -86,19 +114,7 @@ class Note:
             return
         known = self.quantities.keys() | self.phrases.keys()
         for template in (self.text, self.detail):
-            try:
-                fields = _fields(template)
-            except ValueError as exc:
-                raise SpecError(f"Note text {template!r} isn't a template: {exc}") from None
-            for name, spec, conversion in fields:
-                if not name:
-                    raise SpecError(f"Note text {template!r} has an unnamed field")
-                if spec or conversion:
-                    # Values are filled as text in the user's units: a format or a
-                    # conversion would fail, or show quotes.
-                    raise SpecError(f"Note text {template!r}: {name!r} must be a name alone")
-                if name not in known:
-                    raise SpecError(f"Note text {template!r} names {name!r}, which isn't given")
+            check_template(template, known, "Note text")
 
     @property
     def has_fields(self) -> bool:

@@ -22,7 +22,7 @@ import gettext as _gettext
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from functools import cache
+from functools import lru_cache
 from importlib import resources
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -36,9 +36,14 @@ LOCALE_FOLDER = "locale"
 """Where the shipped catalogs are, inside the ``caddcalc`` package."""
 
 
-@dataclass
+@dataclass(frozen=True, eq=False)
 class _Chosen:
-    """What ``use()`` chose: the languages, and any catalog folders searched first."""
+    """What ``use()`` chose: the languages, and any catalog folders searched first.
+
+    It's replaced whole, never changed, and the catalogs are cached by it, by identity
+    (its folders needn't be hashable). So a lookup that began before a ``use()`` caches
+    what it read under the old choice, and can never answer for the new one.
+    """
 
     languages: tuple[str, ...] = ()
     directories: tuple[Traversable | Path, ...] = ()
@@ -73,10 +78,9 @@ def use(languages: Iterable[str], *, directories: Sequence[Traversable | Path] =
         directories: Catalog folders searched before the shipped ones, for tests and the
             pseudo-locale.
     """
+    global _chosen  # noqa: PLW0603 (one statement replaces the choice; see _Chosen)
     named = (posix_language(tag) for tag in languages)
-    _chosen.languages = tuple(dict.fromkeys(name for name in named if name))
-    _chosen.directories = tuple(directories)
-    clear()
+    _chosen = _Chosen(tuple(dict.fromkeys(name for name in named if name)), tuple(directories))
 
 
 def languages() -> tuple[str, ...]:
@@ -86,18 +90,28 @@ def languages() -> tuple[str, ...]:
 
 def clear() -> None:
     """Forget the loaded catalogs, so the next lookup reads them again; for tests."""
-    _found.cache_clear()
-    translator.cache_clear()
+    _loaded.cache_clear()
 
 
-@cache
-def _found() -> tuple[tuple[str, _gettext.GNUTranslations], ...]:
-    """Return each catalog the chosen languages read, with its name, most wanted first."""
-    wanted = dict.fromkeys(name for tag in _chosen.languages for name in lineage(tag))
-    return tuple((name, catalog) for name in wanted if (catalog := _catalog(name)) is not None)
+@lru_cache(maxsize=1)
+def _loaded(chosen: _Chosen) -> tuple[tuple[str, ...], _gettext.NullTranslations]:
+    """Return the catalogs ``chosen`` reads, by name, most wanted first, and their chain.
+
+    Each choice reads its own catalogs, which its chain links, so two never share one.
+    """
+    wanted = dict.fromkeys(name for tag in chosen.languages for name in lineage(tag))
+    found = [
+        (name, catalog)
+        for name in wanted
+        if (catalog := _catalog(name, chosen.directories)) is not None
+    ]
+    chain: _gettext.NullTranslations = _gettext.NullTranslations()
+    for _name, catalog in reversed(found):
+        catalog.add_fallback(chain)
+        chain = catalog
+    return tuple(name for name, _catalog_ in found), chain
 
 
-@cache
 def translator() -> _gettext.NullTranslations:
     """Return the chosen languages' catalogs, chained most wanted first.
 
@@ -105,11 +119,7 @@ def translator() -> _gettext.NullTranslations:
     before the next one, and a language with no catalog to the source text, never to an
     error.
     """
-    chain: _gettext.NullTranslations = _gettext.NullTranslations()
-    for _name, catalog in reversed(_found()):
-        catalog.add_fallback(chain)
-        chain = catalog
-    return chain
+    return _loaded(_chosen)[1]
 
 
 SOURCE_LANGUAGE = "en"
@@ -121,8 +131,8 @@ def text_language() -> str:
 
     It's the source language when no chosen language has a catalog.
     """
-    found = _found()
-    return found[0][0] if found else SOURCE_LANGUAGE
+    found = _loaded(_chosen)[0]
+    return found[0] if found else SOURCE_LANGUAGE
 
 
 _CLDR_PARENTS = {
@@ -150,19 +160,28 @@ def lineage(language: str) -> tuple[str, ...]:
     """Return the catalogs ``language`` reads, nearest first, e.g. en_AT, en_150, en_001, en.
 
     A locale falls back to its parents, then to its base language. The British catalog is
-    en_001's, so the English locales outside the US read it (ADR-0020 §2).
+    en_001's, so the English locales outside the US read it (ADR-0020 §2). A locale with
+    a script, such as zh_Hant_TW, falls back to its language in that script, zh_Hant, but
+    not to its language alone, which is written in another: CLDR's zh_Hant and sr_Latn
+    inherit from root, the source.
     """
-    chain = [posix_language(language)]
+    name = posix_language(language)
+    parts = name.split("_")
+    if len(parts) > 1 and len(parts[1]) == 4:  # a script that isn't the language's usual one
+        return tuple(dict.fromkeys([name, "_".join(parts[:2])]))
+    chain = [name]
     while chain[-1] in _PARENTS:
         chain.append(_PARENTS[chain[-1]])
     base = chain[0].split("_", 1)[0]
     return tuple(chain if base in chain else [*chain, base])
 
 
-def _catalog(language: str) -> _gettext.GNUTranslations | None:
+def _catalog(
+    language: str, directories: Sequence[Traversable | Path]
+) -> _gettext.GNUTranslations | None:
     """Return ``language``'s catalog, from a given folder or the shipped ones, if any."""
     shipped = resources.files(LOCALE_PACKAGE) / LOCALE_FOLDER
-    for folder in (*_chosen.directories, shipped):
+    for folder in (*directories, shipped):
         path = folder / language / "LC_MESSAGES" / f"{DOMAIN}.mo"
         if path.is_file():
             with path.open("rb") as stream:
@@ -207,20 +226,41 @@ def _whole(count: int) -> int:
 
 
 _TAG_PART = re.compile(r"[A-Za-z0-9]+")
+_SCRIPTS = {
+    "az": "Latn", "bal": "Arab", "bm": "Latn", "bs": "Latn", "en": "Latn", "ff": "Latn",
+    "ha": "Latn", "hi": "Deva", "hnj": "Hmnp", "iu": "Cans", "kaa": "Cyrl", "kk": "Cyrl",
+    "kok": "Deva", "ks": "Arab", "kxv": "Latn", "mn": "Cyrl", "mni": "Beng", "ms": "Latn",
+    "pa": "Guru", "rhg": "Rohg", "sat": "Olck", "sd": "Arab", "shi": "Tfng", "sr": "Cyrl",
+    "su": "Latn", "uz": "Latn", "vai": "Vaii", "yue": "Hant", "zh": "Hans",
+}  # fmt: skip
+"""The languages CLDR has locales for in more than one script, each with its usual one,
+from Unicode CLDR's likely subtags (``likelySubtags.xml``); a test checks them against the
+CLDR data Babel ships. A script is kept only where it isn't the usual one."""
+_MODIFIERS = {"latin": "Latn", "cyrillic": "Cyrl"}
+"""The POSIX locale modifiers that name a script, as in ``sr_RS@latin``."""
+_NO_LANGUAGE = frozenset({"c", "posix"})
+"""POSIX's names for no locale at all: text stays in the source language."""
 
 
 def posix_language(tag: str) -> str:
     """Return a language tag as gettext names catalogs: ``en-Latn-GB`` gives ``en_GB``.
 
-    The language is lower case and the region upper case. A script, such as Latn, is
-    dropped: the catalogs are by language and region.
+    The language is lower case and the region upper case. A script is kept only where it
+    isn't the language's usual one, so ``zh-Hant-TW`` gives ``zh_Hant_TW`` and ``sr@latin``
+    gives ``sr_Latn``, while ``zh-Hans-CN`` gives ``zh_CN``. ``C``, ``POSIX`` and a
+    private-use tag, such as ``x-pseudo``, give ``""``: no language, so the source.
     """
-    parts = _TAG_PART.findall(tag.split(".", 1)[0].split("@", 1)[0])
-    if not parts:
-        return ""
+    head, _at, modifier = tag.partition("@")
+    parts = _TAG_PART.findall(head.split(".", 1)[0])
+    if not parts or parts[0].lower() in _NO_LANGUAGE or len(parts[0]) == 1:
+        return ""  # a single letter is private use, "x-", or grandfathered, "i-"
     language, rest = parts[0].lower(), parts[1:]
+    script = next((p.title() for p in rest if len(p) == 4 and p.isalpha()), "")
+    script = script or _MODIFIERS.get(modifier.lower(), "")
+    if script == _SCRIPTS.get(language, script):
+        script = ""  # the usual one, or a language written in one script
     region = next((p.upper() for p in rest if len(p) == 2 or p.isdigit()), "")
-    return f"{language}_{region}" if region else language
+    return "_".join(part for part in (language, script, region) if part)
 
 
 def plural_category(shown: str, language: str = "") -> str:
