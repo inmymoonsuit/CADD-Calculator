@@ -42,6 +42,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QToolButton, QVBoxLayout, QWidget
 
 from caddcalc import __version__
+from caddcalc.core.i18n import _, pgettext
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC_ICON, PRODUCT_NAME, Branding
 from caddcalc.gui.fonts import FALLBACK, display_family
@@ -408,7 +409,9 @@ class _ArtSlot(QWidget):
         """Whether the logo box and the panes have been placed, once the slot has its size."""
         self.logo = _LogoBox(branding, self)
         self.name_pane = _Pane(PRODUCT_NAME, tokens, tokens.name_pane, self)
-        version = f"Version {__version__}"
+        # Translators: the welcome card's version line. It sits in a small corner of the
+        # art, so keep it short.
+        version = _("Version {version}").format(version=__version__)
         self.version_pane = _Pane(version, tokens, tokens.version_pane, self)
 
     def shown_art(self) -> QImage:
@@ -547,7 +550,7 @@ class WelcomeScreen(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self._painted = False
         self.setWindowTitle(PRODUCT_NAME)
-        self.setAccessibleName(f"Welcome to {PRODUCT_NAME}")
+        self.setAccessibleName(_("Welcome to {product}").format(product=PRODUCT_NAME))
         tokens = branding.welcome_tokens
         self.display_face = display_family()
         """The display face its text uses: the tokens' family, or ``"fallback"``."""
@@ -567,16 +570,17 @@ class WelcomeScreen(QWidget):
         self.about_button = QToolButton(self.top_bar)
         self.about_button.setAutoRaise(True)
         self.about_button.setFixedSize(button, button)
-        self.about_button.setToolTip(f"About {PRODUCT_NAME}: version, license, and terms")
-        self.about_button.setAccessibleName("About")
+        about = _("About {product}: version, license, and terms")
+        self.about_button.setToolTip(about.format(product=PRODUCT_NAME))
+        self.about_button.setAccessibleName(pgettext("button", "About"))
         self.about_button.clicked.connect(actions.about.trigger)
         self.app_actions = actions
         """The commands its About button triggers; kept, so they live as long as it does."""
         self.close_button = QToolButton(self.top_bar)
         self.close_button.setAutoRaise(True)
         self.close_button.setFixedSize(button, button)
-        self.close_button.setToolTip("Close (Esc)")
-        self.close_button.setAccessibleName("Close")
+        self.close_button.setToolTip(_("Close (Esc)"))
+        self.close_button.setAccessibleName(pgettext("button", "Close"))
         self.close_button.clicked.connect(self.close)
         padding = round(tokens.top_bar.padding * scale)
         bar = QHBoxLayout(self.top_bar)

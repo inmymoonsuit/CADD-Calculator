@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from caddcalc.core.formatting import DisplayPrefs, output_parts
-from tests.qt_helpers import open_window, results_text, type_into
+from tests.qt_helpers import open_window, results_text, settle, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -190,30 +190,6 @@ def test_a_column_is_never_narrower_than_its_text() -> None:
     window.close()
 
 
-def _settle(window: Any) -> None:
-    """Run the event loop until the page's layout stops changing.
-
-    Each layout pass can post the next, from the document up to the page area, and a
-    few passes can go by with nothing to see, so it waits for several quiet passes.
-    """
-    from PySide6.QtWidgets import QApplication
-
-    def state() -> tuple[int, int, int]:
-        page = window.page_scroll
-        bar = page.verticalScrollBar().maximum()
-        return (bar, page.widget().height(), window.output.height())
-
-    last, same = None, 0
-    for _ in range(100):
-        QApplication.processEvents()
-        now = state()
-        same = same + 1 if now == last else 0
-        if same == 8:
-            return
-        last = now
-    raise AssertionError("the page's layout never settled")
-
-
 LIST_PX = 280
 """The list's width in these tests: its launch width at 9 pt Segoe UI. The layout is in
 text units (ADR-0021), and offscreen fonts differ by platform (Windows' offscreen font is
@@ -227,7 +203,7 @@ def _shown_at(width: int, height: int, calc_id: str) -> Any:
     window.resize(width, height)
     window.splitter.setSizes([LIST_PX, width])
     window.show()
-    _settle(window)
+    settle(window)
     return window
 
 
@@ -299,7 +275,7 @@ def test_switching_calculators_shows_every_field_in_full_each_time() -> None:
         "sheet_metal.truncated_cone_layout",
     ):
         window.select_calculator(calc_id)
-        _settle(window)
+        settle(window)
         fields = window.results.fields
         assert list(fields) == [o.key for o in window.calculator.outputs]
         for key, field in fields.items():
@@ -315,7 +291,7 @@ def test_a_short_window_scrolls_the_page_and_reaches_every_field_in_full() -> No
     assert panel.height() == panel.heightForWidth(panel.width()), "never squeezed"
     for key, field in panel.fields.items():
         page.ensureWidgetVisible(field, 0, 0)
-        _settle(window)
+        settle(window)
         assert _in_full_view(window, field), key
     window.close()
 
@@ -337,7 +313,7 @@ def test_a_page_that_scrolls_shows_its_document_in_full_with_one_scroll_bar() ->
     # New content, such as another result, still shows in full.
     longer = page.maximum()
     document.setHtml(document.toHtml() * 2)
-    _settle(window)
+    settle(window)
     assert document.verticalScrollBar().maximum() == 0 and page.maximum() > longer
     window.close()
 
@@ -362,10 +338,10 @@ def test_a_page_that_grows_short_and_tall_again_goes_back_to_filling() -> None:
     window = _shown_at(1100, 800, "sheet_metal.truncated_cone_layout")
     assert not window.output.full
     window.resize(1100, 420)
-    _settle(window)
+    settle(window)
     assert window.output.full
     window.resize(1100, 900)
-    _settle(window)
+    settle(window)
     assert not window.output.full and window.page_scroll.verticalScrollBar().maximum() == 0
     window.close()
 
@@ -374,7 +350,7 @@ def test_the_page_is_never_narrower_than_its_content() -> None:
     """The page scrolls vertically only, so a narrower page would clip its right side."""
     window = _shown_at(1100, 720, "sheet_metal.truncated_cone_layout")
     window.resize(1, 720)  # as narrow as the window allows
-    _settle(window)
+    settle(window)
     page = window.page_scroll
     assert page.widget().width() <= page.viewport().width()
     window.close()
@@ -384,7 +360,7 @@ def test_a_family_page_is_not_made_to_scroll_by_the_hidden_calculator_page() -> 
     window = _shown_at(1100, 420, "sheet_metal.truncated_cone_layout")
     assert window.page_scroll.verticalScrollBar().maximum() > 0
     window.select_domain("sheet_metal")
-    _settle(window)
+    settle(window)
     assert window.page_scroll.verticalScrollBar().maximum() == 0
     window.close()
 
@@ -609,7 +585,7 @@ def test_the_window_never_shrinks_below_a_title_a_method_row_and_one_field() -> 
     tokens = ui_style().result_field
     window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
     window.resize(1100, 1)
-    _settle(window)
+    settle(window)
     field = tokens.min_height + 2 * (tokens.focus_width + tokens.focus_gap)
     least = window.title.sizeHint().height() + window.method_row.sizeHint().height() + field
     assert window.page_scroll.height() >= least
@@ -629,7 +605,7 @@ def test_the_panel_fills_the_page_up_to_the_pages_cap() -> None:
     layout, unit = ui_style().layout, text_unit(window.font())
     assert panel.maximumWidth() == chars(layout.panel_max_chars, unit)
     window.resize(LIST_PX + chars(layout.page_max_chars, unit) + 600, 900)
-    _settle(window)
+    settle(window)
     assert panel.width() == page.width(), "it fills the capped page"
     assert window.page_scroll.width() == chars(layout.page_max_chars, unit)
     window.close()

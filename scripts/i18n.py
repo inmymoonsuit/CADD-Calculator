@@ -1,6 +1,7 @@
 """Keep the translation catalogs in step with the code (ADR-0020 §1), with Babel.
 
     uv run python scripts/i18n.py extract    # the template, from every marked string
+    uv run python scripts/i18n.py init LANG  # a new language's .po, e.g. de or pt_BR
     uv run python scripts/i18n.py update     # each language's .po, from the template
     uv run python scripts/i18n.py compile    # each .po to its .mo, beside it
     uv run python scripts/i18n.py check      # exit 1 if any catalog is out of step
@@ -76,6 +77,34 @@ def po_text(catalog: Catalog) -> bytes:
     return out.getvalue()
 
 
+def init(language: str) -> Path:
+    """Start ``language``'s .po from the template, with nothing translated; return its path.
+
+    Raises:
+        FileExistsError: The language has a .po already; ``update`` keeps it current.
+    """
+    path = LOCALE / language / "LC_MESSAGES" / f"{DOMAIN}.po"
+    if path.exists():
+        raise FileExistsError(f"{path} exists; run: python scripts/i18n.py update")
+    catalog = Catalog(
+        locale=language,
+        domain=DOMAIN,
+        project=PROJECT,
+        header_comment=f"# {language} translations for {PROJECT}. See CONTRIBUTING.md.",
+        copyright_holder="CADD Calculator contributors",
+        msgid_bugs_address="https://github.com/inmymoonsuit/CADD-Calculator/issues",
+        creation_date=TEMPLATE_DATE,
+        revision_date=TEMPLATE_DATE,
+        last_translator="CADD Calculator contributors",
+        language_team=language,
+        fuzzy=False,
+    )
+    catalog.update(read(TEMPLATE))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(po_text(catalog))
+    return path
+
+
 def languages() -> Iterator[Path]:
     """Yield each language's .po file, in ``locale/<language>/LC_MESSAGES``."""
     yield from sorted(LOCALE.glob(f"*/LC_MESSAGES/{DOMAIN}.po"))
@@ -143,6 +172,13 @@ def check() -> list[str]:
         if keys(catalog) != keys(template):
             problems.append(f"{language} is out of date; run: python scripts/i18n.py update")
         problems += [f"{language}: {p}" for p in placeholder_mismatches(catalog)]
+        # A fuzzy translation is Babel's guess after the source changed: never compiled,
+        # so it must be checked and confirmed, or cleared.
+        problems += [
+            f"{language}: {_singular(m)!r} is fuzzy; confirm or clear its translation"
+            for m in catalog
+            if m.id and m.fuzzy
+        ]
         try:
             write_mo(io.BytesIO(), catalog)
         except Exception as exc:  # noqa: BLE001 (report any reason a catalog won't compile)
@@ -156,6 +192,8 @@ def main(argv: list[str]) -> int:
     if command == "extract":
         TEMPLATE.parent.mkdir(parents=True, exist_ok=True)
         TEMPLATE.write_bytes(po_text(extract()))
+    elif command == "init" and len(argv) == 2:
+        print(init(argv[1]).relative_to(ROOT))
     elif command == "update":
         template = read(TEMPLATE)
         for path in languages():

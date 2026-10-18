@@ -73,3 +73,27 @@ def results_text(window: Any) -> str:
         for field in window.results.fields.values()
     ]
     return "\n".join([*lines, window.output.toPlainText()])
+
+
+def settle(window: Any) -> None:
+    """Run the event loop until the page's layout stops changing.
+
+    Each layout pass can post the next, from the document up to the page area, and a
+    few passes can go by with nothing to see, so it waits for several quiet passes.
+    """
+    from PySide6.QtWidgets import QApplication
+
+    def state() -> tuple[int, int, int]:
+        page = window.page_scroll
+        bar = page.verticalScrollBar().maximum()
+        return (bar, page.widget().height(), window.output.height())
+
+    last, same = None, 0
+    for _ in range(100):
+        QApplication.processEvents()
+        now = state()
+        same = same + 1 if now == last else 0
+        if same == 8:
+            return
+        last = now
+    raise AssertionError("the page's layout never settled")

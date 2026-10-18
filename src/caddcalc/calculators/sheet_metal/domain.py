@@ -19,6 +19,7 @@ from caddcalc.calculators.sheet_metal.materials import (
     MaterialResolver,
 )
 from caddcalc.core import (
+    N_,
     DerivedValue,
     Dimension,
     Domain,
@@ -114,8 +115,8 @@ RESOLVER = SheetMetalResolver(GAUGES, MATERIALS)
 
 DOMAIN = Domain(
     id=DOMAIN_ID,
-    name="Sheet Metal",
-    summary="Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts.",
+    name=N_("Sheet Metal"),
+    summary=N_("Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts."),
     settings=(THICKNESS_SETTING, INSIDE_RADIUS_SETTING, K_FACTOR_SETTING),
     choices=(GAUGE, MATERIAL, TEMPER),
     resolver=RESOLVER,

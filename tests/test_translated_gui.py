@@ -1,0 +1,205 @@
+"""The GUI in another language: en_XA's longer, accented text, and what must fit (ADR-0020)."""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from caddcalc import __version__
+from caddcalc.core import i18n
+from tests import pseudo_locale
+from tests.pseudo_locale import LANGUAGE, pseudo
+from tests.qt_helpers import open_window, settle
+
+pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
+
+
+@pytest.fixture(autouse=True)
+def _source_language() -> Iterator[None]:
+    """Every test leaves the source language chosen."""
+    yield
+    i18n.use(())
+
+
+def _in(language: str, folder: Path) -> None:
+    """Choose ``language``: en_XA, made into ``folder``, or the source for ``""``."""
+    i18n.use([language] if language else [], directories=[pseudo_locale.write(folder)])
+
+
+def _rows(window: Any) -> Iterator[Any]:
+    """Every row of the calculator list: each domain, then its calculators."""
+    tree = window.tree
+    for i in range(tree.topLevelItemCount()):
+        domain = tree.topLevelItem(i)
+        yield domain
+        yield from (domain.child(j) for j in range(domain.childCount()))
+
+
+def test_a_calculator_imported_before_the_language_is_chosen_shows_it(tmp_path: Path) -> None:
+    """Text is translated where it's shown, never where it's declared (ADR-0020 §1)."""
+    import caddcalc.calculators.sheet_metal  # noqa: F401 (declared, so marked, first)
+    from caddcalc.gui.window import DOMAIN_ROLE, ID_ROLE
+
+    assert i18n.languages() == (), "no language yet"
+    _in(LANGUAGE, tmp_path)
+    window = open_window()
+    registry = window.registry
+    for row in _rows(window):
+        if calc_id := row.data(0, ID_ROLE):
+            calc = registry.get(calc_id)
+            assert (row.text(0), row.toolTip(0)) == (pseudo(calc.name), pseudo(calc.summary))
+        elif domain_id := row.data(0, DOMAIN_ROLE):
+            domain = registry.domain(domain_id)
+            assert (row.text(0), row.toolTip(0)) == (pseudo(domain.name), pseudo(domain.summary))
+    calc = next(iter(registry))
+    window.select_calculator(calc.id)
+    assert window.title.text() == pseudo(calc.name)
+    assert window.summary.text() == pseudo(calc.summary)
+    window.close()
+
+
+def _tooltip(tree: Any, item: Any) -> str:
+    """The tooltip the list shows when the pointer rests on ``item``."""
+    from PySide6.QtCore import QEvent
+    from PySide6.QtGui import QHelpEvent
+    from PySide6.QtWidgets import QApplication, QToolTip
+
+    at = tree.visualItemRect(item).center()
+    viewport = tree.viewport()
+    QApplication.sendEvent(viewport, QHelpEvent(QEvent.Type.ToolTip, at, viewport.mapToGlobal(at)))
+    text = QToolTip.text() if QToolTip.isVisible() else ""
+    QToolTip.hideText()
+    return str(text)
+
+
+@pytest.mark.parametrize("language", ["", LANGUAGE])
+def test_a_list_name_too_long_for_its_row_shows_whole_in_its_tooltip(
+    tmp_path: Path, language: str
+) -> None:
+    """A row's tooltip is its summary; once its name elides, the name comes first."""
+    from caddcalc.gui.name_tips import tip_text
+
+    _in(language, tmp_path)
+    window = open_window()
+    window.tree.setMinimumWidth(0)  # below the list's least width, so every name elides
+    window.resize(2400, 800)
+    window.show()
+    splitter = window.centralWidget()
+    for row in _rows(window):
+        name, summary = row.text(0), row.toolTip(0)
+        splitter.setSizes([90, 2310])
+        settle(window)
+        assert _tooltip(window.tree, row) == tip_text(name, summary), name
+        splitter.setSizes([1200, 1200])
+        settle(window)
+        assert _tooltip(window.tree, row) == summary, name
+    window.close()
+
+
+def _clipped(window: Any) -> list[Any]:
+    """Every visible text widget smaller than it needs, or past the window's right edge."""
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import (
+        QAbstractButton,
+        QComboBox,
+        QGroupBox,
+        QLabel,
+        QStyle,
+        QStyleOptionComboBox,
+        QWidget,
+    )
+
+    found = []
+    for widget in window.findChildren(QWidget):
+        if not widget.isVisible() or not isinstance(
+            widget, QLabel | QAbstractButton | QComboBox | QGroupBox
+        ):
+            continue
+        least = widget.minimumSizeHint()
+        short = least.isValid() and (
+            widget.width() < least.width() or widget.height() < least.height()
+        )
+        if isinstance(widget, QLabel) and widget.wordWrap() and widget.hasHeightForWidth():
+            short = short or widget.height() < widget.heightForWidth(widget.width())
+        if isinstance(widget, QComboBox):
+            option = QStyleOptionComboBox()
+            widget.initStyleOption(option)
+            field = widget.style().subControlRect(
+                QStyle.ComplexControl.CC_ComboBox,
+                option,
+                QStyle.SubControl.SC_ComboBoxEditField,
+                widget,
+            )
+            short = short or widget.fontMetrics().horizontalAdvance(option.currentText) > (
+                field.width()
+            )
+        right = widget.mapTo(window, QPoint(widget.width(), 0)).x()
+        if short or right > window.width():
+            found.append(widget)
+    return found
+
+
+@pytest.mark.parametrize("language", ["", LANGUAGE])
+def test_nothing_clips_at_the_least_window_size(tmp_path: Path, language: str) -> None:
+    """Every page, at the window's least size, in English and in en_XA's longer text.
+
+    The page scrolls rather than squeezes, so this is about width, and about any label
+    given less height than its wrapped text needs. The calculator list elides a long
+    name instead, and gives it whole in its tooltip (the test above).
+    """
+    _in(language, tmp_path)
+    window = open_window()
+    window.show()
+
+    def known(widget: Any) -> str:
+        """Which of KI-023's three shortfalls ``widget`` is, or ``""`` for none."""
+        if widget is window.disclaimer:
+            return "the disclaimer, one line across the status bar"
+        if widget is window.method_box:
+            return "the method box, which elides its method"
+        if window.domain_page.isAncestorOf(widget):
+            return "the family settings page, which scrolls sideways"
+        return ""
+
+    for row in _rows(window):
+        if not row.flags():
+            continue  # a placeholder row
+        window.tree.setCurrentItem(row)
+        window.resize(window.minimumSizeHint())
+        settle(window)
+        # KI-023: three things don't fit yet; anything else that doesn't is new.
+        unknown = [widget for widget in _clipped(window) if not known(widget)]
+        assert unknown == [], (row.text(0), unknown)
+    window.close()
+
+
+@pytest.mark.parametrize("language", ["", LANGUAGE])
+def test_the_welcome_cards_version_stays_inside_its_safe_area(
+    tmp_path: Path, language: str
+) -> None:
+    """The art keeps that corner clear of detail; a longer translation must still fit it."""
+    from caddcalc.gui.actions import AppActions
+    from caddcalc.gui.branding import GENERIC
+    from caddcalc.gui.welcome import WelcomeScreen
+    from caddcalc.gui.welcome_layout import scaled
+    from caddcalc.gui.welcome_style import style
+
+    _in(language, tmp_path)
+    welcome = WelcomeScreen(GENERIC, AppActions(GENERIC))
+    welcome.show()  # placed once it has its size
+    pane = welcome.art.version_pane
+    shown = pseudo("Version {version}") if language else "Version {version}"
+    assert pane.text == shown.format(version=__version__)
+    tokens = style()
+    area = scaled(
+        tokens.safe_area(tokens.version_pane), welcome.art.width() / tokens.art.slot.width
+    )
+    box = pane.geometry()
+    assert box.x() >= math.floor(area.x) and box.y() >= math.floor(area.y), (box, area)
+    assert box.x() + box.width() <= math.ceil(area.x + area.width), (box, area)
+    assert box.y() + box.height() <= math.ceil(area.y + area.height), (box, area)
+    welcome.close()

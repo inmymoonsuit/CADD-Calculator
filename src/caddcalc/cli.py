@@ -28,6 +28,7 @@ from caddcalc.core.formatting import (
     format_value,
     render_step,
 )
+from caddcalc.core.i18n import _
 from caddcalc.core.units import parse_quantity
 
 
@@ -112,9 +113,9 @@ def _cmd_list(args: argparse.Namespace) -> int:
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
     for domain, calcs in registry.by_domain().items():
-        print(domain.name)
+        print(_(domain.name))
         for c in calcs:
-            print(f"  {c.id:<40} {c.name}")
+            print(f"  {c.id:<40} {_(c.name)}")
     for err in registry.plugin_errors:
         print(f"warning: plugin {err.source} failed to load: {err.message}", file=sys.stderr)
     return 0
@@ -123,8 +124,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
 def _cmd_show(args: argparse.Namespace) -> int:
     registry = default_registry()
     calc = registry.get(args.calculator)
-    print(f"{calc.name}  [{calc.id}]")
-    print(f"  {calc.summary}")
+    print(f"{_(calc.name)}  [{calc.id}]")
+    print(f"  {_(calc.summary)}")
     print(f"  Domain: {registry.domain(calc.domain).name}\n")
     print("Inputs")
     for p in calc.params:

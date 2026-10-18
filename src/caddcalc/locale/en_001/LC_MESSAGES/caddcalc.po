@@ -1,0 +1,89 @@
+# British English for CADD Calculator: CLDR's en_001, which the English locales outside
+# the US read, en_GB, en_AU, en_IE, en_IN, en_NZ, en_ZA and en_CA among them (ADR-0020 §2).
+# An empty translation means the US English text is right here too. See CONTRIBUTING.md.
+msgid ""
+msgstr ""
+"Project-Id-Version: CADD Calculator VERSION\n"
+"Report-Msgid-Bugs-To: https://github.com/inmymoonsuit/CADD-Calculator/issues\n"
+"POT-Creation-Date: 2026-10-18 00:00+0000\n"
+"PO-Revision-Date: 2026-10-18 00:00+0000\n"
+"Last-Translator: CADD Calculator contributors\n"
+"Language: en_001\n"
+"Language-Team: en_001\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: src/caddcalc/gui/welcome.py
+msgctxt "button"
+msgid "About"
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+#, python-brace-format
+msgid "About {product}: version, license, and terms"
+msgstr "About {product}: version, licence, and terms"
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Bend allowance & deduction"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Bend allowance (neutral-axis arc length), outside setback, and bend deduction for a single bend."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/domain.py
+msgid "Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts."
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+msgctxt "button"
+msgid "Close"
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+msgid "Close (Esc)"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Flat length of a formed segment"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Flat-pattern length of one segment, dimensioned to the outside, with a bend at one or both ends."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/cone.py
+msgid "Inside radius, outside radius, and sweep angle of the flat pattern for a cone frustum."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/domain.py
+msgid "Sheet Metal"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Suggested female (V) die opening for air bending on a press brake."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/cone.py
+msgid "Truncated cone flat pattern"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "V-die opening (air bending)"
+msgstr ""
+
+#. the welcome card's version line. It sits in a small corner of the
+#. art, so keep it short.
+#: src/caddcalc/gui/welcome.py
+#, python-brace-format
+msgid "Version {version}"
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+#, python-brace-format
+msgid "Welcome to {product}"
+msgstr ""
+

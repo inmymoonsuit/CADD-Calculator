@@ -63,7 +63,8 @@ def use(languages: Iterable[str], *, directories: Sequence[Traversable | Path] =
         directories: Catalog folders searched before the shipped ones, for tests and the
             pseudo-locale.
     """
-    _chosen.languages = tuple(dict.fromkeys(posix_language(tag) for tag in languages))
+    named = (posix_language(tag) for tag in languages)
+    _chosen.languages = tuple(dict.fromkeys(name for name in named if name))
     _chosen.directories = tuple(directories)
     clear()
 
@@ -82,11 +83,12 @@ def clear() -> None:
 def translator() -> _gettext.NullTranslations:
     """Return the chosen languages' catalogs, chained most wanted first.
 
-    Each language falls back to its base language (``en_GB`` to ``en``) before the next
-    one, and a language with no catalog to the source text, never to an error.
+    Each language falls back through its ``lineage`` (``en_AU``, ``en_001``, ``en``)
+    before the next one, and a language with no catalog to the source text, never to an
+    error.
     """
     chain: _gettext.NullTranslations = _gettext.NullTranslations()
-    wanted = dict.fromkeys(name for tag in _chosen.languages for name in _with_base(tag))
+    wanted = dict.fromkeys(name for tag in _chosen.languages for name in lineage(tag))
     found = [catalog for name in wanted if (catalog := _catalog(name)) is not None]
     for catalog in reversed(found):
         catalog.add_fallback(chain)
@@ -94,10 +96,38 @@ def translator() -> _gettext.NullTranslations:
     return chain
 
 
-def _with_base(language: str) -> list[str]:
-    """Return ``language`` and its base: ``en_GB`` and ``en``."""
-    base = language.split("_", 1)[0]
-    return [language] if base == language else [language, base]
+_CLDR_PARENTS = {
+    "en_001": (
+        "150 AG AI AU BB BM BS BW BZ CC CK CM CX CY DG DM ER FJ FK FM GB GD GG GH GI GM GS GY "
+        "HK ID IE IL IM IN IO JE JM KE KI KN KY LC LR LS MG MO MS MT MU MV MW MY NA NF NG NR "
+        "NU NZ PG PK PN PW RW SB SC SD SG SH SL SS SX SZ TC TK TO TT TV TZ UG VC VG VU WS ZA "
+        "ZM ZW"
+    ),
+    "en_150": "AT BE CH CZ DE DK ES FI FR HU IT NL NO PL PT RO SE SI SK",
+}
+"""English's parent locales, by region, from Unicode CLDR 47 (``supplementalData.xml``,
+``parentLocales``): these regions' English inherits from en_001, and Europe's en_150 from
+en_001 in turn. The rest, the US among them, inherit from en, the source language."""
+_PARENTS = {
+    f"en_{region}": parent
+    for parent, regions in _CLDR_PARENTS.items()
+    for region in regions.split()
+} | {"en_CA": "en_001"}
+"""Each locale's parent. en_CA is ours: CLDR keeps it under en, but Canada writes "metre" and
+"colour" (ADR-0020 §2)."""
+
+
+def lineage(language: str) -> tuple[str, ...]:
+    """Return the catalogs ``language`` reads, nearest first, e.g. en_AT, en_150, en_001, en.
+
+    A locale falls back to its parents, then to its base language. The British catalog is
+    en_001's, so the English locales outside the US read it (ADR-0020 §2).
+    """
+    chain = [posix_language(language)]
+    while chain[-1] in _PARENTS:
+        chain.append(_PARENTS[chain[-1]])
+    base = chain[0].split("_", 1)[0]
+    return tuple(chain if base in chain else [*chain, base])
 
 
 def _catalog(language: str) -> _gettext.GNUTranslations | None:

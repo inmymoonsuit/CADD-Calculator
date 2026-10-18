@@ -214,6 +214,25 @@ accepts only "." too.
   Everything that reads a shown number's decimals already asks one helper,
   `core.formatting.decimal_separator()`.
 
+### KI-023: Three things don't fit a window at its least size (Low)
+
+The window's least size comes from the calculator page, which scrolls rather than
+squeezes. At that size, three things are cut short:
+
+* **The disclaimer** is one line across the status bar, so a window narrower than the
+  sentence cuts off its end.
+* **The method box** elides its method, e.g. "Course formula (0.64T + 1.57R) [unverif…".
+  Its list shows each method in full.
+* **The family settings page** is wider than the calculator page at its least, so it
+  scrolls sideways there.
+
+The pseudo-locale test (`tests/test_translated_gui.py`) allows only these three, so any
+new clipping fails it.
+
+* **Planned fix:** the window-layout work the maintainer approved on 2026-10-18 (a launch
+  size fitted to the screen, and a cap on the whole page), whose rules UI/UX is
+  writing. The test's allowance goes with each fix.
+
 ## Resolved
 
 ### KI-024: With shorter text lines, the tallest page could scroll at launch (resolved 2026-10-18)

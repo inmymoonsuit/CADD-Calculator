@@ -5,6 +5,7 @@ from __future__ import annotations
 import builtins
 import gettext
 import importlib.util
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
@@ -91,6 +92,97 @@ def test_nothing_is_installed_into_builtins_or_gettexts_globals(tmp_path: Path) 
     i18n._("millimeter")
     assert getattr(builtins, "_", None) is before
     assert gettext.textdomain() == "messages"
+
+
+BRITISH = "About {product}: version, licence, and terms"
+"""A string the British catalog spells its own way."""
+
+
+def _shipped(folder: Path, language: str) -> Path:
+    """Compile the shipped ``language`` .po into ``folder``, as the build does."""
+    tooling = _tooling()
+    po = tooling.LOCALE / language / "LC_MESSAGES" / "caddcalc.po"
+    tooling.compile_to(tooling.read(po), folder / language / "LC_MESSAGES" / "caddcalc.mo")
+    return folder
+
+
+@pytest.mark.parametrize(
+    "tag", ["en_GB", "en-AU", "en_NZ", "en_IE", "en_ZA", "en_IN", "en_CA", "en_AT", "en_001"]
+)
+def test_english_outside_the_us_reads_the_british_catalog(tmp_path: Path, tag: str) -> None:
+    """CLDR's en_001 and its children, and en_CA, which ADR-0020 §2 adds."""
+    i18n.use([tag], directories=[_shipped(tmp_path, "en_001")])
+    assert "en_001" in i18n.lineage(tag)
+    assert i18n._("About {product}: version, license, and terms") == BRITISH
+
+
+@pytest.mark.parametrize("tag", ["en_US", "en", "en_PR", "en_PH", "fr_FR"])
+def test_us_english_and_other_languages_keep_the_source_spelling(tmp_path: Path, tag: str) -> None:
+    i18n.use([tag], directories=[_shipped(tmp_path, "en_001")])
+    assert "en_001" not in i18n.lineage(tag)
+    assert i18n._("About {product}: version, license, and terms") == (
+        "About {product}: version, license, and terms"
+    )
+
+
+@pytest.mark.parametrize(
+    ("tag", "lineage"),
+    [
+        ("en_AT", ("en_AT", "en_150", "en_001", "en")),
+        ("en-GB", ("en_GB", "en_001", "en")),
+        ("en_US", ("en_US", "en")),
+        ("de_AT", ("de_AT", "de")),
+        ("en", ("en",)),
+    ],
+)
+def test_a_locale_reads_its_parents_then_its_language(tag: str, lineage: tuple[str, ...]) -> None:
+    assert i18n.lineage(tag) == lineage
+
+
+def test_englishs_parent_locales_are_cldrs() -> None:
+    """Every English locale CLDR has, as Babel ships it, has CLDR's parent, but en_CA.
+
+    A Babel update with a newer CLDR fails here if CLDR moved a locale; the table in
+    ``core.i18n`` names the version it's from.
+    """
+    from babel import localedata
+    from babel.core import get_global
+
+    exceptions = get_global("parent_exceptions")
+    regional = [
+        n for n in localedata.locale_identifiers() if re.fullmatch(r"en_([A-Z]{2}|\d{3})", n)
+    ]
+    assert len(regional) > 100, "Babel's CLDR data, not a stub"
+    for name in regional:  # a script, such as en_Dsrt, has no region of its own
+        cldr = exceptions.get(name, "en")
+        expected = "en_001" if name == "en_CA" else cldr
+        assert i18n.lineage(name)[1] == expected, name
+
+
+def test_a_new_language_starts_from_the_template(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tooling = _tooling()
+    monkeypatch.setattr(tooling, "LOCALE", tmp_path)
+    path = tooling.init("de")
+    catalog = tooling.read(path)
+    assert tooling.keys(catalog) == tooling.keys(tooling.read(tooling.TEMPLATE))
+    assert not catalog.fuzzy and all(not m.string for m in catalog if m.id)
+    with pytest.raises(FileExistsError, match="update"):
+        tooling.init("de")
+
+
+def test_a_fuzzy_translation_is_caught(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Babel's guess after a source change isn't compiled, so it waits to be confirmed."""
+    tooling = _tooling()
+    monkeypatch.setattr(tooling, "LOCALE", tmp_path)
+    path = tooling.init("de")
+    catalog = tooling.read(path)
+    message = catalog.get("Sheet Metal")
+    message.string, message.flags = "Blech", {"fuzzy"}
+    path.write_bytes(tooling.po_text(catalog))
+    monkeypatch.setattr(tooling, "TEMPLATE", tooling.ROOT / "src/caddcalc/locale/caddcalc.pot")
+    assert any("'Sheet Metal' is fuzzy" in p for p in tooling.check())
 
 
 @pytest.mark.parametrize("count", [1.0, 2.5, True])

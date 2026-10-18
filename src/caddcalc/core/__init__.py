@@ -24,6 +24,7 @@ from caddcalc.core.errors import (
     UnknownDomainError,
     UsageError,
 )
+from caddcalc.core.i18n import N_
 from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.refdata import (
@@ -53,6 +54,7 @@ from caddcalc.core.units import (
 )
 
 __all__ = [
+    "N_",
     "Band",
     "Basis",
     "CaddCalcError",

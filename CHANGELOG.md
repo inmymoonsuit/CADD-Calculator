@@ -14,6 +14,17 @@ All notable changes are recorded here. The format follows
   `scripts/i18n.py` extracts, updates, compiles, and checks the catalogs, with Babel as a
   development dependency, and CONTRIBUTING's "Translating" gives the rule for new text.
   Nothing is translated yet.
+- **A British English catalog (ADR-0020 §2),** read by every English locale outside the
+  US, following CLDR's parent locales, and by en_CA. The calculators' and families' names
+  and summaries, and the welcome card's text, are marked for translation. The app
+  doesn't choose a language from the system yet.
+- The calculator list's tooltip gives a calculator's or family's whole name, above its
+  summary, when the list is too narrow to show it.
+- A test pseudo-locale, en_XA, and tests that every page fits at the window's least size
+  in it and in English, and that the welcome card's version line stays in its safe area.
+  KI-023 lists the three things that don't fit yet.
+- `scripts/i18n.py init LANG` starts a language's catalog, and `check` reports a fuzzy
+  translation.
 - ADR-0018 (Geometry and Conversions), ADR-0019 (a units registry), and ADR-0020
   (localization), all accepted, are in `docs/dev/decisions/`.
 - **Copying results (ADR-0017).** Each result field's copy button copies its value as

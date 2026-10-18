@@ -160,4 +160,11 @@ uv run python scripts/i18n.py update
 ```
 
 `uv run python scripts/i18n.py check`, which the tests also run, fails while a catalog is
-out of step.
+out of step. `init LANG` starts a new language's `.po`. The British catalog is `en_001`,
+which every English locale outside the US reads (ADR-0020 §2); an empty translation there
+means the US English text is right as it is.
+
+The tests also use a pseudo-locale, `en_XA`, made from the template by
+`tests/pseudo_locale.py`: every marked string accented, about 40% longer, and in
+`⟦…⟧`. Text that shows plain in it isn't marked; text only partly in brackets was pieced
+together from parts.

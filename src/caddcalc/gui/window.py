@@ -85,6 +85,7 @@ from caddcalc.core.formatting import (
     unit_suffix,
     value_parts,
 )
+from caddcalc.core.i18n import _
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
@@ -98,6 +99,7 @@ from caddcalc.gui.icons import (
     render,
     role_color,
 )
+from caddcalc.gui.name_tips import NameTips
 from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
 from caddcalc.gui.pages import (
     PageDocument,
@@ -384,15 +386,17 @@ class MainWindow(QMainWindow):
     def _build_ui(self) -> None:
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(True)
+        # A row too narrow for its name gives the whole name in its tooltip.
+        self.tree.setItemDelegate(NameTips(self.tree))
         grouped = self.registry.by_domain()
         for domain in self.registry.domains():
-            parent = QTreeWidgetItem([domain.name])
+            parent = QTreeWidgetItem([_(domain.name)])
             parent.setData(0, DOMAIN_ROLE, domain.id)
-            parent.setToolTip(0, domain.summary)
+            parent.setToolTip(0, _(domain.summary))
             for calc in grouped.get(domain, []):
-                child = QTreeWidgetItem([calc.name])
+                child = QTreeWidgetItem([_(calc.name)])
                 child.setData(0, ID_ROLE, calc.id)
-                child.setToolTip(0, calc.summary)
+                child.setToolTip(0, _(calc.summary))
                 parent.addChild(child)
             if not parent.childCount():
                 placeholder = QTreeWidgetItem([NO_CALCULATORS])
@@ -717,8 +721,8 @@ class MainWindow(QMainWindow):
         self._leave_calculator()
         self.calculator = calc
         self.domain = None
-        self.title.setText(calc.name)
-        self.summary.setText(calc.summary)
+        self.title.setText(_(calc.name))
+        self.summary.setText(_(calc.summary))
         self.method_row.show()
         self.pages.setCurrentWidget(self.calculator_page)
         self.method_box.blockSignals(True)
@@ -740,8 +744,8 @@ class MainWindow(QMainWindow):
         self._leave_calculator()
         self.domain = domain
         self.calculator = None
-        self.title.setText(domain.name)
-        self.summary.setText(domain.summary)
+        self.title.setText(_(domain.name))
+        self.summary.setText(_(domain.summary))
         self.method_row.hide()
         self.pages.setCurrentWidget(self.domain_page)
         self._rebuild_domain_form()

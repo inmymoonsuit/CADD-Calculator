@@ -11,8 +11,7 @@ import pytest
 from caddcalc.gui.style_tokens import Rect, Size
 from caddcalc.gui.ui_style import ui_style
 from caddcalc.gui.window_layout import Margins, ch, chars, fit_window, launch_size
-from tests.qt_helpers import open_window
-from tests.test_result_fields import _settle
+from tests.qt_helpers import open_window, settle
 
 FRAME = Margins(8, 31, 8, 8)
 """A Windows frame at 100%, as UI/UX measured it: caption and border on top, 7–8 elsewhere."""
@@ -74,7 +73,7 @@ def qt_window(qt: Any) -> Iterator[Any]:
     window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
     window.show()
-    _settle(window)
+    settle(window)
     yield window
     window.close()
 
@@ -128,17 +127,17 @@ def test_the_page_is_capped_and_left_aligned_and_the_handle_moves_it(qt_window: 
     listed = qt_window.tree.width()
     wide = listed + handle + cap + 400
     qt_window.resize(wide, qt_window.height())
-    _settle(qt_window)
+    settle(qt_window)
     page = qt_window.page_scroll
     assert page.width() == cap and page.x() == 0, "capped, left-aligned in its slot"
     qt_window.splitter.setSizes([listed + 200, wide])
-    _settle(qt_window)
+    settle(qt_window)
     assert qt_window.tree.width() == listed + 200 and page.width() == cap, "moved, not shrunk"
     qt_window.splitter.setSizes([listed + 600, wide])
-    _settle(qt_window)
+    settle(qt_window)
     assert page.width() < cap, "less room than the cap: the page shrinks"
     qt_window.resize(wide + 300, qt_window.height())
-    _settle(qt_window)
+    settle(qt_window)
     assert qt_window.tree.width() == listed + 600, "a window resize goes to the page"
 
 
@@ -148,7 +147,7 @@ def test_the_list_never_collapses(qt_window: Any) -> None:
     splitter = qt_window.splitter
     assert not splitter.childrenCollapsible()
     splitter.setSizes([0, qt_window.width()])
-    _settle(qt_window)
+    settle(qt_window)
     assert qt_window.tree.width() == chars(layout.list_min_chars, unit)
 
 
@@ -183,7 +182,7 @@ def test_a_larger_base_font_scales_the_whole_layout(qt: Any) -> None:
 
 def _least(window: Any) -> None:
     window.resize(1, 1)
-    _settle(window)
+    settle(window)
 
 
 @pytest.mark.parametrize(
@@ -211,7 +210,7 @@ def test_at_the_least_size_the_disclaimer_and_method_are_whole(calc_id: str) -> 
     box = window.method_box
     for index in range(box.count()):
         box.setCurrentIndex(index)
-        _settle(window)
+        settle(window)
         option = QStyleOptionComboBox()
         box.initStyleOption(option)
         room = box.style().subControlRect(
@@ -408,7 +407,7 @@ def test_every_part_of_every_page_is_as_tall_as_it_needs() -> None:
             window.resize(
                 *(round(launch.width), round(launch.height)) if size == "launch" else (1, 1)
             )
-            _settle(window)
+            settle(window)
             assert _too_short(window) == [], (size, page_id)
     window.close()
 
@@ -421,13 +420,13 @@ def test_the_method_row_grows_and_shrinks_with_its_status(qt_window: Any) -> Non
     assert not reflow.stacked
     one_line = row.height()
     qt_window.resize(1, round(launch.height))
-    _settle(qt_window)
+    settle(qt_window)
     assert reflow.stacked, "the least window is narrower than the box and its status"
     assert row.height() > one_line
     box = qt_window.method_box
     assert box.height() >= box.sizeHint().height(), "the box isn't cut through its text"
     qt_window.resize(wide, round(launch.height))
-    _settle(qt_window)
+    settle(qt_window)
     assert not reflow.stacked and row.height() == one_line
 
 
@@ -473,7 +472,7 @@ def test_each_calculator_page_is_measured_at_its_shown_height(
     window.show()
     for calc_id, height in zip(ids, measured, strict=True):
         window.select_calculator(calc_id)
-        _settle(window)
+        settle(window)
         view = window.page_scroll.viewport()
         shown = fit_height(window.page_scroll.widget(), view.width(), window.output)
         assert shown == height, calc_id
@@ -519,7 +518,7 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
         window.select_calculator("acme.failing")  # only once it's chosen
     window.select_calculator("sheet_metal.bend_allowance")
     window.show()
-    _settle(window)
+    settle(window)
     assert window.results.fields["bend_allowance"].value.text() not in ("", "—")
     window.close()
 
@@ -540,7 +539,7 @@ def test_a_page_that_fails_to_measure_leaves_the_window_working(
         window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
     window.show()
-    _settle(window)
+    settle(window)
     assert window.results.fields["bend_allowance"].value.text() not in ("", "—")
     window.close()
 
@@ -570,7 +569,7 @@ def test_no_calculator_page_scrolls_at_the_launch_size(
             assert line_spacing(window.font()) < DESIGN_LINE
         window.select_calculator(calc_id)
         window.show()
-        _settle(window)
+        settle(window)
         assert window.page_scroll.verticalScrollBar().maximum() == 0
         assert not window.output.full
         window.close()

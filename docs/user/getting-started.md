@@ -25,8 +25,9 @@ uv run caddcalc-gui
 * The window opens centred, sized to fit your screen, and follows Windows' text size
   (Settings > Accessibility > Text size), read when the app starts.
 * Pick a calculator on the left, or pick a family, such as **Sheet Metal**, to see the
-  settings its calculators share. Drag the line between the list and the page to widen
-  either.
+  settings its calculators share. Rest the pointer on one to see what it does; when the
+  list is too narrow for a name, the tip gives the whole name too. Drag the line between
+  the list and the page to widen either.
 * Choose a **Method** and **Units** (`in` or `mm`). The method's status, such as
   "unverified · reproduces legacy", shows beside it, and its list shows each method's.
 * Type the inputs. Results update as you type, and invalid fields are outlined in red.

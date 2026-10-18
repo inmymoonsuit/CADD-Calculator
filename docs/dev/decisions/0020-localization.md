@@ -1,7 +1,8 @@
 # ADR-0020: Localization, starting with a skeleton
 
 * **Status:** **Accepted**; the skeleton is being built, so far its `core.i18n` module and
-  catalog tooling (i1; see Amendments). The maintainer asked on 2026-10-17 for spelling to
+  catalog tooling (i1), and the British catalog, the pseudo-locale and its tests (i2; see
+  Amendments). The maintainer asked on 2026-10-17 for spelling to
   follow the user's language settings, and for the localization system's skeleton to be
   built now. After UI/UX's and Support & Review's reviews, the maintainer approved L1–L5
   as recommended on 2026-10-18 ("Approve all").
@@ -202,3 +203,52 @@ kept for the record.
 * **Nothing is marked yet,** so the template is only a header. The British catalog (i2)
   and the units' names (i3) come next. The rule for new text is in CONTRIBUTING
   ("Translating") and the engineering guidelines (§2, item 10).
+
+### 2026-10-18: the British catalog, the pseudo-locale, and their tests (i2)
+
+* **The British catalog is en_001's,** CLDR's own name for the English that most locales
+  outside the US share, at `caddcalc/locale/en_001/`. A locale reads its catalog, then its
+  parents', then its language's: `core.i18n.lineage("en_AT")` is en_AT, en_150, en_001,
+  en. The parents are CLDR 47's (`common/supplemental/supplementalData.xml`,
+  `parentLocales`), kept in `core.i18n` as region lists. A test checks them against the
+  CLDR data that Babel ships, so a newer CLDR that moves a locale fails it.
+* **en_CA is ours, not CLDR's.** CLDR 47 keeps en_CA under en, as it does en_PH, en_AE
+  and en_BI. §2 puts Canada on the British catalog because it writes "metre" and
+  "colour", so `core.i18n` adds that one parent. The other three keep the source
+  spelling, as CLDR does.
+* **What's marked.** The calculators' and the domain's names and summaries, declared with
+  `N_()` and translated where they're shown: the calculator list and its tooltips, the
+  page's title and summary, and the CLI's `list` and `show`. JSON keeps the source text
+  (§4). The welcome card's text is marked too: its version line, its accessible name, and
+  its buttons' tooltips and names, with a `button` context for "About" and "Close". A name
+  inside a sentence that isn't marked yet, such as "Use Sheet Metal value", waits for the
+  sweep, which marks the whole sentence.
+* **The British catalog** translates what British English writes differently: so far,
+  "licence" in the About button's tooltip. An empty translation means the US English
+  text is right there too, so the catalog lists every string. The units' names (i3) add
+  "millimetre" and "metre".
+* **The tooling** gains `init LANG`, which starts a language's .po from the template, and
+  `check` now reports a fuzzy translation, Babel's guess after a source changed, which is
+  never compiled until someone confirms it.
+* **The pseudo-locale** is `tests/pseudo_locale.py`, made from the template as §6 says and
+  never shipped. Its letters come from Latin-1 and Latin Extended-A; it pads each string
+  by 40% with accented filler words, so the text still wraps; and it fills every plural
+  form. A test checks each rule, and that its catalog keeps every placeholder.
+* **The tests.** A calculator module imported before the language is chosen still shows
+  en_XA text in the list, its tooltips, and the page. At the window's least size, every
+  page, in English and in en_XA, is checked for any text widget smaller than its least
+  size, any wrapped label shorter than its text, any combo box that elides, and anything
+  past the window's edge. The welcome card's version line stays inside its safe area in
+  both languages.
+* **What doesn't fit yet.** That test found three things that are cut short at the
+  window's least size today, in both languages: the disclaimer, the method box, and the
+  family settings page, which scrolls sideways. They're KI-023, for the window-layout
+  work; the test allows those three and nothing else. It found a fourth on Linux, now
+  fixed: the result fields' value and unit columns were sized to the nearest pixel of
+  their text's width, so a fractional width lost the text's last pixel. They round up.
+* **Tooltips for elided names.** `gui/name_tips.py` draws the list's rows as usual. When a
+  row is too narrow for its name, its tooltip gives the whole name above the summary.
+  Whether a name is elided is measured the way the style lays out the row's text. In
+  Fusion and windows11, the painted row changes exactly at the width where the test flips.
+* **CLDR's license.** The parent table and the English plural rule come from CLDR, which
+  is under the Unicode License v3; THIRD_PARTY_NOTICES.md carries its notice.
