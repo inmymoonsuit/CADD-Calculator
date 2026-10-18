@@ -322,7 +322,7 @@ All notable changes are recorded here. The format follows
 - **The welcome screen was slow to appear on a machine with many fonts:** about 2.7 s
   from launch, most of it resolving the display face's fallback fonts, which are for a
   face that didn't load. They're now used only then, and the card appears in about
-  1.1 s, looking the same.
+  1.3 s, looking the same; the calculators load after it's painted.
 - The work in a calculator's notes was meant to be fixed-width, but on Windows it was
   set in Tahoma, and finding a face for it held the main window for over a second. It's
   now set in Consolas on Windows, and in the platform's fixed-width face elsewhere.

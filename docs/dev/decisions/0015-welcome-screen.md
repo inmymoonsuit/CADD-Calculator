@@ -285,10 +285,20 @@ raise gone, the main window then showed on top of the card, which never came bac
 window the user couldn't use, blocked by a modal card they couldn't see.
 
 * **The main window's shell comes first.** `MainWindow(build=False)` is the bare
-  window, a few milliseconds' work; `build()` builds its contents later. Startup makes
-  the shell and its native window, gives the card to it (`setTransientParent`), and
-  only then shows the card. The build and the fit still come after the card's first
-  paint, into the shell, hidden; the reveal is as before.
+  window, with no calculator loaded; `build()` loads them and builds its contents
+  later. Startup makes the shell and its native window, gives the card to it
+  (`setTransientParent`), and only then shows the card. The build and the fit still
+  come after the card's first paint, into the shell, hidden; the reveal is as before.
+* **What the shell costs the card's first paint.** Support & Review measured the
+  first paint at 1.41–1.54 s with the shell first, against 1.19–1.37 s before it:
+  about 0.2 s more. Of that, importing `gui.window`, which imported the calculators,
+  took 106–158 ms, and the shell's native window (`winId()`) about 155 ms. So the
+  calculators load in `build()`, after the first paint, and importing `gui.window`
+  loads none (a test checks it in its own process). Measured from the process's
+  launch, natively, on the machine of ADR-0016's figures: the first paint went from
+  1.38–1.46 s (8 launches) to 1.27–1.34 s (16), and the import from 85–97 ms to
+  35–40 ms. The shell's step, that import included, takes 192–205 ms; the rest of it
+  is the native window, which the card's owner must have before the card shows.
 * **The shell is placed on the card's screen** before its native window is made.
   Made unplaced, Windows put it on the pointer's screen, and an owner on a screen of
   another scale made Windows rescale the card it owns, at 125%, to four fifths of its

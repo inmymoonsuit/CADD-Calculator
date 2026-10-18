@@ -43,7 +43,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from caddcalc.calculators import BUILTIN_CALCULATORS, default_registry
 from caddcalc.core import (
     CaddCalcError,
     Calculator,
@@ -122,10 +121,6 @@ DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Tree item data holding a family row's domain id."""
 NO_CALCULATORS = "No calculators loaded"
 """Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
-BUILTIN_IDS = frozenset(calc.id for calc in BUILTIN_CALCULATORS)
-"""The built-in calculators: the only ones whose pages open before the user chooses one.
-
-A plugin's page runs the plugin's code, so it opens only when chosen (ADR-0019)."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
 """Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
@@ -350,6 +345,10 @@ class MainWindow(QMainWindow):
         if self.built:
             return
         self.built = True
+        # The calculators load here, with the contents: startup imports this module for
+        # the shell, before the welcome card's first paint (ADR-0015, amendments).
+        from caddcalc.calculators import default_registry
+
         self.registry = default_registry() if self._registry is None else self._registry
         self.focus_ring = FocusRing(self)
         """Focus around whichever outlined input has it (WCAG 2.4.7); the window owns it."""
@@ -375,7 +374,7 @@ class MainWindow(QMainWindow):
         self.resize(round(launch.width), round(launch.height))
         # It opens on the first built-in calculator, though a plugin's family sorts first.
         items = list(self._calculator_items())
-        first = next((i for i in items if i.data(0, ID_ROLE) in BUILTIN_IDS), None)
+        first = next((i for i in items if i.data(0, ID_ROLE) in builtin_ids()), None)
         first = first or next(iter(items), None)
         if first is not None:
             self.tree.setCurrentItem(first)
@@ -565,7 +564,7 @@ class MainWindow(QMainWindow):
             return 0
         tallest = 0
         for calc in self.registry:
-            if calc.id not in BUILTIN_IDS:
+            if calc.id not in builtin_ids():
                 continue
             # An isolation boundary, as a safety net: an error measuring one page mustn't
             # stop the window, or every other calculator.
@@ -1808,6 +1807,18 @@ def _text_style(kind: NoteKind, scheme: Scheme) -> str:
 FIXED_FAMILY = "Consolas"
 """The face the work's lines are set in where it's installed, as on Windows (UI/UX's
 choice, ADR-0016, amendments)."""
+
+
+@cache
+def builtin_ids() -> frozenset[str]:
+    """Return the built-in calculators' ids: the only pages that open before one is chosen.
+
+    A plugin's page runs the plugin's code, so it opens only when chosen (ADR-0019). The
+    calculators load on the first call, from ``build``, not with this module.
+    """
+    from caddcalc.calculators import BUILTIN_CALCULATORS
+
+    return frozenset(calc.id for calc in BUILTIN_CALCULATORS)
 
 
 @cache

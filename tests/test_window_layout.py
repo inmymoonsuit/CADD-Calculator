@@ -490,7 +490,7 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
     """
     from caddcalc.calculators import default_registry
     from caddcalc.core import Context
-    from caddcalc.gui.window import BUILTIN_IDS, MainWindow
+    from caddcalc.gui.window import MainWindow, builtin_ids
     from tests.test_domains import ACME, _AcmeWidget
 
     class Failing(_AcmeWidget):
@@ -513,8 +513,8 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(MainWindow, "select_calculator", spy)
     window = open_window(registry)
-    assert opened and set(opened) <= BUILTIN_IDS, opened
-    assert window.calculator is not None and window.calculator.id in BUILTIN_IDS
+    assert opened and set(opened) <= builtin_ids(), opened
+    assert window.calculator is not None and window.calculator.id in builtin_ids()
     with pytest.raises(ZeroDivisionError):
         window.select_calculator("acme.failing")  # only once it's chosen
     window.select_calculator("sheet_metal.bend_allowance")

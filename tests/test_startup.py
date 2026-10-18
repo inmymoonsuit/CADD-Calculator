@@ -7,6 +7,7 @@ resizes and activates it, from the card's show until the startup is done.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -214,3 +215,54 @@ def test_the_card_is_owned_by_the_window_and_stays_above_it(
     shown = user32.GetAncestor(user32.WindowFromPoint(centre), root)
     assert shown == card, "on screen, the card is what's at its centre"
     launch.close()
+
+
+SHELL_THEN_BUILD = """
+import json, sys
+from PySide6.QtWidgets import QApplication
+
+app = QApplication([])
+from caddcalc.gui.actions import AppActions
+from caddcalc.gui.branding import GENERIC
+from caddcalc.gui.window import MainWindow
+
+
+def calculators():
+    return sorted(name for name in sys.modules if name.startswith("caddcalc.calculators"))
+
+
+window = MainWindow(branding=GENERIC, actions=AppActions(GENERIC), build=False)
+window.winId()
+shell = calculators()
+window.build()
+print(json.dumps([shell, len(calculators())]))
+"""
+
+
+def test_the_shell_loads_no_calculator_until_it_is_built(tmp_path: Path) -> None:
+    """The shell comes before the card's first paint, the calculators only with the build.
+
+    Startup imports the window's module and makes its shell before the card shows, so
+    neither loads a calculator; ``build`` does, after the first paint (ADR-0015,
+    amendments). Tests import the calculators already, so this runs in its own process.
+    """
+    import json
+    import os
+    import subprocess
+    import sys
+
+    script = tmp_path / "shell_then_build.py"
+    script.write_text(SHELL_THEN_BUILD, encoding="utf-8")
+    env = {**os.environ, "QT_QPA_PLATFORM": os.environ.get("QT_QPA_PLATFORM", "offscreen")}
+    done = subprocess.run(  # noqa: S603  # this interpreter, on a script the test wrote
+        [sys.executable, str(script)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    shell, built = json.loads(done.stdout.splitlines()[-1])
+    assert shell == [], "the shell loaded calculators before the card's first paint"
+    assert built > 0, "the build loads them"

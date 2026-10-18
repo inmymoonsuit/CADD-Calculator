@@ -168,8 +168,9 @@ class _Startup:
         """Make the main window's shell, and the card a window it owns, before the card shows.
 
         Qt gives a window its owner only as it shows, so this comes first; the shell is a
-        bare window, and costs a few milliseconds. The system then keeps the card above
-        the main window, with no raise (ADR-0015, amendments).
+        bare window, with no calculator loaded yet, and what it costs the card's first
+        paint is in ADR-0015's amendments. The system then keeps the card above the main
+        window, with no raise.
         """
         from PySide6.QtCore import Qt
 
