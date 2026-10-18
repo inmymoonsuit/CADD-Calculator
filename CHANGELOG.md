@@ -7,6 +7,12 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- `core.formatting` shows a value in parts, for copying it (the coming result fields):
+  `value_parts()` gives its number, its unit, and its inch fraction, and `format_value()`
+  now joins them, unchanged. `copy_text()` gives the clipboard text: the number as shown,
+  the number with its unit, or full precision (10 significant digits), always plain
+  decimals with an ASCII minus and no negative zero. `results_tsv()` gives a result's
+  outputs as tab-separated rows for a spreadsheet.
 - Branding packs may restyle their welcome screen within a whitelist (ADR-0016, S5):
   `[welcome.style.logo]` sets the logo box's fill role, margins, and padding, and
   `[welcome.style.panes]` the panes' fill role and least opacity. Anything else is

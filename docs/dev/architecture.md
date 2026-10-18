@@ -32,7 +32,7 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │  choices.py     Choice, Option, DerivedValue: selections that derive     │
 │  registry.py    Registry of domains and calculators; plugin loading      │
 │  settings.py    DomainSettings: domain settings for the session          │
-│  formatting.py  DisplayPrefs, rounding, fractions, render_step           │
+│  formatting.py  DisplayPrefs, rounding, fractions, copying, render_step  │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 

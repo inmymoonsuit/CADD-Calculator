@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import ROUND_HALF_EVEN, Decimal
+from enum import Enum
 from fractions import Fraction
 
 from caddcalc.core import expr
@@ -39,10 +41,19 @@ class DisplayPrefs:
 
 def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
     """Return the unit text shown after a value, e.g. ``" in"``, ``" ksi"``, or ``"°"``."""
-    if dimension is Dimension.ANGLE:
-        return "°"
-    symbol = display_unit(dimension, prefs).symbol
-    return f" {symbol}" if symbol else ""
+    return _suffix(_shown_unit(dimension, prefs))
+
+
+def _shown_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
+    """Return the unit symbol shown with a value: ``"°"`` for angles, else the display unit's."""
+    return "°" if dimension is Dimension.ANGLE else display_unit(dimension, prefs).symbol
+
+
+def _suffix(unit: str) -> str:
+    """Return ``unit`` as written after a number: a degree sign close up, others spaced."""
+    if unit == "°":
+        return unit
+    return f" {unit}" if unit else ""
 
 
 _SHOWN_IN = {Dimension.ANGLE: "deg", Dimension.RATIO: ""}
@@ -96,6 +107,48 @@ def format_number(value: float, decimals: int) -> str:
     return "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
 
 
+@dataclass(frozen=True)
+class ValueParts:
+    """A value as shown, in parts: its number, its unit, and its nearest inch fraction.
+
+    ``format_value`` joins them, so a value shown whole and a value shown in parts, such
+    as a result field's, can't disagree.
+    """
+
+    number: str
+    """The number, rounded in the display unit, e.g. ``"0.3119"``: an ASCII ``-`` and a
+    ``.`` decimal point, never a negative zero."""
+    unit: str
+    """The unit's symbol, e.g. ``"in"``, ``"ksi"``, or ``"°"``; ``""`` for a ratio."""
+    fraction: str | None = None
+    """The nearest drafting fraction of an inch length, e.g. ``"5/16"``, when it's shown."""
+
+    @property
+    def with_unit(self) -> str:
+        """The number and its unit, e.g. ``"0.3119 in"`` or ``"120.00°"``, without the fraction."""
+        return self.number + _suffix(self.unit)
+
+
+def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> ValueParts:
+    """Return a base-unit value as shown, in parts (``ValueParts``).
+
+    Args:
+        value: The value in base units.
+        dimension: What the value measures.
+        prefs: The display unit, decimals, and fraction preference.
+    """
+    shown = display_value(value, dimension, prefs)
+    fraction = None
+    if (
+        dimension is Dimension.LENGTH
+        and prefs.fraction_denominator
+        and get_unit(prefs.length_unit).symbol == "in"
+    ):
+        fraction = to_fraction(shown, prefs.fraction_denominator)
+    number = format_number(shown, _decimals(dimension, prefs))
+    return ValueParts(number, _shown_unit(dimension, prefs), fraction)
+
+
 def format_value(
     value: float, dimension: Dimension, prefs: DisplayPrefs, *, unit: bool = True
 ) -> str:
@@ -107,18 +160,81 @@ def format_value(
         prefs: The display unit, decimals, and fraction preference.
         unit: Append the unit (and the nearest fraction, when enabled).
     """
-    shown = display_value(value, dimension, prefs)
-    text = format_number(shown, _decimals(dimension, prefs))
-    if unit:
-        text += unit_suffix(dimension, prefs)
-    if (
-        unit
-        and dimension is Dimension.LENGTH
-        and prefs.fraction_denominator
-        and get_unit(prefs.length_unit).symbol == "in"
-    ):
-        text += f'  (≈ {to_fraction(shown, prefs.fraction_denominator)}")'
-    return text
+    parts = value_parts(value, dimension, prefs)
+    if not unit:
+        return parts.number
+    if parts.fraction is None:
+        return parts.with_unit
+    return f'{parts.with_unit}  (≈ {parts.fraction}")'
+
+
+class CopyForm(Enum):
+    """What copying a value puts on the clipboard (``copy_text``)."""
+
+    VALUE = "value"
+    """The number as shown, without its unit, e.g. ``0.3119``: it pastes cleanly into a
+    spreadsheet cell or a CAD dimension box working in the drawing's units."""
+    WITH_UNIT = "with_unit"
+    """The number as shown, with its unit, e.g. ``0.3119 in``."""
+    FULL = "full"
+    """The value in the display unit, unrounded to ``FULL_DIGITS`` significant digits."""
+
+
+FULL_DIGITS = 10
+"""Significant digits a full-precision copy keeps: far past any drafting tolerance."""
+
+
+def copy_text(value: float, dimension: Dimension, prefs: DisplayPrefs, form: CopyForm) -> str:
+    """Return a base-unit value as clipboard text, in ``form``.
+
+    Every form writes plain decimals, never an exponent, with an ASCII ``-`` and a
+    ``.`` decimal point, and never a negative zero, so it pastes into a spreadsheet or a
+    CAD input as it reads. None includes the inch fraction.
+    """
+    parts = value_parts(value, dimension, prefs)
+    if form is CopyForm.VALUE:
+        return parts.number
+    if form is CopyForm.WITH_UNIT:
+        return parts.with_unit
+    return _significant(display_value(value, dimension, prefs), FULL_DIGITS)
+
+
+def _significant(value: float, digits: int) -> str:
+    """Return ``value`` to ``digits`` significant digits, as plain decimals."""
+    if not math.isfinite(value):
+        return str(value)
+    exact = Decimal(value)
+    if not exact:
+        return "0"
+    step = Decimal(1).scaleb(exact.adjusted() - digits + 1)
+    text = format(exact.quantize(step, rounding=ROUND_HALF_EVEN), "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "") else text
+
+
+def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
+    """Return a result's outputs as tab-separated rows, for pasting into a spreadsheet.
+
+    Each row is the output's symbol, its label, its value as shown without its unit, and
+    its unit, in the calculator's output order, each row ending in a line break. A tab or
+    line break inside a cell becomes a space, since tab-separated text can't escape them.
+    """
+    rows = []
+    for output in calc.outputs:
+        parts = value_parts(result.outputs[output.key], output.dimension, prefs)
+        cells = (output.symbol, output.label, parts.number, parts.unit)
+        rows.append("\t".join(_cell(cell) for cell in cells) + "\n")
+    return "".join(rows)
+
+
+_CELL_BREAKS = str.maketrans({"\t": " ", "\n": " ", "\r": " "})
+"""Tabs and line breaks, which a tab-separated cell can't hold."""
+
+
+def _cell(text: str) -> str:
+    """Return ``text`` with every tab and line break as a space, for one TSV cell."""
+    return text.replace("\r\n", "\n").translate(_CELL_BREAKS)
 
 
 FIELD_DECIMALS = 6
