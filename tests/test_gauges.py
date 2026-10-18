@@ -174,11 +174,11 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     assert gauged.source_of("thickness").kind is SourceKind.DERIVED
     (note,) = gauged.notes
     assert (note.kind, note.subjects) == (NoteKind.WARNING, ("thickness",))
-    assert describe_note(note) == (
+    assert describe_note(note, DisplayPrefs()).lines == (
         "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check "
-        "the material's specification or measure before cutting. (Gauge systems, version 2; "
-        "ASTM A568/A568M, 2025, rev. a, scope: general requirements for carbon and HSLA "
-        "steel sheet (A1008, A1011))"
+        "the material's specification or measure before cutting.",
+        "Sources: Gauge systems, version 2 · ASTM A568/A568M, 2025, rev. a, scope: general "
+        "requirements for carbon and HSLA steel sheet (A1008, A1011)",
     )
 
 

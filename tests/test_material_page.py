@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
+from caddcalc.calculators.sheet_metal import checks
 from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE
 from caddcalc.core import Dimension, Note, NoteKind, TypedValue, ValueOrigin
 from caddcalc.core.formatting import describe_source
@@ -69,7 +70,7 @@ def test_an_unticked_copy_of_an_applied_k_warns_for_another_material() -> None:
     open_k_factor_bend(window)
     window.inherit_boxes["k_factor"].setChecked(False)
     assert window.result.source_of("k_factor").reference is not None
-    warned = [n for n in window.result.notes if n.text.startswith("The K starting value")]
+    warned = [n for n in window.result.notes if n.text == checks.K_MISMATCH]
     assert [n.subjects for n in warned] == [("k_factor",)]
     window.close()
 
@@ -84,7 +85,7 @@ def test_an_unticked_copy_of_a_gauge_thickness_keeps_the_gauge_warning() -> None
     window.select_calculator(BEND)
 
     def mismatch() -> list[str]:
-        return [n.text for n in window.result.notes if n.text.startswith("The gauge is")]
+        return [n.text for n in window.result.notes if n.text == checks.GAUGE_MISMATCH]
 
     assert len(mismatch()) == 1, "the gauge's own thickness"
     window.inherit_boxes["thickness"].setChecked(False)
@@ -318,6 +319,9 @@ def test_a_bend_below_the_materials_minimum_says_so_on_its_page() -> None:
     type_into(window.setting_fields["inside_radius"][1], "0.1")
     window.select_calculator("sheet_metal.bend_allowance")
     shown = results_text(window)
-    assert "Limit exceeded: The inside radius is below the recommended minimum for 6061-T6" in shown
-    assert "Inside radius is smaller than the material thickness" not in shown
+    assert (
+        "Limit exceeded: inside radius 0.1000 in is below 0.1600 in, the recommended minimum "
+        "this check uses, for 6061-T6 aluminum at 0.0630 in"
+    ) in shown
+    assert "This is a rule of thumb" not in shown, "a cited check replaces the rule of thumb"
     window.close()

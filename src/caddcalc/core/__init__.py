@@ -23,7 +23,7 @@ from caddcalc.core.errors import (
     UnknownDomainError,
     UsageError,
 )
-from caddcalc.core.notes import Note, NoteKind
+from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.refdata import (
     Band,
@@ -81,6 +81,7 @@ __all__ = [
     "Param",
     "ParsedQuantity",
     "PublicationKind",
+    "Quantity",
     "Reference",
     "ReferenceTable",
     "ReferenceValue",

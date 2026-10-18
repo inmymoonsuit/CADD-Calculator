@@ -51,8 +51,8 @@ def test_an_inherited_value_reaches_the_result_and_is_read_only() -> None:
     box = window.inherit_boxes["thickness"]
     assert not box.isHidden() and box.isChecked()
     assert "0.4049 in" in result(window), "BA with T = 0.25 in, R = 0.156 in"
-    assert "Material thickness\n0.2500 in\n(Sheet Metal settings)" in result(window)
-    assert "Inside bend radius\n0.1560 in\n(default)" in result(window)
+    assert "Material thickness\n0.2500\nin\nSheet Metal settings" in result(window)
+    assert "Inside bend radius\n0.1560\nin\ndefault" in result(window)
 
     type_into(thickness, "9", enter=False)
     assert thickness.text() == "0.25"
@@ -251,7 +251,7 @@ def test_load_course_example_restores_the_lesson_over_family_values() -> None:
     )
     assert "132.70°" in result(window)
     assert source_of(window, "thickness") == "course example"
-    assert "Material thickness\n0.0747 in\n(course example)" in result(window)
+    assert "Material thickness\n0.0747\nin\ncourse example" in result(window)
 
     type_into(field(window, "thickness"), "0.08", enter=False)
     assert source_of(window, "thickness") == "entered"
@@ -329,5 +329,5 @@ def test_a_family_k_factor_reaches_only_the_methods_that_use_it() -> None:
 
     window.method_box.setCurrentIndex(window.method_box.findData("k_factor"))
     assert field(window, "k_factor").text() == "0.44"
-    assert "K-factor\n0.4400\n(Sheet Metal settings)" in result(window)
+    assert "K-factor\n0.4400\n\nSheet Metal settings" in result(window)
     window.close()

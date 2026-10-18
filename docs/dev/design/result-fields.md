@@ -62,6 +62,54 @@ token, so the specification can't drift from the code.
 * A test keeps layout numbers and colours out of `result_fields.py`, as out of
   `welcome.py`.
 
+## Copying
+
+* **Copy:** a field's button copies its value as shown, without its unit (`0.3119`),
+  through `core.formatting.copy_output()`. So does Space, Enter, or the platform's
+  Copy keys (Ctrl+C, Cmd+C on macOS) on the focused button. The value copied is the one
+  the field shows now: with no result, every button is disabled and nothing copies.
+* **The context menu,** by right-click or the Menu key: "Copy value", "Copy with unit"
+  (`0.3119 in`), "Copy full precision" (the display unit, unrounded, at most 10
+  significant digits), and "Copy fraction" (`5/16"`, or `1-5/16"`), only while a
+  fraction shows. It opens as a popup, never a nested event loop.
+* **Copy all,** the button beside the title, or Ctrl+Shift+C (Cmd+Shift+C) anywhere in
+  the window while a calculator's results show: one tab-separated row per output,
+  symbol, label, value, unit, for a spreadsheet. A text cell a spreadsheet would read
+  as a formula (`=`, `+`, `-`, `@`, or their full-width forms, after any spaces) gets a
+  leading apostrophe; the value never does, so a negative number stays a number
+  (OWASP, "CSV Injection").
+* **Feedback:** the button's icon becomes a check for `copied_ms`, and nothing else
+  moves; the status bar says, for as long, e.g. "Copied BA = 0.3119 to the clipboard";
+  and screen readers are told the same, politely (`QAccessibleAnnouncementEvent`).
+
+## Keyboard and screen readers
+
+* **Tab** goes through the inputs, then each field's copy button in output order, then
+  Copy all.
+* **Accessible names** are whole sentences with named fields, so they can be translated
+  as written, and keep each label as it's written:
+  * a field: "Bend allowance, BA: 0.3119 inches", or "…: no value". The unit is said in
+    full (`Unit.spoken`), singular only after a shown "1": "1.0000 in" is "1.0000
+    inches". A ratio is only its number.
+  * its button: "Copy Bend allowance", with the field's name as its description, so a
+    screen reader says the value with the button
+  * Copy all: "Copy all results"
+* Every message is a module constant in `result_fields.py`.
+
+## The document under the panel
+
+* **Notes** (F1, F2), strongest first, each marked by its kind's icon with no bullet:
+  * the heading and the **lead**: the verdict, with its numbers in the display units
+  * the **detail**, if any: what each source gives, stand-in labels, how the check
+    decided
+  * the **sources**, set smaller
+  * `core.formatting.describe_note()` gives these parts, and the CLI prints the same
+    three lines, the detail and sources indented under the lead.
+* **Inputs** (F3) on the fields' grid: symbol, label, value right-aligned, unit, with
+  the source after them, set smaller.
+* "Smaller" stands in for muted: the palette's muted role, slate, is under 4.5:1 for
+  text, so it's never used for words.
+
 ## States
 
 * **Hover:** the border takes the text colour, and the field a faint fill of it.

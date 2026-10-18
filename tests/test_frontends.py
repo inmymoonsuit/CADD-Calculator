@@ -58,9 +58,13 @@ def test_cli_reports_notes_with_their_kind(capsys: pytest.CaptureFixture[str]) -
     assert [(n["kind"], n["references"], n["subjects"]) for n in notes] == [
         ("warning", [], ["inside_radius", "thickness"])
     ]
-    assert "minimum bend radius" in notes[0]["text"]
+    assert notes[0]["text"].startswith("Inside radius 2.54 mm is less than the thickness")
+    assert "minimum bend radius" in notes[0]["detail"]
+    assert notes[0]["quantities"]["T"] == {"value": 6.35, "unit": "mm", "dimension": "length"}
     assert main(args) == 0
-    assert "Notes\n  ! Inside radius is smaller" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Notes\n  ! Inside radius 0.1000 in is less than the thickness 0.2500 in." in out
+    assert "\n      Check the material's minimum bend radius;" in out, "the detail, indented"
 
     short = ["run", "sheet_metal.segment_flat_length", "FVD=0.2", "A1=90", "A2=90"]
     assert main(short) == 0
@@ -90,8 +94,10 @@ def test_gui_results_mark_each_kind_of_note() -> None:
     html = result_html(calc, result, DisplayPrefs())
     assert "icon:light/icon_error/alert-circle" in html, "an impossibility is marked as an error"
     assert "icon:light/icon_warning/alert-triangle" in html, "a warning is marked as one"
-    assert "Not makeable: The flat length" in html
+    assert "<b>Not makeable: </b>The flat length" in html
     assert "Notes</h3>" in html
+    notes = html.split("Notes</h3>", 1)[1].split("<h3>", 1)[0]
+    assert "<li" not in notes and "<ul" not in notes, "the icon marks each note; no bullet (F2)"
 
 
 @pytest.mark.gui

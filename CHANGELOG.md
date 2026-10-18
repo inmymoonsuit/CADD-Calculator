@@ -7,6 +7,16 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Copying results (ADR-0017).** Each result field's copy button copies its value as
+  shown, without its unit, ready for a spreadsheet cell or a CAD dimension box; so do
+  Space, Enter, and Ctrl+C (Cmd+C) on the focused button. Its menu (right-click or the
+  Menu key) also copies with the unit, at full precision, or, while a fraction shows,
+  as `5/16"`. **Copy all**, beside the Results title or Ctrl+Shift+C (Cmd+Shift+C),
+  copies every output as rows for a spreadsheet, with any text cell that a spreadsheet
+  would read as a formula kept as text. A check shows on the button for a moment, and
+  the status bar and screen readers say what was copied.
+- Tab goes through the inputs, then each result's copy button, then Copy all. Screen
+  readers hear each result in full, e.g. "Bend allowance, BA: 0.3119 inches".
 - Groundwork for result fields (ADR-0017): their design tokens in
   `gui/assets/ui_style.toml`, documented in `docs/dev/design/result-fields.md`; a new
   palette colour, focus blue, for keyboard focus, kept well apart from every warning
@@ -348,6 +358,15 @@ All notable changes are recorded here. The format follows
   its number.
 - An input field a note concerns is outlined 2 px, not 1 px, so the outline reads without
   its colour; result fields will share it (ADR-0017).
+- **Notes lead with the verdict (ADR-0017 F1).** A bend check's note now opens with the
+  decision and its numbers, in your display units, e.g. "Limit exceeded: inside radius
+  0.0500 in is below 0.1600 in, the recommended minimum this check uses, for 6061-T6
+  aluminum at 0.0630 in, in aerospace bending practice." What each source gives follows,
+  each value still as its source states it, and then the sources, in smaller text. The
+  CLI prints the same three lines. Notes have no list bullets, only their icons, and the
+  document's Inputs sit on the result fields' grid, with each value's source after it.
+- In JSON, each note's `text` is now its lead alone, with its values in base units; its
+  `detail` and `quantities` (each named value, in base units with its unit) are new.
 - **Welcome screen refinements (ADR-0016, amendments).**
   * The name is VT323 at 50 px, snapped to the face's pixel grid at every display
     scale, drawn regular, and centred on its capitals. `typography.display_weight`

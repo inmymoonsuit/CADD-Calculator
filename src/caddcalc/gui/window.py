@@ -7,10 +7,11 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
 from html import escape
+from itertools import pairwise
 from typing import Any, cast, override
 
 from PySide6.QtCore import QEvent, QObject, Qt, QUrl
-from PySide6.QtGui import QGuiApplication, QTextDocument
+from PySide6.QtGui import QAction, QGuiApplication, QTextDocument
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -57,6 +58,7 @@ from caddcalc.core import (
 )
 from caddcalc.core.formatting import (
     DISCLAIMER,
+    HEADED,
     DisplayPrefs,
     describe_error,
     describe_note,
@@ -71,6 +73,7 @@ from caddcalc.core.formatting import (
     format_value,
     render_step,
     unit_suffix,
+    value_parts,
 )
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
@@ -86,7 +89,7 @@ from caddcalc.gui.icons import (
 )
 from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
 from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack
-from caddcalc.gui.result_fields import ResultsPanel
+from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
 from caddcalc.gui.ui_style import ui_style
 from caddcalc.gui.welcome import WelcomeScreen
 
@@ -287,6 +290,13 @@ class MainWindow(QMainWindow):
         # moment, and it comes back (ADR-0017).
         self.disclaimer = QLabel(DISCLAIMER)
         self.statusBar().addWidget(self.disclaimer, 1)
+        self.results.announced.connect(self._show_copied)
+        # Copy all, from anywhere in the window, while a calculator's results show (§5).
+        self.copy_all_action = QAction(COPY_ALL_NAME, self)
+        self.copy_all_action.setShortcut(COPY_ALL_KEYS)
+        self.copy_all_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        self.copy_all_action.triggered.connect(self._copy_all)
+        self.addAction(self.copy_all_action)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
         first = next(self._calculator_items(), None)
@@ -570,7 +580,27 @@ class MainWindow(QMainWindow):
                 self.override_notes[p.key] = note
             self.form.addRow(f"{p.label} ({p.symbol})", row)
             self.fields[p.key] = (p, edit)
+        self._chain_tabs()
         self.recompute()
+
+    def _chain_tabs(self) -> None:
+        """Tab through the inputs, then each result's copy button, then Copy all (§5)."""
+        stops: list[QWidget] = []
+        for key, (_p, edit) in self.fields.items():
+            stops.append(edit)
+            if key in self.inherit_boxes:
+                stops.append(self.inherit_boxes[key])
+        stops += self.results.focus_chain()
+        for before, after in pairwise(stops):
+            QWidget.setTabOrder(before, after)
+
+    def _copy_all(self) -> None:
+        if self.pages.currentWidget() is self.calculator_page:
+            self.results.copy_all()
+
+    def _show_copied(self, message: str) -> None:
+        """Show a copy's message for as long as its check shows (R4)."""
+        self.statusBar().showMessage(message, round(ui_style().result_field.copied_ms))
 
     def _inherits(self, calc: Calculator, p: Param) -> bool:
         """Whether ``p`` takes its domain's value in ``calc``, rather than overriding it."""
@@ -1375,7 +1405,7 @@ def _derived_html(
     else:
         lines = [f"<b>From {source}:</b> {value}"]
     if derived.note is not None:
-        lines.append(escape(describe_note(derived.note)))
+        lines.append(_note_html(derived.note, prefs))
     if derived.work is not None:
         symbolic, numeric, shown = render_step(derived.work, None, prefs)
         work = " = ".join(x for x in (f"{setting.symbol}", symbolic, numeric, shown) if x)
@@ -1460,6 +1490,24 @@ def _domain_note_html(
     return "".join(parts)
 
 
+def _note_html(note: Note, prefs: DisplayPrefs) -> str:
+    """Return a note as rich text: its heading and lead, its detail, then its sources.
+
+    The sources are set smaller, not in a fainter colour: the palette's muted role is
+    under 4.5:1 for text (ADR-0017 F1).
+    """
+    text = describe_note(note, prefs)
+    first = escape(text.lead)
+    if text.heading:
+        first = f"<b>{escape(HEADED.format(heading=text.heading, lead=''))}</b>{first}"
+    lines = [first]
+    if text.detail:
+        lines.append(escape(text.detail))
+    if text.sources:
+        lines.append(f"<small>{escape(text.sources)}</small>")
+    return "<br>".join(lines)
+
+
 def _text_style(kind: NoteKind, scheme: Scheme) -> str:
     """Return the style attribute that colours a note's text, if its kind has a colour."""
     role = _NOTE_TEXT.get(kind)
@@ -1488,23 +1536,30 @@ def result_html(
     )
     parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"] if include_results else []
     if result.notes:
+        # The kind's icon marks each note; there's no list bullet as well (F2).
         warn = "".join(
-            f"<li{_text_style(note.kind, scheme)}>{_img(*_NOTE_ICONS[note.kind], scheme)}"
-            f"{escape(describe_note(note))}</li>"
+            f"<tr><td valign='top'>{_img(*_NOTE_ICONS[note.kind], scheme)}</td>"
+            f"<td{_text_style(note.kind, scheme)}>{_note_html(note, prefs)}</td></tr>"
             for note in strongest_first(result.notes)
         )
         parts.append(
             f"<h3 style='color:{role_color('text_warning', scheme)}'>"
             f"{_img('alert-triangle', 'icon_warning', scheme)}"
-            f"Notes</h3><ul>{warn}</ul>"
+            f"Notes</h3><table cellpadding='3'>{warn}</table>"
         )
-    inputs = "".join(
-        f"<tr><td><b>{escape(p.symbol)}</b></td><td>{escape(p.label)}</td>"
-        f"<td align='right'>{escape(format_value(result.inputs[p.key], p.dimension, prefs))}</td>"
-        f"<td>({escape(describe_source(result.source_of(p.key)))})</td></tr>"
-        for p in calc.params_for(result.method)
-    )
-    parts.append(f"<h3>Inputs</h3><table cellpadding='4'>{inputs}</table>")
+    # Inputs on the result fields' grid, symbol, label, value, unit, with the source
+    # set smaller after them (F3).
+    input_rows = []
+    for p in calc.params_for(result.method):
+        shown = value_parts(result.inputs[p.key], p.dimension, prefs)
+        number, unit = (shown.with_unit, "") if shown.unit_close_up else (shown.number, shown.unit)
+        source = escape(describe_source(result.source_of(p.key)))
+        input_rows.append(
+            f"<tr><td><b>{escape(p.symbol)}</b></td><td>{escape(p.label)}</td>"
+            f"<td align='right'>{escape(number)}</td><td>{escape(unit)}</td>"
+            f"<td><small>{source}</small></td></tr>"
+        )
+    parts.append(f"<h3>Inputs</h3><table cellpadding='4'>{''.join(input_rows)}</table>")
     work = []
     for step in result.steps:
         symbolic, numeric, value = render_step(step, result, prefs)

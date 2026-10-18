@@ -5,6 +5,12 @@ reads the gauge, material, and temper the user chose, which compute never sees. 
 cited minimum applies it replaces the phase 1 rule of thumb, an inside radius below the
 thickness, so the two can't contradict each other; where none applies, the note says so
 and the rule of thumb still speaks.
+
+Each note leads with its verdict and numbers, and its detail and sources follow (ADR-0017
+F1). The wording is whole sentences with named fields: values are filled in the user's
+display units when shown, and every name, source, and stated value comes from the data
+as a phrase, so the scope of each value reads exactly as its source states it (ADR-0014
+§5.5).
 """
 
 from __future__ import annotations
@@ -24,7 +30,7 @@ from caddcalc.calculators.sheet_metal.materials import (
     practices,
     short,
 )
-from caddcalc.core import Context, NoteKind, Reference, SourceKind
+from caddcalc.core import Context, Dimension, NoteKind, Reference, SourceKind
 
 MAX_ANGLE = 90.0
 """The largest bend angle, in degrees, that the minimum radii are read for.
@@ -32,6 +38,60 @@ MAX_ANGLE = 90.0
 The sources are for 90° bends or state no angle. A bend up to 90° takes the 90° value, and
 one past it has no applicable value (the maintainer's decision D10).
 """
+
+LENGTH = Dimension.LENGTH
+
+RULE_OF_THUMB = (
+    "Inside radius {R} is less than the thickness {T}. This is a rule of thumb, not a cited limit."
+)
+RULE_OF_THUMB_DETAIL = (
+    "Check the material's minimum bend radius; tight bends can crack, especially in hard tempers."
+)
+GAUGE_MISMATCH = (
+    "The gauge system may not suit the material: {gauge}, {system} gives a nominal {T}, "
+    "but {material} is ordered by {usual} gauge numbers."
+)
+GAUGE_MISMATCH_DETAIL = (
+    "The same gauge number is a different thickness in each system, so check the "
+    "thickness, or enter it as a decimal."
+)
+K_MISMATCH = "K = {stated} is a starting value {source} gives for {covered}, not for {material}."
+K_MISMATCH_DETAIL = "Confirm it with a test bend."
+K_MISMATCH_OFFERED = (
+    "Confirm it with a test bend, or apply a starting value given for this material."
+)
+NO_SOURCE_FOR = "no minimum radius to check for {material}."
+NO_SOURCE_LISTS = "no minimum radius to check for {material}: no source lists it."
+PAST_90 = (
+    "bend angle {symbol_1} = {angle_1} is past 90°, and the minimum radii for {material} "
+    "are for bends up to 90°."
+)
+PAST_90_MANY = (
+    "bend angles {angles} are past 90°, and the minimum radii for {material} are for bends "
+    "up to 90°."
+)
+PAST_90_DETAIL = "No source covers larger bends or hems."
+# Templates with "{i}" are said once per bend or source: "{i}" becomes its number, so
+# each one's fields are named apart, e.g. "{source_1}" and "{source_2}".
+ANGLE = "{symbol_{i}} = {angle_{i}}"
+THICKNESS_UNCOVERED = "thickness {T} is outside every minimum-radius source for {material}."
+LISTS = "{source_{i}} lists {coverage_{i}}."
+PARTIAL = (
+    "Checked against {alone} only: {other} lists {material} for {coverage}, and {T} is "
+    "outside that."
+)
+LIMIT = (
+    "inside radius {R} is below {minimum}, the recommended minimum this check uses, for "
+    "{material} at {T}, in {practice}."
+)
+GIVES_AT = "{source_{i}} gives {stated_{i}} at {column_{i}}"
+GIVES_FOR_SHEET = "{source_{i}} gives {stated_{i}} for sheet {column_{i}}"
+FROM_ROW = ", from {label_{i}}"
+LARGER = "The larger minimum governs."
+RANGE = "A range is checked at its upper bound."
+LARGER_AND_RANGE = "The larger minimum governs, and a range is checked at its upper bound."
+SOURCE_NOTE = "{note_{i}}"
+PRACTICE = "{advice}"
 
 _RADIUS = ("inside_radius", "thickness")
 _SAME = 1e-9
@@ -73,15 +133,16 @@ class BendCheck:
         if material is not None:
             temper = selections.get(TEMPER.key)
             self._check_gauge(ctx, material, temper, selections.get(GAUGE.key))
-            self._check_applied_k(ctx, material, temper)
+            self._check_applied_k(ctx, material, temper, selections)
             referenced = self._check_minimum(ctx, material, temper)
         if not referenced and ctx["inside_radius"] < ctx["thickness"]:
             # A rule of thumb, not a cited limit: published minimums go below 1T for some
             # alloys and tempers, so this is a warning.
             ctx.warn(
-                "Inside radius is smaller than the material thickness. Check the material's "
-                "minimum bend radius; tight bends can crack, especially in hard tempers.",
+                RULE_OF_THUMB,
                 subjects=_RADIUS,
+                detail=RULE_OF_THUMB_DETAIL,
+                quantities={"R": (ctx["inside_radius"], LENGTH), "T": (ctx["thickness"], LENGTH)},
             )
 
     def _check_gauge(
@@ -104,19 +165,32 @@ class BendCheck:
             return
         usual = " or ".join(s.name for s in gauges.systems if s.id in material.gauges)
         ctx.warn(
-            f"The gauge is {gauge.label}, {system.group}, but {material.name_in(temper)} is "
-            f"ordered by {usual} gauge numbers. Each system gives a gauge number a different "
-            "thickness, so check the thickness, or enter it as a decimal.",
+            GAUGE_MISMATCH,
             subjects=("thickness",),
+            detail=GAUGE_MISMATCH_DETAIL,
+            quantities={"T": (ctx["thickness"], LENGTH)},
+            phrases={
+                "gauge": gauge.label,
+                "system": system.group,
+                "material": material.name_in(temper),
+                "usual": usual,
+            },
         )
 
-    def _check_applied_k(self, ctx: Context, material: Material, temper: str | None) -> None:
+    def _check_applied_k(
+        self,
+        ctx: Context,
+        material: Material,
+        temper: str | None,
+        selections: Mapping[str, str],
+    ) -> None:
         """Warn when the K-factor in use was applied for other materials than this one.
 
         An applied starting value keeps its citation when the material changes, so its
         source would otherwise read as covering a material it doesn't. A calculator's copy of
         one keeps the citation too (an explicit source with a reference), and is checked
-        the same way.
+        the same way. The warning offers a starting value for this material only when one
+        is given for it.
         """
         source = ctx.sources.get("k_factor")
         applied = source is not None and source.kind in (SourceKind.DOMAIN, SourceKind.EXPLICIT)
@@ -129,49 +203,71 @@ class BendCheck:
         covered = and_list(
             m.name_in(m.tempers[0].key) for m in data.materials if m.key in start.materials
         )
+        offered = bool(self.materials.starting_values(selections))
         ctx.warn(
-            f"The K starting value from {short(start.source)} was given for {covered}, not "
-            f"for {material.name_in(temper)}; confirm it with a test bend.",
+            K_MISMATCH,
             subjects=("k_factor",),
+            detail=K_MISMATCH_OFFERED if offered else K_MISMATCH_DETAIL,
+            phrases={
+                "stated": start.value.text,
+                "source": short(start.source),
+                "covered": covered,
+                "material": material.name_in(temper),
+            },
         )
 
     def _check_minimum(self, ctx: Context, material: Material, temper: str | None) -> bool:
         """Check the inside radius against the material's sources; say whether one applied."""
         name = material.name_in(temper)
         if material.radius_note:
-            ctx.note(material.radius_note, NoteKind.NO_APPLICABLE_VALUE, subjects=_RADIUS)
+            ctx.note(
+                NO_SOURCE_FOR,
+                NoteKind.NO_APPLICABLE_VALUE,
+                subjects=_RADIUS,
+                detail="{why}",
+                phrases={"material": name, "why": material.radius_note},
+            )
             return False
         sources = self.materials.materials.radius_sources(material.key, temper)
         if not sources:
             ctx.note(
-                f"No minimum-radius source lists {name}.",
+                NO_SOURCE_LISTS,
                 NoteKind.NO_APPLICABLE_VALUE,
                 subjects=_RADIUS,
+                phrases={"material": name},
             )
             return False
         cited = tuple(s.source.reference for s in sources)
+        thickness = ctx["thickness"]
         past = [k for k in self.angle_keys if ctx[k] > MAX_ANGLE]
         if past:  # those bends aren't covered; any up to 90° are checked below
+            numbered = list(enumerate(past, 1))
+            angles = and_list(ANGLE.replace("{i}", str(i)) for i, _ in numbered)
             ctx.note(
-                f"The minimum radii for {name} are for bends up to 90°, and "
-                f"{and_list(_symbol(ctx, k) for k in past)} {'is' if len(past) == 1 else 'are'} "
-                "past 90°. No source covers larger bends or hems.",
+                PAST_90 if len(past) == 1 else PAST_90_MANY.replace("{angles}", angles),
                 NoteKind.NO_APPLICABLE_VALUE,
                 references=cited,
                 subjects=past,
+                detail=PAST_90_DETAIL,
+                quantities={f"angle_{i}": (ctx[k], Dimension.ANGLE) for i, k in numbered},
+                phrases={"material": name} | {f"symbol_{i}": _symbol(ctx, k) for i, k in numbered},
             )
             if len(past) == len(self.angle_keys):
                 return False
-        thickness = ctx["thickness"]
         found = [(source, source.at(thickness)) for source in sources]
         covering = [(source, value) for source, value in found if value is not None]
         if not covering:
-            listed = and_list(f"{_short(s)} lists {s.coverage}" for s in sources)
+            listing = list(enumerate(sources, 1))
             ctx.note(
-                f"The minimum-radius sources for {name} don't cover this thickness: {listed}.",
+                THICKNESS_UNCOVERED,
                 NoteKind.NO_APPLICABLE_VALUE,
                 references=cited,
                 subjects=("thickness",),
+                detail=" ".join(LISTS.replace("{i}", str(i)) for i, _ in listing),
+                quantities={"T": (thickness, LENGTH)},
+                phrases={"material": name}
+                | {f"source_{i}": _short(s) for i, s in listing}
+                | {f"coverage_{i}": s.coverage for i, s in listing},
             )
             return False
         alone = and_list(_short(s) for s, _ in covering)
@@ -179,50 +275,74 @@ class BendCheck:
             if value is None:
                 # A warning: the check still applies, through the sources that cover it.
                 ctx.warn(
-                    f"{_short(source)} lists {source.coverage} for {name}, which doesn't reach "
-                    f"this thickness, so the check uses {alone} alone.",
+                    PARTIAL,
                     subjects=("thickness",),
+                    quantities={"T": (thickness, LENGTH)},
+                    phrases={
+                        "alone": alone,
+                        "other": _short(source),
+                        "material": name,
+                        "coverage": source.coverage,
+                    },
                 )
         minimum = max(value.minimum(thickness) for _, value in covering)
         radius = ctx["inside_radius"]
         if radius < minimum and not math.isclose(radius, minimum, rel_tol=_SAME):
+            detail, phrases = _limit_detail(covering)
             ctx.note(
-                _limit(name, covering),
+                LIMIT,
                 NoteKind.LIMIT_EXCEEDED,
                 references=_references(covering),
                 subjects=_RADIUS,
+                detail=detail,
+                quantities={
+                    "R": (radius, LENGTH),
+                    "minimum": (minimum, LENGTH),
+                    "T": (thickness, LENGTH),
+                },
+                phrases={"material": name, "practice": practices(s for s, _ in covering)} | phrases,
             )
             # Only beside a limit: a standing note on every passing bend would be ignored.
             practice = self.materials.materials.practice
             ctx.note(
-                practice.note,
+                PRACTICE,
                 references=(practice.source.reference,),
                 subjects=("inside_radius",),
+                phrases={"advice": practice.note},
             )
         return True
 
 
-def _limit(name: str, covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> str:
-    """Say what the radius is below, and how far that applies (ADR-0014 §5.5).
+def _limit_detail(
+    covering: Sequence[tuple[RadiusSource, RadiusValue]],
+) -> tuple[str, dict[str, str]]:
+    """Say what each source gives, and how far it applies (ADR-0014 §5.5).
 
-    That is each source's recommended minimum, as the source states it, and the practice
-    it comes from.
+    That's each source's recommended minimum and the thickness it's read at, as the
+    source states them, then any stand-in label, how the check decided, and the sources'
+    own notes. Return the detail's template and its phrases.
     """
-    sources = [source for source, _ in covering]
-    given = []
-    for source, value in covering:
-        where = f"at {value.column}" if source.listed else f"for sheet {value.column}"
-        label = f" ({source.label})" if source.label else ""
-        given.append(f"{_short(source)} gives {value.stated} {where}{label}")
-    text = (
-        f"The inside radius is below the recommended minimum for {name} in "
-        f"{practices(sources)} at this thickness: {and_list(given)}."
-    )
-    if len(covering) > 1:
-        text += " The check uses the larger."
-    if any(isinstance(v.value, tuple) and v.value[0] != v.value[1] for _, v in covering):
-        text += " A range is checked at its upper bound."
-    return " ".join([text, *(source.note for source, _ in covering if source.note)])
+    sentences: list[str] = []
+    phrases: dict[str, str] = {}
+    for i, (source, value) in enumerate(covering, 1):
+        gives = GIVES_AT if source.listed else GIVES_FOR_SHEET
+        sentence = gives + (FROM_ROW if source.label else "") + "."
+        sentences.append(sentence.replace("{i}", str(i)))
+        phrases |= {
+            f"source_{i}": _short(source),
+            f"stated_{i}": value.stated,
+            f"column_{i}": value.column,
+            f"label_{i}": source.label,
+        }
+    larger = len(covering) > 1
+    ranged = any(isinstance(v.value, tuple) and v.value[0] != v.value[1] for _, v in covering)
+    if larger or ranged:
+        sentences.append(LARGER_AND_RANGE if larger and ranged else LARGER if larger else RANGE)
+    for i, (source, _value) in enumerate(covering, 1):
+        if source.note:
+            sentences.append(SOURCE_NOTE.replace("{i}", str(i)))
+            phrases[f"note_{i}"] = source.note
+    return " ".join(sentences), phrases
 
 
 def _references(covering: Sequence[tuple[RadiusSource, RadiusValue]]) -> tuple[Reference, ...]:

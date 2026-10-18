@@ -427,3 +427,64 @@ From UI/UX & Design's review of k3b:
 * Tests: the switch from bend allowance to the cone and back shows every field in full
   each time; both document states, with the wheel in each; a page that grows tall again
   goes back to filling; the note order; the title and spacing; the degree sign.
+
+### 2026-10-17: copying, the keyboard, screen readers, and the notes (k4)
+
+* **Copy (R1)** goes through `core.formatting.copy_output()`, the output-level twin of
+  `output_parts()`, so ADR-0018's output presentation applies to copies as well. The
+  field copies the value it shows now, from its base value and the display preferences
+  it was shown in; with no result, nothing copies (§4).
+* **The context menu (R6)** opens as a popup rather than `QMenu.exec()`, so no nested
+  event loop runs. `CopyForm.FRACTION` copies `5/16"` or `1-5/16"` (code-check decision
+  6), only while a fraction shows; `copy_text` refuses it otherwise.
+* **Copy all (R2)** has a header button and the window action Ctrl+Shift+C, which acts
+  only while a calculator's results show. `results_tsv` keeps a text cell from being read
+  as a formula: one starting with `=`, `+`, `-`, `@`, or their full-width forms, after
+  any spaces, gets a leading apostrophe; the value cell never does. That follows OWASP's
+  "CSV Injection" page, which lists those characters, the full-width forms that some
+  locales' spreadsheets read, and tab, CR, and LF, which a cell here already turns into
+  spaces (Support & Review's L5).
+* **Feedback (R4):** the check shows for `copied_ms`, the status message lasts as long,
+  and `QAccessibleAnnouncementEvent` tells screen readers, politely. That event is new
+  in Qt 6.8, the `gui` extra's floor.
+* **Keyboard (§5):** Space, Enter, and the platform's Copy keys press the focused copy
+  button, through the button's own key handling, not a window-wide shortcut. Tab order
+  is set explicitly: the inputs, each copy button, then Copy all.
+* **Accessible names (§5),** as whole messages with named fields, keeping labels as
+  written: the button is "Copy Bend allowance", not §5's "Copy bend allowance", since
+  lower-casing a translated label would be wrong in, for example, German. The field's
+  name is also the button's description, so it's said with the button.
+* **Localization-ready, from ADR-0020's review (items A–E):**
+  * A: `Note.quantities` is a mapping of named fields, e.g. `{"R": (value, LENGTH)}`
+    filling `{R}`, and a mapping in JSON.
+  * B: `Note.text` and `Note.detail` are templates; `Note.phrases` carries the data's
+    words (material, practice, each source's stated value) as named fields too, so
+    nothing is joined onto a sentence. A note with neither is plain text, so existing
+    notes, plugins' included, read as before. A positional, unknown, or doubly given
+    field is refused (`SpecError`).
+  * C: `Unit.spoken()` takes the number as shown; only a shown "1" is singular.
+  * D: the messages above.
+  * E: decimal alignment counts the places after `decimal_separator(prefs)`, which is
+    "." until a separator preference exists (ADR-0020 L4).
+* **F1, the notes:** `describe_note(note, prefs)` returns a `NoteText` of heading, lead,
+  detail, and sources. The bend check's wording follows UI/UX's draft with Support &
+  Review's check:
+  * M1: each source's value and where it applies, `{stated} at {column}` or `{stated}
+    for sheet {column}`, verbatim, then `, from {label}` for a stand-in. Each source is
+    its own sentence rather than one joined list. A test checks every covering source's
+    stated value and column in each limit note's detail.
+  * L1: the lead reads "below {minimum}, the recommended minimum this check uses, for
+    …".
+  * L2: the material is `name_in(temper)` and the practice comes from the rows.
+  * L3: the scope words are always in the lead. With L1's longer phrase, the usual case,
+    6061-T6 in inches, is 150 characters, not 140; 304's lead is 169, mild steel's 167,
+    and inch fractions take one to 202. The budget test holds the template's own words
+    to 85 characters and the 6061 case to 150, and never trims the scope.
+  * L4: the K warning offers "a starting value given for this material" only when one
+    is given.
+* **F2:** notes are rows with their icon and no bullet. **F3:** Inputs use the fields'
+  grid, symbol, label, value, unit, with the source after them.
+* **"Muted" is smaller text,** for the Sources line and the inputs' sources: slate is
+  3.85:1 on white, under 4.5:1 for text, and palette.md keeps it off words.
+* **Not changed:** a domain's `Fact` (2b.7b) still fills positional `{}` fields; moving
+  it to named fields belongs with ADR-0020's string sweep.

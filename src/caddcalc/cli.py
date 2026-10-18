@@ -220,7 +220,9 @@ def format_result(
         lines.append(f"  {o.symbol:<6} {o.label:<32} {value}")
     if result.notes:
         lines += ["", "Notes"]
-        lines += [f"  ! {describe_note(note)}" for note in result.notes]
+        for note in result.notes:
+            first, *rest = describe_note(note, prefs).lines
+            lines += [f"  ! {first}", *(f"      {line}" for line in rest)]
     lines += ["", f"Method status: {method.status}. {DISCLAIMER}"]
     return "\n".join(lines)
 

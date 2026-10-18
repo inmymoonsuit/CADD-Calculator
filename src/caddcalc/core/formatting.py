@@ -105,6 +105,16 @@ def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> fl
     return from_base(value, display_unit(dimension, prefs))
 
 
+def decimal_separator(prefs: DisplayPrefs) -> str:
+    """Return the decimal separator values are shown with: ``"."`` for now.
+
+    Everything that reads a shown number's decimals asks here, so a separator preference
+    (ADR-0020's L4, ADR-0017 F5) changes one place.
+    """
+    del prefs  # every preference writes "." until there's a separator preference
+    return "."
+
+
 def format_number(value: float, decimals: int) -> str:
     """Return ``value`` rounded to ``decimals`` places, never as negative zero."""
     text = f"{value:.{decimals}f}"
@@ -180,6 +190,20 @@ def _shown(parts: ValueParts) -> str:
     return f'{parts.with_unit}  (≈ {parts.fraction}")'
 
 
+SPOKEN = "{number} {unit}"
+"""How a value and its unit's spoken name are said together."""
+
+
+def spoken_value(parts: ValueParts) -> str:
+    """Return a value as a screen reader should say it, e.g. ``"0.3119 inches"``.
+
+    The unit is named in full, singular only after a shown ``1`` (``Unit.spoken``); a
+    ratio is only its number.
+    """
+    name = get_unit(parts.unit).spoken(parts.number)
+    return SPOKEN.format(number=parts.number, unit=name) if name else parts.number
+
+
 def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValueParts:
     """Return a calculator output's value as shown, in parts.
 
@@ -205,6 +229,10 @@ class CopyForm(Enum):
     """The number as shown, with its unit, e.g. ``0.3119 in``."""
     FULL = "full"
     """The value in the display unit, unrounded to ``FULL_DIGITS`` significant digits."""
+    FRACTION = "fraction"
+    """The nearest inch fraction as shown, with the inch mark, e.g. ``5/16"`` or
+    ``1-5/16"``: a bare ``5/16`` would paste into a spreadsheet as a date. Only a value
+    shown with a fraction has one."""
 
 
 FULL_DIGITS = 10
@@ -214,16 +242,38 @@ FULL_DIGITS = 10
 def copy_text(value: float, dimension: Dimension, prefs: DisplayPrefs, form: CopyForm) -> str:
     """Return a base-unit value as clipboard text, in ``form``.
 
-    Every form writes plain decimals, never an exponent, with an ASCII ``-`` and a
+    Every number form writes plain decimals, never an exponent, with an ASCII ``-`` and a
     ``.`` decimal point, and never a negative zero, so it pastes into a spreadsheet or a
-    CAD input as it reads. None includes the inch fraction.
+    CAD input as it reads. Only ``FRACTION`` copies the inch fraction.
+
+    Raises:
+        UsageError: ``FRACTION`` for a value shown without one.
     """
     parts = value_parts(value, dimension, prefs)
+    return _copied(parts, display_value(value, dimension, prefs), form)
+
+
+def copy_output(output: Output, value: float, prefs: DisplayPrefs, form: CopyForm) -> str:
+    """Return a calculator output's value as clipboard text, as ``output_parts`` shows it.
+
+    Raises:
+        UsageError: ``FRACTION`` for a value shown without one.
+    """
+    shown = display_value(value, output.dimension, prefs)
+    return _copied(output_parts(output, value, prefs), shown, form)
+
+
+def _copied(parts: ValueParts, shown: float, form: CopyForm) -> str:
+    """Return a shown value's clipboard text in ``form``; ``shown`` is it unrounded."""
     if form is CopyForm.VALUE:
         return parts.number
     if form is CopyForm.WITH_UNIT:
         return parts.with_unit
-    return _significant(display_value(value, dimension, prefs), FULL_DIGITS)
+    if form is CopyForm.FRACTION:
+        if parts.fraction is None:
+            raise UsageError("This value is shown without a fraction, so there's none to copy")
+        return f'{parts.fraction}"'
+    return _significant(shown, FULL_DIGITS)
 
 
 def _significant(value: float, digits: int) -> str:
@@ -246,12 +296,18 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     Each row is the output's symbol, its label, its value as shown without its unit, and
     its unit, in the calculator's output order, each row ending in a line break. A tab or
     line break inside a cell becomes a space, since tab-separated text can't escape them.
+
+    A text cell that a spreadsheet would read as a formula, one starting with ``=``,
+    ``+``, ``-``, or ``@`` (or their full-width forms), after any spaces, gets a leading
+    apostrophe, which spreadsheets take as "this is text" (OWASP, "CSV Injection"). A
+    tab or line break, which OWASP also lists, is already a space here. The value cell
+    never gets one: a negative number must paste as a number.
     """
     rows = []
     for output in calc.outputs:
         parts = output_parts(output, result.outputs[output.key], prefs)
-        cells = (output.symbol, output.label, parts.number, parts.unit)
-        rows.append("\t".join(_cell(cell) for cell in cells) + "\n")
+        symbol, label, unit = (_text_cell(t) for t in (output.symbol, output.label, parts.unit))
+        rows.append("\t".join((symbol, label, _cell(parts.number), unit)) + "\n")
     return "".join(rows)
 
 
@@ -262,6 +318,17 @@ _CELL_BREAKS = str.maketrans({"\t": " ", "\n": " ", "\r": " "})
 def _cell(text: str) -> str:
     """Return ``text`` with every tab and line break as a space, for one TSV cell."""
     return text.replace("\r\n", "\n").translate(_CELL_BREAKS)
+
+
+_FORMULA_STARTS = tuple("=+-@\uff1d\uff0b\uff0d\uff20")
+"""What a spreadsheet may read a cell as a formula from: = + - @, and the full-width
+forms some locales' spreadsheets take for them (OWASP, "CSV Injection")."""
+
+
+def _text_cell(text: str) -> str:
+    """Return ``text`` as one TSV text cell, never read as a formula."""
+    cell = _cell(text)
+    return f"'{cell}" if cell.lstrip(" ").startswith(_FORMULA_STARTS) else cell
 
 
 FIELD_DECIMALS = 6
@@ -377,21 +444,61 @@ _NOTE_HEADINGS = {
 """How each kind of note is introduced; a plain warning needs no heading."""
 
 
-def describe_note(note: Note) -> str:
-    """Return a note as one line for users: its kind, its text, and its sources.
+@dataclass(frozen=True)
+class NoteText:
+    """A note as users read it, in parts (ADR-0017 F1): lead, detail, then sources.
+
+    A front end styles each part: the GUI sets the sources smaller, and the CLI indents
+    the detail and the sources under the lead.
+    """
+
+    heading: str
+    """How its kind is introduced, e.g. ``"Limit exceeded"``; empty for a warning."""
+    lead: str
+    """The verdict, with its numbers in display units."""
+    detail: str
+    """What follows, if anything; empty for none."""
+    sources: str
+    """The sources, e.g. ``"Sources: AC 43.13-1B, Table 4-6: aircraft repair practice"``;
+    empty for a note with none."""
+
+    @property
+    def first_line(self) -> str:
+        """The heading and the lead, e.g. ``"Limit exceeded: inside radius …"``."""
+        return HEADED.format(heading=self.heading, lead=self.lead) if self.heading else self.lead
+
+    @property
+    def lines(self) -> tuple[str, ...]:
+        """The parts as lines: the first line, then the detail and the sources if any."""
+        return tuple(line for line in (self.first_line, self.detail, self.sources) if line)
+
+
+HEADED = "{heading}: {lead}"
+"""How a note's heading introduces its lead."""
+SOURCES = "Sources: {sources}"
+"""How a note's sources are introduced."""
+
+
+def describe_note(note: Note, prefs: DisplayPrefs) -> NoteText:
+    """Return a note as users read it, in parts, with its values in display units.
 
     Each source is named by its short form (``Reference.short``) and followed by its scope,
-    when it has one, so a note says how far its source applies, e.g. "(AC 43.13-1B,
-    Table 4-6: aerospace bench practice)". The full citations stay in the note's
+    when it has one, so a note says how far its source applies, e.g. "AC 43.13-1B,
+    Table 4-6: aerospace bench practice". The full citations stay in the note's
     references and in JSON. The GUI and the CLI both use this, so a note reads the same
     in both.
     """
-    heading = _NOTE_HEADINGS[note.kind]
-    text = f"{heading}: {note.text}" if heading else note.text
-    if not note.references:
-        return text
-    cited = "; ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in note.references)
-    return f"{text} ({cited})"
+
+    def show(value: float, dimension: Dimension) -> str:
+        return format_value(value, dimension, prefs)
+
+    cited = " · ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in note.references)
+    return NoteText(
+        _NOTE_HEADINGS[note.kind],
+        note.fill(note.text, show),
+        note.fill(note.detail, show),
+        SOURCES.format(sources=cited) if cited else "",
+    )
 
 
 def describe_setting_uses(uses: Sequence[tuple[Calculator, Sequence[Method]]]) -> list[str]:

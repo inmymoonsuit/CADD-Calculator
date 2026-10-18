@@ -60,7 +60,7 @@ def test_zero_angle_end_contributes_nothing() -> None:
 def test_warns_when_radius_below_thickness() -> None:
     calc = BendAllowance()
     result = calc.run({"thickness": 3.0, "inside_radius": 1.0}, method="k_factor")
-    notes = [n for n in result.notes if "minimum bend radius" in n.text]
+    notes = [n for n in result.notes if "minimum bend radius" in n.detail]
     assert [(n.kind, n.subjects) for n in notes] == [
         (NoteKind.WARNING, ("inside_radius", "thickness"))
     ], "a rule of thumb, not a cited limit"
@@ -117,7 +117,7 @@ def test_each_warning_appears_once_with_two_steep_bends() -> None:
         {"thickness": 3.0, "inside_radius": 1.0, "bend_angle_1": 120.0, "bend_angle_2": 120.0},
         method="k_factor",
     )
-    radius_warnings = [n for n in result.notes if "minimum bend radius" in n.text]
+    radius_warnings = [n for n in result.notes if "minimum bend radius" in n.detail]
     angle_warnings = [n for n in result.notes if "past 90°" in n.text]
     assert len(radius_warnings) == 1
     assert [n.text[:2] for n in angle_warnings] == ["A1", "A2"]

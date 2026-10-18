@@ -52,11 +52,15 @@ class Unit:
     """The unit's name for any amount but exactly one, e.g. ``"inches"``, as a screen reader
     says it (ADR-0017 §5). A unitless ratio has none: only its number is spoken."""
 
-    def spoken(self, amount: float) -> str:
-        """Return the unit's name as spoken after ``amount``: singular for exactly 1."""
+    def spoken(self, shown: str) -> str:
+        """Return the unit's name as spoken after the number ``shown``, e.g. ``"inches"``.
+
+        It's singular only after a shown ``1``. Any visible decimal takes the plural, as
+        CLDR's English plural rule has it, so ``1.0000 in`` is "1.0000 inches".
+        """
         if not self.symbol:
             return ""
-        return self.name if amount == 1 else self.spoken_plural
+        return self.name if shown.lstrip("+-") == "1" else self.spoken_plural
 
 
 _PSI_IN_MPA = 0.45359237 * 9.80665 / 25.4**2

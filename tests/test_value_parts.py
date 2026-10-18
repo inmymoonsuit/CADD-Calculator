@@ -6,7 +6,7 @@ from itertools import product
 
 import pytest
 
-from caddcalc.core import Calculator, Context, Method, Output, Param, Verification
+from caddcalc.core import Calculator, Context, Method, Output, Param, UsageError, Verification
 from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
@@ -136,10 +136,42 @@ def test_full_precision_rounds_to_ten_significant_digits_without_an_exponent() -
         assert "e" not in text.lower() and float(text) == pytest.approx(value, rel=1e-9)
 
 
-def test_no_copy_carries_the_fraction() -> None:
+def test_only_the_fraction_form_copies_the_fraction_with_its_inch_mark() -> None:
+    """R6: ``5/16"``, or ``1-5/16"``; a bare ``5/16`` would paste as a date."""
     prefs = DisplayPrefs(fraction_denominator=64)
     for form in CopyForm:
-        assert "/" not in copy_text(7.9223, L, prefs, form)
+        if form is not CopyForm.FRACTION:
+            assert "/" not in copy_text(7.9223, L, prefs, form)
+    assert copy_text(7.9375, L, prefs, CopyForm.FRACTION) == '5/16"'
+    assert copy_text(33.3375, L, prefs, CopyForm.FRACTION) == '1-5/16"'
+    with pytest.raises(UsageError, match="without a fraction"):
+        copy_text(7.9375, L, DisplayPrefs(), CopyForm.FRACTION)
+
+
+def test_a_spreadsheet_never_reads_a_text_cell_as_a_formula() -> None:
+    """R2, with Support & Review's L5: text cells get an apostrophe; values never do."""
+    from caddcalc.core.formatting import _text_cell
+
+    for text in ("=SUM(A1)", "+1", "-x", "@cmd", "\uff1dSUM(A1)", "\uff20cmd", "  =x"):
+        assert _text_cell(text) == f"'{text}"
+    assert _text_cell("\t=x") == "' =x", "a tab, which OWASP also lists, is a space here"
+    assert _text_cell("BA") == "BA" and _text_cell("") == ""
+    calc = _Formula()
+    rows = results_tsv(calc, calc.run(), DisplayPrefs()).splitlines()
+    assert rows == ["'=X\t'+Half\t-0.5000\tin"], "the negative value stays a number"
+
+
+class _Formula(Calculator):
+    id = "test.formula"
+    name = "Formula"
+    domain = "test"
+    summary = "A test calculator whose symbol and label look like formulas."
+    params = (Param("length", "X", "Length", L, default="1 in"),)
+    outputs = (Output("half", "=X", "+Half", L),)
+    methods = (Method("only", "Only", "H = -X/2", Verification.UNVERIFIED),)
+
+    def compute(self, ctx: Context) -> None:
+        ctx.calc("H", "-X/2", label="Half", dimension=L, output="half")
 
 
 class _Bracket(Calculator):

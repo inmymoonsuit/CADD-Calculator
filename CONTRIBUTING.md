@@ -78,7 +78,10 @@ class MyCalc(Calculator):
    to show the shape of the code.)
 3. Formulas go in `ctx.calc` strings. Use `tand`, `sind`, and so on for degree-based trig.
    Values computed in Python go through `ctx.record(..., note="why")`.
-4. Warn about engineering hazards with `ctx.warn(...)`.
+4. Warn about engineering hazards with `ctx.warn(...)`. Lead with the verdict, and name
+   any value as a field, e.g. `ctx.warn("Radius {R} is under {T}.", quantities={"R":
+   (r, LENGTH), "T": (t, LENGTH)}, detail="Why it matters.")`, so it's shown in the
+   user's units (ADR-0017, amendments).
 5. **Tests:** at least one worked example per method, from the cited source when there is
    one. Generic tests already check that it runs and renders.
 

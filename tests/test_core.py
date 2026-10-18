@@ -204,6 +204,8 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
     assert limit.to_dict() == {
         "kind": "limit_exceeded",
         "text": "Past the bench limit.",
+        "detail": "",
+        "quantities": {},
         "references": [
             {
                 "title": "Shop handbook",
@@ -232,6 +234,8 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
     assert plain.to_dict() == {
         "kind": "warning",
         "text": "Check this.",
+        "detail": "",
+        "quantities": {},
         "references": [],
         "subjects": [],
     }
@@ -240,20 +244,60 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
 @pytest.mark.parametrize(
     ("note", "wording"),
     [
-        (Note(NoteKind.WARNING, "Check this."), "Check this."),
+        (Note(NoteKind.WARNING, "Check this."), ("Check this.",)),
         (
             Note(NoteKind.LIMIT_EXCEEDED, "Too tight.", (Reference("A", "p. 1"), Reference("B"))),
-            "Limit exceeded: Too tight. (A, p. 1; B)",
+            ("Limit exceeded: Too tight.", "Sources: A, p. 1 · B"),
         ),
         (
-            Note(NoteKind.NO_APPLICABLE_VALUE, "No table covers it."),
-            "No applicable value: No table covers it.",
+            Note(NoteKind.NO_APPLICABLE_VALUE, "No table covers it.", detail="Why not."),
+            ("No applicable value: No table covers it.", "Why not."),
         ),
-        (Note(NoteKind.INFEASIBLE, "Too short."), "Not makeable: Too short."),
+        (Note(NoteKind.INFEASIBLE, "Too short."), ("Not makeable: Too short.",)),
     ],
 )
-def test_notes_are_worded_once_for_every_front_end(note: Note, wording: str) -> None:
-    assert describe_note(note) == wording
+def test_notes_are_worded_once_for_every_front_end(note: Note, wording: tuple[str, ...]) -> None:
+    """ADR-0017 F1: the lead, then the detail, then the sources, each its own part."""
+    assert describe_note(note, DisplayPrefs()).lines == wording
+
+
+def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_json() -> None:
+    note = Note(
+        NoteKind.WARNING,
+        "Radius {R} is under {T} for {material}.",
+        detail="Nothing joined: {material} {{as}} written.",
+        quantities={"R": (25.4, Dimension.LENGTH), "T": (50.8, Dimension.LENGTH)},
+        phrases={"material": "brass {not a field}"},
+    )
+    text = describe_note(note, DisplayPrefs())
+    assert text.lead == "Radius 1.0000 in is under 2.0000 in for brass {not a field}."
+    assert text.detail == "Nothing joined: brass {not a field} {as} written."
+    metric = describe_note(note, DisplayPrefs(length_unit="mm"))
+    assert metric.lead.startswith("Radius 25.4000 mm is under 50.8000 mm")
+    data = note.to_dict()
+    assert data["text"] == "Radius 25.4 mm is under 50.8 mm for brass {not a field}."
+    assert data["quantities"]["T"] == {"value": 50.8, "unit": "mm", "dimension": "length"}
+    assert hash(note) == hash(Note(NoteKind.WARNING, note.text, detail=note.detail))
+    assert Note(NoteKind.WARNING, "A {plain} note.").to_dict()["text"] == "A {plain} note."
+
+
+@pytest.mark.parametrize(
+    ("text", "fields", "problem"),
+    [
+        ("Radius {} is tight.", {"R": (1.0, Dimension.LENGTH)}, "unnamed field"),
+        ("Radius {0} is tight.", {"R": (1.0, Dimension.LENGTH)}, "names '0'"),
+        ("Radius {S} is tight.", {"R": (1.0, Dimension.LENGTH)}, "names 'S'"),
+        ("Radius {R is tight.", {"R": (1.0, Dimension.LENGTH)}, "isn't a template"),
+    ],
+)
+def test_a_notes_fields_must_be_named_and_given(
+    text: str, fields: dict[str, tuple[float, Dimension]], problem: str
+) -> None:
+    """Named fields only, so a translation can reorder them (ADR-0020 notes, item A)."""
+    with pytest.raises(SpecError, match=problem):
+        Note(NoteKind.WARNING, text, quantities=fields)
+    with pytest.raises(SpecError, match="both quantities and phrases"):
+        Note(NoteKind.WARNING, "{R}", quantities={"R": (1.0, Dimension.LENGTH)}, phrases={"R": "x"})
 
 
 def test_a_limit_exceeded_note_must_cite_its_limit() -> None:
@@ -281,6 +325,8 @@ def test_ctx_note_records_kinds_references_and_subjects() -> None:
     assert result.to_dict()["notes"][1] == {
         "kind": "no_applicable_value",
         "text": "No data.",
+        "detail": "",
+        "quantities": {},
         "references": [
             {
                 "title": "Table",

@@ -4,24 +4,37 @@ The Results panel holds one ``ResultField`` per output of the shown calculator, 
 document of notes, inputs, and work. It's always as tall as its fields: results are
 never clipped or scrolled on their own, only with the page (ADR-0017 R3, as amended).
 It's built when the calculator changes and its values update on every recompute, so
-keyboard focus and hover survive typing. A field shows its output through
-``core.formatting.output_parts``, the one place outputs are presented, so it can't
-disagree with the document or the CLI.
+keyboard focus and hover survive typing. A field shows and copies its output through
+``core.formatting.output_parts`` and ``copy_output``, the one place outputs are
+presented, so it can't disagree with the document or the CLI.
+
+Copying (ADR-0017 §4, §5): a field's button, Space, Enter, or Ctrl+C on it copies the
+value as shown; its context menu offers the other forms; Copy all copies every output as
+spreadsheet rows. Each copy shows a check in place for a moment, and is announced in the
+status bar and to screen readers.
 
 Every size, role, and state comes from the design tokens (``ui_style``); a test keeps
-literals out of here.
+literals out of here. User-facing wording is whole sentences with named fields, so it can
+be translated as written.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import override
 
-from PySide6.QtCore import QEvent, QObject, QRectF, QSize, Qt
+from PySide6.QtCore import QEvent, QObject, QRectF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import (
+    QAccessible,
+    QAccessibleAnnouncementEvent,
     QColor,
+    QContextMenuEvent,
     QEnterEvent,
     QFont,
     QFontMetricsF,
+    QGuiApplication,
+    QKeyEvent,
+    QKeySequence,
     QPainter,
     QPaintEvent,
     QResizeEvent,
@@ -29,6 +42,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QMenu,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -36,7 +50,16 @@ from PySide6.QtWidgets import (
 )
 
 from caddcalc.core import Calculator, Output, Result
-from caddcalc.core.formatting import DisplayPrefs, ValueParts, output_parts
+from caddcalc.core.formatting import (
+    CopyForm,
+    DisplayPrefs,
+    ValueParts,
+    copy_output,
+    decimal_separator,
+    output_parts,
+    results_tsv,
+    spoken_value,
+)
 from caddcalc.gui.icons import current_scheme, icon, role_color
 from caddcalc.gui.outlines import Outline, strongest
 from caddcalc.gui.painting import on_device_pixels, stroke
@@ -45,6 +68,34 @@ from caddcalc.gui.ui_style import ResultFieldTokens, ui_style
 NO_VALUE = "—"
 """What a field shows while its calculator's inputs have no result."""
 NO_VALUE_TIP = "No value to copy"
+NO_VALUE_SPOKEN = "no value"
+"""What a screen reader says in place of a value while there's none."""
+TITLE = "Results"
+FIELD_NAME = "{label}, {symbol}: {value}"
+"""A field's accessible name, e.g. "Bend allowance, BA: 0.3119 inches"."""
+COPY = "Copy {label}"
+"""The copy button's tooltip and accessible name, e.g. "Copy Bend allowance"."""
+COPIED = "Copied {symbol} = {text} to the clipboard"
+COPY_ALL = "Copy all"
+COPY_ALL_NAME = "Copy all results"
+COPY_ALL_TIP = "Copy all results as rows for a spreadsheet ({keys})"
+COPIED_ALL = "Copied all results to the clipboard"
+COPY_ALL_KEYS = QKeySequence("Ctrl+Shift+C")
+"""Copy all, from anywhere in the window; Cmd+Shift+C on macOS."""
+MENU = {
+    CopyForm.VALUE: "Copy value",
+    CopyForm.WITH_UNIT: "Copy with unit",
+    CopyForm.FULL: "Copy full precision",
+    CopyForm.FRACTION: "Copy fraction",
+}
+"""The context menu's copy forms (R6), in order; the fraction only when it's shown."""
+
+
+def _announce(widget: QWidget, message: str) -> None:
+    """Tell screen readers ``message``, politely, as the status bar shows it (R4)."""
+    event = QAccessibleAnnouncementEvent(widget, message)
+    event.setPoliteness(QAccessible.AnnouncementPoliteness.Polite)
+    QAccessible.updateAccessibility(event)
 
 
 class _ElidedLabel(QLabel):
@@ -69,12 +120,62 @@ class _ElidedLabel(QLabel):
         self._elide()
 
 
+class _CopyButton(QToolButton):
+    """A copy button that Space, Enter, and the platform's Copy keys all press (§5).
+
+    A tool button takes Space already; Enter and Copy (Ctrl+C, or Cmd+C on macOS) copy
+    the focused field's value too, and nothing else, since the shortcut is the button's
+    own key handling rather than a window-wide one.
+    """
+
+    @override
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        enter = event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        if (enter or event.matches(QKeySequence.StandardKey.Copy)) and self.isEnabled():
+            self.click()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
+class _CopiedState:
+    """Shows a button's check icon for ``copied_ms`` after a copy, then its copy icon."""
+
+    def __init__(self, button: QToolButton, tokens: ResultFieldTokens) -> None:
+        self.button = button
+        self.tokens = tokens
+        self.timer = QTimer(button)
+        self.timer.setSingleShot(True)
+        self.timer.setInterval(round(tokens.copied_ms))
+        self.timer.timeout.connect(self.restyle)
+
+    @property
+    def showing(self) -> bool:
+        """Whether the check shows now."""
+        return self.timer.isActive()
+
+    def start(self) -> None:
+        """Show the check, for ``copied_ms`` from now; nothing else moves."""
+        self.timer.start()
+        self.restyle()
+
+    def restyle(self) -> None:
+        """Show the icon for the current state, in the current scheme."""
+        name = self.tokens.copied_icon if self.showing else self.tokens.copy_icon
+        self.button.setIcon(icon(name, "icon", current_scheme()))
+
+
 class ResultField(QWidget):
     """One output, boxed: its symbol, label, value, unit, and a copy button (ADR-0017 §2).
 
     The frame is drawn inside a margin as wide as the focus ring and its gap, so the ring
     can sit outside the frame without being clipped.
+
+    Attributes:
+        copied: Emitted with the status message after the field copies.
     """
+
+    copied = Signal(str)
 
     def __init__(self, output: Output, tokens: ResultFieldTokens, parent: QWidget) -> None:
         super().__init__(parent)
@@ -82,6 +183,10 @@ class ResultField(QWidget):
         self.tokens = tokens
         self.parts: ValueParts | None = None
         """What the field shows; ``None`` while there's no value."""
+        self.amount: float | None = None
+        """The value it shows, in base units, which it copies from; ``None`` for none."""
+        self.prefs = DisplayPrefs()
+        """The display preferences it shows and copies its value in."""
         self.outline: Outline | None = None
         """The strongest outline of the notes that concern this output, if any."""
         self.hovered = False
@@ -107,13 +212,17 @@ class ResultField(QWidget):
         self.unit = QLabel(self)
         self.fraction = QLabel(self)
         self.fraction.hide()
-        self.copy_button = QToolButton(self)
+        self.copy_button = _CopyButton(self)
         self.copy_button.setAutoRaise(True)
         button = round(tokens.button_size)
         self.copy_button.setFixedSize(button, button)
         size = round(tokens.icon_size)
         self.copy_button.setIconSize(QSize(size, size))
+        self.copy_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.copy_button.installEventFilter(self)
+        self.copy_button.clicked.connect(self._on_clicked)
+        self.copy_button.setAccessibleName(COPY.format(label=output.label))
+        self.copied_state = _CopiedState(self.copy_button, tokens)
         for widget in (self.symbol, self.label, self.value, self.unit, self.fraction):
             row.addWidget(widget)
         row.setStretch(row.indexOf(self.label), 1)
@@ -130,10 +239,17 @@ class ResultField(QWidget):
             font.setFeature(QFont.Tag("tnum"), 1)  # every digit one width, so columns align
         return font
 
+    def set_value(self, amount: float | None, prefs: DisplayPrefs, outline: Outline | None) -> None:
+        """Show ``amount``, in base units, in ``prefs``; ``None`` shows no value."""
+        self.amount, self.prefs = amount, prefs
+        parts = None if amount is None else output_parts(self.output, amount, prefs)
+        self.show_parts(parts, outline)
+
     def show_parts(self, parts: ValueParts | None, outline: Outline | None) -> None:
         """Show ``parts``, or no value, outlined by ``outline`` when a note concerns it."""
         self.parts, self.outline = parts, outline
         if parts is None:
+            self.amount = None
             self.value.setText(NO_VALUE)
             self.unit.setText("")
             self.fraction.hide()
@@ -146,8 +262,51 @@ class ResultField(QWidget):
             self.fraction.setText("" if parts.fraction is None else f'(≈ {parts.fraction}")')
             self.fraction.setVisible(parts.fraction is not None)
             self.copy_button.setEnabled(True)
-            self.copy_button.setToolTip(f"Copy {self.output.label.lower()}")
+            self.copy_button.setToolTip(COPY.format(label=self.output.label))
+        spoken = NO_VALUE_SPOKEN if parts is None else spoken_value(parts)
+        name = FIELD_NAME.format(label=self.output.label, symbol=self.output.symbol, value=spoken)
+        self.setAccessibleName(name)
+        self.copy_button.setAccessibleDescription(name)  # said with the button's name
         self.update()
+
+    def copy(self, form: CopyForm = CopyForm.VALUE) -> str | None:
+        """Copy the value, in ``form``, and show and announce it; ``None`` with no value.
+
+        It copies the value the field shows now, so an answer whose inputs changed is
+        never copied (§4, "never stale").
+        """
+        if self.amount is None or self.parts is None:
+            return None
+        if form is CopyForm.FRACTION and self.parts.fraction is None:
+            return None
+        text = copy_output(self.output, self.amount, self.prefs, form)
+        QGuiApplication.clipboard().setText(text)
+        self.copied_state.start()
+        self.copied.emit(COPIED.format(symbol=self.output.symbol, text=text))
+        return text
+
+    def _on_clicked(self) -> None:
+        self.copy()
+
+    def context_menu(self) -> QMenu:
+        """Return the menu of copy forms (R6): the fraction only when it's shown."""
+        menu = QMenu(self)
+        for form, text in MENU.items():
+            if form is CopyForm.FRACTION and (self.parts is None or self.parts.fraction is None):
+                continue
+            action = menu.addAction(text)
+            action.setEnabled(self.parts is not None)
+            action.triggered.connect(_copier(self, form))
+        return menu
+
+    @override
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        # Right-click, or the Menu key on the focused copy button, which passes it here.
+        # A popup, not a nested event loop; the menu goes when it closes.
+        menu = self.context_menu()
+        menu.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        menu.popup(event.globalPos())
+        event.accept()
 
     def restyle(self) -> None:
         """Take the current light or dark scheme's colours and icon."""
@@ -155,7 +314,7 @@ class ResultField(QWidget):
         color = role_color(self.tokens.text_role, scheme)
         for label in (self.symbol, self.label, self.value, self.unit, self.fraction):
             label.setStyleSheet(f"color: {color};")
-        self.copy_button.setIcon(icon(self.tokens.copy_icon, "icon", scheme))
+        self.copied_state.restyle()
         self.update()
 
     @property
@@ -209,34 +368,70 @@ class ResultField(QWidget):
         p.end()
 
 
+def _copier(field: ResultField, form: CopyForm) -> Callable[[], None]:
+    """Return a slot that copies ``field``'s value in ``form``."""
+
+    def copy() -> None:
+        field.copy(form)
+
+    return copy
+
+
 class ResultsPanel(QWidget):
-    """The shown calculator's results: a title, then one field per output (ADR-0017 §1).
+    """The shown calculator's results: a title and Copy all, then one field per output.
 
     ``build`` makes the fields when the calculator changes; ``show_result`` updates
     their values, or blanks them all while the inputs have no result, so an old answer
-    can't be read, or copied, after its inputs changed.
+    can't be read, or copied, after its inputs changed (ADR-0017 §1, §4).
+
+    Attributes:
+        announced: Emitted with each copy's status message, once screen readers have
+            been told it.
     """
+
+    announced = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.tokens = ui_style().result_field
         self.calculator: Calculator | None = None
+        self.result: Result | None = None
+        """The result the fields show, which Copy all copies; ``None`` for none."""
+        self.prefs = DisplayPrefs()
         self.fields: dict[str, ResultField] = {}
         top, sides = self.tokens.panel_inset
         column = QVBoxLayout(self)
         column.setContentsMargins(round(sides), round(top), round(sides), 0)
         column.setSpacing(round(self.tokens.stack_gap))
-        self.title = QLabel("Results", self)
+        self.title = QLabel(TITLE, self)
         title_font = QFont(self.title.font())
         title_font.setBold(True)
         self.title.setFont(title_font)
-        # In line with the fields' frames, which sit inside the focus ring's room.
-        ring = self.tokens.focus_width + self.tokens.focus_gap
-        self.title.setContentsMargins(round(ring), 0, 0, 0)
-        column.addWidget(self.title)
+        self.copy_all_button = _CopyButton(self)
+        self.copy_all_button.setText(COPY_ALL)
+        self.copy_all_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.copy_all_button.setAutoRaise(True)
+        size = round(self.tokens.icon_size)
+        self.copy_all_button.setIconSize(QSize(size, size))
+        self.copy_all_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.copy_all_button.setAccessibleName(COPY_ALL_NAME)
+        keys = COPY_ALL_KEYS.toString(QKeySequence.SequenceFormat.NativeText)
+        self.copy_all_button.setToolTip(COPY_ALL_TIP.format(keys=keys))
+        self.copy_all_button.clicked.connect(self.copy_all)
+        self.copy_all_state = _CopiedState(self.copy_all_button, self.tokens)
+        # The title and Copy all sit in line with the fields' frames, inside the focus
+        # ring's room.
+        ring = round(self.tokens.focus_width + self.tokens.focus_gap)
+        header = QHBoxLayout()
+        header.setContentsMargins(ring, 0, ring, 0)
+        header.addWidget(self.title, 1)
+        header.addWidget(self.copy_all_button)
+        column.addLayout(header)
         self._column = column
         # Exactly the title's and the fields' height: never squeezed, never stretched.
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.restyle()
+        self._sync_copy_all()
 
     def build(self, calc: Calculator) -> None:
         """Make one field per output of ``calc``; nothing changes for the same calculator."""
@@ -247,10 +442,13 @@ class ResultsPanel(QWidget):
             self._column.removeWidget(field)
             field.deleteLater()
         self.calculator = calc
+        self.result = None
         self.fields = {o.key: ResultField(o, self.tokens, self) for o in calc.outputs}
         for field in self.fields.values():
             self._column.addWidget(field)
+            field.copied.connect(self._announce)
         self._align()
+        self._sync_copy_all()
         self.updateGeometry()
 
     def show_result(self, result: Result | None, prefs: DisplayPrefs) -> None:
@@ -258,20 +456,44 @@ class ResultsPanel(QWidget):
         calc = self.calculator
         if calc is None:
             return
+        self.result, self.prefs = result, prefs
         if result is None:
             for field in self.fields.values():
-                field.show_parts(None, None)
+                field.set_value(None, prefs, None)
         else:
             outlines = strongest(result.notes, self.fields)
             for output in calc.outputs:
-                parts = output_parts(output, result.outputs[output.key], prefs)
-                self.fields[output.key].show_parts(parts, outlines.get(output.key))
+                field = self.fields[output.key]
+                field.set_value(result.outputs[output.key], prefs, outlines.get(output.key))
         self._align()
+        self._sync_copy_all()
+
+    def copy_all(self) -> str | None:
+        """Copy every output as tab-separated rows (R2); ``None`` while there's no result."""
+        if self.calculator is None or self.result is None:
+            return None
+        text = results_tsv(self.calculator, self.result, self.prefs)
+        QGuiApplication.clipboard().setText(text)
+        self.copy_all_state.start()
+        self._announce(COPIED_ALL)
+        return text
+
+    def focus_chain(self) -> list[QWidget]:
+        """The panel's stops for Tab, in order: each field's copy button, then Copy all."""
+        return [*(f.copy_button for f in self.fields.values()), self.copy_all_button]
 
     def restyle(self) -> None:
         """Take the current light or dark scheme's colours and icons."""
+        self.copy_all_state.restyle()
         for field in self.fields.values():
             field.restyle()
+
+    def _announce(self, message: str) -> None:
+        _announce(self, message)
+        self.announced.emit(message)
+
+    def _sync_copy_all(self) -> None:
+        self.copy_all_button.setEnabled(self.result is not None)
 
     def _align(self) -> None:
         """Line the fields' columns up, and their values on the decimal point (ADR-0017 §2)."""
@@ -281,7 +503,8 @@ class ResultsPanel(QWidget):
         symbol = max(f.symbol.sizeHint().width() for f in fields)
         unit = max(QFontMetricsF(f.unit.font()).horizontalAdvance(f.unit.text()) for f in fields)
         metrics = QFontMetricsF(fields[0].value.font())
-        tails = [_tail(f.parts, metrics) for f in fields]
+        point = decimal_separator(self.prefs)
+        tails = [_tail(f.parts, metrics, point) for f in fields]
         most = max(tails) if self.tokens.decimal_align else 0.0
         widths = []
         for field, tail in zip(fields, tails, strict=True):
@@ -295,7 +518,7 @@ class ResultsPanel(QWidget):
             field.value.setFixedWidth(round(value))
 
 
-def _tail(parts: ValueParts | None, metrics: QFontMetricsF) -> float:
+def _tail(parts: ValueParts | None, metrics: QFontMetricsF, point: str) -> float:
     """Return how far a value reaches right of where its decimal point starts.
 
     That's the point and its decimals, and a unit written close up, such as "°". A whole
@@ -304,12 +527,12 @@ def _tail(parts: ValueParts | None, metrics: QFontMetricsF) -> float:
     """
     if parts is None:
         return 0.0
-    places = _decimals(parts.number)
-    tail = metrics.horizontalAdvance("." + "0" * places) if places else 0.0
+    places = _decimals(parts.number, point)
+    tail = metrics.horizontalAdvance(point + "0" * places) if places else 0.0
     return tail + (metrics.horizontalAdvance(parts.unit) if parts.unit_close_up else 0.0)
 
 
-def _decimals(number: str) -> int:
-    """Return how many decimal places ``number`` is shown with."""
-    _whole, point, places = number.partition(".")
-    return len(places) if point else 0
+def _decimals(number: str, point: str) -> int:
+    """Return how many decimal places ``number`` is shown with, after ``point``."""
+    _whole, found, places = number.partition(point)
+    return len(places) if found else 0

@@ -13,7 +13,7 @@ from caddcalc.core import expr
 from caddcalc.core.choices import DerivedValue
 from caddcalc.core.domain import DomainValues, ValueOrigin
 from caddcalc.core.errors import InputError, SpecError, UsageError
-from caddcalc.core.notes import Note, NoteKind
+from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
@@ -150,19 +150,26 @@ class Context:
         *,
         references: Sequence[Reference] = (),
         subjects: Sequence[str] = (),
+        detail: str = "",
+        quantities: Mapping[str, Quantity] | None = None,
+        phrases: Mapping[str, str] | None = None,
     ) -> None:
         """Add a note to the result.
 
         Args:
-            text: One or two sentences for users.
+            text: The lead: one sentence for users that leads with the verdict.
             kind: What the note tells the user.
             references: The sources of the limit or rule behind it. A limit-exceeded note
                 needs at least one.
             subjects: The parameter or output keys the note concerns.
+            detail: What follows the lead, if anything.
+            quantities: Values the text and detail name as ``{fields}``, in base units;
+                they're shown in the user's display units (``Note``).
+            phrases: Data phrases the text and detail name as ``{fields}``.
 
         Raises:
-            SpecError: A subject isn't a parameter or output of this calculator, or a
-                limit-exceeded note cites nothing.
+            SpecError: A subject isn't a parameter or output of this calculator, a
+                limit-exceeded note cites nothing, or a field isn't given (``Note``).
         """
         known = {p.key for p in self.calculator.params} | {o.key for o in self.calculator.outputs}
         unknown = [s for s in subjects if s not in known]
@@ -170,11 +177,36 @@ class Context:
             raise SpecError(
                 f"{self.calculator.id}: note subjects {unknown} aren't parameters or outputs"
             )
-        self.notes.append(Note(kind, text, tuple(references), tuple(subjects)))
+        self.notes.append(
+            Note(
+                kind,
+                text,
+                tuple(references),
+                tuple(subjects),
+                detail,
+                quantities or {},
+                phrases or {},
+            )
+        )
 
-    def warn(self, text: str, *, subjects: Sequence[str] = ()) -> None:
+    def warn(
+        self,
+        text: str,
+        *,
+        subjects: Sequence[str] = (),
+        detail: str = "",
+        quantities: Mapping[str, Quantity] | None = None,
+        phrases: Mapping[str, str] | None = None,
+    ) -> None:
         """Add a warning: something to check before using the result. Short for ``note``."""
-        self.note(text, NoteKind.WARNING, subjects=subjects)
+        self.note(
+            text,
+            NoteKind.WARNING,
+            subjects=subjects,
+            detail=detail,
+            quantities=quantities,
+            phrases=phrases,
+        )
 
     def _record(self, step: Step, output: str | None) -> float:
         if step.symbol in self.symbols:

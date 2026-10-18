@@ -134,9 +134,15 @@ def test_every_unit_is_spoken_in_the_singular_and_the_plural() -> None:
     """ADR-0017 §5: "0.3119 inches" for a screen reader; a ratio speaks only its number."""
     for unit in UNITS:
         if unit.symbol:
-            assert unit.spoken_plural and unit.spoken(1) == unit.name, unit.symbol
-            assert unit.spoken(2) == unit.spoken(0.5) == unit.spoken_plural
+            assert unit.spoken_plural and unit.spoken("1") == unit.name, unit.symbol
+            assert unit.spoken("-1") == unit.name, "the sign isn't counted"
+            plurals = {unit.spoken(shown) for shown in ("2", "0.5", "1.0000", "0", "-2")}
+            assert plurals == {unit.spoken_plural}, "a shown decimal takes the plural"
         else:
-            assert unit.spoken(2) == unit.spoken(1) == ""
+            assert unit.spoken("2") == unit.spoken("1") == ""
     inch = next(u for u in UNITS if u.symbol == "in")
-    assert (inch.spoken(1), inch.spoken(0.3119)) == ("inch", "inches")
+    assert (inch.spoken("1"), inch.spoken("0.3119"), inch.spoken("1.0000")) == (
+        "inch",
+        "inches",
+        "inches",
+    )
