@@ -4,7 +4,8 @@ Every size, colour role, and font the welcome screen uses is a token in that fil
 this module reads, types, range-checks, and documents each one, refusing unknown keys.
 The screen reads tokens only, never literals, so restyling it means editing one checked
 file. Sizes are logical pixels. Colours are palette roles (``palette.toml``), checked
-here to exist in both themes.
+to exist in both themes. The reading and the checks are the core every token file
+shares, in ``style_tokens``; this module re-exports what it uses from there.
 
 Standard library only: the branding loader and the build script use the art budget
 without importing Qt.
@@ -14,44 +15,89 @@ from __future__ import annotations
 
 import math
 import tomllib
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, fields, replace
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, replace
 from functools import cache
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any
 
-from caddcalc.core.errors import CaddCalcError
+from caddcalc.gui.style_tokens import (
+    ASSETS,
+    LEVELS,
+    LINEAR,
+    PALETTE_FILE,
+    RGB,
+    SCHEMES,
+    SPACING,
+    Check,
+    Rect,
+    Size,
+    StyleError,
+    check_choice,
+    check_formats,
+    check_number,
+    check_role,
+    check_roles,
+    check_size,
+    check_spacing,
+    check_spacing_pair,
+    check_text,
+    check_texts,
+    contrast,
+    luminance,
+    palette_color,
+    parse_tables,
+    rgb,
+    rgb_luminance,
+)
 
-ASSETS = Path(__file__).parent / "assets"
+__all__ = [
+    "ANCHORS",
+    "ASSETS",
+    "FONTS",
+    "LARGE_TEXT_CONTRAST",
+    "LARGE_TEXT_PX",
+    "NORMAL_TEXT_CONTRAST",
+    "PACK_OVERRIDES",
+    "PALETTE_FILE",
+    "RGB",
+    "SCHEMA",
+    "SCHEMES",
+    "SPACING",
+    "STYLE_FILE",
+    "WEIGHTS",
+    "ArtTokens",
+    "CardTokens",
+    "LogoTokens",
+    "Pair",
+    "PaneStyle",
+    "PaneTokens",
+    "Rect",
+    "Size",
+    "StyleError",
+    "TopBarTokens",
+    "TypographyTokens",
+    "WelcomeStyle",
+    "art_contrast",
+    "background_spread",
+    "contrast",
+    "load_style",
+    "luminance",
+    "opaque_fill",
+    "pane_fill",
+    "pane_pairs",
+    "pane_reads",
+    "parse_style",
+    "rgb",
+    "rgb_luminance",
+    "sample_grid",
+    "short_of",
+    "style",
+    "with_overrides",
+]
+
 STYLE_FILE = ASSETS / "welcome_style.toml"
-PALETTE_FILE = ASSETS / "palette.toml"
 SCHEMA = 1
-
-
-class StyleError(CaddCalcError):
-    """The welcome style is malformed: an unknown key, a wrong type, or a value out of range."""
-
-
-class Size(NamedTuple):
-    """A width and a height."""
-
-    width: float
-    height: float
-
-
-class Rect(NamedTuple):
-    """A rectangle: its upper-left corner, then its size."""
-
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-SCHEMES = ("light", "dark")
-SPACING = (2, 4, 6, 8, 12, 16, 24, 32)
-"""The spacing scale: every inset, margin, and padding is one of these (ADR-0016,
-amendments). Sizes, such as the logo region's width, are free."""
 WEIGHTS = frozenset({"regular", "bold"})
 LARGE_TEXT_PX = 24
 """WCAG 2's large text: 18 points, 24 px at 96 dpi, or more."""
@@ -243,154 +289,69 @@ class WelcomeStyle:
 
 # --- reading --------------------------------------------------------------------------------
 
-Check = Callable[[str, Any], Any]
-
-
-def _number(low: float, high: float, *, whole: bool = False) -> Check:
-    def check(where: str, value: Any) -> float:
-        kind = int if whole else int | float
-        if not isinstance(value, kind) or isinstance(value, bool) or not low <= value <= high:
-            noun = "a whole number" if whole else "a number"
-            raise StyleError(f"{where} must be {noun} from {low:g} to {high:g}, not {value!r}")
-        return value
-
-    return check
-
-
-def _pair(low: float, high: float) -> Check:
-    item = _number(low, high)
-
-    def check(where: str, value: Any) -> tuple[float, float]:
-        if not isinstance(value, list) or len(value) != 2:
-            raise StyleError(f"{where} must be two numbers, e.g. [10, 16]")
-        return item(where, value[0]), item(where, value[1])
-
-    return check
-
-
-def _size(low: float, high: float) -> Check:
-    pair = _pair(low, high)
-    return lambda where, value: Size(*pair(where, value))
-
-
-def _choice(allowed: frozenset[str]) -> Check:
-    def check(where: str, value: Any) -> str:
-        if value not in allowed:
-            raise StyleError(f"{where} must be one of {', '.join(sorted(allowed))}, not {value!r}")
-        return str(value)
-
-    return check
-
-
-def _text(where: str, value: Any) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise StyleError(f"{where} must be non-empty text")
-    return value
-
-
-def _texts(where: str, value: Any) -> tuple[str, ...]:
-    if not isinstance(value, list) or not value:
-        raise StyleError(f"{where} must be a non-empty list of text")
-    return tuple(_text(where, item) for item in value)
-
-
-def _formats(where: str, value: Any) -> tuple[str, ...]:
-    formats = _texts(where, value)
-    if not all(f.startswith(".") and f == f.lower() for f in formats):
-        raise StyleError(f'{where} must be lowercase file suffixes, e.g. ".png"')
-    return formats
-
-
-def _role(where: str, value: Any) -> str:
-    role = _text(where, value)
-    palette = _palette()
-    if not all(role in palette[scheme] for scheme in SCHEMES):
-        raise StyleError(f"{where}: {role!r} isn't a palette role in both themes")
-    return role
-
-
-def _roles(where: str, value: Any) -> tuple[str, str]:
-    if not isinstance(value, list) or len(value) != 2:
-        raise StyleError(f"{where} must be two palette roles")
-    return _role(where, value[0]), _role(where, value[1])
-
-
-def _spacing(where: str, value: Any) -> float:
-    if isinstance(value, bool) or value not in SPACING:
-        scale = ", ".join(str(step) for step in SPACING)
-        raise StyleError(f"{where} must be on the spacing scale, {scale}; not {value!r}")
-    return float(value)
-
-
-def _spacing_pair(where: str, value: Any) -> tuple[float, float]:
-    if not isinstance(value, list) or len(value) != 2:
-        raise StyleError(f"{where} must be two numbers, e.g. [8, 16]")
-    return _spacing(where, value[0]), _spacing(where, value[1])
-
-
-_WIDTH = _number(0, 8)
-_LENGTH = _number(0, 1024)
+_WIDTH = check_number(0, 8)
+_LENGTH = check_number(0, 1024)
 _PANE: dict[str, Check] = {
-    "anchor": _choice(ANCHORS),
-    "inset": _spacing,
-    "padding": _spacing_pair,
-    "font": _choice(FONTS),
-    "font_size": _number(1, 256),
-    "min_contrast": _number(1, 21),
-    "safe_area": _size(0, 4096),
+    "anchor": check_choice(ANCHORS),
+    "inset": check_spacing,
+    "padding": check_spacing_pair,
+    "font": check_choice(FONTS),
+    "font_size": check_number(1, 256),
+    "min_contrast": check_number(1, 21),
+    "safe_area": check_size(0, 4096),
 }
 _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
     "art": (
         ArtTokens,
         {
-            "slot": _size(1, 4096),
-            "supplied_scale": _number(1, 4, whole=True),
-            "formats": _formats,
-            "max_bytes": _number(1, 100_000_000, whole=True),
-            "max_px": _number(1, 16384, whole=True),
-            "grid": _number(1, 1024, whole=True),
+            "slot": check_size(1, 4096),
+            "supplied_scale": check_number(1, 4, whole=True),
+            "formats": check_formats,
+            "max_bytes": check_number(1, 100_000_000, whole=True),
+            "max_px": check_number(1, 16384, whole=True),
+            "grid": check_number(1, 1024, whole=True),
         },
     ),
     "card": (
         CardTokens,
-        {"corner_radius": _number(0, 32), "border_width": _WIDTH, "border_role": _role},
+        {"corner_radius": check_number(0, 32), "border_width": _WIDTH, "border_role": check_role},
     ),
     "top_bar": (
         TopBarTokens,
         {
-            "height": _number(1, 256),
-            "padding": _spacing,
-            "button_size": _number(1, 256),
+            "height": check_number(1, 256),
+            "padding": check_spacing,
+            "button_size": check_number(1, 256),
             "separator_width": _WIDTH,
-            "separator_role": _role,
+            "separator_role": check_role,
         },
     ),
     "logo": (
         LogoTokens,
         {
-            "formats": _formats,
-            "region_width": _number(1, 1024),
-            "margin_left": _spacing,
-            "margin_top": _spacing,
-            "margin_bottom": _spacing,
-            "padding": _spacing,
-            "min_short_side": _number(1, 1024),
-            "max_long_side": _number(1, 4096),
+            "formats": check_formats,
+            "region_width": check_number(1, 1024),
+            "margin_left": check_spacing,
+            "margin_top": check_spacing,
+            "margin_bottom": check_spacing,
+            "padding": check_spacing,
+            "min_short_side": check_number(1, 1024),
+            "max_long_side": check_number(1, 4096),
             "border_width": _WIDTH,
-            "border_role": _role,
-            "fill_role": _role,
+            "border_role": check_role,
+            "fill_role": check_role,
         },
     ),
     "panes": (
         PaneStyle,
         {
-            "text_roles": _roles,
-            "fill_roles": _roles,
-            "fill_opacity_min": _number(0, 1),
+            "text_roles": check_roles,
+            "fill_roles": check_roles,
+            "fill_opacity_min": check_number(0, 1),
             "border_width": _WIDTH,
-            "percentile": _number(0, 50),
-            "min_samples": _number(1, 1_000_000, whole=True),
-            "max_background_spread": _number(1, 21),
+            "percentile": check_number(0, 50),
+            "min_samples": check_number(1, 1_000_000, whole=True),
+            "max_background_spread": check_number(1, 21),
         },
     ),
     "name_pane": (PaneTokens, _PANE),
@@ -398,13 +359,13 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
     "typography": (
         TypographyTokens,
         {
-            "display_family": _text,
-            "display_file": _text,
-            "display_weight": _choice(WEIGHTS),
-            "display_em_pixels": _number(1, 1000, whole=True),
-            "display_cap_height": _number(0.01, 1),
-            "fallback_families": _texts,
-            "min_font_size": _number(1, 64),
+            "display_family": check_text,
+            "display_file": check_text,
+            "display_weight": check_choice(WEIGHTS),
+            "display_em_pixels": check_number(1, 1000, whole=True),
+            "display_cap_height": check_number(0.01, 1),
+            "fallback_families": check_texts,
+            "min_font_size": check_number(1, 64),
         },
     ),
 }
@@ -417,25 +378,7 @@ def parse_style(data: Mapping[str, Any], origin: str = STYLE_FILE.name) -> Welco
         StyleError: A table or token is unknown or missing, has the wrong type, or is out
             of range; or a role isn't in the palette.
     """
-    unknown = sorted(set(data) - set(_TABLES) - {"schema"})
-    if unknown:
-        raise StyleError(f"{origin}: unknown table(s) {', '.join(unknown)}")
-    if data.get("schema") != SCHEMA:
-        raise StyleError(f"{origin}: schema must be {SCHEMA}, not {data.get('schema')!r}")
-    tables: dict[str, Any] = {}
-    for name, (kind, checks) in _TABLES.items():
-        table = data.get(name)
-        if not isinstance(table, Mapping):
-            raise StyleError(f"{origin}: [{name}] is missing")
-        extra = sorted(set(table) - set(checks))
-        missing = sorted(set(checks) - set(table))
-        if extra or missing:
-            raise StyleError(f"{origin}: [{name}] has unknown {extra} and lacks {missing}")
-        values = {
-            key: check(f"{origin}: {name}.{key}", table[key]) for key, check in checks.items()
-        }
-        tables[name] = kind(**{f.name: values[f.name] for f in fields(kind)})
-    return _checked(WelcomeStyle(**tables), origin)
+    return _checked(WelcomeStyle(**parse_tables(data, _TABLES, SCHEMA, origin)), origin)
 
 
 PACK_OVERRIDES: Mapping[str, frozenset[str]] = {
@@ -542,7 +485,7 @@ def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
 def pane_pairs(panes: PaneStyle, scheme: str) -> list[Pair]:
     """Return each pane text colour with its own fill's colour, in ``scheme``."""
     return [
-        (rgb(_role_color(text, scheme)), rgb(_role_color(fill, scheme)))
+        (rgb(palette_color(text, scheme)), rgb(palette_color(fill, scheme)))
         for text, fill in zip(panes.text_roles, panes.fill_roles, strict=True)
     ]
 
@@ -566,53 +509,8 @@ def style() -> WelcomeStyle:
     return load_style()
 
 
-@cache
-def _palette() -> dict[str, Any]:
-    data: dict[str, Any] = tomllib.loads(PALETTE_FILE.read_text(encoding="utf-8"))
-    return data
-
-
-def _role_color(role: str, scheme: str) -> str:
-    """Return a palette role's ``#RRGGBB`` colour in ``scheme``."""
-    palette = _palette()
-    color: str = palette["colors"][palette[scheme][role]]
-    return color
-
-
-# --- contrast (WCAG 2) ----------------------------------------------------------------------
-
-RGB = tuple[int, int, int]
-"""A colour's red, green, and blue, each from 0 to 255, as sRGB stores them."""
 Pair = tuple[RGB, RGB]
 """A pane's text colour, and its fill's colour."""
-_LEVELS = 255
-_LINEAR = tuple(
-    c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-    for c in (level / _LEVELS for level in range(_LEVELS + 1))
-)
-"""Each 8-bit sRGB level's linear light, for relative luminance (WCAG 2)."""
-
-
-def rgb(color: str) -> RGB:
-    """Return a ``#RRGGBB`` colour's channels."""
-    return int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
-
-
-def rgb_luminance(color: Sequence[int]) -> float:
-    """Return the relative luminance of 8-bit sRGB channels, from 0 (black) to 1."""
-    r, g, b = _LINEAR[color[0]], _LINEAR[color[1]], _LINEAR[color[2]]
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def luminance(color: str) -> float:
-    """Return the relative luminance of a ``#RRGGBB`` colour, from 0 (black) to 1."""
-    return rgb_luminance(rgb(color))
-
-
-def contrast(first: float, second: float) -> float:
-    """Return the contrast ratio of two relative luminances, from 1 to 21."""
-    high, low = max(first, second), min(first, second)
-    return (high + 0.05) / (low + 0.05)
 
 
 # --- the panes' contrast guarantee (ADR-0016 §5) -------------------------------------------
@@ -658,9 +556,9 @@ def _blend_tables(fill: RGB, alpha: int) -> tuple[list[list[float]], list[list[f
     """
     darker, lighter = [], []
     for level, weight in zip(fill, _WEIGHTS, strict=True):
-        blends = [level * alpha + art * (_LEVELS - alpha) for art in range(_LEVELS + 1)]
-        darker.append([weight * _LINEAR[blend // _LEVELS] for blend in blends])
-        lighter.append([weight * _LINEAR[-(-blend // _LEVELS)] for blend in blends])
+        blends = [level * alpha + art * (LEVELS - alpha) for art in range(LEVELS + 1)]
+        darker.append([weight * LINEAR[blend // LEVELS] for blend in blends])
+        lighter.append([weight * LINEAR[-(-blend // LEVELS)] for blend in blends])
     return darker, lighter
 
 
@@ -755,16 +653,16 @@ def pane_fill(
         The index of the pair in ``pairs``, and the fill's alpha, 0 to 255. If no pair
         reads even opaque, the fill is opaque, in the pair that contrasts most.
     """
-    floor = math.ceil(panes.fill_opacity_min * _LEVELS)
+    floor = math.ceil(panes.fill_opacity_min * LEVELS)
     candidates = []
     for index, (text, fill) in enumerate(pairs):
 
         def reads(alpha: int, text: RGB = text, fill: RGB = fill) -> bool:
             return pane_reads(art, text, fill, alpha, panes, needed)
 
-        if not reads(_LEVELS):
+        if not reads(LEVELS):
             continue
-        low, high = floor - 1, _LEVELS  # low doesn't read (or is below the floor); high reads
+        low, high = floor - 1, LEVELS  # low doesn't read (or is below the floor); high reads
         if reads(floor):
             high = floor
         else:
@@ -790,4 +688,4 @@ def opaque_fill(pairs: Sequence[Pair]) -> tuple[int, int]:
         range(len(pairs)),
         key=lambda i: contrast(rgb_luminance(pairs[i][0]), rgb_luminance(pairs[i][1])),
     )
-    return index, _LEVELS
+    return index, LEVELS

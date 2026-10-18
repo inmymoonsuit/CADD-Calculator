@@ -362,3 +362,16 @@ texture. The project decided on a second condition in the same bisection.
 * **The effect.** Calm art, such as the generic gradient or a quiet render, sits around
   1.1 and stays at 15%. Over a black-and-white checker, the name's fill rises to about
   83% (alpha 211), with a spread of 1.497.
+
+### 2026-10-17: a shared loader core (ADR-0017 preparation)
+
+* The reading and checking that any design-token file needs moved out of
+  `gui/welcome_style.py` into `gui/style_tokens.py`, so ADR-0017's app-wide token file
+  can share it. That covers `StyleError`, `Size`, `Rect`, the spacing scale, each token's
+  check, the table and schema parsing, palette access, and the WCAG contrast helpers.
+* `welcome_style.py` keeps the welcome tokens, the pack whitelist, the whole-style
+  checks, and the panes' rule, and re-exports what it uses, so nothing that imports it
+  changed. The messages are unchanged, there is still one `StyleError`, and every
+  existing test passed without an edit.
+* `style_tokens` joins the import-linter contract that keeps Qt out of the core, the
+  calculators, and the branding loader.

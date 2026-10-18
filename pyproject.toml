@@ -118,7 +118,12 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "Core, calculators, and the branding loader never import Qt"
+name = "Core, calculators, the branding loader, and the style-token core never import Qt"
 type = "forbidden"
-source_modules = ["caddcalc.core", "caddcalc.calculators", "caddcalc.gui.branding"]
+source_modules = [
+    "caddcalc.core",
+    "caddcalc.calculators",
+    "caddcalc.gui.branding",
+    "caddcalc.gui.style_tokens",
+]
 forbidden_modules = ["PySide6", "shiboken6"]
