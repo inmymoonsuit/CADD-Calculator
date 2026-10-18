@@ -35,6 +35,7 @@ from PySide6.QtGui import (
     QPaintEvent,
     QPen,
     QResizeEvent,
+    QScreen,
 )
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QToolButton, QVBoxLayout, QWidget
@@ -531,6 +532,7 @@ class WelcomeScreen(QWidget):
         scale = self._fit_scale()
         window = tokens.window
         self.setFixedSize(round(window.width * scale), round(window.height * scale))
+        self._centre()
 
         self.top_bar = _TopBar(self)
         self.top_bar.setFixedHeight(round(tokens.top_bar.height * scale))
@@ -592,11 +594,29 @@ class WelcomeScreen(QWidget):
 
     def _fit_scale(self) -> float:
         """Return the scale that fits the card on its screen, at most 1 (ADR-0015)."""
-        screen = (self.parentWidget() or self).screen() or QGuiApplication.primaryScreen()
+        screen = self._card_screen()
         if screen is None:
             return 1.0
         available = screen.availableGeometry()
         return fit_scale(Size(available.width(), available.height()))
+
+    def _card_screen(self) -> QScreen | None:
+        """Return the screen the card shows on: its window's, its own, or the primary."""
+        return (self.parentWidget() or self).screen() or QGuiApplication.primaryScreen()
+
+    def _centre(self) -> None:
+        """Centre the card in its screen's work area, where the main window opens too.
+
+        A frameless window's place is otherwise the system's, which may cascade it into a
+        corner away from the main window (ADR-0021 §3).
+        """
+        screen = self._card_screen()
+        if screen is None:
+            return
+        area = screen.availableGeometry()
+        x = area.x() + (area.width() - self.width()) // 2
+        y = area.y() + (area.height() - self.height()) // 2
+        self.move(x, y)
 
     def _apply_theme(self) -> None:
         scheme = current_scheme()

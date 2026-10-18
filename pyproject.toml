@@ -127,5 +127,6 @@ source_modules = [
     "caddcalc.gui.style_tokens",
     "caddcalc.gui.ui_style",
     "caddcalc.gui.outlines",
+    "caddcalc.gui.window_layout",
 ]
 forbidden_modules = ["PySide6", "shiboken6"]

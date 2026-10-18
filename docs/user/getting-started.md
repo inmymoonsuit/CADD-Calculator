@@ -22,9 +22,13 @@ uv run caddcalc-gui
   upper right to use the calculators; drag its top bar to move it. In the main window,
   **Help > Welcome Screen** shows it again, **Help > About** shows About, and
   **File > Exit** closes the app.
+* The window opens centred, sized to fit your screen, and follows Windows' text size
+  (Settings > Accessibility > Text size), read when the app starts.
 * Pick a calculator on the left, or pick a family, such as **Sheet Metal**, to see the
-  settings its calculators share.
-* Choose a **Method** (the status shows in brackets) and **Units** (`in` or `mm`).
+  settings its calculators share. Drag the line between the list and the page to widen
+  either.
+* Choose a **Method** and **Units** (`in` or `mm`). The method's status, such as
+  "unverified · reproduces legacy", shows beside it, and its list shows each method's.
 * Type the inputs. Results update as you type, and invalid fields are outlined in red.
   You can type units and fractions: `1/8`, `1-1/2"`, `3 mm`.
 * Switching units re-expresses the values you've entered. The part doesn't change, and

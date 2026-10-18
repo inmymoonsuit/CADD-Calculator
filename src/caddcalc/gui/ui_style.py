@@ -3,7 +3,8 @@
 Every size, colour role, and state the app's own components use is a token in that file
 (ADR-0017 §7), read, typed, and range-checked here on the core every token file shares
 (``style_tokens``), so a component reads tokens only, never literals. The result fields
-take ``result_field``; input and result fields alike take ``note_outline``.
+take ``result_field``; input and result fields alike take ``note_outline``; the window and
+its page take ``layout``.
 
 Standard library only.
 """
@@ -86,9 +87,28 @@ class ResultFieldTokens:
     secondary_text_opacity: float
     """Secondary text, such as a value's source, is ``text_role`` at this opacity over
     ``fill_role``: lighter than the body text, at the body's size, and still 4.5:1."""
-    panel_max_width: float
-    """The widest the results panel gets; it's centred in a wider page, so a maximized
-    window doesn't spread each label and number far apart."""
+
+
+@dataclass(frozen=True)
+class LayoutTokens:
+    """The window and the page, in text units: ``ch`` widths and line spacings (ADR-0021)."""
+
+    list_width_chars: float
+    """The calculator list's launch width."""
+    list_min_chars: float
+    """The list's least width; it never collapses."""
+    page_max_chars: float
+    """The page's widest, its scroll bar included; beyond it, plain background."""
+    panel_max_chars: float
+    """The results panel's widest, centred in the page."""
+    launch_lines: float
+    """The launch content height, in line spacings."""
+    screen_margin: float
+    """The least room between the window's frame and the screen's work area, in pixels."""
+    right_pane_min_chars: float
+    """A future right-hand pane's least width (ADR-0021 §5); nothing uses it yet."""
+    right_pane_default_chars: float
+    """That pane's width when it opens; nothing uses it yet."""
 
 
 @dataclass(frozen=True)
@@ -114,6 +134,7 @@ class UiStyle:
 
     result_field: ResultFieldTokens
     note_outline: NoteOutlineTokens
+    layout: LayoutTokens
 
 
 def check_icon(where: str, value: Any) -> str:
@@ -127,6 +148,7 @@ def check_icon(where: str, value: Any) -> str:
 _WIDTH = check_number(0, 8)
 _SIZE = check_number(1, 1024)
 _LINE = check_choice(LINE_STYLES)
+_CHARS = check_number(8, 400)
 _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
     "result_field": (
         ResultFieldTokens,
@@ -158,7 +180,6 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "copied_icon": check_icon,
             "title_scale": check_number(1, 3),
             "secondary_text_opacity": check_number(0, 1),
-            "panel_max_width": check_number(320, 4096),
         },
     ),
     "note_outline": (
@@ -173,6 +194,19 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "no_value_style": _LINE,
             "error_role": check_role,
             "error_style": _LINE,
+        },
+    ),
+    "layout": (
+        LayoutTokens,
+        {
+            "list_width_chars": _CHARS,
+            "list_min_chars": _CHARS,
+            "page_max_chars": _CHARS,
+            "panel_max_chars": _CHARS,
+            "launch_lines": check_number(10, 200),
+            "screen_margin": check_spacing,
+            "right_pane_min_chars": _CHARS,
+            "right_pane_default_chars": _CHARS,
         },
     ),
 }
@@ -194,9 +228,10 @@ def _checked(tokens: UiStyle, origin: str) -> UiStyle:
 
     A field must be tall enough for its button, the icon must fit the button, and a note
     outline must be heavier than a field's border, so it reads without its colour (WCAG
-    1.4.1).
+    1.4.1). The list's least width is within its launch width, the panel within the
+    page, and a pane's least width within its opening width.
     """
-    field, outline = tokens.result_field, tokens.note_outline
+    field, outline, layout = tokens.result_field, tokens.note_outline, tokens.layout
     if field.min_height < field.button_size:
         raise StyleError(
             f"{origin}: result_field.min_height {field.min_height:g} is less than its "
@@ -212,6 +247,16 @@ def _checked(tokens: UiStyle, origin: str) -> UiStyle:
             f"{origin}: note_outline.width {outline.width:g} must be heavier than "
             f"result_field.border_width {field.border_width:g}"
         )
+    for low, high in (
+        ("list_min_chars", "list_width_chars"),
+        ("panel_max_chars", "page_max_chars"),
+        ("right_pane_min_chars", "right_pane_default_chars"),
+    ):
+        if getattr(layout, low) > getattr(layout, high):
+            raise StyleError(
+                f"{origin}: layout.{low} {getattr(layout, low):g} is more than "
+                f"layout.{high} {getattr(layout, high):g}"
+            )
     return tokens
 
 

@@ -21,8 +21,10 @@ button.
   note is about: solid for a limit or a warning, dashed when a check couldn't be made.
 * While an input holds text that isn't a number, every field shows "—" and its copy
   button is unavailable. So a value you copy always belongs to the inputs on screen.
-* In a wide window, the fields stop growing at a comfortable width and stay centred, so
-  a label and its value don't drift far apart.
+* In a wide window, the page stops growing at a comfortable width, beside the list, so a
+  label and its value don't drift far apart; the rest of the window is left plain.
+* The disclaimer is the last line under the results, always whole: it wraps to the
+  page's width rather than being cut off.
 
 ## Copying
 

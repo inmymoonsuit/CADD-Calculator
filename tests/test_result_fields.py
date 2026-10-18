@@ -143,11 +143,18 @@ def _settle(window: Any) -> None:
     raise AssertionError("the page's layout never settled")
 
 
+LIST_PX = 280
+"""The list's width in these tests: its launch width at 9 pt Segoe UI. The layout is in
+text units (ADR-0021), and offscreen fonts differ by platform (Windows' offscreen font is
+12 px a character), so the results are tested beside a list of a fixed width."""
+
+
 def _shown_at(width: int, height: int, calc_id: str) -> Any:
-    """A window of that size, showing ``calc_id``, laid out."""
+    """A window of that size, showing ``calc_id`` beside a ``LIST_PX`` list, laid out."""
     window = open_window()
     window.select_calculator(calc_id)
     window.resize(width, height)
+    window.splitter.setSizes([LIST_PX, width])
     window.show()
     _settle(window)
     return window
@@ -193,15 +200,23 @@ def _wheel(widget: Any) -> bool:
 )
 def test_every_field_shows_in_full_at_the_default_size(calc_id: str) -> None:
     """The results are never hidden behind their own scroll bar (ADR-0017 R3, amended)."""
+    from PySide6.QtCore import QPoint, QRect
     from PySide6.QtWidgets import QAbstractScrollArea, QScrollBar
 
     window = _shown_at(1100, 720, calc_id)
     panel = window.results
     assert not isinstance(panel, QAbstractScrollArea)
     assert not panel.findChildren(QScrollBar), "the results have no scroll bar of their own"
-    assert panel.height() == panel.sizeHint().height()
+    # Its height follows its width, as the disclaimer's wrapped lines do (ADR-0021 §7).
+    assert panel.hasHeightForWidth()
+    assert panel.height() == panel.heightForWidth(panel.width())
     for key, field in panel.fields.items():
         assert _in_full_view(window, field), key
+    # Wrapped text: whole when it's in view at its height for its width.
+    disclaimer, view = panel.disclaimer, window.page_scroll.viewport()
+    shown = QRect(disclaimer.mapTo(view, QPoint(0, 0)), disclaimer.size())
+    assert QRect(QPoint(0, 0), view.size()).contains(shown), "the disclaimer is never cut off"
+    assert disclaimer.height() >= disclaimer.heightForWidth(disclaimer.width())
     window.close()
 
 
@@ -226,7 +241,7 @@ def test_a_short_window_scrolls_the_page_and_reaches_every_field_in_full() -> No
     page = window.page_scroll
     assert page.verticalScrollBar().maximum() > 0, "the page scrolls as a whole"
     panel = window.results
-    assert panel.height() == panel.sizeHint().height(), "the results are never squeezed"
+    assert panel.height() == panel.heightForWidth(panel.width()), "never squeezed"
     for key, field in panel.fields.items():
         page.ensureWidgetVisible(field, 0, 0)
         _settle(window)
@@ -259,7 +274,8 @@ def test_a_page_that_scrolls_shows_its_document_in_full_with_one_scroll_bar() ->
 def test_a_page_that_fits_keeps_its_documents_own_scroll() -> None:
     from caddcalc.gui.ui_style import ui_style
 
-    window = _shown_at(1100, 720, "sheet_metal.truncated_cone_layout")
+    # Tall enough for the cone's page with its disclaimer (ADR-0021 §7).
+    window = _shown_at(1100, 800, "sheet_metal.truncated_cone_layout")
     page, document = window.page_scroll.verticalScrollBar(), window.output
     assert page.maximum() == 0 and not document.full
     assert document.height() >= ui_style().result_field.document_min_height
@@ -271,7 +287,8 @@ def test_a_page_that_fits_keeps_its_documents_own_scroll() -> None:
 
 
 def test_a_page_that_grows_short_and_tall_again_goes_back_to_filling() -> None:
-    window = _shown_at(1100, 720, "sheet_metal.truncated_cone_layout")
+    # Tall enough for the cone's page with its disclaimer (ADR-0021 §7).
+    window = _shown_at(1100, 800, "sheet_metal.truncated_cone_layout")
     assert not window.output.full
     window.resize(1100, 420)
     _settle(window)
@@ -349,15 +366,23 @@ def test_a_plugin_calculator_gets_fields_with_no_code_of_its_own() -> None:
     window.close()
 
 
-def test_the_disclaimer_comes_back_after_a_passing_message() -> None:
-    from caddcalc.core.formatting import DISCLAIMER
+def test_the_disclaimer_is_under_the_results_and_the_status_bar_passes_messages() -> None:
+    """It's the results' last line, whole, in the secondary text (ADR-0021 §7)."""
+    from PySide6.QtWidgets import QLabel
 
-    window = open_window()
-    window.show()
-    assert window.disclaimer.text() == DISCLAIMER and window.disclaimer.isVisible()
-    window.statusBar().showMessage("Copied BA = 0.3119 to the clipboard")
-    window.statusBar().clearMessage()
-    assert window.disclaimer.isVisible()
+    from caddcalc.core.formatting import DISCLAIMER
+    from caddcalc.gui.icons import current_scheme
+    from caddcalc.gui.ui_style import secondary_text
+
+    window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
+    disclaimer = window.results.disclaimer
+    assert disclaimer.text() == DISCLAIMER and disclaimer.isVisible()
+    assert disclaimer.wordWrap(), "wrapped, never elided"
+    last = window.results.layout().itemAt(window.results.layout().count() - 1).layout()
+    assert last.itemAt(0).widget() is disclaimer, "the panel's last line"
+    assert secondary_text(current_scheme()) in disclaimer.styleSheet()
+    labels = window.statusBar().findChildren(QLabel)
+    assert not any(label.text() == DISCLAIMER for label in labels), "not in the status bar"
     window.close()
 
 
@@ -520,21 +545,22 @@ def test_the_window_never_shrinks_below_a_title_a_method_row_and_one_field() -> 
     window.close()
 
 
-def test_the_panel_is_capped_and_centred_in_a_wide_window() -> None:
-    """Approved 2026-10-18: nothing changes at 1100 × 720; wider, the panel stops growing."""
+def test_the_panel_fills_the_page_up_to_the_pages_cap() -> None:
+    """``panel_max_chars`` is the page's cap, so the panel always fills it (ADR-0021 §4)."""
+    from caddcalc.gui.text_units import text_unit
     from caddcalc.gui.ui_style import ui_style
+    from caddcalc.gui.window_layout import chars
 
-    cap = ui_style().result_field.panel_max_width
     window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
     panel = window.results
     page = panel.parentWidget()
-    assert panel.width() < cap and panel.x() == 0, "the default window is as it was"
-    assert panel.width() == page.width(), "the whole page's width, as before"
-    window.resize(2200, 900)
+    assert panel.width() == page.width(), "the whole page's width"
+    layout, unit = ui_style().layout, text_unit(window.font())
+    assert panel.maximumWidth() == chars(layout.panel_max_chars, unit)
+    window.resize(LIST_PX + chars(layout.page_max_chars, unit) + 600, 900)
     _settle(window)
-    assert panel.width() == cap
-    left, right = panel.x(), page.width() - panel.x() - panel.width()
-    assert abs(left - right) <= 1, (left, right)
+    assert panel.width() == page.width(), "it fills the capped page"
+    assert window.page_scroll.width() == chars(layout.page_max_chars, unit)
     window.close()
 
 

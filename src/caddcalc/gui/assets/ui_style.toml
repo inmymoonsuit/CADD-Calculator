@@ -1,8 +1,10 @@
 # The app's design tokens beyond the welcome screen (ADR-0017 §7): every size, colour
 # role, and state its components use. gui/ui_style.py reads and checks them, and refuses
 # unknown keys; docs/dev/design/result-fields.md documents each, and a test keeps it
-# quoting these values. Sizes are logical pixels. Insets, gaps, and paddings come from the
-# spacing scale (2, 4, 6, 8, 12, 16, 24, 32). Colours are palette roles (palette.toml).
+# quoting these values. Sizes are logical pixels, but [layout]'s, which are in text units:
+# characters of the body font's average width (ch), or its line spacings (ADR-0021 §1).
+# Insets, gaps, and paddings come from the spacing scale (2, 4, 6, 8, 12, 16, 24, 32).
+# Colours are palette roles (palette.toml).
 schema = 1
 
 [result_field]                     # one boxed, copyable result (ADR-0017 §2 and §3)
@@ -33,7 +35,16 @@ copy_icon = "copy"
 copied_icon = "check"
 title_scale = 1.2                  # the Results title: the document's h3, which Qt sets at 1.2×
 secondary_text_opacity = 0.70      # a source's text: the text role, lighter, still 4.5:1
-panel_max_width = 800              # the panel's widest; about its width at 1100 × 720
+
+[layout]                           # the window and the page, in text units (ADR-0021)
+list_width_chars = 51              # the calculator list's launch width
+list_min_chars = 24                # the list's least width; it never collapses
+page_max_chars = 148               # the page's widest, its scroll bar included
+panel_max_chars = 148              # the results panel's widest: the page's
+launch_lines = 45                  # the launch content height, in line spacings
+screen_margin = 16                 # pixels between the frame and the screen's work area
+right_pane_min_chars = 58          # a future right-hand pane's least width (§5)
+right_pane_default_chars = 64      # its width when it opens
 
 [note_outline]                     # a field a note concerns, input or result alike
 width = 2                          # heavier than the 1 px border, so it reads without colour

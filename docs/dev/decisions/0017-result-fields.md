@@ -569,3 +569,12 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **Docs:** the user page takes UI/UX's edits; KI-020 lists the manual checks the tests
   can't make (the Menu key and Shift+F10 on a real Windows window, and a screen reader's
   speech); the k5 amendment above names what owns the ring, and no private name.
+
+### 2026-10-18: the width cap in text units, and the disclaimer (ADR-0021)
+
+* `panel_max_width` (800 px) is replaced by `panel_max_chars` (148 `ch`), the page's own
+  cap, in `ui_style.toml`'s `[layout]` table: the whole page is capped now, left-aligned
+  beside the list, and the panel fills it (ADR-0021 §4).
+* The disclaimer is the panel's last line, word-wrapped, in the secondary text, and the
+  status bar carries only passing messages (ADR-0021 §7). The panel's height is its
+  height for its width.

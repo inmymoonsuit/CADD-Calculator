@@ -1,0 +1,206 @@
+# ADR-0021: Window and page layout
+
+* **Status:** **Accepted**; built (see Amendments). The maintainer approved the plan on 2026-10-18
+  ("Approve all four: fit the launch size to the screen, cap the whole page left-aligned
+  in text units, no right-hand handle for now, and have UI/UX measure and write the layout
+  rules first"). After UI/UX & Design's measurements, the maintainer also approved, on
+  2026-10-18, "follow Windows' text size at startup, and keep the list at least about 24
+  characters wide", and §7's visible changes: "Yes, move the disclaimer under the results,
+  and approve the method status and settings page changes too."
+* **Builds on:** ADR-0013 (no settings file), ADR-0016 (style tokens), ADR-0017 (result
+  fields; the width cap it replaces; the one-scroll-bar rule C)
+
+## Context
+
+* The main window always opens at 1100 × 720 and leaves its position to the system. With
+  the Windows frame (about 1116 × 759 in all), it doesn't fit 1366 × 768 at 100% (39 px
+  too tall) or 1920 × 1080 at 150% (87 px too tall), and only just fits 1080p at 125%.
+  The status bar's disclaimer then sits under the taskbar.
+* ADR-0017's width cap (`panel_max_width` = 800) caps only the results panel. On a wide
+  window the inputs and notes still stretch, and the results float in the middle.
+* Every size is in pixels, so nothing grows when the user's text size grows. With
+  Windows' text size at 125% (as on the maintainer's machine), the app's font stays 9 pt.
+  So does Windows' own Win32 message font, so reading the system font wouldn't help; only
+  the text scale factor does.
+* The calculator list's handle can drag the list to nothing.
+* The app saves no settings file (ADR-0013), so it can't remember a window size,
+  position or list width.
+
+## Decision
+
+### 1. Text units
+
+* Widths are in `ch`, the body font's average character width
+  (`QFontMetricsF(font).averageCharWidth()`, 5.5 px at 9 pt). Heights are in line
+  spacings. Measured, `ch` tracks how much real prose fits (0.96–0.97 of it at 9, 11.25
+  and 13.5 pt), where the width of "0" and the em drift.
+* If a font reports `ch ≤ 0`, use 0.45 em.
+* Display scaling (100–200%) needs nothing: Qt lays out in logical pixels, and points map
+  to logical pixels, so every text-unit size is the same logical width at every scale.
+
+### 2. Follow the system's text size (Windows)
+
+* At startup, read Windows' text scale factor (the per-user `TextScaleFactor` value behind
+  `UISettings.TextScaleFactor`, through the standard library's `winreg`), and scale the
+  app's base font by it. Every text-unit rule then follows.
+* It applies at the next start; a change isn't followed live.
+* Other platforms keep their current font behaviour for now.
+
+### 3. The launch size
+
+1. The preferred content size, in text units:
+   * width: `ceil(list_width_chars · ch + handle + page_max_chars · ch)` (1100 at 9 pt:
+     280.5 + 5 + 814 = 1099.5, rounded up)
+   * height: `launch_lines · line spacing` (720 at 9 pt)
+2. Fit it to the available geometry of the screen the welcome card is on (or the primary
+   screen), less the platform frame (from the native window, before it's shown) and
+   `screen_margin` on each side. The welcome card is to be checked to be centred on that
+   screen too, so the two stay together.
+3. Centre the frame in that screen's available geometry. The position is never left to the
+   system.
+4. Never below the minimum window (§6).
+5. Windowed, never maximized: the app is used beside a CAD window.
+6. Nothing is remembered between runs (ADR-0013). If a settings file is ever allowed, it
+   would store `saveGeometry()` and check it against the current screens before use.
+
+### 4. The page cap and placement
+
+* The splitter keeps two children, [list | page slot]. The page slot holds [page scroll
+  area, capped at `page_max_chars · ch` | empty stretch], so the page sits left-aligned
+  beside the list, with its scroll bar at its own right edge.
+* Not inside the scroll area (the bar would sit at the window's edge, and rule C measures
+  the viewport), and not as a capped splitter child (the splitter would give the extra
+  width to the list).
+* **The results panel** stays centred in the page. `panel_max_width` (800 px) becomes
+  `panel_max_chars` = `page_max_chars`, so the panel always fills the page, inset
+  included.
+* **The list's handle** always moves the page's left edge. The page keeps its cap while
+  the space allows, and shrinks only when it doesn't. On a window resize the list keeps
+  its width and the page grows to its cap.
+* **The list can't collapse:** `setChildrenCollapsible(False)` and `list_min_chars`.
+* At the default window and font the page is 814 px against today's 815, so the default
+  looks the same.
+
+### 5. The space beside the page
+
+* It's plain background: no handle, divider or placeholder.
+* It's where a future right-hand pane goes (a history, a part diagram, reference). When one
+  exists:
+  * It docks beside a capped page when the window's content width (without the frame) is
+    at least list + handle + page cap + handle + `right_pane_min_chars · ch` (1423 px at
+    9 pt, about 1778 at 125% text), as the page slot's third
+    part, with its own handle, opening at `right_pane_default_chars`. Its handle takes from
+    the empty area first.
+  * On narrower windows, a header button swaps the document area ("Notes and work") for the
+    pane, like tabs, under the results. It never floats over the content, because results
+    are never obscured (ADR-0017). Focus moves into the pane and back (WCAG 2.4.3).
+
+### 6. The minimum window, and rule C
+
+* The minimum height is unchanged: the least the page shows (ADR-0017 k5).
+* The minimum width is the list's least width, plus the handle, plus the page's least
+  width.
+* Rule C is unaffected, because the cap is on the scroll area itself, so its viewport is
+  the page's width.
+
+### 7. The minimum-size shortfalls (KI-023)
+
+Every page fits the window's least width, and nothing essential is cut off. KI-023's
+offscreen Windows figures come from a much wider fallback font; natively the disclaimer is
+661 px, the least window 365 and the settings form 615, and those are the figures to design
+to.
+
+* **The disclaimer moves under the results, out of the status bar.**
+  * It becomes the results panel's last line: aligned with the frames, word-wrapped, in
+    the secondary text style (4.5:1 or better).
+  * It's safety text, so it's never cut off. It wraps at any width and in any language,
+    sits with the answers it qualifies, and scrolls with them. It costs one or two lines
+    of page height, after the first field, so the minimum-height rule is unchanged.
+  * The status bar keeps only passing messages, such as "Copied …". The About dialog and
+    the CLI keep their copies.
+  * Eliding it was rejected (an ellipsis hides the part that says to verify), and so was
+    a wrapping status bar (a status bar is one line by convention, and growing it takes
+    height where it's scarcest).
+* **The method box shows the method's name; its status goes beside it.**
+  * The status ("unverified · reproduces legacy") is secondary text beside the box, and on
+    a line of its own under the row when narrow. The dropdown list keeps the status, so
+    methods can still be compared.
+  * The box's least width is its longest name (`method_min_chars`, measured from the
+    registry, through `setMinimumContentsLength`), so names are never cut. The page's
+    least width includes it.
+* **The family settings page reflows instead of scrolling sideways.**
+  * Paired choice boxes stack when there isn't room for both side by side.
+  * The form wraps labels above their fields when narrow (`QFormLayout.WrapLongRows`).
+  * Its horizontal scroll bar is off, and its least width drops to about 260 px.
+* **Test:** the en_XA clipping test runs every page at the least size, with no exceptions
+  left; KI-023 closes.
+
+### 8. Tokens (`[layout]` in `ui_style.toml`)
+
+| Token | Value | Meaning |
+|---|---|---|
+| `list_width_chars` | 51 | The list's launch width (280 px at 9 pt) |
+| `list_min_chars` | 24 | The list's least width (132 px at 9 pt) |
+| `page_max_chars` | 148 | The page's widest, scroll bar included (814 px at 9 pt) |
+| `panel_max_chars` | 148 | Replaces `panel_max_width`: the results panel's widest |
+| `launch_lines` | 45 | The launch content height, in line spacings (720 px at 9 pt) |
+| `screen_margin` | 16 | The least space between the frame and the screen's work area |
+| `method_min_chars` | measured | The method box's least width: the longest built-in method name, computed from the registry by a test, not typed in |
+| `right_pane_min_chars` | 58 | Future: a docked right pane's least width |
+| `right_pane_default_chars` | 64 | Future: its width when it opens |
+
+### 9. Later, not part of this decision
+
+* A separate measure for the notes' prose (`prose_max_chars` about 100). At the cap the
+  notes wrap at 136–142 characters per line.
+
+## Consequences
+
+* The window always fits the screen it opens on.
+* The disclaimer sits under the results, always whole, in every language.
+* The default window looks as it does today; wide windows keep the same composition, with
+  empty space to the right.
+* Larger Windows text makes the whole layout larger in proportion, not just the letters.
+* A right-hand pane can be added later without re-laying out the page.
+
+## Amendments
+
+### 2026-10-18: as built
+
+* **Modules.** `gui/window_layout.py` holds the arithmetic, with no Qt: `ch`, `chars`, the
+  launch size, `fit_window`, and Windows' text size. `gui/text_units.py` measures a font,
+  and `gui/reflow.py` lays widgets out in a row while they fit at their preferred widths,
+  else in a column. The import contract keeps `window_layout` free of Qt.
+* **Line spacing** is the font's in whole pixels (`QFontMetrics.lineSpacing()`), as text
+  lines are laid out: 16 at 9 pt Segoe UI, so 45 lines are 720. The fractional spacing,
+  15.94, would give 718.
+* **Windows' text size** is read with `winreg` from `HKCU\Software\Microsoft\Accessibility`,
+  `TextScaleFactor`, a percentage from 100 to 225 (`UISettings.TextScaleFactor`'s 1 to
+  2.25). Any other value, a missing one, or another platform gives 1. `main()` scales the
+  app's font before the first widget, and puts it back on the way out.
+* **The launch.** `MainWindow.fit_to_screen()` measures the frame from the native window
+  before it shows, then fits and centres the window on the welcome card's screen. The
+  welcome card now centres itself on its screen's work area; before, its place was the
+  system's. A window built without `fit_to_screen`, as in tests, opens at its launch size.
+* **`method_min_chars`** is measured when the window is built: the longest method name in
+  the registry, plugins included, in the widths of "X" that a combo box's least contents
+  length counts. A test checks every method's name fits its box at the window's least
+  size. The box's open list shows each method with its status, through an item delegate.
+* **The settings page** scrolls in a `PageScrollArea`, as the calculator page does, so its
+  least width is its content's and it never scrolls sideways. Paired choice boxes are a
+  `Reflow`.
+* **The results panel's height** is its height for its width, since the disclaimer wraps;
+  its size hints say so, so the page's one-scroll-bar fit reads the true height.
+* **What the disclaimer costs at the default size.** Natively, at 1100 × 720 and 9 pt, it
+  adds 22 px to the results (one line and a gap). The cone's page had 16 px to spare, so
+  it no longer fits with the document filling: it scrolls as a whole, by about 6 px (rule
+  C). The other pages still fit. `launch_lines` = 46 would restore the cone's fit; it's
+  left at 45, as approved, for UI/UX to judge.
+* **Offscreen fonts.** On Windows the offscreen platform has no font database, so every
+  character, the average included, is 12 px, and `ch` is 12 rather than 5.5. Tests of the
+  results pin the list at 280 px, so they test the results, not the platform's font; the
+  layout's own tests check the text-unit rules against whatever font there is.
+* **The `math.ceil` fix** in `ResultsPanel._align` is here: a column a fraction of a pixel
+  narrower than its text lost the text's last pixel on Linux.
+* **KI-023,** the least-size shortfalls, is on the localization branch with its clipping
+  test, which narrows its allowance once this is rebased under it.

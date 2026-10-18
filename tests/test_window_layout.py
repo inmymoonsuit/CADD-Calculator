@@ -1,0 +1,286 @@
+"""The window and its page in text units: launch size, cap, list, least sizes (ADR-0021)."""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+from typing import Any
+
+import pytest
+
+from caddcalc.gui.style_tokens import Rect, Size
+from caddcalc.gui.ui_style import ui_style
+from caddcalc.gui.window_layout import Margins, ch, chars, fit_window
+from tests.qt_helpers import open_window
+from tests.test_result_fields import _settle
+
+FRAME = Margins(8, 31, 8, 8)
+"""A Windows frame at 100%, as UI/UX measured it: caption and border on top, 7–8 elsewhere."""
+LEAST = Size(577, 175)
+"""The window's least content size, as built, at 9 pt Segoe UI."""
+
+
+@pytest.mark.parametrize(
+    ("area", "preferred", "content"),
+    [
+        (Rect(0, 0, 1366, 720), Size(1100, 720), Size(1100, 649)),
+        (Rect(0, 0, 1280, 672), Size(1100, 720), Size(1100, 601)),
+        (Rect(0, 0, 1920, 1032), Size(1100, 720), Size(1100, 720)),
+        (Rect(0, 0, 1366, 720), Size(1374, 900), Size(1318, 649)),
+        (Rect(0, 0, 1920, 1032), Size(1374, 900), Size(1374, 900)),
+        (Rect(1920, 0, 1536, 816), Size(1374, 900), Size(1374, 745)),
+    ],
+)
+def test_the_launch_size_fits_each_work_area_centred(
+    area: Rect, preferred: Size, content: Size
+) -> None:
+    """UI/UX's table: 1366 × 768, 1080p at 150%, and 1080p at 100%; text at 125% too."""
+    margin = ui_style().layout.screen_margin
+    placed = fit_window(preferred, LEAST, FRAME, area, margin)
+    assert (placed.width, placed.height) == content
+    left = placed.x - FRAME.left - area.x
+    right = area.x + area.width - (placed.x + placed.width + FRAME.right)
+    top = placed.y - FRAME.top - area.y
+    bottom = area.y + area.height - (placed.y + placed.height + FRAME.bottom)
+    assert min(left, right, top, bottom) >= 0, "the frame is inside the work area"
+    assert abs(left - right) <= 1 and abs(top - bottom) <= 1, "centred"
+
+
+def test_the_launch_size_never_goes_below_the_least_window() -> None:
+    tiny = Rect(0, 0, 400, 150)
+    placed = fit_window(Size(1100, 720), LEAST, FRAME, tiny, 16)
+    assert (placed.width, placed.height) == LEAST
+
+
+def test_ch_falls_back_to_0_45_em() -> None:
+    assert ch(5.5, 12) == 5.5
+    assert ch(0, 12) == pytest.approx(5.4)
+    assert chars(148, 5.5) == 814, "the page's cap at 9 pt Segoe UI"
+    assert chars(51, 5.5) == 281
+
+
+@pytest.fixture
+def qt_window(qt: Any) -> Iterator[Any]:
+    """The bend allowance page, at the window's launch size, laid out."""
+    assert qt.QApplication.instance() is not None
+    window = open_window()
+    window.select_calculator("sheet_metal.bend_allowance")
+    window.show()
+    _settle(window)
+    yield window
+    window.close()
+
+
+def _units(window: Any) -> tuple[float, int]:
+    from caddcalc.gui.text_units import text_unit
+
+    unit = text_unit(window.font())
+    return unit, chars(ui_style().layout.page_max_chars, unit)
+
+
+def test_the_window_opens_at_its_launch_size_in_text_units(qt_window: Any) -> None:
+    from caddcalc.gui.text_units import line_spacing
+
+    layout = ui_style().layout
+    unit, cap = _units(qt_window)
+    launch = qt_window.launch_size()
+    handle = qt_window.splitter.handleWidth()
+    expected = chars(layout.list_width_chars, unit) - 1 + handle + cap
+    assert abs(launch.width - (layout.list_width_chars * unit + handle + cap)) <= 1
+    assert launch.width >= expected
+    assert launch.height == layout.launch_lines * line_spacing(qt_window.font())
+    assert (qt_window.width(), qt_window.height()) == (launch.width, launch.height)
+
+
+def test_fitting_to_the_screen_keeps_the_window_inside_its_work_area(qt_window: Any) -> None:
+    screen = qt_window.screen()
+    qt_window.hide()
+    qt_window.fit_to_screen(screen)
+    area = screen.availableGeometry()
+    frame = qt_window.frameGeometry()
+    least = qt_window.minimumSizeHint()
+    # Inside the work area on each axis the least window allows; offscreen fonts can make
+    # it wider than the offscreen screen, and then it keeps its least width.
+    if least.width() <= area.width():
+        assert area.left() <= frame.left() and frame.right() <= area.right(), (area, frame)
+    else:
+        assert qt_window.width() == least.width()
+    if least.height() <= area.height():
+        assert area.top() <= frame.top() and frame.bottom() <= area.bottom(), (area, frame)
+    centre = area.center() - frame.center()
+    assert abs(centre.x()) <= 1 and abs(centre.y()) <= 1, "centred"
+    assert not qt_window.isMaximized()
+
+
+def test_the_page_is_capped_and_left_aligned_and_the_handle_moves_it(qt_window: Any) -> None:
+    """The handle moves the page's left edge; the page shrinks only without room (§4.3)."""
+    _unit, cap = _units(qt_window)
+    handle = qt_window.splitter.handleWidth()
+    listed = qt_window.tree.width()
+    wide = listed + handle + cap + 400
+    qt_window.resize(wide, qt_window.height())
+    _settle(qt_window)
+    page = qt_window.page_scroll
+    assert page.width() == cap and page.x() == 0, "capped, left-aligned in its slot"
+    qt_window.splitter.setSizes([listed + 200, wide])
+    _settle(qt_window)
+    assert qt_window.tree.width() == listed + 200 and page.width() == cap, "moved, not shrunk"
+    qt_window.splitter.setSizes([listed + 600, wide])
+    _settle(qt_window)
+    assert page.width() < cap, "less room than the cap: the page shrinks"
+    qt_window.resize(wide + 300, qt_window.height())
+    _settle(qt_window)
+    assert qt_window.tree.width() == listed + 600, "a window resize goes to the page"
+
+
+def test_the_list_never_collapses(qt_window: Any) -> None:
+    layout = ui_style().layout
+    unit, _cap = _units(qt_window)
+    splitter = qt_window.splitter
+    assert not splitter.childrenCollapsible()
+    splitter.setSizes([0, qt_window.width()])
+    _settle(qt_window)
+    assert qt_window.tree.width() == chars(layout.list_min_chars, unit)
+
+
+def test_a_larger_base_font_scales_the_whole_layout(qt: Any) -> None:
+    """Windows' text size at 125% makes everything larger in proportion (ADR-0021 §2)."""
+    from caddcalc.gui.text_units import scaled_font
+
+    app = qt.QApplication.instance()
+    base = app.font()
+    window = open_window()
+    normal = window.launch_size()
+    normal_cap = window.page_scroll.maximumWidth()
+    window.close()
+    app.setFont(scaled_font(base, 1.25))
+    try:
+        larger = open_window()
+        grown = larger.launch_size()
+        assert grown.width > normal.width * 1.15 and grown.height > normal.height * 1.15
+        assert larger.page_scroll.maximumWidth() > normal_cap * 1.15
+        larger.close()
+    finally:
+        app.setFont(base)
+
+
+def _least(window: Any) -> None:
+    window.resize(1, 1)
+    _settle(window)
+
+
+@pytest.mark.parametrize(
+    "calc_id",
+    [
+        "sheet_metal.bend_allowance",
+        "sheet_metal.segment_flat_length",
+        "sheet_metal.truncated_cone_layout",
+        "sheet_metal.v_die_opening",
+    ],
+)
+@pytest.mark.usefixtures("qt")
+def test_at_the_least_size_the_disclaimer_and_method_are_whole(calc_id: str) -> None:
+    """Safety text is never cut off, nor is a method's name (ADR-0021 §7)."""
+    from PySide6.QtWidgets import QStyle, QStyleOptionComboBox
+
+    window = open_window()
+    window.select_calculator(calc_id)
+    window.show()
+    _least(window)
+    disclaimer = window.results.disclaimer
+    assert disclaimer.wordWrap()
+    assert disclaimer.height() >= disclaimer.heightForWidth(disclaimer.width())
+    assert disclaimer.width() <= window.results.width()
+    box = window.method_box
+    for index in range(box.count()):
+        box.setCurrentIndex(index)
+        _settle(window)
+        option = QStyleOptionComboBox()
+        box.initStyleOption(option)
+        room = box.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox, option, QStyle.SubControl.SC_ComboBoxEditField, box
+        )
+        name = box.currentText()
+        assert box.fontMetrics().horizontalAdvance(name) <= room.width(), name
+        assert "[" not in name, "the box shows the name; its status is beside it"
+    window.close()
+
+
+def test_the_method_status_shows_beside_the_box_and_in_the_open_list(qt_window: Any) -> None:
+    from PySide6.QtWidgets import QStyleOptionViewItem
+
+    method = qt_window.calculator.get_method(qt_window.method_key)
+    assert qt_window.method_status.text() == method.status
+    delegate = qt_window.method_box.itemDelegate()
+    option = QStyleOptionViewItem()
+    delegate.initStyleOption(option, qt_window.method_box.model().index(0, 0))
+    assert option.text == f"{method.label}  [{method.status}]", "methods can be compared"
+    reflow = qt_window.method_status.parentWidget()
+    assert not reflow.stacked, "beside the box at the launch size"
+    _least(qt_window)
+    assert reflow.stacked == (reflow.width() < reflow.row_width())
+
+
+@pytest.mark.usefixtures("qt")
+def test_the_settings_page_reflows_rather_than_scroll_sideways() -> None:
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtWidgets import QComboBox, QWidget
+
+    window = open_window()
+    window.select_domain("sheet_metal")
+    window.show()
+    _least(window)
+    page = window.domain_page
+    assert page.horizontalScrollBarPolicy() is Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    content = page.widget()
+    assert content.width() <= page.viewport().width(), "nothing beyond the page's width"
+    edge = window.width()
+    for widget in content.findChildren(QWidget):
+        if widget.isVisible() and isinstance(widget, QComboBox):
+            right = widget.mapTo(window, QPoint(widget.width(), 0)).x()
+            assert right <= edge, widget.currentText()
+            assert widget.width() >= widget.minimumSizeHint().width()
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_the_welcome_card_is_centred_on_its_screen() -> None:
+    from caddcalc.gui.actions import AppActions
+    from caddcalc.gui.branding import GENERIC
+    from caddcalc.gui.welcome import WelcomeScreen
+
+    welcome = WelcomeScreen(GENERIC, AppActions(GENERIC))
+    welcome.show()
+    area = welcome.screen().availableGeometry()
+    offset = area.center() - welcome.frameGeometry().center()
+    assert abs(offset.x()) <= 1 and abs(offset.y()) <= 1, (area, welcome.frameGeometry())
+    welcome.close()
+
+
+def test_windows_text_size_is_read_once_and_guarded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """125% gives 1.25; another platform, a missing value, or one out of range gives 1."""
+    import sys
+
+    from caddcalc.gui import window_layout
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert window_layout.system_text_scale() == 1.0
+    winreg = pytest.importorskip("winreg")
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    class Key:
+        def __enter__(self) -> Key:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    for value, expected in (((125, winreg.REG_DWORD), 1.25), ((300, winreg.REG_DWORD), 1.0)):
+        monkeypatch.setattr(winreg, "OpenKey", lambda *_a: Key())
+        monkeypatch.setattr(winreg, "QueryValueEx", lambda *_a, v=value: v)
+        assert window_layout.system_text_scale() == expected
+
+    def missing(*_args: object) -> None:
+        raise FileNotFoundError
+
+    monkeypatch.setattr(winreg, "OpenKey", missing)
+    assert window_layout.system_text_scale() == 1.0

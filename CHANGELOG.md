@@ -319,6 +319,8 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- A result field's value or unit could lose its last pixel: their columns were sized to
+  the nearest pixel of the text's width, and are now rounded up.
 - Changing the units, or another calculator, while an outlined input had keyboard focus
   could leave the results unchanged after later edits. The focus ring around an outlined
   input now lets go of an input that's gone, and can never stop a calculation; it's also
@@ -363,6 +365,16 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- **The window and page layout (ADR-0021).** The window opens centred on the welcome
+  card's screen, sized to fit it, and in Windows follows the user's text size, read at
+  startup: every size is in text units, so larger text makes the whole layout larger in
+  proportion. The page is capped at a comfortable width, left-aligned beside the list,
+  with plain background beyond it; the list can't be dragged shut.
+- The disclaimer moves from the status bar to the last line under the results, wrapped,
+  never cut off; the status bar keeps passing messages such as "Copied". The method box
+  shows the method's name, with its status beside it, or under it when narrow; the open
+  list shows both. The family settings page reflows to a narrow window instead of
+  scrolling sideways.
 - **Result fields (ADR-0017).** A calculator's results now show as boxed fields, one per
   output, in a Results panel between the inputs and the notes: the symbol, the label, the
   value aligned on its decimal point, and the unit, with a copy button. A note about an

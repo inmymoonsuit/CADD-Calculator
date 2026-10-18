@@ -47,11 +47,15 @@ token, so the specification can't drift from the code.
 * A field shows its output through `core.formatting.output_parts()`, the one place
   outputs are presented; the CLI and the document use `format_output()` on it. An
   output's own presentation (ADR-0018) will apply there.
-* **Results are never obscured.** The panel is always exactly as tall as its title and
-  every field, and has no scroll bar of its own.
-* **Its width is capped** at `panel_max_width`, about its width at 1100 × 720, and it's
-  centred in a wider page, so a maximized window doesn't spread each label and number
-  far apart. The default window is unchanged.
+* **Results are never obscured.** The panel is always exactly as tall as its title,
+  every field and the disclaimer, and has no scroll bar of its own.
+* **The disclaimer is its last line** (ADR-0021 §7), aligned with the frames,
+  word-wrapped, in the secondary text. It's safety text, so it's never cut off: it wraps
+  at any width and in any language, and scrolls with the answers it qualifies. The status
+  bar carries only passing messages, such as "Copied …".
+* **Its width is capped** at `panel_max_chars`, the page's own cap, so it fills the page
+  (ADR-0021 §4). The page sits left-aligned beside the list, up to `page_max_chars`, and a
+  wider window adds plain background beyond it.
 * The document under the panel starts at Notes, listed strongest first by the outlines'
   ranking: a cited limit, then a warning or an impossibility, then a check that
   couldn't be made. So a short document always opens with the note that matters most.
@@ -157,7 +161,10 @@ To restyle the fields, edit `ui_style.toml`; the loader refuses an unknown key, 
 type, a value out of range, an inset or padding off the spacing scale (2, 4, 6, 8, 12,
 16, 24, 32), a role missing from either theme, and an icon that isn't vendored. It also
 refuses a field too short for its button, an icon too big for it, and a note outline no
-heavier than the border.
+heavier than the border. The `layout` tokens are in text units (ADR-0021 §1): `ch`, the
+body font's average character width (5.5 px at 9 pt Segoe UI), or its line spacings; the
+loader refuses a list whose least width is more than its launch width, and a panel wider
+than the page.
 
 | Token | Value | Meaning |
 |---|---|---|
@@ -188,7 +195,6 @@ heavier than the border.
 | `result_field.copied_icon` | check | Its icon once it has copied |
 | `result_field.title_scale` | 1.2 | The "Results" title's size against the body text: the document's headings', so it reads as one of them |
 | `result_field.secondary_text_opacity` | 0.7 | Secondary text, such as a value's source, is the text role at this opacity over the fill: #646662 on white (5.80:1) and #BCBEBC on ink (8.32:1) |
-| `result_field.panel_max_width` | 800 | The results panel's widest, centred in a wider page; about its width at 1100 × 720, so the default window is unchanged |
 | `note_outline.width` | 2 | Every note outline's width, on input and result fields |
 | `note_outline.limit_role` | outline_limit | A cited limit is exceeded |
 | `note_outline.limit_style` | solid | Its line |
@@ -198,3 +204,11 @@ heavier than the border.
 | `note_outline.no_value_style` | dashed | Its line: dashed reads as "unchecked" |
 | `note_outline.error_role` | outline_error | An input whose text can't be read |
 | `note_outline.error_style` | solid | Its line |
+| `layout.list_width_chars` | 51 | The calculator list's launch width, in `ch` (280 px at 9 pt) |
+| `layout.list_min_chars` | 24 | The list's least width (132 px); it never collapses |
+| `layout.page_max_chars` | 148 | The page's widest, its scroll bar included (814 px at 9 pt) |
+| `layout.panel_max_chars` | 148 | The results panel's widest: the page's, so the panel fills it |
+| `layout.launch_lines` | 45 | The launch content height, in line spacings (720 px at 9 pt) |
+| `layout.screen_margin` | 16 | Pixels between the window's frame and the screen's work area, at least |
+| `layout.right_pane_min_chars` | 58 | A future right-hand pane's least width (ADR-0021 §5); unused until one exists |
+| `layout.right_pane_default_chars` | 64 | That pane's width when it opens; unused until one exists |

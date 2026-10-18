@@ -20,6 +20,7 @@ be translated as written.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from typing import override
 
@@ -54,6 +55,7 @@ from PySide6.QtWidgets import (
 
 from caddcalc.core import Calculator, Output, Result
 from caddcalc.core.formatting import (
+    DISCLAIMER,
     CopyForm,
     DisplayPrefs,
     ValueParts,
@@ -66,7 +68,9 @@ from caddcalc.core.formatting import (
 from caddcalc.gui.icons import current_scheme, icon, role_color
 from caddcalc.gui.outlines import Outline, strongest
 from caddcalc.gui.painting import frame_within, on_device_pixels, stroke
-from caddcalc.gui.ui_style import ResultFieldTokens, ui_style
+from caddcalc.gui.text_units import text_unit
+from caddcalc.gui.ui_style import ResultFieldTokens, secondary_text, ui_style
+from caddcalc.gui.window_layout import chars
 
 NO_VALUE = "—"
 """What a field shows while its calculator's inputs have no result."""
@@ -413,7 +417,10 @@ def _copier(field: ResultField, form: CopyForm) -> Callable[[], None]:
 
 
 class ResultsPanel(QWidget):
-    """The shown calculator's results: a title and Copy all, then one field per output.
+    """The shown calculator's results: its title and Copy all, its fields, and the disclaimer.
+
+    The disclaimer is the panel's last line: safety text, so it's never cut off. It wraps
+    at any width, in any language, and sits with the answers it qualifies (ADR-0021 §7).
 
     ``build`` makes the fields when the calculator changes; ``show_result`` updates
     their values, or blanks them all while the inputs have no result, so an old answer
@@ -463,13 +470,44 @@ class ResultsPanel(QWidget):
         header.addWidget(self.title, 1)
         header.addWidget(self.copy_all_button)
         column.addLayout(header)
-        self._column = column
-        # Exactly the title's and the fields' height, never squeezed or stretched; as
-        # wide as the page, up to its cap, centred beyond it (ADR-0017, amendments).
+        self._column = QVBoxLayout()
+        self._column.setSpacing(round(self.tokens.stack_gap))
+        column.addLayout(self._column)
+        self.disclaimer = QLabel(DISCLAIMER, self)
+        self.disclaimer.setWordWrap(True)
+        notice = QHBoxLayout()
+        notice.setContentsMargins(ring, 0, ring, 0)
+        notice.addWidget(self.disclaimer)
+        column.addLayout(notice)
+        # Exactly the title's, the fields' and the disclaimer's height, never squeezed or
+        # stretched; as wide as the page, up to its cap, centred beyond it (ADR-0021 §4).
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.setMaximumWidth(round(self.tokens.panel_max_width))
+        cap = ui_style().layout.panel_max_chars
+        self.setMaximumWidth(chars(cap, text_unit(self.font())))
         self.restyle()
         self._sync_copy_all()
+
+    # Its height is its height at its width, as the disclaimer wraps; Qt's own hint takes
+    # the disclaimer at a guessed width, which the page's fit would then wrongly trust.
+    @override
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        return QSize(hint.width(), self._height())
+
+    @override
+    def minimumSizeHint(self) -> QSize:
+        hint = super().minimumSizeHint()
+        return QSize(hint.width(), self._height())
+
+    def _height(self) -> int:
+        width = self.width() if self.width() > 0 else super().sizeHint().width()
+        return self.heightForWidth(width)
+
+    @override
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if event.size().width() != event.oldSize().width():
+            self.updateGeometry()  # a new width: a new height
 
     def build(self, calc: Calculator) -> None:
         """Make one field per output of ``calc``; nothing changes for the same calculator."""
@@ -523,6 +561,7 @@ class ResultsPanel(QWidget):
     def restyle(self) -> None:
         """Take the current light or dark scheme's colours and icons."""
         self.copy_all_state.restyle()
+        self.disclaimer.setStyleSheet(f"color: {secondary_text(current_scheme(), self.tokens)};")
         for field in self.fields.values():
             field.restyle()
 
@@ -550,10 +589,12 @@ class ResultsPanel(QWidget):
             field.value.setContentsMargins(0, 0, round(pad), 0)
             widths.append(metrics.horizontalAdvance(field.value.text()) + round(pad))
         value = max(widths)
+        # Up, not to the nearest: a column a fraction of a pixel narrower than its text
+        # cuts off the text's last pixel.
         for field in fields:
             field.symbol.setFixedWidth(symbol)
-            field.unit.setFixedWidth(round(unit))
-            field.value.setFixedWidth(round(value))
+            field.unit.setFixedWidth(math.ceil(unit))
+            field.value.setFixedWidth(math.ceil(value))
 
 
 def _tail(parts: ValueParts | None, metrics: QFontMetricsF, point: str) -> float:

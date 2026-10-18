@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import weakref
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
@@ -10,21 +11,29 @@ from html import escape
 from itertools import pairwise
 from typing import Any, cast, override
 
-from PySide6.QtCore import QEvent, QObject, Qt, QUrl
-from PySide6.QtGui import QAction, QColor, QGuiApplication, QPalette, QTextDocument
+from PySide6.QtCore import QEvent, QModelIndex, QObject, QPersistentModelIndex, Qt, QUrl
+from PySide6.QtGui import (
+    QAction,
+    QColor,
+    QFontMetricsF,
+    QGuiApplication,
+    QPalette,
+    QScreen,
+    QTextDocument,
+)
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFormLayout,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
-    QScrollArea,
     QSplitter,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -57,7 +66,6 @@ from caddcalc.core import (
     ValueOrigin,
 )
 from caddcalc.core.formatting import (
-    DISCLAIMER,
     HEADED,
     DisplayPrefs,
     describe_error,
@@ -90,9 +98,13 @@ from caddcalc.gui.icons import (
 )
 from caddcalc.gui.outlines import Outline, error_outline, strongest, strongest_first
 from caddcalc.gui.pages import PageDocument, PageScrollArea, PageStack
+from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
+from caddcalc.gui.style_tokens import Rect, Size
+from caddcalc.gui.text_units import line_spacing, text_unit
 from caddcalc.gui.ui_style import secondary_text, ui_style
 from caddcalc.gui.welcome import WelcomeScreen
+from caddcalc.gui.window_layout import Margins, chars, fit_window, launch_size
 
 ID_ROLE = Qt.ItemDataRole.UserRole
 """Tree item data holding a calculator row's calculator id."""
@@ -110,9 +122,11 @@ COURSE_EXAMPLE = "course example"
 NO_CHOICE = "None"
 """The first item of a choice with no default: nothing chosen, so values are typed."""
 CHOOSE = "Choose…"
+"""The first item of a grouped choice's options, until one is chosen in the group."""
 CHOICE_CHARACTERS = 24
 """How many characters a choice's box is sized to show before it elides an option."""
-"""The first item of a grouped choice's options, until one is chosen in the group."""
+METHOD_STATUS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
+"""Method box item data holding the method's status, e.g. "unverified · reproduces legacy"."""
 
 
 class EntryOrigin(Enum):
@@ -182,6 +196,22 @@ class _WheelGuard(QObject):
     @override
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         return event.type() == QEvent.Type.Wheel
+
+
+class _MethodItems(QStyledItemDelegate):
+    """Shows each method in the method box's open list with its status, so they compare.
+
+    The closed box shows the name alone, with the status beside it (ADR-0021 §7).
+    """
+
+    @override
+    def initStyleOption(
+        self, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex
+    ) -> None:
+        super().initStyleOption(option, index)
+        status = index.data(METHOD_STATUS_ROLE)
+        if status:
+            option.text = f"{option.text}  [{status}]"
 
 
 class ResultsBrowser(PageDocument):
@@ -283,16 +313,14 @@ class MainWindow(QMainWindow):
         """
 
         self.setWindowTitle(PRODUCT_NAME)
-        self.resize(1100, 720)
         self.focus_ring = FocusRing(self)
         """Focus around whichever outlined input has it (WCAG 2.4.7); the window owns it."""
         self._build_ui()
         self._build_menu()
         self._apply_icons()
-        # A widget, not a message: a passing message, such as "Copied", covers it for a
-        # moment, and it comes back (ADR-0017).
-        self.disclaimer = QLabel(DISCLAIMER)
-        self.statusBar().addWidget(self.disclaimer, 1)
+        # Passing messages only, such as "Copied"; the disclaimer is under the results,
+        # never cut off (ADR-0021 §7).
+        self.statusBar()
         self.results.announced.connect(self._show_copied)
         # Copy all, from anywhere in the window, while a calculator's results show (§5).
         self.copy_all_action = QAction(COPY_ALL_NAME, self)
@@ -336,11 +364,23 @@ class MainWindow(QMainWindow):
 
         self.method_box = QComboBox()
         self.method_box.currentIndexChanged.connect(self._on_method_changed)
+        # The box shows the method's name; its status, which matters for trust, shows
+        # beside it, or under it when narrow, and the open list shows both (ADR-0021 §7).
+        self.method_box.setItemDelegate(_MethodItems(self.method_box))
+        self.method_box.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.method_box.setMinimumContentsLength(self._method_min_chars())
+        # One short line, never wrapped: it moves under the box rather than squeezing.
+        self.method_status = QLabel()
+        method_parts = Reflow()
+        method_parts.add(self.method_box, 1)
+        method_parts.add(self.method_status)
         self.method_row = QWidget()
         method_layout = QHBoxLayout(self.method_row)
         method_layout.setContentsMargins(0, 0, 0, 0)
         method_layout.addWidget(QLabel("Method:"))
-        method_layout.addWidget(self.method_box, 1)
+        method_layout.addWidget(method_parts, 1)
         self.units_box = QComboBox()
         self.units_box.addItems(["in", "mm"])
         self.units_box.currentTextChanged.connect(self._on_units_changed)
@@ -382,6 +422,8 @@ class MainWindow(QMainWindow):
 
         self.settings_box = QGroupBox("Family settings")
         self.settings_form = QFormLayout(self.settings_box)
+        # A narrow page puts each label above its field, rather than scrolling sideways.
+        self.settings_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.clear_settings_button = QPushButton("Clear all")
         self.clear_settings_button.setToolTip(
             "Unset every setting of this family, and return each choice to its default."
@@ -393,12 +435,10 @@ class MainWindow(QMainWindow):
         buttons = QHBoxLayout()
         buttons.addWidget(self.clear_settings_button)
         buttons.addStretch(1)
-        # The page scrolls: a material's facts and a setting's help can outgrow the window.
-        self.domain_page = QScrollArea()
-        self.domain_page.setWidgetResizable(True)
-        self.domain_page.setFrameShape(QFrame.Shape.NoFrame)
+        # The page scrolls down, never sideways: a material's facts and a setting's help can
+        # outgrow the window's height, and its rows reflow to its width (ADR-0021 §7).
         domain_content = QWidget()
-        self.domain_page.setWidget(domain_content)
+        self.domain_page = PageScrollArea(domain_content)
         domain_col = QVBoxLayout(domain_content)
         domain_col.setContentsMargins(0, 0, 0, 0)
         domain_col.addWidget(self.settings_box)
@@ -422,13 +462,93 @@ class MainWindow(QMainWindow):
         self.page_scroll = PageScrollArea(right, self.output)
         # The least a page shows, so the window can't shrink to a sliver.
         self.page_scroll.setMinimumHeight(self._least_page_height())
-        splitter = QSplitter()
-        splitter.addWidget(self.tree)
-        splitter.addWidget(self.page_scroll)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([280, 820])
-        self.setCentralWidget(splitter)
+        layout, unit = ui_style().layout, text_unit(self.font())
+        self.page_scroll.setMaximumWidth(chars(layout.page_max_chars, unit))
+        # The page sits left-aligned beside the list, up to its cap, with its scroll bar at
+        # its own edge; beyond it is plain background, a future right-hand pane's place
+        # (ADR-0021 §4, §5).
+        page_slot = QWidget()
+        slot = QHBoxLayout(page_slot)
+        slot.setContentsMargins(0, 0, 0, 0)
+        slot.setSpacing(0)
+        slot.addWidget(self.page_scroll, 1)
+        slot.addStretch(0)
+        self.splitter = QSplitter()
+        self.splitter.addWidget(self.tree)
+        self.splitter.addWidget(page_slot)
+        # The list never collapses; a window resize goes to the page, up to its cap.
+        self.splitter.setChildrenCollapsible(False)
+        self.tree.setMinimumWidth(chars(layout.list_min_chars, unit))
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+        launch = self.launch_size()
+        width, height = round(launch.width), round(launch.height)
+        listed = chars(layout.list_width_chars, unit)
+        self.splitter.setSizes([listed, width - listed - self.splitter.handleWidth()])
+        self.setCentralWidget(self.splitter)
+        self.resize(width, height)
         self._style_document()
+
+    def launch_size(self) -> Size:
+        """Return the window's preferred content size, in its font's text units.
+
+        That's the list at its launch width, its handle, and a page at its cap, by
+        ``launch_lines`` line spacings: 1100 × 720 at 9 pt (ADR-0021 §3).
+        """
+        font = self.font()
+        handle = self.splitter.handleWidth()
+        return launch_size(ui_style().layout, text_unit(font), line_spacing(font), handle)
+
+    def fit_to_screen(self, screen: QScreen | None = None) -> None:
+        """Give the window its launch size, fitted to ``screen``, and centre it there.
+
+        It shrinks to the screen's work area less its frame and ``screen_margin``, never
+        below its least size, and stays a window, never maximized: the app is used beside a
+        CAD window (ADR-0021 §3). Call it before the window shows, so the frame can be
+        measured from the native window.
+
+        Args:
+            screen: The screen to open on, such as the welcome card's; the window's own,
+                or the primary screen, when ``None``.
+        """
+        screen = screen or self.screen() or QGuiApplication.primaryScreen()
+        if screen is None:
+            return
+        self.winId()  # the native window, whose frame the platform knows before it shows
+        handle = self.windowHandle()
+        if handle is not None and handle.screen() is not screen:
+            handle.setScreen(screen)
+        margins = handle.frameMargins() if handle is not None else None
+        frame = (
+            Margins(margins.left(), margins.top(), margins.right(), margins.bottom())
+            if margins is not None
+            else Margins(0, 0, 0, 0)
+        )
+        area = screen.availableGeometry()
+        least = self.minimumSizeHint()
+        content = fit_window(
+            self.launch_size(),
+            Size(least.width(), least.height()),
+            frame,
+            Rect(area.x(), area.y(), area.width(), area.height()),
+            ui_style().layout.screen_margin,
+        )
+        self.setGeometry(
+            round(content.x), round(content.y), round(content.width), round(content.height)
+        )
+
+    def _method_min_chars(self) -> int:
+        """Return the method box's least width: its longest method name, measured.
+
+        It's counted in the widths of "X" that a combo box's least contents length counts,
+        over every method in the registry, so no method's name is ever cut off
+        (``method_min_chars``, ADR-0021 §7).
+        """
+        metrics = QFontMetricsF(self.method_box.font())
+        x = metrics.horizontalAdvance("X")
+        names = (m.label for calc in self.registry for m in calc.methods)
+        longest = max((metrics.horizontalAdvance(name) for name in names), default=0.0)
+        return math.ceil(longest / x) if x > 0 else 0
 
     def _least_page_height(self) -> int:
         """The page's title, its method row, and one result field, with their spacing."""
@@ -477,6 +597,7 @@ class MainWindow(QMainWindow):
         self._apply_icons()
         self._style_document()
         self.results.restyle()
+        self._show_method_status()
         self.recompute()
         self._show_setting_problems()
 
@@ -514,8 +635,12 @@ class MainWindow(QMainWindow):
         self.method_box.blockSignals(True)
         self.method_box.clear()
         for m in calc.methods:
-            self.method_box.addItem(f"{m.label}  [{m.status}]", m.key)
+            self.method_box.addItem(m.label, m.key)
+            self.method_box.setItemData(self.method_box.count() - 1, m.status, METHOD_STATUS_ROLE)
         self.method_box.blockSignals(False)
+        view = self.method_box.view()
+        view.setMinimumWidth(view.sizeHintForColumn(0) + 2 * view.frameWidth())
+        self._show_method_status()
         self.results.build(calc)
         self._rebuild_form()
 
@@ -537,7 +662,15 @@ class MainWindow(QMainWindow):
         """The key of the method selected in the method box."""
         return str(self.method_box.currentData())
 
+    def _show_method_status(self) -> None:
+        """Show the chosen method's status beside its box, e.g. "unverified · legacy"."""
+        status = self.method_box.currentData(METHOD_STATUS_ROLE)
+        self.method_status.setText("" if status is None else str(status))
+        color = secondary_text(current_scheme())
+        self.method_status.setStyleSheet(f"color: {color};")
+
     def _on_method_changed(self, _index: int) -> None:
+        self._show_method_status()
         if self.calculator is not None:
             self._finish_field_edits()
             self._rebuild_form()
@@ -1077,19 +1210,20 @@ class MainWindow(QMainWindow):
                     QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
                 )
                 box.setMinimumContentsLength(CHOICE_CHARACTERS)
-        boxes = QHBoxLayout()
+        # Side by side when there's room for both, else one above the other (ADR-0021 §7).
+        boxes = Reflow()
         if group_box is not None:
             group_box.setToolTip(choice.help)
             group_box.currentIndexChanged.connect(_slot(self._on_choice_group_changed, choice.key))
-            boxes.addWidget(group_box, 2)
+            boxes.add(group_box, 2)
         option_box.setToolTip(choice.help)
         option_box.currentIndexChanged.connect(_slot(self._on_choice_option_changed, choice.key))
-        boxes.addWidget(option_box, 1)
+        boxes.add(option_box, 1)
         about = QLabel(f"<small>{escape(choice.help)}</small>")
         about.setTextFormat(Qt.TextFormat.RichText)
         about.setWordWrap(True)
         row = QVBoxLayout()
-        row.addLayout(boxes)
+        row.addWidget(boxes)
         row.addWidget(about)
         self.settings_form.addRow(choice.label, row)
         self.choice_rows[choice.key] = (group_box, option_box)

@@ -53,7 +53,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     from caddcalc import __version__
     from caddcalc.gui.actions import AppActions
     from caddcalc.gui.branding import PRODUCT_NAME, active_branding
+    from caddcalc.gui.text_units import scaled_font
     from caddcalc.gui.welcome import WelcomeScreen
+    from caddcalc.gui.window_layout import system_text_scale
 
     args, smoke_test, report_dir = _split_smoke_test(list(sys.argv[1:] if argv is None else argv))
     branding = active_branding()
@@ -68,6 +70,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     app.setOrganizationName("CADD Calculator")
     if branding.icon is not None:
         app.setWindowIcon(QIcon(str(branding.icon)))
+    # Before any widget: the user's text size, so every text-unit size follows it
+    # (ADR-0021 §2). It's put back on the way out, as main() found it.
+    base_font = app.font()
+    app.setFont(scaled_font(base_font, system_text_scale()))
 
     # The welcome screen shows first and paints, so startup is never blank; the main
     # window is built after it (ADR-0015 §1, amendments).
@@ -89,6 +95,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         QTimer.singleShot(0, startup.build_main_window)
         status = int(app.exec())
     _dispose(app, welcome, startup.window, actions)
+    app.setFont(base_font)
     return status
 
 
@@ -132,6 +139,8 @@ class _Startup:
         except Exception as exc:  # noqa: BLE001
             self._fail(exc)
             return
+        # On the welcome card's screen, so the two stay together (ADR-0021 §3).
+        self.window.fit_to_screen(self.welcome.screen() if isValid(self.welcome) else None)
         self.window.show()
         if isValid(self.welcome) and self.welcome.isVisible():
             self.welcome.raise_()
