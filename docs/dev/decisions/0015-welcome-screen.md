@@ -272,3 +272,29 @@ and stays, modal, until the user closes it.
   checked only on a real platform.
 * **KI-020** gains a check by hand: that the owned card stays above the main window on
   Windows, macOS and Wayland, where stacking requests are ignored.
+
+### 2026-10-18: the card owned before it shows (UI/UX's real-launch review)
+
+UI/UX's real launches of the stable startup found the card wasn't owned: natively, its
+owner (`GW_OWNER`) was none. Qt gives a top-level window its owner only as the window
+shows, and the card was already showing when it was given to the main window. With the
+raise gone, the main window then showed on top of the card, which never came back: a
+window the user couldn't use, blocked by a modal card they couldn't see.
+
+* **The main window's shell comes first.** `MainWindow(build=False)` is the bare
+  window, a few milliseconds' work; `build()` builds its contents later. Startup makes
+  the shell and its native window, gives the card to it (`setTransientParent`), and
+  only then shows the card. The build and the fit still come after the card's first
+  paint, into the shell, hidden; the reveal is as before.
+* **The shell is placed on the card's screen** before its native window is made.
+  Made unplaced, Windows put it on the pointer's screen, and an owner on a screen of
+  another scale made Windows rescale the card it owns, at 125%, to four fifths of its
+  size.
+* **A failed build** still ends the app with status 1: building is the step that can
+  fail, as it loads the registry and plugins, so it's inside the isolation boundary.
+* **Tests:** natively, after the reveal, the card's owner is the main window, and the
+  card is above it in the system's z-order, walked from the top. Giving the card its
+  owner at the reveal, as before, fails that. A real launch through `main()`: the card
+  shows once, at 960 × 572; the window shows behind it at the hold, once, at its launch
+  size; the card is owned and above it; closing the card activates it. KI-020's check
+  by hand covers macOS and Wayland.

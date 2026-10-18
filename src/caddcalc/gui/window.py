@@ -262,17 +262,26 @@ class MainWindow(QMainWindow):
         registry: Registry | None = None,
         branding: Branding = GENERIC,
         actions: AppActions | None = None,
+        *,
+        build: bool = True,
     ) -> None:
-        """Build the window over ``registry``'s calculators.
+        """Make the window over ``registry``'s calculators, and build it unless told not to.
 
         Args:
             registry: The calculators and domains to show; the built-ins and plugins when
                 ``None``.
             branding: The app's identity, for the title and About.
             actions: The app's shared commands; the window makes its own when ``None``.
+            build: Build its contents now. Startup makes the window's shell first, so the
+                welcome card can be its owned window before the card shows, and builds it
+                once the card has painted (ADR-0015, amendments).
         """
         super().__init__()
-        self.registry = default_registry() if registry is None else registry
+        self.registry: Registry
+        """The calculators and domains shown, once the window is built."""
+        self._registry = registry
+        self.built = False
+        """Whether its contents are built (``build``)."""
         self.branding = branding
         self.app_actions = actions if actions is not None else AppActions(branding, self)
         self.prefs = DisplayPrefs()
@@ -329,6 +338,19 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(PRODUCT_NAME)
         self.launch_pages = 0
         """The window height the tallest calculator page needs at its launch width."""
+        if build:
+            self.build()
+
+    def build(self) -> None:
+        """Build the window's contents: the list, the pages, and the menus.
+
+        It loads the registry, plugins included, when none was given, measures the launch
+        height, and opens the first built-in calculator. Building twice does nothing.
+        """
+        if self.built:
+            return
+        self.built = True
+        self.registry = default_registry() if self._registry is None else self._registry
         self.focus_ring = FocusRing(self)
         """Focus around whichever outlined input has it (WCAG 2.4.7); the window owns it."""
         self._build_ui()

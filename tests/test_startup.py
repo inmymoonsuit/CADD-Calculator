@@ -166,3 +166,42 @@ def test_a_card_closed_before_the_window_is_ready_reveals_it_when_it_is(
     assert launch.startup.revealed
     assert [c[1:] for c in launch.calls] == [("window", "activateWindow")]
     launch.close()
+
+
+def test_the_card_is_owned_by_the_window_and_stays_above_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Natively, the system keeps the card above the window that owns it.
+
+    Qt gives a window its owner only as it shows, so the window's shell is made, and the
+    card given to it, before the card shows. Given later, the card had no owner, and the
+    window, shown on top of it, hid it for good (UI/UX's real-launch review).
+    """
+    import ctypes
+    import sys
+
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QGuiApplication
+
+    if sys.platform != "win32" or QGuiApplication.platformName() != "windows":
+        pytest.skip("the windows' owner and z-order are the Windows platform's")
+    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    user32.GetWindow.restype = user32.GetTopWindow.restype = ctypes.c_void_p
+    user32.GetWindow.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+    user32.GetTopWindow.argtypes = [ctypes.c_void_p]
+    next_window, owner = 2, 4  # GW_HWNDNEXT, GW_OWNER
+
+    launch = _Launch(monkeypatch, 100)
+    launch.welcome.show()
+    QTimer.singleShot(0, launch.startup.build_main_window)
+    launch.run_until(lambda: launch.startup.revealed)
+    launch.run_until(lambda: time.perf_counter() > launch.when("window", "show") + 0.3)
+    card, window = int(launch.welcome.winId()), int(launch.startup.window.winId())
+    assert user32.GetWindow(card, owner) == window
+    order = []
+    hwnd = user32.GetTopWindow(None)
+    while hwnd and len(order) < 10_000:
+        order.append(hwnd)
+        hwnd = user32.GetWindow(hwnd, next_window)
+    assert order.index(card) < order.index(window), "the card is above the window"
+    launch.close()

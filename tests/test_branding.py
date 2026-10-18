@@ -538,7 +538,7 @@ from caddcalc.gui.app import main
 def broken(*args, **kwargs):
     raise RuntimeError("probe: the main window can't be built")
 
-window.MainWindow.__init__ = broken
+window.MainWindow.build = broken
 QMessageBox.critical = lambda *args, **kwargs: print("critical shown", file=sys.stderr)
 raise SystemExit(main(sys.argv[1:]))
 """
