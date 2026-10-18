@@ -46,3 +46,23 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+  wheel:
+    name: Wheel and sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Build
+        run: uv build
+
+      # The wheel's catalogs are each language's compiled .mo, and nothing else
+      # (ADR-0009's checklist); the .po and .pot stay in the sdist.
+      - name: The wheel's catalogs
+        run: |
+          uv sync --locked
+          uv run python scripts/i18n.py check-wheel dist/*.whl

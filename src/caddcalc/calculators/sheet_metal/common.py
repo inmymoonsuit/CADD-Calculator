@@ -71,9 +71,10 @@ K_FACTOR = replace(
         "Neutral-axis position as a fraction of thickness, measured from the inside surface. "
         "Cited starting values: 0.445 for aircraft aluminum (FAA-H-8083-31B, p. 4-63); about "
         "0.408 for aluminum and soft steel and 0.452 for cold-rolled steel, implied by "
-        "Machinery's Handbook (31st ed., p. 1421, Eqs (33) and (34)). It approaches 0.5 for "
-        "large R/T. The default, 0.4, is the instructional value in Engineering Drawing and "
-        "Design (5th ed., Ch. 19). Use your shop's test-bend value for production."
+        "Machinery's Handbook (31st ed., p. 1421, Eqs (33) and (34)). The neutral axis is "
+        "often assumed to be at mid-thickness, 0.5 (FAA-H-8083-31B, p. 4-59). The default, "
+        "0.4, is the instructional value in Engineering Drawing and Design (5th ed., Ch. 19). "
+        "Use your shop's test-bend value for production."
     ),
     methods=("k_factor",),
 )

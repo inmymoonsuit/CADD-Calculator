@@ -5,6 +5,7 @@
     uv run python scripts/i18n.py update     # each language's .po, from the template
     uv run python scripts/i18n.py compile    # each .po to its .mo, beside it
     uv run python scripts/i18n.py check      # exit 1 if any catalog is out of step
+    uv run python scripts/i18n.py check-wheel WHEEL  # exit 1 unless it has just the .mo
 
 The template (``caddcalc.pot``) and each language's ``.po`` are committed; ``.mo`` files are
 compiled, in the builds and in the tests, and never committed. Babel is needed only to
@@ -18,6 +19,7 @@ import datetime
 import io
 import re
 import sys
+import zipfile
 from collections.abc import Iterator
 from pathlib import Path
 from string import Formatter
@@ -133,18 +135,38 @@ def _singular(message: Message) -> str:
 
 
 UNBALANCED = "<unbalanced braces>"
+TOO_DEEP = "<a field nested too deep>"
+
+
+def _fields(text: str) -> list[tuple[str, str]]:
+    """Return each field's name and format spec in ``text``, as ``str.format`` reads them.
+
+    A positional ``{}``'s name is ``""``.
+    """
+    return [
+        (name, spec or "") for _t, name, spec, _c in Formatter().parse(text) if name is not None
+    ]
 
 
 def placeholders(text: str) -> set[str]:
     """Return the named fields in ``text``, such as ``{value}``; a text with none, none.
 
-    A positional ``{}`` is ``""``, a numbered one is its number, as ``"0"``, and unbalanced
-    braces are ``UNBALANCED``.
+    A field nested in another's format spec counts too, as ``{width}`` in
+    ``{value:{width}}``: Python fills one level of them. A positional ``{}`` is ``""``, a
+    numbered one is its number, as ``"0"``; unbalanced braces are ``UNBALANCED``, and a
+    field nested deeper than Python fills is ``TOO_DEEP``.
     """
+    found = set()
     try:
-        return {name for _t, name, _s, _c in Formatter().parse(text) if name is not None}
+        for name, spec in _fields(text):
+            found.add(name)
+            for inner, inner_spec in _fields(spec):
+                found.add(inner)
+                if _fields(inner_spec):
+                    found.add(TOO_DEEP)
     except ValueError:
         return {UNBALANCED}
+    return found
 
 
 def _by_position(field: str) -> bool:
@@ -153,10 +175,10 @@ def _by_position(field: str) -> bool:
     return not head or head.isdigit()
 
 
-PRINTF = re.compile(r"%(?:\([^)]*\))?[-#0+]*\d*(?:\.\d+)?[sdifrxXeEgGco]")
-"""A printf-style placeholder, such as ``%s``, ``%(name)s`` or ``%.2e``: any of printf's
-conversions but ``%%``, which is a literal "%". A "%" in prose, as in "10% grade", isn't
-one."""
+PRINTF = re.compile(r"%(?:\([^)]*\))?[-#0+]*\d*(?:\.\d+)?[diouxXeEfFgGcrsa]")
+"""A printf-style placeholder, such as ``%s``, ``%(name)s`` or ``%.2e``: any of the 16
+conversions of Python's ``%`` formatting; ``%%`` is a literal "%". A "%" in prose, as in
+"10% grade", isn't one."""
 
 
 def source_problems(template: Catalog) -> list[str]:
@@ -176,6 +198,8 @@ def source_problems(template: Catalog) -> list[str]:
             fields = placeholders(source)
             if UNBALANCED in fields:
                 problems.append(f"{source!r} has unbalanced braces; write a literal one twice")
+            elif TOO_DEEP in fields:
+                problems.append(f"{source!r} nests a field deeper than Python fills")
             elif any(_by_position(field) for field in fields):
                 problems.append(f"{source!r} has a positional {{}} or a numbered {{0}}; name it")
             if PRINTF.search(source):
@@ -257,6 +281,25 @@ def compile_to(catalog: Catalog, path: Path) -> None:
         write_mo(stream, translated(catalog))
 
 
+def wheel_problems(wheel: Path) -> list[str]:
+    """Return what's wrong with a wheel's catalogs (ADR-0009's checklist).
+
+    Its ``caddcalc/locale`` holds each language's compiled ``.mo``, and nothing else: the
+    ``.po`` and ``.pot`` sources stay in the sdist.
+    """
+    with zipfile.ZipFile(wheel) as archive:
+        names = archive.namelist()
+    inside = {n for n in names if n.startswith("caddcalc/locale/") and not n.endswith("/")}
+    problems = [
+        f"{n} is in the wheel; only compiled .mo are"
+        for n in sorted(inside)
+        if not n.endswith(".mo")
+    ]
+    wanted = {f"caddcalc/locale/{p.parents[1].name}/LC_MESSAGES/{DOMAIN}.mo" for p in languages()}
+    problems += [f"{n} is missing from the wheel" for n in sorted(wanted - inside)]
+    return problems
+
+
 def check() -> list[str]:
     """Return what's out of step: the template, any language, or a translation's fields."""
     problems = []
@@ -292,7 +335,11 @@ def check() -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    """Run ``extract``, ``update``, ``compile`` or ``check``; return the exit code."""
+    """Run ``extract``, ``init``, ``update``, ``compile``, ``check`` or ``check-wheel``.
+
+    Returns:
+        The exit code.
+    """
     command = argv[0] if argv else ""
     if command == "extract":
         TEMPLATE.parent.mkdir(parents=True, exist_ok=True)
@@ -313,6 +360,11 @@ def main(argv: list[str]) -> int:
             return 1
         for path in written:
             print(path.relative_to(ROOT))
+    elif command == "check-wheel" and len(argv) == 2:
+        problems = wheel_problems(Path(argv[1]))
+        for problem in problems:
+            print(problem)
+        return 1 if problems else 0
     elif command == "check":
         problems = check()
         for problem in problems:

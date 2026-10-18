@@ -130,9 +130,10 @@ before choosing it.
 ### KI-016: Packaged builds lack third-party license notices (Medium)
 
 The app folder bundles at least Qt 6, its translations (`qtbase_*.qm`), and
-PySide6/Shiboken (LGPL-3.0), CPython (PSF License), OpenSSL's libcrypto (Apache-2.0), libffi (MIT), Nuitka's runtime (Apache-2.0),
-and the Microsoft C++ runtime (redistributable). `packaging/build.py` copies only the
-project's `LICENSE.md`, and the PySide6 wheels carry no LGPL text to copy.
+PySide6/Shiboken (LGPL-3.0), CPython (PSF License), OpenSSL's libcrypto (Apache-2.0),
+libffi (MIT), Nuitka's runtime (Apache-2.0), and the Microsoft C++ runtime
+(redistributable). `packaging/build.py` copies only the project's `LICENSE.md`, and the
+PySide6 wheels carry no LGPL text to copy.
 **Progress (2026-10-17):** `THIRD_PARTY_NOTICES.md` now exists. The build copies it into
 the app folder, and it carries Tabler Icons' full MIT text, VT323's full SIL Open Font
 License (ADR-0016), a table of the bundled runtime components, and the note on replacing

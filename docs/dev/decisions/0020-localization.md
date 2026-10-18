@@ -395,7 +395,8 @@ together.
 
 * **The catalog check** (S&R's i4b L1) also refuses a numbered field, `{0}`, which the
   app's `format(**fields)` can't fill, and unbalanced braces, which can't be read for
-  fields; and it knows every printf conversion (`[sdifrxXeEgGco]`), not five.
+  fields; and it knows more printf conversions (`[sdifrxXeEgGco]`), not five, though
+  not yet all (i5c).
 * **The calculators' quoted numbers** (S&R's i4b L2): the string sweep's table names
   each one's source as published. 0.408 and 0.452 are the project's derivation, each
   coefficient over 1.57, and the prose says they're implied by the Handbook, never
@@ -411,3 +412,19 @@ together.
 * **The hook loads the catalog tool by its path,** under its own module name, so an
   installed `i18n` (python-i18n has one) can't stand in for it, and says Babel is needed
   when it's missing. `docs/dev/packaging.md` says when Babel must be installed first.
+
+### 2026-10-18: the review's findings on i5b (i5c)
+
+* **Every printf conversion** (S&R's i5b L1): the check's class is all 16 of Python's
+  `%` formatting, `[diouxXeEfFgGcrsa]`; i5b's missed `%F`, `%u` and `%a`.
+* **Fields nested in a format spec** (L2) are read like any other: `{width}` in
+  `{value:{width}}` is a field a translation must keep, and `{value:{}}` and
+  `{value:>{0}}` are refused as positional, since formatting them by name raises.
+  Python fills one level of them, so a field nested deeper is refused too.
+* **CI builds the wheel** and checks its catalogs: each language's `.mo`, and no `.po`
+  or `.pot` (`scripts/i18n.py check-wheel`). Nothing else tested the wheel's `exclude`.
+* **0.5 in the K-factor's help** says what its source does: FAA-H-8083-31B (p. 4-59)
+  says the neutral axis is often assumed to be at mid-thickness. "It approaches 0.5 for
+  large R/T" had no source. The help, the user guide, the glossary and the string
+  sweep's table agree. The help texts aren't marked for translation yet, so no catalog
+  changed.

@@ -119,7 +119,9 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
   compiles them into a staging folder and includes each in `caddcalc/locale`. So Babel is
   a build requirement, beside hatchling; an editable install reads the source tree, where
   `scripts/i18n.py compile` puts them. The hook fails with no `.po` to compile, and the
-  wheel leaves out the `.po` and `.pot`, which the sdist keeps.
+  wheel leaves out the `.po` and `.pot`, which the sdist keeps. CI builds the wheel and
+  checks it holds each language's `.mo` and nothing else (`scripts/i18n.py
+  check-wheel`).
 * **Qt's catalogs for languages we don't have yet** ship anyway. The window loads one only
   with a catalog of ours for the same language (ADR-0020, amendments), so until then
   they cost space: 33 files, 5.8 MB, in PySide6 6.12. In return, a new language needs

@@ -34,7 +34,8 @@ build hook (`hatch_build.py`) compiles from them. Babel (BSD-3-Clause) is a buil
 requirement for that, and nothing from it ships. pip and uv fetch it into the build's
 isolated environment automatically, except offline, or for a distribution packager
 building without isolation: there it must be installed first (often as
-`python3-babel`).
+`python3-babel`). CI builds both and checks the wheel's catalogs: each language's `.mo`,
+and nothing else (`uv run python scripts/i18n.py check-wheel dist/*.whl`).
 
 ## Editions
 

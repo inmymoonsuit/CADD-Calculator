@@ -407,6 +407,9 @@ All notable changes are recorded here. The format follows
   fields. Typed text is kept and shown verbatim while its unit is the display unit, and
   other values are re-expressed from their base value; nothing is read back from the
   display.
+- The K-factor's help said it "approaches 0.5 for large R/T", with no source. It now says
+  what its source does: the neutral axis is often assumed to be at mid-thickness, 0.5
+  (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
 - Citations of *Machinery's Handbook* move from the 29th edition to the 31st (2020): the
@@ -445,14 +448,16 @@ All notable changes are recorded here. The format follows
   Chinese or Latin Serbian would never fall back to Simplified Chinese or Cyrillic; `C`
   and `POSIX` mean the source language.
 - `scripts/i18n.py check` refuses a marked text with a positional `{}`, a numbered
-  `{0}`, unbalanced braces, or a printf placeholder of any kind, and checks each plural
-  form on its own.
+  `{0}`, unbalanced braces, or a printf placeholder of any kind, reads the fields nested
+  in a format spec, such as `{width}` in `{value:{width}}`, and checks each plural form
+  on its own.
 - **The catalogs ship in every build.** The packaged app and the wheel carry the compiled
   catalogs, so an installed app has British spelling too. The packaged app also carries
   Qt's own `qtbase` catalogs, for Qt's words in each language the app gains, and
   `THIRD_PARTY_NOTICES.md` names them. The build checks that each is there, and its
   smoke test that the app finds them (ADR-0009's checklist); with no catalog to compile,
-  the build and the wheel fail. The catalogs' sources stay in the sdist.
+  the build and the wheel fail. The catalogs' sources stay in the sdist, and CI checks
+  that the wheel has none.
 - **Units come from one registry (ADR-0019).** `caddcalc.core.units` is now a package that
   declares every dimension and unit once, with its exact definition and its NIST SP 811
   citation, and reads typed units by asking that registry, rather than a list of

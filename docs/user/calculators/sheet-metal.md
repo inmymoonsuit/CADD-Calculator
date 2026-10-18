@@ -38,9 +38,9 @@ methods that use it follow the colon.
 * **K-factor:** cited starting values are 0.445 for aircraft aluminum (FAA-H-8083-31B,
   p. 4-63); about 0.408 for aluminum and soft steel and 0.452 for cold-rolled steel,
   implied by *Machinery's Handbook* (31st ed., p. 1421, Eqs (33) and (34)); and the
-  textbook's 0.4. It approaches 0.5 for large R/T. Use your shop's test-bend value for
-  production. The course methods have their factor built in, so they don't use this
-  setting.
+  textbook's 0.4. The neutral axis is often assumed to be at mid-thickness, 0.5
+  (FAA-H-8083-31B, p. 4-59). Use your shop's test-bend value for production. The course
+  methods have their factor built in, so they don't use this setting.
 * The V-die calculator's die ratio P is not shared; each calculation sets its own.
 
 The settings page shows the same list under each field.

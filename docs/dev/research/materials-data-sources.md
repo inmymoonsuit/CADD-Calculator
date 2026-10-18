@@ -125,7 +125,9 @@ gauge number can produce a wrong part.
     1.57.
   * *Engineering Drawing and Design* (5th ed., Ch. 19) uses 0.4 as an instructional
     value.
-  * The neutral axis approaches mid-thickness (K → 0.5) as R/T grows.
+  * FAA-H-8083-31B (p. 4-59) says the neutral axis is often assumed to be at
+    mid-thickness (K = 0.5). That K approaches 0.5 as R/T grows is general bending
+    theory, not cited here; the trade sources below describe K rising with R/T.
 * **What trade sources say, without their figures.**
   * A job-shop design guide and articles in *The Fabricator* describe K rising with R/T,
     and differing between air bending, bottoming, and coining.

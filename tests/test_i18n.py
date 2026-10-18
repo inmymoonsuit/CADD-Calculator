@@ -476,6 +476,8 @@ def test_a_plurals_forms_are_checked_one_by_one() -> None:
         ("{value} of {limit}", False),
         ("{a}{b}", False),
         ("{{literal}} braces", False),
+        ("{x:{width}}", False),
+        ("{x:{w}.{p}f}", False),
         ("10% grade", False),
         ("50% each", False),
         ("100%", False),
@@ -483,6 +485,9 @@ def test_a_plurals_forms_are_checked_one_by_one() -> None:
         ("{} of {}", True),
         ("{0} of {1}", True),
         ("{0.real}", True),
+        ("{value:{}}", True),
+        ("{value:>{0}}", True),
+        ("{a:{b:{c}}}", True),
         ("unbalanced {", True),
         ("a } alone", True),
         ("Load %(name)s now", True),
@@ -496,12 +501,18 @@ def test_a_plurals_forms_are_checked_one_by_one() -> None:
         ("%E", True),
         ("%g", True),
         ("%G", True),
+        ("%i", True),
+        ("%u", True),
+        ("%F", True),
+        ("%a", True),
+        ("%(n)u", True),
     ],
 )
 def test_marked_text_names_its_fields(text: str, refused: bool) -> None:
-    """S&R's i1 L1 and i4b L1: a field named by position or printf can't be reordered.
+    """S&R's i1 L1, i4b L1 and i5b: a field named by position or printf can't be reordered.
 
-    Unbalanced braces can't be read for fields at all, so they're refused too.
+    That holds for a field nested in another's format spec too, which Python fills one
+    level deep. Unbalanced braces can't be read for fields at all, so they're refused.
     """
     tools = tooling()
     template = Catalog(domain="caddcalc")
@@ -565,3 +576,38 @@ def test_compiling_no_catalog_fails_rather_than_ship_none(
     assert not (tmp_path / "out").exists()
     assert tools.main(["compile"]) == 1
     assert "no catalog to compile" in capsys.readouterr().out
+
+
+def test_a_translation_keeps_the_fields_nested_in_a_format_spec() -> None:
+    """S&R's i5b L2: ``{width}`` in ``{value:{width}}`` is a field like any other."""
+    tools = tooling()
+    catalog = Catalog(locale="en_GB", domain="caddcalc")
+    catalog.add("{value:{width}} wide", "{value:{width}} broad")
+    assert tools.placeholder_mismatches(catalog) == []
+    catalog.add("{value:{width}} long", "{value} long")
+    catalog.add("{value:{width}} high", "{value:{width}} {extra} high")
+    assert len(tools.placeholder_mismatches(catalog)) == 2
+
+
+def test_a_wheel_carries_each_compiled_catalog_and_nothing_else(tmp_path: Path) -> None:
+    """S&R's i5b note: CI checks the built wheel, as the frozen build checks its folder."""
+    import zipfile
+
+    tools = tooling()
+    good = [f"caddcalc/locale/{lang}/LC_MESSAGES/caddcalc.mo" for lang in ("en_001", "en_CA")]
+
+    def wheel(*names: str) -> Path:
+        path = tmp_path / f"w{len(list(tmp_path.iterdir()))}.whl"
+        with zipfile.ZipFile(path, "w") as archive:
+            for name in ("caddcalc/__init__.py", *names):
+                archive.writestr(name, b"")
+        return path
+
+    assert tools.wheel_problems(wheel(*good)) == []
+    with_sources = wheel(
+        *good, "caddcalc/locale/caddcalc.pot", "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.po"
+    )
+    assert len(tools.wheel_problems(with_sources)) == 2
+    assert tools.wheel_problems(wheel(good[0])) == [f"{good[1]} is missing from the wheel"]
+    assert tools.main(["check-wheel", str(wheel(*good))]) == 0
+    assert tools.main(["check-wheel", str(with_sources)]) == 1
