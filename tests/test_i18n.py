@@ -4,28 +4,16 @@ from __future__ import annotations
 
 import builtins
 import gettext
-import importlib.util
 import re
 from collections.abc import Iterator
 from pathlib import Path
-from types import ModuleType
 
 import pytest
 from babel.messages.catalog import Catalog
 
 from caddcalc.core import i18n
 from caddcalc.core.errors import UsageError
-
-SCRIPT = Path(__file__).parents[1] / "scripts" / "i18n.py"
-
-
-def _tooling() -> ModuleType:
-    """The catalog tooling script, loaded as a module."""
-    spec = importlib.util.spec_from_file_location("i18n_tooling", SCRIPT)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from tests.catalogs import shipped, tooling
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +30,7 @@ def _british(folder: Path) -> Path:
     catalog.add("millimeter", "millimetre")
     catalog.add("Copy", "Copy (verb)", context="button")
     catalog.add(("{count} field", "{count} fields"), ("{count} field (GB)", "{count} fields (GB)"))
-    _tooling().compile_to(catalog, folder / "en_GB" / "LC_MESSAGES" / "caddcalc.mo")
+    tooling().compile_to(catalog, folder / "en_GB" / "LC_MESSAGES" / "caddcalc.mo")
     return folder
 
 
@@ -98,27 +86,19 @@ BRITISH = "About {product}: version, licence, and terms"
 """A string the British catalog spells its own way."""
 
 
-def _shipped(folder: Path, language: str) -> Path:
-    """Compile the shipped ``language`` .po into ``folder``, as the build does."""
-    tooling = _tooling()
-    po = tooling.LOCALE / language / "LC_MESSAGES" / "caddcalc.po"
-    tooling.compile_to(tooling.read(po), folder / language / "LC_MESSAGES" / "caddcalc.mo")
-    return folder
-
-
 @pytest.mark.parametrize(
     "tag", ["en_GB", "en-AU", "en_NZ", "en_IE", "en_ZA", "en_IN", "en_CA", "en_AT", "en_001"]
 )
 def test_english_outside_the_us_reads_the_british_catalog(tmp_path: Path, tag: str) -> None:
     """CLDR's en_001 and its children, and en_CA, which ADR-0020 §2 adds."""
-    i18n.use([tag], directories=[_shipped(tmp_path, "en_001")])
+    i18n.use([tag], directories=[shipped(tmp_path, "en_001")])
     assert "en_001" in i18n.lineage(tag)
     assert i18n._("About {product}: version, license, and terms") == BRITISH
 
 
 @pytest.mark.parametrize("tag", ["en_US", "en", "en_PR", "en_PH", "fr_FR"])
 def test_us_english_and_other_languages_keep_the_source_spelling(tmp_path: Path, tag: str) -> None:
-    i18n.use([tag], directories=[_shipped(tmp_path, "en_001")])
+    i18n.use([tag], directories=[shipped(tmp_path, "en_001")])
     assert "en_001" not in i18n.lineage(tag)
     assert i18n._("About {product}: version, license, and terms") == (
         "About {product}: version, license, and terms"
@@ -162,27 +142,122 @@ def test_englishs_parent_locales_are_cldrs() -> None:
 def test_a_new_language_starts_from_the_template(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    tooling = _tooling()
-    monkeypatch.setattr(tooling, "LOCALE", tmp_path)
-    path = tooling.init("de")
-    catalog = tooling.read(path)
-    assert tooling.keys(catalog) == tooling.keys(tooling.read(tooling.TEMPLATE))
-    assert not catalog.fuzzy and all(not m.string for m in catalog if m.id)
+    tools = tooling()
+    monkeypatch.setattr(tools, "LOCALE", tmp_path)
+    path = tools.init("de")
+    catalog = tools.read(path)
+    assert tools.keys(catalog) == tools.keys(tools.read(tools.TEMPLATE))
+    forms = [m.string if isinstance(m.string, tuple) else (m.string,) for m in catalog if m.id]
+    assert not catalog.fuzzy and not any(any(f) for f in forms), "nothing translated"
     with pytest.raises(FileExistsError, match="update"):
-        tooling.init("de")
+        tools.init("de")
+
+
+def test_an_untranslated_message_is_left_out_so_the_next_catalog_answers() -> None:
+    """Babel compiles an untranslated plural as the source text, which would hide en_001's."""
+    tools = tooling()
+    catalog = Catalog(locale="en_CA", domain="caddcalc")
+    catalog.add(("meter", "meters"), ("", ""), context="unit")
+    catalog.add("Sheet Metal", "")
+    catalog.add(("percent", "percent"), ("percent", "percent"), context="unit")
+    assert [m.id for m in tools.translated(catalog) if m.id] == [("percent", "percent")]
+
+
+def test_a_plural_translated_in_part_is_caught(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tools = tooling()
+    monkeypatch.setattr(tools, "LOCALE", tmp_path)
+    path = tools.init("de")
+    catalog = tools.read(path)
+    catalog.get(("inch", "inches"), context="unit").string = ("Zoll", "")
+    path.write_bytes(tools.po_text(catalog))
+    monkeypatch.setattr(tools, "TEMPLATE", tools.ROOT / "src/caddcalc/locale/caddcalc.pot")
+    assert any("'inch' translates only some" in p for p in tools.check())
 
 
 def test_a_fuzzy_translation_is_caught(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Babel's guess after a source change isn't compiled, so it waits to be confirmed."""
-    tooling = _tooling()
-    monkeypatch.setattr(tooling, "LOCALE", tmp_path)
-    path = tooling.init("de")
-    catalog = tooling.read(path)
+    tools = tooling()
+    monkeypatch.setattr(tools, "LOCALE", tmp_path)
+    path = tools.init("de")
+    catalog = tools.read(path)
     message = catalog.get("Sheet Metal")
     message.string, message.flags = "Blech", {"fuzzy"}
-    path.write_bytes(tooling.po_text(catalog))
-    monkeypatch.setattr(tooling, "TEMPLATE", tooling.ROOT / "src/caddcalc/locale/caddcalc.pot")
-    assert any("'Sheet Metal' is fuzzy" in p for p in tooling.check())
+    path.write_bytes(tools.po_text(catalog))
+    monkeypatch.setattr(tools, "TEMPLATE", tools.ROOT / "src/caddcalc/locale/caddcalc.pot")
+    assert any("'Sheet Metal' is fuzzy" in p for p in tools.check())
+
+
+def test_every_unit_name_is_marked_as_a_plural_pair_in_the_unit_context() -> None:
+    """ADR-0019 U5: names in US English, translated where they're shown."""
+    from caddcalc.core.units import UNITS
+    from caddcalc.core.units.model import NAME_CONTEXT
+
+    tools = tooling()
+    template = tools.read(tools.TEMPLATE)
+    for unit in (u for u in UNITS if u.symbol):
+        message = template.get((unit.name, unit.spoken_plural), context=NAME_CONTEXT)
+        assert message is not None and message.id == (unit.name, unit.spoken_plural), unit.symbol
+
+
+@pytest.mark.parametrize(
+    ("symbol", "shown", "spoken"),
+    [
+        ("mm", "1", "millimeter"),
+        ("mm", "-1", "millimeter"),
+        ("mm", "1.0000", "millimeters"),
+        ("mm", "0.5", "millimeters"),
+        ("mm", "0", "millimeters"),
+        ("in", "1", "inch"),
+        ("in", "0.3119", "inches"),
+        ("ft", "2", "feet"),
+        ("%", "1", "percent"),
+        ("%", "44", "percent"),
+        ("", "0.44", ""),
+    ],
+)
+def test_a_spoken_name_follows_the_number_as_shown(symbol: str, shown: str, spoken: str) -> None:
+    """US English, the source: singular only after a shown 1 (ADR-0020 §5)."""
+    from caddcalc.core.units import get_unit
+
+    assert get_unit(symbol).spoken(shown) == spoken
+
+
+@pytest.mark.parametrize(
+    ("tag", "symbol", "shown", "spoken"),
+    [
+        ("en_GB", "mm", "1", "millimetre"),
+        ("en_GB", "mm", "0.3119", "millimetres"),
+        ("en_AU", "cm", "2", "centimetres"),
+        ("en_IE", "m", "1", "metre"),
+        ("en_GB", "%", "44", "per cent"),
+        ("en_GB", "in", "1.0000", "inches"),
+        ("en_CA", "mm", "2", "millimetres"),
+        ("en_CA", "%", "44", "percent"),
+        ("en_US", "mm", "2", "millimeters"),
+    ],
+)
+def test_a_spoken_name_is_in_the_language_text_is_shown_in(
+    tmp_path: Path, tag: str, symbol: str, shown: str, spoken: str
+) -> None:
+    """CLDR 47's names: en_001 writes "millimetre" and "per cent"; en_CA, "percent"."""
+    from caddcalc.core.units import get_unit
+
+    folder = shipped(shipped(tmp_path, "en_001"), "en_CA")
+    i18n.use([tag], directories=[folder])
+    assert get_unit(symbol).spoken(shown) == spoken
+
+
+def test_the_plural_rule_is_the_language_the_text_is_in(tmp_path: Path) -> None:
+    """A language with no catalog shows the source text, so it takes English's rule."""
+    folder = shipped(tmp_path, "en_001")
+    assert i18n.text_language() == "en"
+    i18n.use(["fr_FR", "en_GB"], directories=[folder])
+    assert i18n.text_language() == "en_001", "French has no catalog; British comes next"
+    i18n.use(["fr_FR"], directories=[folder])
+    assert i18n.text_language() == "en"
+    assert i18n.npgettext_shown("unit", "inch", "inches", "1,0") == "inches", "a comma too"
 
 
 @pytest.mark.parametrize("count", [1.0, 2.5, True])
@@ -240,41 +315,41 @@ def test_every_marked_string_is_extracted(tmp_path: Path, monkeypatch: pytest.Mo
         'FIELDS = ngettext("{count} field", "{count} fields", 2)\n',
         encoding="utf-8",
     )
-    tooling = _tooling()
-    monkeypatch.setattr(tooling, "SOURCE", tmp_path)
-    catalog = tooling.extract()
+    tools = tooling()
+    monkeypatch.setattr(tools, "SOURCE", tmp_path)
+    catalog = tools.extract()
     wanted = {("Bend allowance", None), ("in", "unit"), ("{count} field", None)}
-    assert tooling.keys(catalog) == wanted
+    assert tools.keys(catalog) == wanted
     assert catalog.get("in", context="unit").auto_comments == ['the unit, as in "3 in".']
     assert catalog.get(("{count} field", "{count} fields")).id[1] == "{count} fields"
 
 
 def test_the_catalogs_are_current() -> None:
     """The template matches every marked string, and every language the template."""
-    assert _tooling().check() == []
+    assert tooling().check() == []
 
 
 def test_a_stale_template_or_language_is_caught(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    tooling = _tooling()
+    tools = tooling()
     stale = Catalog(domain="caddcalc")
     stale.add("A string no code marks")
     template = tmp_path / "caddcalc.pot"
-    template.write_bytes(tooling.po_text(stale))
-    monkeypatch.setattr(tooling, "TEMPLATE", template)
-    assert any("out of date" in p for p in tooling.check())
+    template.write_bytes(tools.po_text(stale))
+    monkeypatch.setattr(tools, "TEMPLATE", template)
+    assert any("out of date" in p for p in tools.check())
 
 
 def test_every_translation_keeps_its_sources_placeholders() -> None:
     """A translation may reorder named fields, never drop, add, or rename one (§1)."""
-    tooling = _tooling()
+    tools = tooling()
     catalog = Catalog(locale="en_GB", domain="caddcalc")
     catalog.add("{value} is below {limit}", "{limit} is above {value}")
-    assert tooling.placeholder_mismatches(catalog) == [], "reordered is fine"
+    assert tools.placeholder_mismatches(catalog) == [], "reordered is fine"
     catalog.add("{value} is past {limit}", "{value} is past the limit")
     catalog.add(("{count} field", "{count} fields"), ("{count} field", "{number} fields"))
-    problems = tooling.placeholder_mismatches(catalog)
+    problems = tools.placeholder_mismatches(catalog)
     assert len(problems) == 2 and "past the limit" in problems[0], problems
-    for path in tooling.languages():
-        assert tooling.placeholder_mismatches(tooling.read(path)) == [], path
+    for path in tools.languages():
+        assert tools.placeholder_mismatches(tools.read(path)) == [], path

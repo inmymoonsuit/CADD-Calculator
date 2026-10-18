@@ -12,6 +12,7 @@ import pytest
 from caddcalc import __version__
 from caddcalc.core import i18n
 from tests import pseudo_locale
+from tests.catalogs import shipped
 from tests.pseudo_locale import LANGUAGE, pseudo
 from tests.qt_helpers import open_window, settle
 
@@ -59,6 +60,29 @@ def test_a_calculator_imported_before_the_language_is_chosen_shows_it(tmp_path: 
     window.select_calculator(calc.id)
     assert window.title.text() == pseudo(calc.name)
     assert window.summary.text() == pseudo(calc.summary)
+    window.close()
+
+
+@pytest.mark.parametrize(
+    ("language", "spoken"),
+    [
+        ("", "millimeters"),
+        ("en_GB", "millimetres"),
+        (LANGUAGE, pseudo("millimeters")),
+    ],
+)
+def test_a_result_says_its_unit_in_the_language_text_is_shown_in(
+    tmp_path: Path, language: str, spoken: str
+) -> None:
+    """A screen reader hears the unit's name in the user's spelling (ADR-0019 U5)."""
+    folder = pseudo_locale.write(shipped(tmp_path, "en_001"))
+    i18n.use([language] if language else [], directories=[folder])
+    window = open_window()
+    window.select_calculator("sheet_metal.bend_allowance")
+    window.method_box.setCurrentIndex(window.method_box.findData("course"))
+    window.units_box.setCurrentText("mm")
+    field = window.results.fields["bend_allowance"]
+    assert field.accessibleName().endswith(f" {spoken}"), field.accessibleName()
     window.close()
 
 

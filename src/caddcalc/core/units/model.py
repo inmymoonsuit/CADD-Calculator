@@ -14,6 +14,7 @@ from fractions import Fraction
 from types import MappingProxyType
 
 from caddcalc.core.citations import Source
+from caddcalc.core.i18n import npgettext_shown
 from caddcalc.core.reference import Reference
 
 type Exact = Fraction | Decimal
@@ -52,6 +53,9 @@ class UnitSystem(Enum):
 
 CLOSE_UP_SYMBOLS = frozenset({"°", "′", "″"})
 """The only symbols written against their number, as in ``90°`` (NIST SP 811 §7.2)."""
+NAME_CONTEXT = "unit"
+"""The translation context of units' names, so "degree" and "foot" are the units. Each
+declaration names it literally, ``NP_("unit", …)``, for the extractor to read."""
 
 
 @dataclass(frozen=True)
@@ -108,12 +112,13 @@ class Unit:
     def spoken(self, shown: str) -> str:
         """Return the unit's name as spoken after the number ``shown``, e.g. ``"inches"``.
 
-        It's singular only after a shown ``1``. Any visible decimal takes the plural, as
-        CLDR's English plural rule has it, so ``1.0000 in`` is "1.0000 inches".
+        It's in the language text is shown in, and its form follows the number's plural
+        category there (ADR-0020 §5): in English, singular only after a shown ``1``, so
+        ``1.0000 in`` is "1.0000 inches".
         """
         if not self.symbol:
             return ""
-        return self.name if shown.lstrip("+-") == "1" else self.spoken_plural
+        return npgettext_shown(NAME_CONTEXT, self.name, self.spoken_plural, shown)
 
 
 @dataclass(frozen=True)

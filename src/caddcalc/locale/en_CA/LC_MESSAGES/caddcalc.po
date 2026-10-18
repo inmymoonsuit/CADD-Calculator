@@ -1,0 +1,181 @@
+# Canadian English for CADD Calculator: only where it differs from the British catalog,
+# en_001, which en_CA reads next (ADR-0020 §2). CLDR 47's en_CA writes "metre", as en_001
+# does, but "percent". An empty translation means en_001's text is right here too. See
+# CONTRIBUTING.md.
+msgid ""
+msgstr ""
+"Project-Id-Version: CADD Calculator VERSION\n"
+"Report-Msgid-Bugs-To: https://github.com/inmymoonsuit/CADD-Calculator/issues\n"
+"POT-Creation-Date: 2026-10-18 00:00+0000\n"
+"PO-Revision-Date: 2026-10-18 00:00+0000\n"
+"Last-Translator: CADD Calculator contributors\n"
+"Language: en_CA\n"
+"Language-Team: en_CA\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: src/caddcalc/gui/welcome.py
+msgctxt "button"
+msgid "About"
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+#, python-brace-format
+msgid "About {product}: version, license, and terms"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Bend allowance & deduction"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Bend allowance (neutral-axis arc length), outside setback, and bend deduction for a single bend."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/domain.py
+msgid "Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts."
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+msgctxt "button"
+msgid "Close"
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+msgid "Close (Esc)"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Flat length of a formed segment"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Flat-pattern length of one segment, dimensioned to the outside, with a bend at one or both ends."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/cone.py
+msgid "Inside radius, outside radius, and sweep angle of the flat pattern for a cone frustum."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/domain.py
+msgid "Sheet Metal"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "Suggested female (V) die opening for air bending on a press brake."
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/cone.py
+msgid "Truncated cone flat pattern"
+msgstr ""
+
+#: src/caddcalc/calculators/sheet_metal/bends.py
+msgid "V-die opening (air bending)"
+msgstr ""
+
+#. the welcome card's version line. It sits in a small corner of the
+#. art, so keep it short.
+#: src/caddcalc/gui/welcome.py
+#, python-brace-format
+msgid "Version {version}"
+msgstr ""
+
+#: src/caddcalc/gui/welcome.py
+#, python-brace-format
+msgid "Welcome to {product}"
+msgstr ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "centimeter"
+msgid_plural "centimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "degree"
+msgid_plural "degrees"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "foot"
+msgid_plural "feet"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "gigapascal"
+msgid_plural "gigapascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "inch"
+msgid_plural "inches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "kilopascal"
+msgid_plural "kilopascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "kip per square inch"
+msgid_plural "kips per square inch"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "megapascal"
+msgid_plural "megapascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "meter"
+msgid_plural "meters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "millimeter"
+msgid_plural "millimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "percent"
+msgid_plural "percent"
+msgstr[0] "percent"
+msgstr[1] "percent"
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "pound per square inch"
+msgid_plural "pounds per square inch"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "radian"
+msgid_plural "radians"
+msgstr[0] ""
+msgstr[1] ""
+

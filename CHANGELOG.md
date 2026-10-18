@@ -20,6 +20,8 @@ All notable changes are recorded here. The format follows
   doesn't choose a language from the system yet.
 - The calculator list's tooltip gives a calculator's or family's whole name, above its
   summary, when the list is too narrow to show it.
+- Units can be typed in British spelling too: `3 millimetre`, `1 metre`, `2 centimetre`,
+  and `44 per cent` read as their units, in any case (ADR-0019 U5).
 - A test pseudo-locale, en_XA, and tests that every page fits at the window's least size
   in it and in English, and that the welcome card's version line stays in its safe area.
   KI-023 lists the three things that don't fit yet.
@@ -415,6 +417,9 @@ All notable changes are recorded here. The format follows
   shows the method's name, with its status beside it, or under it when narrow; the open
   list shows both. The family settings page reflows to a narrow window instead of
   scrolling sideways.
+- Units' names, which screen readers say, are US English, the source language
+  ("millimeters"), and come in British spelling from the British catalog ("millimetres",
+  "per cent"). Each is singular only after a number shown as a whole 1.
 - **Units come from one registry (ADR-0019).** `caddcalc.core.units` is now a package that
   declares every dimension and unit once, with its exact definition and its NIST SP 811
   citation, and reads typed units by asking that registry, rather than a list of

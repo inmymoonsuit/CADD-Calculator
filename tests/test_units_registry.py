@@ -279,6 +279,20 @@ def test_a_plugin_cant_take_a_built_in_name_in_another_dimension() -> None:
     assert built.find("in").name == "inch"
 
 
+@pytest.mark.parametrize("spelling", ["millimetre", "METRE", "Centimetre", "per cent"])
+def test_the_british_spellings_are_reserved_like_every_built_in_name(spelling: str) -> None:
+    """ADR-0019 U5's spellings are built-in names, reserved in any case and dimension."""
+
+    def entry_points(*, group: str) -> list[_EntryPoint]:
+        assert group == "caddcalc.units"
+        return [_EntryPoint("incline", _incline(spelling))]
+
+    built = build_registry(entry_points=entry_points)
+    [error] = built.plugin_errors
+    assert f"{spelling!r} is the built-in unit" in error.message
+    assert error.message.endswith("in any dimension")
+
+
 def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

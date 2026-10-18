@@ -1,7 +1,8 @@
 # ADR-0019: A units registry, the one source of unit knowledge
 
 * **Status:** **Accepted**; the behaviour-neutral refactor (§7's first step) is built, as
-  u1 and u1b (see Amendments). The maintainer asked for this ADR on 2026-10-17
+  u1 and u1b, and U5's spellings as i3 (see Amendments). The maintainer asked for this ADR
+  on 2026-10-17
   ("create a registry of units in our codebase (maybe even a subsystem for units and
   conversions) with definitions and attributes and the ability to add new ones"), decided
   U4 and U5 that day, and approved U1–U3 as recommended on 2026-10-18 ("Approve all"),
@@ -217,3 +218,21 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
     expression unit. With no dimension and two units of the name, it raises UsageError.
 * **Guards beyond §5's list:** an empty alias is refused, and so is any name starting with
   "e" or "E", which is broader than the exponent clash it prevents, but harmless today.
+
+### 2026-10-18: unit names and spellings (U5, built in ADR-0020's i3)
+
+* **Names are US English,** the source language: "millimeter", "meter", "centimeter",
+  where u1 kept the old module's "millimetre". Each unit declares its singular and plural
+  as one pair, `NP_("unit", "millimeter", "millimeters")`, so a language with more plural
+  forms than two can give them all. `Unit.spoken(shown)` translates the pair where it's
+  shown, choosing the form by the number's plural category (ADR-0020 §5). The name of a
+  unitless ratio isn't spoken, so it isn't marked.
+* **The British forms come from the catalog,** from CLDR 47's en_001 unit names:
+  "millimetre", "centimetre", "metre", and "per cent". CLDR's en_CA writes "percent", so
+  a one-entry en_CA catalog says so; it reads en_001 for the rest.
+* **Every spelling reads in every locale.** The British singulars "millimetre",
+  "centimetre" and "metre", which u1 didn't accept, are aliases now, and so is "per cent",
+  which the parser takes as one name though it has a space. They're built-in names, so a
+  plugin can't take one, in any case or dimension. The identity test holds these four to
+  their units, since the old module refused them, and holds every other text to what it
+  read before.

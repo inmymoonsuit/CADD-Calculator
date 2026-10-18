@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import gettext as _gettext
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import cache
 from importlib import resources
@@ -55,6 +55,16 @@ def N_(message: str) -> str:  # noqa: N802 (gettext's name for a deferred marker
     return message
 
 
+def NP_(context: str, singular: str, plural: str) -> tuple[str, str]:  # noqa: N802, ARG001 (the context is for the extractor)
+    """Mark a ``singular`` and ``plural`` pair, in ``context``, where it's declared.
+
+    It returns the pair unchanged, for a declaration such as a unit's names, and is
+    translated where it's shown, with ``npgettext_shown`` in the same ``context``. The
+    pair is one message, so a language with more plural forms than two can give each.
+    """
+    return singular, plural
+
+
 def use(languages: Iterable[str], *, directories: Sequence[Traversable | Path] = ()) -> None:
     """Choose the languages text is shown in, most wanted first; ``()`` is the source.
 
@@ -76,7 +86,15 @@ def languages() -> tuple[str, ...]:
 
 def clear() -> None:
     """Forget the loaded catalogs, so the next lookup reads them again; for tests."""
+    _found.cache_clear()
     translator.cache_clear()
+
+
+@cache
+def _found() -> tuple[tuple[str, _gettext.GNUTranslations], ...]:
+    """Return each catalog the chosen languages read, with its name, most wanted first."""
+    wanted = dict.fromkeys(name for tag in _chosen.languages for name in lineage(tag))
+    return tuple((name, catalog) for name in wanted if (catalog := _catalog(name)) is not None)
 
 
 @cache
@@ -88,12 +106,23 @@ def translator() -> _gettext.NullTranslations:
     error.
     """
     chain: _gettext.NullTranslations = _gettext.NullTranslations()
-    wanted = dict.fromkeys(name for tag in _chosen.languages for name in lineage(tag))
-    found = [catalog for name in wanted if (catalog := _catalog(name)) is not None]
-    for catalog in reversed(found):
+    for _name, catalog in reversed(_found()):
         catalog.add_fallback(chain)
         chain = catalog
     return chain
+
+
+SOURCE_LANGUAGE = "en"
+"""The language text is written in: US English (ADR-0020 §2)."""
+
+
+def text_language() -> str:
+    """Return the language text is shown in: the first chosen one with a catalog.
+
+    It's the source language when no chosen language has a catalog.
+    """
+    found = _found()
+    return found[0][0] if found else SOURCE_LANGUAGE
 
 
 _CLDR_PARENTS = {
@@ -203,13 +232,38 @@ def plural_category(shown: str, language: str = "") -> str:
     English's, the source language's.
 
     Args:
-        shown: The number as shown, e.g. ``"1"``, ``"-1"`` or ``"0.3119"``.
-        language: A language tag; the chosen language when empty.
+        shown: The number as shown, e.g. ``"1"``, ``"-1"``, ``"0.3119"`` or ``"0,3119"``.
+        language: A language tag; the language text is shown in (``text_language``) when
+            empty.
     """
-    tag = posix_language(language) if language else next(iter(_chosen.languages), "")
-    rule = _PLURAL_RULES.get(tag.split("_", 1)[0], _english)
-    whole, _point, fraction = shown.strip().lstrip("+-").partition(".")
-    return rule(int(whole or "0"), len(fraction))
+    return _rule(language or text_language()).category(*_digits(shown))
+
+
+def npgettext_shown(context: str, singular: str, plural: str, shown: str) -> str:
+    """Return the form of ``singular`` or ``plural``, in ``context``, for a number as shown.
+
+    The form follows the number's plural category in the language the text is shown in
+    (ADR-0020 §5): "1" takes "inch", and "1.0000" and "0.5" take "inches". gettext picks a
+    catalog's form by a whole count, so the category is passed as a count in it.
+    """
+    rule = _rule(text_language())
+    count = rule.samples[rule.category(*_digits(shown))]
+    return translator().npgettext(context, singular, plural, count)
+
+
+_NUMBER = re.compile(r"[+\-−]?(\d*)(?:[.,](\d*))?")
+"""A shown number's sign, integer part, and decimals; U+2212 is the minus sign."""
+
+
+def _digits(shown: str) -> tuple[int, int]:
+    """Return a shown number's integer part, i, and how many decimals it shows, v.
+
+    Either "." or "," is its decimal mark: a shown number has no digit grouping
+    (ADR-0020 §4).
+    """
+    match = _NUMBER.match(shown.strip())
+    whole, fraction = (match.group(1), match.group(2)) if match else ("", None)
+    return int(whole or "0"), len(fraction or "")
 
 
 def _english(i: int, v: int) -> str:
@@ -217,6 +271,22 @@ def _english(i: int, v: int) -> str:
     return "one" if i == 1 and v == 0 else "other"
 
 
-_PLURAL_RULES = {"en": _english}
-"""Each shipped language's CLDR cardinal rule, by language, as (i, v) -> category: i is
-the integer digits, and v the number of visible fraction digits."""
+@dataclass(frozen=True)
+class _PluralRule:
+    """A language's CLDR cardinal rule, and a whole count in each of its categories."""
+
+    category: Callable[[int, int], str]
+    """The rule, as (i, v) -> category: i is the integer part, and v the number of
+    visible fraction digits."""
+    samples: Mapping[str, int]
+    """A whole count the language's catalogs put in each category, so a category can
+    choose a catalog's form: gettext chooses forms by count."""
+
+
+_PLURAL_RULES = {"en": _PluralRule(_english, {"one": 1, "other": 2})}
+"""Each shipped language's rule, by language."""
+
+
+def _rule(language: str) -> _PluralRule:
+    """Return ``language``'s plural rule, or English's when it has none of its own."""
+    return _PLURAL_RULES.get(posix_language(language).split("_", 1)[0], _PLURAL_RULES["en"])

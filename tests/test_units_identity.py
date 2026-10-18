@@ -62,6 +62,9 @@ INVALID = (
 )
 """Text the parser has always refused, each with its own message."""
 OLD_DIMENSIONS = {d: old.Dimension(d.value) for d in Dimension}
+NEW_SPELLINGS = {"millimetre": "mm", "centimetre": "cm", "metre": "m", "per cent": "%"}
+"""Spellings units gained after the registry (ADR-0019 U5: every spelling reads in every
+locale). The old module didn't know them, so they're held to their units instead."""
 
 
 def _reads(parse: Any, text: str, dimension: Any, default: str | None) -> tuple[Any, ...]:
@@ -83,7 +86,7 @@ def _corpus() -> Iterator[tuple[str, Dimension, str | None]]:
     default, and every value a shipped table states.
     """
     for unit, number, space, dimension in product(UNITS, NUMBERS, ("", " ", "  "), Dimension):
-        for key in unit.keys:
+        for key in (k for k in unit.keys if k not in NEW_SPELLINGS):
             for name in {key, key.upper(), key.title()}:
                 yield f"{number}{space}{name}", dimension, None
     for number, dimension, unit in product(NUMBERS, Dimension, (None, *(u.symbol for u in UNITS))):
@@ -137,17 +140,29 @@ def test_every_text_reads_as_it_always_has() -> None:
 
 
 def test_every_name_finds_the_unit_it_always_has() -> None:
+    """Names are now US English, the source language, each one an old alias (ADR-0020 §2)."""
     for unit in UNITS:
-        for key in (*unit.keys, unit.symbol, f" {unit.symbol} "):
+        for key in (*(k for k in unit.keys if k not in NEW_SPELLINGS), unit.symbol):
             new, was = get_unit(key), old.get_unit(key)
-            assert (new.symbol, new.name, new.dimension.value) == (
-                was.symbol,
-                was.name,
-                was.dimension.value,
-            )
-            assert (new.aliases, new.spoken_plural) == (was.aliases, was.spoken_plural)
+            assert (new.symbol, new.dimension.value) == (was.symbol, was.dimension.value)
+            assert new.name in (was.name, *was.aliases), new.name
+            assert new.spoken_plural in (was.spoken_plural, *was.aliases), new.spoken_plural
+            assert set(new.aliases) - set(was.aliases) <= set(NEW_SPELLINGS), new.aliases
+            assert set(was.aliases) <= set(new.aliases), "every old spelling still reads"
     with pytest.raises(CaddCalcError, match="Unknown unit 'furlong'"):
         get_unit("furlong")
+
+
+@pytest.mark.parametrize(("spelling", "symbol"), NEW_SPELLINGS.items())
+def test_the_new_spellings_read_as_their_units(spelling: str, symbol: str) -> None:
+    """British "millimetre" and "per cent" were unknown before; now they're their units."""
+    with pytest.raises(CaddCalcError):  # an unknown unit, or "'3 per' is not a number"
+        old.parse_quantity_detailed(f"3 {spelling}", old.Dimension.LENGTH, None)
+    unit = get_unit(symbol)
+    for name, space in product({spelling, spelling.upper(), spelling.title()}, ("", " ")):
+        got = parse_quantity_detailed(f"3{space}{name}", unit.dimension, None)
+        assert (got.unit.symbol, got.explicit_unit) == (symbol, True), name
+        assert got.value == pytest.approx(3 * unit.factor)
 
 
 def test_every_factor_is_as_it_was_but_psis_one_unit_in_the_last_place() -> None:
@@ -171,7 +186,9 @@ def test_dimensions_and_base_units_are_as_they_were() -> None:
         ]
 
 
-LENGTH_CHOICES = tuple(k for u in UNITS if u.dimension is Dimension.LENGTH for k in u.keys)
+LENGTH_CHOICES = tuple(
+    k for u in UNITS if u.dimension is Dimension.LENGTH for k in u.keys if k not in NEW_SPELLINGS
+)
 
 
 @pytest.mark.parametrize("length", LENGTH_CHOICES)

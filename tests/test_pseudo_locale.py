@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import re
 from pathlib import Path
 from string import Formatter
@@ -12,9 +11,8 @@ from babel.messages.catalog import Catalog
 from babel.messages.pofile import write_po
 
 from tests import pseudo_locale
+from tests.catalogs import tooling
 from tests.pseudo_locale import CLOSE, OPEN, pseudo
-
-TOOLING = Path(__file__).parents[1] / "scripts" / "i18n.py"
 
 
 def _letters(text: str) -> str:
@@ -90,12 +88,13 @@ def test_every_message_and_every_plural_form_is_filled(tmp_path: Path) -> None:
 
 
 def test_the_shipped_template_makes_a_catalog_that_keeps_every_placeholder() -> None:
-    spec = importlib.util.spec_from_file_location("i18n_tooling", TOOLING)
-    assert spec is not None and spec.loader is not None
-    tooling = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(tooling)
+    tools = tooling()
     made = pseudo_locale.catalog()
-    template = tooling.read(pseudo_locale.TEMPLATE)
-    assert tooling.keys(made) == tooling.keys(template), "every marked string"
-    assert tooling.placeholder_mismatches(made) == []
-    assert all(_letters(m.string) for m in made if m.id), "nothing left empty"
+    template = tools.read(pseudo_locale.TEMPLATE)
+    assert tools.keys(made) == tools.keys(template), "every marked string"
+    assert tools.placeholder_mismatches(made) == []
+    forms = [
+        f for m in made if m.id for f in (m.string if isinstance(m.string, tuple) else [m.string])
+    ]
+    assert all(_letters(f) for f in forms), "nothing left empty, in any plural form"
+    assert any(isinstance(m.id, tuple) for m in made), "the units' names have plural forms"

@@ -13,6 +13,7 @@ dependency only: the app reads ``.mo`` files with the standard library.
 
 from __future__ import annotations
 
+import copy
 import datetime
 import io
 import sys
@@ -39,9 +40,10 @@ HEADER = (
     '# "Translating", and ADR-0020.'
 )
 METHODS = [("**.py", "python")]
-KEYWORDS = DEFAULT_KEYWORDS
+KEYWORDS = {**DEFAULT_KEYWORDS, "NP_": ((1, "c"), 2, 3)}
 """Babel's defaults: ``_``, ``N_``, ``ngettext``, ``pgettext``, ``npgettext`` and gettext's
-other names (ADR-0020 §1)."""
+other names (ADR-0020 §1); and ``NP_``, which marks a singular and plural pair in a
+context, as ``npgettext`` takes them."""
 
 
 def extract() -> Catalog:
@@ -151,11 +153,29 @@ def placeholder_mismatches(catalog: Catalog) -> list[str]:
     return problems
 
 
+def _forms(message: Message) -> tuple[str, ...]:
+    """Return a message's translations: one, or one per plural form."""
+    string = message.string
+    return tuple(string) if isinstance(string, tuple | list) else (string or "",)
+
+
+def translated(catalog: Catalog) -> Catalog:
+    """Return ``catalog`` with only the messages it translates, every form of each.
+
+    An untranslated message has to fall through to the next catalog, as en_CA's do to
+    en_001's. Babel would compile an untranslated plural as the source text instead.
+    """
+    kept = copy.deepcopy(catalog)
+    for message in [m for m in catalog if m.id and not all(_forms(m))]:
+        kept.delete(message.id, context=message.context)
+    return kept
+
+
 def compile_to(catalog: Catalog, path: Path) -> None:
-    """Write ``catalog`` as a .mo file at ``path``."""
+    """Write the messages ``catalog`` translates as a .mo file at ``path``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("wb") as stream:
-        write_mo(stream, catalog)
+        write_mo(stream, translated(catalog))
 
 
 def check() -> list[str]:
@@ -179,8 +199,13 @@ def check() -> list[str]:
             for m in catalog
             if m.id and m.fuzzy
         ]
+        problems += [
+            f"{language}: {_singular(m)!r} translates only some of its plural forms"
+            for m in catalog
+            if m.id and any(_forms(m)) and not all(_forms(m))
+        ]
         try:
-            write_mo(io.BytesIO(), catalog)
+            write_mo(io.BytesIO(), translated(catalog))
         except Exception as exc:  # noqa: BLE001 (report any reason a catalog won't compile)
             problems.append(f"{language} won't compile: {exc}")
     return problems

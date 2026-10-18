@@ -14,6 +14,7 @@ from decimal import Decimal, localcontext
 from fractions import Fraction
 
 from caddcalc.core.citations import License, Publication, PublicationKind, cite
+from caddcalc.core.i18n import NP_
 from caddcalc.core.units.model import (
     Dimension,
     DimensionSpec,
@@ -75,8 +76,7 @@ so it's the one factor held as a decimal; it rounds to the same double as ``180/
 
 def _unit(
     symbol: str,
-    name: str,
-    plural: str,
+    names: tuple[str, str],
     dimension: Dimension,
     exact: Exact,
     system: UnitSystem,
@@ -88,8 +88,13 @@ def _unit(
     fractions: bool = False,
     primary: bool = False,
 ) -> Unit:
-    """Declare a built-in unit, citing SP 811 at ``locator``, and 24 FR 5348 if ``primary``."""
+    """Declare a built-in unit, citing SP 811 at ``locator``, and 24 FR 5348 if ``primary``.
+
+    Its ``names``, singular and plural, are US English, the source language, marked with
+    ``NP_`` in the "unit" context; they're translated where they're shown (ADR-0019 U5).
+    """
     source = cite(f"sp811_{symbol or 'one'}", SP_811, locator)
+    name, plural = names
     return Unit(
         symbol,
         name,
@@ -126,38 +131,34 @@ otherwise (ADR-0005, amendments). An angle shows in degrees, a ratio as a number
 UNITS: tuple[Unit, ...] = (
     _unit(
         "mm",
-        "millimetre",
-        "millimetres",
+        NP_("unit", "millimeter", "millimeters"),
         LENGTH,
         Fraction(1),
         SI,
         "Table 1 (meter) and Table 5 (milli)",
-        aliases=("millimeter", "millimeters", "millimetres"),
+        aliases=("millimeter", "millimeters", "millimetre", "millimetres"),
     ),
     _unit(
         "cm",
-        "centimetre",
-        "centimetres",
+        NP_("unit", "centimeter", "centimeters"),
         LENGTH,
         Fraction(10),
         SI,
         "Table 1 (meter) and Table 5 (centi)",
-        aliases=("centimeter", "centimeters", "centimetres"),
+        aliases=("centimeter", "centimeters", "centimetre", "centimetres"),
     ),
     _unit(
         "m",
-        "metre",
-        "metres",
+        NP_("unit", "meter", "meters"),
         LENGTH,
         Fraction(1000),
         SI,
         "Table 1 (meter)",
-        aliases=("meter", "meters", "metres"),
+        aliases=("meter", "meters", "metre", "metres"),
     ),
     _unit(
         "in",
-        "inch",
-        "inches",
+        NP_("unit", "inch", "inches"),
         LENGTH,
         INCH_MM,
         US,
@@ -168,8 +169,7 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "ft",
-        "foot",
-        "feet",
+        NP_("unit", "foot", "feet"),
         LENGTH,
         12 * INCH_MM,
         US,
@@ -179,8 +179,7 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "deg",
-        "degree",
-        "degrees",
+        NP_("unit", "degree", "degrees"),
         ANGLE,
         Fraction(1),
         ACCEPTED,
@@ -191,29 +190,26 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "rad",
-        "radian",
-        "radians",
+        NP_("unit", "radian", "radians"),
         ANGLE,
         RADIAN_DEG,
         SI,
         "Table 3 (radian)",
         aliases=("radian", "radians"),
     ),
-    _unit("", "ratio", "", RATIO, Fraction(1), NONE, "§7.10 (the unit one)"),
+    _unit("", ("ratio", ""), RATIO, Fraction(1), NONE, "§7.10 (the unit one)"),
     _unit(
         "%",
-        "percent",
-        "percent",
+        NP_("unit", "percent", "percent"),
         RATIO,
         Fraction(1, 100),
         NONE,
         "§7.10.2 (%)",
-        aliases=("percent",),
+        aliases=("percent", "per cent"),
     ),
     _unit(
         "MPa",
-        "megapascal",
-        "megapascals",
+        NP_("unit", "megapascal", "megapascals"),
         STRESS,
         Fraction(1),
         SI,
@@ -222,8 +218,7 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "kPa",
-        "kilopascal",
-        "kilopascals",
+        NP_("unit", "kilopascal", "kilopascals"),
         STRESS,
         Fraction(1, 1000),
         SI,
@@ -232,8 +227,7 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "GPa",
-        "gigapascal",
-        "gigapascals",
+        NP_("unit", "gigapascal", "gigapascals"),
         STRESS,
         Fraction(1000),
         SI,
@@ -242,8 +236,7 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "psi",
-        "pound per square inch",
-        "pounds per square inch",
+        NP_("unit", "pound per square inch", "pounds per square inch"),
         STRESS,
         PSI_MPA,
         US,
@@ -253,8 +246,7 @@ UNITS: tuple[Unit, ...] = (
     ),
     _unit(
         "ksi",
-        "kip per square inch",
-        "kips per square inch",
+        NP_("unit", "kip per square inch", "kips per square inch"),
         STRESS,
         1000 * PSI_MPA,
         US,

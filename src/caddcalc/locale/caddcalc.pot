@@ -86,3 +86,94 @@ msgstr ""
 msgid "Welcome to {product}"
 msgstr ""
 
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "centimeter"
+msgid_plural "centimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "degree"
+msgid_plural "degrees"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "foot"
+msgid_plural "feet"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "gigapascal"
+msgid_plural "gigapascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "inch"
+msgid_plural "inches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "kilopascal"
+msgid_plural "kilopascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "kip per square inch"
+msgid_plural "kips per square inch"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "megapascal"
+msgid_plural "megapascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "meter"
+msgid_plural "meters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "millimeter"
+msgid_plural "millimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "percent"
+msgid_plural "percent"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "pound per square inch"
+msgid_plural "pounds per square inch"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "radian"
+msgid_plural "radians"
+msgstr[0] ""
+msgstr[1] ""
+

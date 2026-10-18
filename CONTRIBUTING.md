@@ -147,7 +147,9 @@ later sweep, calculator by calculator.
   never a sentence pieced together from parts. A translation may reorder the
   placeholders, but never drop, add, or rename one; a test checks.
 * Choose a plural form with `ngettext` for a whole count. A number shown with decimals
-  chooses by `plural_category`, from its text: "1 inch", but "1.0000 inches".
+  chooses by its text, with `npgettext_shown`: "1 inch", but "1.0000 inches". Mark a
+  singular and plural declared together as one pair, `NP_("unit", "inch", "inches")`,
+  so a language with more plural forms can give them all.
 * Put a note for translators on the line before the text, starting `# Translators:`.
 
 The template, `src/caddcalc/locale/caddcalc.pot`, and each language's `.po` file are

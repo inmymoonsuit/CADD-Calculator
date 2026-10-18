@@ -13,6 +13,9 @@
 | `44%`, `0.44` | the ratio 0.44 (e.g. a K-factor) |
 | `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is ksi when the system is `in`, MPa when it's `mm` |
 
+Units can be typed by name, in US or British spelling: `3 millimeters` or
+`3 millimetres`, `1 meter` or `1 metre`, `44 percent` or `44 per cent`.
+
 Not supported yet: combined feet and inches such as `3'-4 1/2"`.
 
 ## Precision and rounding

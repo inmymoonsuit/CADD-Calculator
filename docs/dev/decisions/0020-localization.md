@@ -1,8 +1,8 @@
 # ADR-0020: Localization, starting with a skeleton
 
 * **Status:** **Accepted**; the skeleton is being built, so far its `core.i18n` module and
-  catalog tooling (i1), and the British catalog, the pseudo-locale and its tests (i2; see
-  Amendments). The maintainer asked on 2026-10-17 for spelling to
+  catalog tooling (i1), the British catalog, the pseudo-locale and its tests (i2), and
+  units' names and plurals (i3; see Amendments). The maintainer asked on 2026-10-17 for spelling to
   follow the user's language settings, and for the localization system's skeleton to be
   built now. After UI/UX's and Support & Review's reviews, the maintainer approved L1–L5
   as recommended on 2026-10-18 ("Approve all").
@@ -252,3 +252,26 @@ kept for the record.
   Fusion and windows11, the painted row changes exactly at the width where the test flips.
 * **CLDR's license.** The parent table and the English plural rule come from CLDR, which
   is under the Unicode License v3; THIRD_PARTY_NOTICES.md carries its notice.
+
+### 2026-10-18: units' names and plurals (i3)
+
+* **A plural pair, marked where it's declared.** `NP_(context, singular, plural)` marks
+  a pair as one message, as `npgettext` takes it; Babel reads it through one more
+  keyword. The units declare their names with it, in the "unit" context (ADR-0019 U5).
+* **A form chosen by the number as shown (§5).** `npgettext_shown(context, singular,
+  plural, shown)` finds the number's CLDR category in the language the text is shown in,
+  then asks the catalog for that category's form. gettext chooses a form by a whole
+  count, so each language's rule in `core.i18n` gives a count in each of its categories:
+  1 for English's "one", 2 for its "other". `plural_category` reads "." or "," as the
+  decimal mark, since a shown number has no grouping (§4).
+* **The language text is shown in** is `text_language()`: the first chosen language
+  with a catalog, or the source. A chosen language without a catalog shows the source
+  text, so it takes English's rule, never its own rule over English words.
+* **en_CA's own catalog** holds only what CLDR 47's en_CA writes differently from
+  en_001, "percent". It's the first catalog that falls back to another, which showed a
+  compile bug: Babel compiles an untranslated plural as the source text, which would
+  hide en_001's. `compile_to` now leaves untranslated messages out, so the next catalog
+  answers, and `check` reports a plural translated in some forms but not all.
+* **Spoken names** are in the British spelling where a British catalog is read, "0.3119
+  millimetres", and US spelling otherwise, from the source. Until §3's locale wiring
+  (i4), the app shows the source.
