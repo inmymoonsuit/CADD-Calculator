@@ -856,3 +856,25 @@ def test_a_methods_notes_name_their_values_and_read_in_the_users_format() -> Non
     for notes in (("gives {b}",), ("gives {}",), ("gives {a:.2f}",)):
         with pytest.raises(SpecError):
             Method("m", "M", "S", Verification.UNVERIFIED, notes=notes, quantities={"a": angle})
+
+
+def test_a_status_writes_its_scope_and_the_verification_note_follows_the_notes() -> None:
+    """ADR-0010's amendments: "verified at 90°"; an unverified method has no scope."""
+    verified = Method(
+        "m",
+        "M",
+        "S",
+        Verification.VERIFIED,
+        notes=("a note",),
+        legacy=True,
+        scope="at 90°",
+        verification_note="Verified at 90°, against an example.",
+    )
+    assert verified.status == "verified at 90° · reproduces legacy"
+    assert verified.notes_shown(lambda v, _d: str(v)) == (
+        "a note",
+        "Verified at 90°, against an example.",
+    )
+    assert Method("m", "M", "S", Verification.VERIFIED).status == "verified"
+    with pytest.raises(SpecError, match="has a scope, but isn't verified"):
+        Method("m", "M", "S", Verification.UNVERIFIED, scope="at 90°")

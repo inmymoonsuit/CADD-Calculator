@@ -13,6 +13,7 @@ from caddcalc.calculators.sheet_metal.common import (
     K_FACTOR_METHOD,
     LEGACY_LESSON_2,
     LEGACY_ROUGH_DRAFT,
+    MH31_FIG13,
     THICKNESS,
     bend_allowance_formula,
     bend_angle,
@@ -54,6 +55,44 @@ def _check_bend(ctx: Context, *angle_keys: str) -> None:
         )
 
 
+EDD5_EXAMPLE = "Engineering Drawing and Design's worked example (5th ed., Fig. 19.12, p. 785)"
+
+# Each calculator's own copies of the shared methods: verified where a published worked
+# example runs through this calculator, as tests/test_published_examples.py checks
+# (ADR-0010, amendments).
+BEND_ALLOWANCE_COURSE = replace(
+    COURSE_METHOD,
+    verification=Verification.VERIFIED,
+    scope="for BA",
+    references=(*COURSE_METHOD.references, MH31_FIG13),
+    verification_note=(
+        "Verified for the bend allowance, against the Handbook's worked example, a soft-steel "
+        "part (31st ed., Fig. 13, p. 1421). It doesn't check the setback or the deduction."
+    ),
+)
+BEND_ALLOWANCE_K_FACTOR = replace(
+    K_FACTOR_METHOD,
+    verification=Verification.VERIFIED,
+    scope="for BA at 90°",
+    verification_note=f"Verified for the bend allowance at 90° only, against {EDD5_EXAMPLE}.",
+)
+SEGMENT_COURSE = replace(
+    COURSE_METHOD,
+    verification_note=(
+        "Not verified in this calculator: the Handbook's worked example checks a bend "
+        "allowance, not a segment's flat length."
+    ),
+)
+SEGMENT_K_FACTOR = replace(
+    K_FACTOR_METHOD,
+    verification=Verification.VERIFIED,
+    scope="at 90°",
+    verification_note=(
+        f"Verified at 90° only, against {EDD5_EXAMPLE}, a part with one bend. Past 90°, see KI-013."
+    ),
+)
+
+
 class BendAllowance(Calculator):
     """Bend allowance, outside setback, and bend deduction for a single bend."""
 
@@ -89,7 +128,7 @@ class BendAllowance(Calculator):
             "Subtract from the sum of outside flange lengths to get the flat length.",
         ),
     )
-    methods = (COURSE_METHOD, K_FACTOR_METHOD)
+    methods = (BEND_ALLOWANCE_COURSE, BEND_ALLOWANCE_K_FACTOR)
 
     @override
     def compute(self, ctx: Context) -> None:
@@ -156,7 +195,7 @@ class FormedSegmentFlatLength(Calculator):
         Output("bend_allowance_1", "BA1", "Bend allowance, end 1", LENGTH),
         Output("bend_allowance_2", "BA2", "Bend allowance, end 2", LENGTH),
     )
-    methods = (COURSE_METHOD, K_FACTOR_METHOD)
+    methods = (SEGMENT_COURSE, SEGMENT_K_FACTOR)
 
     @override
     def compute(self, ctx: Context) -> None:

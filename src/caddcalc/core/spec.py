@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 
-from caddcalc.core.errors import InputError
+from caddcalc.core.errors import InputError, SpecError
 from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
@@ -162,21 +162,34 @@ class Method:
     text never holds a formatted number of the app's own (ADR-0020 M4). Without any, the
     notes are plain text, braces and all.
     """
+    scope: str = ""
+    """What a verified method's worked example covers, in a few words the status writes
+    after "verified", e.g. ``"at 90°"``; empty when it covers the method's whole use."""
+    verification_note: str = ""
+    """What the status rests on, or why the method isn't verified here: a sentence or two,
+    shown as the status's tooltip and after the notes."""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "quantities", MappingProxyType(dict(self.quantities)))
         if self.quantities:
             for note in self.notes:
                 check_template(note, self.quantities.keys(), f"Method {self.key!r} note")
+        if self.scope and self.verification is not Verification.VERIFIED:
+            raise SpecError(f"Method {self.key!r} has a scope, but isn't verified")
 
     def notes_shown(self, show: Callable[[float, Dimension], str]) -> tuple[str, ...]:
-        """Return the notes with their values filled, each written by ``show``."""
-        if not self.quantities:
-            return self.notes
-        values = {name: show(*quantity) for name, quantity in self.quantities.items()}
-        return tuple(note.format_map(values) for note in self.notes)
+        """Return the notes with their values filled, each written by ``show``.
+
+        The verification note, if there is one, comes last.
+        """
+        notes = self.notes
+        if self.quantities:
+            values = {name: show(*quantity) for name, quantity in self.quantities.items()}
+            notes = tuple(note.format_map(values) for note in notes)
+        return (*notes, self.verification_note) if self.verification_note else notes
 
     @property
     def status(self) -> str:
-        """Display text, e.g. ``"unverified · reproduces legacy"``."""
-        return self.verification.value + (" · reproduces legacy" if self.legacy else "")
+        """Display text, e.g. ``"verified at 90°"`` or ``"unverified · reproduces legacy"``."""
+        verification = " ".join(filter(None, (self.verification.value, self.scope)))
+        return verification + (" · reproduces legacy" if self.legacy else "")

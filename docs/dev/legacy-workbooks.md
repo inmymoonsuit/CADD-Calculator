@@ -26,6 +26,10 @@ The sheet says: "Do not type in red cells as the equations will be erased."
 **Source:** `0.64T + 1.57R` is *Machinery's Handbook* 31st ed., Allowances for Bending Sheet
 Metal, Eq. (33), printed p. 1421 (p. 1347 in the 29th ed.). `R/0.156` is not in that book (KI-003).
 
+The formula is the neutral-axis arc, (π/2)·(R + K·T) at 90°, with K fixed at about
+0.408 and π/2 rounded to 1.57, which is why the app names the method **Fixed K-factor
+(≈ 0.41)** (ADR-0010, amendments). Its key stays `course`.
+
 **In the app:** `sheet_metal.bend_allowance` (method `course`),
 `sheet_metal.segment_flat_length` (`course`; one bend is A2 = 0°), and
 `sheet_metal.v_die_opening` (`radius_ratio`, P = 0.156). Golden tests:

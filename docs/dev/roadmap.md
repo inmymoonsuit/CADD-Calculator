@@ -26,10 +26,11 @@ has been checked. The suite starts with sheet metal and grows by domain.
 
 ### 0.2: Trustworthy sheet metal
 - [ ] Verify formulas against cited sources and promote methods to `verified` (KI-001, KI-004)
-- [ ] Promote methods that now pass published worked examples to `verified`, after the
-      maintainer agrees (course BA: MH31 Fig. 13; K-factor: EDD5 Fig. 19.12, at 90° only, see
-      KI-013). `COURSE_METHOD` and `K_FACTOR_METHOD` are shared by two calculators, so give
-      each calculator its own copy (`dataclasses.replace`) before promoting one.
+- [x] Promote methods that now pass published worked examples to `verified`, with the
+      maintainer's agreement (ADR-0010, amendments): the fixed K-factor (the course
+      formula) in `bend_allowance` (MH31 Fig. 13), and the K-factor at 90° in `bend_allowance` and
+      `segment_flat_length` (EDD5 Fig. 19.12). Each calculator has its own copy of the
+      shared methods, verified only where the example runs through it.
 - [ ] MH31 Eq. (32)/(33)/(34), p. 1421, as a material-class method (soft copper/brass; soft steel and aluminum; cold-rolled steel and hard copper)
 - [ ] Dimension-origin input for bends past 90° (KI-013), with an ADR on the default
 - [ ] Hems: 180° bends (KI-014)
@@ -118,5 +119,5 @@ has been checked. The suite starts with sheet metal and grows by domain.
 | Code license | ADR-0008 | **Decided: Apache-2.0** |
 | Code signing budget | ADR-0009 | Start unsigned. Apply to SignPath's free OSS program. |
 | Default unit system (in vs mm) | ADR-0005 | `in` (the course and US shops). Remember the user's choice. |
-| Default method when legacy and general both exist | ADR-0010 | Legacy first until a general method is `verified` |
+| Default method when legacy and general both exist | ADR-0010 | Legacy first until a general method is `verified`. **Now due:** the K-factor is verified at 90° in both bend calculators (ADR-0010, amendments); the fixed K-factor, the course formula, is still first. |
 | Python package and app name | pyproject.toml | Keep `cadd-calculator` / `caddcalc`. Renaming is cheap now and expensive later. |

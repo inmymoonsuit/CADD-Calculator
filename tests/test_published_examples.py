@@ -15,11 +15,14 @@ import math
 
 import pytest
 
+from caddcalc.calculators import default_registry
 from caddcalc.calculators.sheet_metal import (
     BendAllowance,
     FormedSegmentFlatLength,
     TruncatedConeLayout,
 )
+from caddcalc.calculators.sheet_metal.common import EDD5_BEND_ALLOWANCE, MH31_FIG13
+from caddcalc.core import Reference, Verification
 from tests.helpers import run_inches
 
 
@@ -87,3 +90,64 @@ def test_edd5_cone_sector_rule_on_one_surface() -> None:
     assert out["sweep_angle"] == printed(133.7006, 4)
     assert out["inside_radius"] == printed(7.977179, 6)
     assert out["outside_radius"] == printed(13.362344, 6)
+
+
+VERIFIED: dict[tuple[str, str], tuple[str, Reference, str]] = {
+    ("sheet_metal.bend_allowance", "course"): (
+        "test_mh31_fig13_soft_steel_part",
+        MH31_FIG13,
+        "for BA",
+    ),
+    ("sheet_metal.bend_allowance", "k_factor"): (
+        "test_edd5_fig19_12_single_bend_k_factor",
+        EDD5_BEND_ALLOWANCE,
+        "for BA at 90°",
+    ),
+    ("sheet_metal.segment_flat_length", "k_factor"): (
+        "test_edd5_fig19_12_single_bend_k_factor",
+        EDD5_BEND_ALLOWANCE,
+        "at 90°",
+    ),
+}
+"""Each verified method, by calculator: the test of the published worked example that runs
+through that calculator, the method's reference to its source, and the scope its status
+writes, which is all the example covers (ADR-0010, amendments). No other method is
+verified: the cones (KI-001, KI-007), the V-die rules (KI-003, KI-004), and the fixed
+K-factor's flat length of a segment have no such example."""
+
+
+def test_only_methods_a_published_example_runs_through_are_verified() -> None:
+    """A method is verified in a calculator only with its worked example here (CONTRIBUTING)."""
+    registry = default_registry(load_plugins=False)
+    verified = {
+        (calc.id, method.key): method
+        for calc in registry
+        for method in calc.methods
+        if method.verification is Verification.VERIFIED
+    }
+    assert verified.keys() == VERIFIED.keys()
+    for key, (test, source, _scope) in VERIFIED.items():
+        assert callable(globals()[test]), test
+        assert source in verified[key].references, key
+
+
+def test_each_status_says_what_its_example_covers() -> None:
+    """UI/UX's promotion review: the row's status carries the scope; its tooltip, the source."""
+    registry = default_registry(load_plugins=False)
+    statuses = {(c.id, m.key): m for c in registry for m in c.methods}
+    for key, (_test, source, scope) in VERIFIED.items():
+        method = statuses[key]
+        assert method.scope == scope and len(scope) <= 20, key
+        assert method.status.startswith(f"verified {scope}"), method.status
+        figure = "13" if source is MH31_FIG13 else "19.12"  # the example's figure, cited
+        assert figure in source.detail and f"Fig. {figure}," in method.verification_note, key
+    assert statuses["sheet_metal.bend_allowance", "course"].status == (
+        "verified for BA · reproduces legacy"
+    )
+    assert statuses["sheet_metal.bend_allowance", "k_factor"].status == "verified for BA at 90°"
+    assert statuses["sheet_metal.segment_flat_length", "k_factor"].status == "verified at 90°"
+    segment_course = statuses["sheet_metal.segment_flat_length", "course"]
+    assert segment_course.status == "unverified · reproduces legacy"
+    assert segment_course.verification_note.startswith("Not verified in this calculator")
+    for key in ("sheet_metal.bend_allowance", "sheet_metal.segment_flat_length"):
+        assert statuses[key, "course"].label == "Fixed K-factor (≈ 0.41)"

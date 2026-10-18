@@ -412,6 +412,21 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The course formula is named for what it does: "Fixed K-factor (≈ 0.41)"**, the
+  neutral-axis arc with K fixed at about 0.408 and π/2 rounded to 1.57 (ADR-0010,
+  amendments). Its key is still `course`, so saved command lines and JSON keep working,
+  and it still reproduces the course's answers exactly.
+- **Two bend methods are verified against published worked examples** (ADR-0010,
+  amendments). The fixed K-factor is verified for the bend allowance in Bend allowance &
+  deduction, against *Machinery's Handbook* (31st ed.) Fig. 13, p. 1421, and reads
+  "verified for BA · reproduces legacy". The K-factor is verified at 90°, in Bend
+  allowance & deduction ("verified for BA at 90°") and in Flat length of a formed segment
+  ("verified at 90°"), against *Engineering Drawing and Design* (5th ed.) Fig. 19.12,
+  p. 785. The other methods stay unverified, the fixed K-factor's flat length of a
+  segment among them.
+- A method's status says what its verification covers, and its tooltip names the source,
+  or says why the method isn't verified there. The status keeps one width, so changing
+  the method no longer shifts the row.
 - Citations of *Machinery's Handbook* move from the 29th edition to the 31st (2020): the
   course formula (p. 1421), the angle rule and its worked example (p. 1421, Fig. 13), and
   the 41.82 steel basis (Table 2, p. 2706), so the gauge table is version 3. The

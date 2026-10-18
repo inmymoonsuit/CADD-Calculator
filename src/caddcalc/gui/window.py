@@ -141,6 +141,8 @@ CHOICE_CHARACTERS = 24
 """How many characters a choice's box is sized to show before it elides an option."""
 METHOD_STATUS_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Method box item data holding the method's status, e.g. "unverified · reproduces legacy"."""
+METHOD_NOTE_ROLE = int(Qt.ItemDataRole.UserRole) + 2
+"""Method box item data holding what the status rests on: the status's tooltip."""
 
 
 class EntryOrigin(Enum):
@@ -736,7 +738,13 @@ class MainWindow(QMainWindow):
         for m in calc.methods:
             self.method_box.addItem(m.label, m.key)
             self.method_box.setItemData(self.method_box.count() - 1, m.status, METHOD_STATUS_ROLE)
+            self.method_box.setItemData(
+                self.method_box.count() - 1, m.verification_note, METHOD_NOTE_ROLE
+            )
         self.method_box.blockSignals(False)
+        # As wide as the widest status, so choosing another method changes only the words,
+        # never the row (UI/UX's promotion review).
+        self.method_status.setFixedWidth(self._widest_status(calc))
         view = self.method_box.view()
         view.setMinimumWidth(view.sizeHintForColumn(0) + 2 * view.frameWidth())
         self._show_method_status()
@@ -761,10 +769,30 @@ class MainWindow(QMainWindow):
         """The key of the method selected in the method box."""
         return str(self.method_box.currentData())
 
+    def _widest_status(self, calc: Calculator) -> int:
+        """Return the width the status label needs for the widest of ``calc``'s statuses.
+
+        Measured on a label of its own: the status label, once fixed, gives its fixed
+        width as its size hint, whatever its text.
+        """
+        probe = QLabel()
+        probe.setFont(self.method_status.font())
+        widths = []
+        for method in calc.methods:
+            probe.setText(method.status)
+            widths.append(probe.sizeHint().width())
+        return max(widths, default=0)
+
     def _show_method_status(self) -> None:
-        """Show the chosen method's status beside its box, e.g. "unverified · legacy"."""
+        """Show the chosen method's status beside its box, e.g. "unverified · legacy".
+
+        It's in the same quiet colour whatever it says: "verified" is a method's checked
+        scope, never a sign that a result is safe to use (UI/UX's promotion review).
+        """
         status = self.method_box.currentData(METHOD_STATUS_ROLE)
         self.method_status.setText("" if status is None else str(status))
+        note = self.method_box.currentData(METHOD_NOTE_ROLE)
+        self.method_status.setToolTip(str(note) if note else "")
         color = secondary_text(current_scheme())
         self.method_status.setStyleSheet(f"color: {color};")
 

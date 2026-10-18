@@ -14,8 +14,8 @@ calculations and for future ones: structural drafting, tolerancing, threads, and
 
 | Calculator | Methods |
 |---|---|
-| Bend allowance & deduction | Course formula (0.64T + 1.57R), K-factor |
-| Flat length of a formed segment | Course formula, K-factor |
+| Bend allowance & deduction | Fixed K-factor (≈ 0.41), the course's formula; K-factor |
+| Flat length of a formed segment | Fixed K-factor (≈ 0.41); K-factor |
 | V-die opening (air bending) | Inside-radius percentage rule, 8 × T rule of thumb |
 | Truncated cone flat pattern | Course spreadsheet, mean diameter |
 

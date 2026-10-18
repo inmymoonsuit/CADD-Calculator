@@ -200,18 +200,28 @@ outside flange dimensions.
 
 | Method | Formula | Status |
 |---|---|---|
-| Course formula | BA = (0.64·T + 1.57·R)·A/90 | unverified · reproduces legacy |
-| K-factor | BA = (π/180)·A·(R + K·T) (Engineering Drawing and Design, Ch. 19) | unverified |
+| Fixed K-factor (≈ 0.41) | BA = (0.64·T + 1.57·R)·A/90 | verified for BA · reproduces legacy |
+| K-factor | BA = (π/180)·A·(R + K·T) (Engineering Drawing and Design, Ch. 19) | verified for BA at 90° |
+
+Each is verified against a published worked example: the fixed K-factor against
+*Machinery's Handbook* (31st ed.) Fig. 13, p. 1421, a soft-steel part's bend allowances,
+and the K-factor at 90° against *Engineering Drawing and Design* (5th ed.) Fig. 19.12,
+p. 785. Both examples check the bend allowance, not the setback or the deduction, so the
+status says "for BA". Rest the pointer on the status to see its source.
 
 Both methods then compute:
 
 * OSSB = tan(A/2)·(R + T)
 * BD = 2·OSSB − BA
 
-The course formula is *Machinery's Handbook* (31st ed.) Eq. (33), p. 1421. It is for 90°
-bends in half-hard copper and brass, soft steel, and aluminum, and is scaled by A/90 for
-other angles. It equals the K-factor formula with K ≈ 0.408. For other materials, or for
-production work, use the K-factor method with your shop's measured K.
+The fixed K-factor is the formula taught in the original coursework, *Machinery's
+Handbook* (31st ed.) Eq. (33), p. 1421: the neutral-axis arc with K fixed at about 0.408
+and π/2 rounded to 1.57. It is for 90° bends in half-hard copper and brass, soft steel,
+and aluminum, and is scaled by A/90 for other angles. The Handbook's Eqs (32) and (34)
+are the same arc with K about 0.35 and 0.45. With K = 0.4074 the K-factor method gives
+the same T term and a radius term 0.05% larger, so the two can differ in the fourth
+decimal. For other materials, or for production work, use the K-factor method with your
+shop's measured K.
 
 **Course example:** T = 0.1046, R = 0.156, A = 90° gives BA = 0.311864 in.
 
@@ -221,6 +231,15 @@ This is the flat-pattern length of one segment of a part, dimensioned to the out
 (FVD), with a bend at one or both ends. Set **A2 = 0°** if only one end is bent.
 
 FPD = FVD − OSSB₁ − OSSB₂ + BA₁/2 + BA₂/2
+
+| Method | BA | Status |
+|---|---|---|
+| Fixed K-factor (≈ 0.41) | as in Bend allowance & deduction | unverified · reproduces legacy |
+| K-factor | as in Bend allowance & deduction | verified at 90° |
+
+The K-factor is verified at 90° against *Engineering Drawing and Design* (5th ed.)
+Fig. 19.12, p. 785, a part with one bend. The fixed K-factor is verified for a bend
+allowance (above), but no published worked example checks a segment's flat length with it.
 
 > **Bends past 90°:** this calculator measures outside dimensions to the virtual sharp.
 > Some drawings (for example *Engineering Drawing and Design*, Fig. 19.11b) dimension such

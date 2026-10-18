@@ -30,7 +30,9 @@ the inside surface. Cited starting values are 0.445 for aircraft aluminum (FAA),
 0.408 to 0.452 by material (*Machinery's Handbook*), and the textbook's 0.4.
 Mid-thickness, 0.5, is often assumed (FAA); see
 [materials-data-sources.md](../dev/research/materials-data-sources.md#4-neutral-axis-k-factor),
-§4. It is best measured from a test bend in your own shop.
+§4. It is best measured from a test bend in your own shop. The **Fixed K-factor
+(≈ 0.41)** method is the course's formula, 0.64T + 1.57R: K fixed at about 0.408, with
+π/2 rounded to 1.57.
 
 **Mold line (OML / IML)**: the line made by extending a flange's flat surface past the
 bend radius. The outside surface gives the outside mold line (OML), and the inside surface

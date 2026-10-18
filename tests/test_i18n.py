@@ -529,6 +529,12 @@ QUOTED = {
     "0.452": "derived, not published: Eq. (34)'s 0.71 over 1.57, said to be implied by it",
     "0.445": "FAA-H-8083-31B's K for aircraft aluminum (p. 4-63)",
     "0.4": "EDD5's instructional K (p. 783)",
+    "19.12": "EDD5's figure number, its worked example (p. 785)",
+    "0.35": "derived, not published: Eq. (32)'s 0.55 over 1.57, said to be the same arc's K",
+    "0.41": "derived, not published: Eq. (33)'s 0.64 over 1.57, to two places",
+    "0.45": "derived, not published: Eq. (34)'s 0.71 over 1.57, to two places",
+    "0.4074": "derived, not published: the K that gives Eq. (33)'s 0.64·T with π/2 exact",
+    "0.05": "derived, not published: how much π/2 exceeds Eq. (33)'s 1.57, in per cent",
     "0.5": "mid-thickness, where FAA-H-8083-31B (p. 4-59) says the neutral axis is often assumed",
     "0.156": "the course's hard-coded P",
     "0.1046": "the course example's thickness, 12 ga",
@@ -548,6 +554,7 @@ def test_the_calculators_prose_holds_no_number_of_the_apps_own() -> None:
     registry = default_registry(load_plugins=False)
     texts = [m.summary for c in registry for m in c.methods]
     texts += [note for c in registry for m in c.methods for note in m.notes]
+    texts += [m.verification_note for c in registry for m in c.methods]
     texts += [p.help for c in registry for p in c.params]
     texts += [s.help for d in registry.domains() for s in d.settings]
     typed = {number for text in texts for number in re.findall(r"\d+[.,]\d+", text or "")}

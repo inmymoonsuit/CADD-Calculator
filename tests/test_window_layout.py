@@ -237,6 +237,30 @@ def test_the_method_status_shows_beside_the_box_and_in_the_open_list(qt_window: 
     assert reflow.stacked == (reflow.width() < reflow.row_width())
 
 
+def test_the_status_keeps_its_width_and_its_tooltip_names_the_source(qt_window: Any) -> None:
+    """UI/UX's promotion review: changing the method changes only the words, never the row."""
+    status, units = qt_window.method_status, qt_window.units_box
+    widths = {}
+    for calc_id in ("sheet_metal.bend_allowance", "sheet_metal.segment_flat_length"):
+        qt_window.select_calculator(calc_id)
+        places = set()
+        for index in range(qt_window.method_box.count()):
+            qt_window.method_box.setCurrentIndex(index)
+            qt_window.layout().activate()
+            method = qt_window.calculator.get_method(qt_window.method_key)
+            assert status.text() == method.status
+            assert status.toolTip() == method.verification_note
+            assert status.sizeHint().width() >= status.fontMetrics().horizontalAdvance(
+                method.status
+            ), "the widest status fits"
+            places.add((status.width(), units.mapTo(qt_window, units.rect().topLeft()).x()))
+        assert len(places) == 1, (calc_id, places)
+        widths[calc_id] = status.width()
+    # Each calculator's own widest: "verified for BA · reproduces legacy" is wider than the
+    # segment calculator's "unverified · reproduces legacy".
+    assert widths["sheet_metal.segment_flat_length"] < widths["sheet_metal.bend_allowance"]
+
+
 @pytest.mark.usefixtures("qt")
 def test_the_settings_page_reflows_rather_than_scroll_sideways() -> None:
     from PySide6.QtCore import QPoint, Qt

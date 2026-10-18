@@ -39,6 +39,10 @@ MH31_ANGLE_RULE = Reference(
     "Machinery's Handbook, 31st ed.",
     "Bending Sheet Metal: Angle of Bend Other Than 90 Degrees, printed p. 1421",
 )
+MH31_FIG13 = Reference(
+    "Machinery's Handbook, 31st ed.",
+    "Bending Sheet Metal: Example, Showing Application of Formulas 32-34, Fig. 13, printed p. 1421",
+)
 EDD5_BEND_ALLOWANCE = Reference(
     "Madsen & Madsen, Engineering Drawing and Design, 5th ed.",
     "Ch. 19, Calculating Bend Allowance, Figs. 19.11-19.12, printed pp. 782-785",
@@ -104,6 +108,8 @@ def bend_angle(
     )
 
 
+# The shared methods, unverified. Each calculator verifies its own copy only where a
+# published worked example runs through that calculator (ADR-0010, amendments).
 K_FACTOR_METHOD = Method(
     "k_factor",
     "K-factor (neutral axis)",
@@ -114,8 +120,9 @@ K_FACTOR_METHOD = Method(
 )
 COURSE_METHOD = Method(
     "course",
-    "Course formula (0.64T + 1.57R)",
-    "BA = (0.64·T + 1.57·R)·A/90: the formula taught in the original coursework.",
+    "Fixed K-factor (≈ 0.41)",
+    "BA = (0.64·T + 1.57·R)·A/90: the neutral-axis arc with K fixed at about 0.408 and π/2 "
+    "rounded to 1.57, as taught in the original coursework.",
     Verification.UNVERIFIED,
     legacy=True,
     references=(
@@ -130,7 +137,9 @@ COURSE_METHOD = Method(
         "bronze, hard copper, cold-rolled steel, and spring steel.",
         "For other angles the Handbook multiplies the 90° value by A/90, where A is the angle "
         "actually bent through.",
-        "Equivalent to the K-factor method with K ≈ 0.64/1.57 ≈ 0.408 and π/2 rounded to 1.57.",
+        "The Handbook's Eqs (32) to (34) are the same arc, with K about 0.35, 0.41 and 0.45.",
+        "With K = 0.4074, the K-factor method gives the same 0.64·T, and a radius term 0.05% "
+        "larger, π/2 against 1.57, so the two can differ in the fourth decimal.",
     ),
 )
 
