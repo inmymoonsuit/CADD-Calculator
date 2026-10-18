@@ -372,3 +372,16 @@ together.
 * **Moot:** S&R's i2 L2, the clipping test's broad third allowance, went with the
   allowance (KI-023). S&R's i3 L1, the plural rule of the first catalog rather than the
   message's, waits for the next language with its own rule.
+
+### 2026-10-18: the catalogs in every build (i5)
+
+* **The frozen build** compiles our catalogs before Nuitka reads the package data, and
+  includes PySide6's `qtbase_*.qm`, and nothing else of Qt's translations, in
+  `PySide6/translations/`, where its Qt looks. It fails for a missing one, and its smoke
+  test checks the built app finds our catalogs and that Qt loads its own from the build
+  (ADR-0009's checklist).
+* **The wheel** compiles them in hatchling's build hook (`hatch_build.py`), so a wheel
+  built from a checkout or the sdist carries them; Babel is a build requirement.
+* **`scripts/i18n.py compile`** writes them into the source tree, for an editable install
+  and the frozen build; they stay git-ignored. `core.i18n.shipped_languages()` lists the
+  languages a folder has compiled catalogs for.

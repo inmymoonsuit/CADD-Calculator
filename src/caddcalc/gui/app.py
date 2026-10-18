@@ -326,6 +326,7 @@ def _write_smoke_report(
     ready_seconds: float,
 ) -> None:
     from caddcalc import __version__
+    from caddcalc.core import i18n
     from caddcalc.gui.branding import PRODUCT_NAME, packaged_app_dir
 
     app.processEvents()
@@ -346,10 +347,24 @@ def _write_smoke_report(
         "about_custom": branding.about_html is not None,
         "calculators": len(window.registry),
         "reference_tables": _load_reference_tables(),
+        "catalogs": list(i18n.shipped_languages()),
+        "qt_catalog": _loads_qt_catalog(),
         "packaged": packaged_app_dir() is not None,
         "main_to_ready_s": round(ready_seconds, 3),
     }
     (report_dir / "smoke-test.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+
+def _loads_qt_catalog() -> bool:
+    """Return whether Qt finds its own catalogs where this app keeps them.
+
+    German stands for them all: Qt ships it, and the window would load a language's
+    Qt catalog the same way, once we have a catalog of our own for it (ADR-0020 §1).
+    """
+    from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
+
+    folder = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    return bool(QTranslator().load(QLocale("de"), "qtbase", "_", folder))
 
 
 def _load_reference_tables() -> int:

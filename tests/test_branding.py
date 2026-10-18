@@ -441,6 +441,10 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert not report["packaged"]
     assert report["reference_tables"] == len(REFERENCE_TABLES) == 2, "gauges and materials"
     assert (report_dir / "window.png").stat().st_size > 0
+    from caddcalc.core import i18n
+
+    assert report["catalogs"] == list(i18n.shipped_languages())
+    assert report["qt_catalog"] is True, "Qt finds its own catalogs"
 
 
 @pytest.mark.gui
@@ -579,3 +583,22 @@ def test_a_failed_startup_ends_the_app_with_status_1(
     assert "couldn't start" in done.stderr or "critical shown" in done.stderr
     if not args:
         assert "critical shown" in done.stderr, "a running app shows the message"
+
+
+@pytest.mark.gui
+def test_build_checks_every_catalog_ours_and_qts_is_bundled(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    """ADR-0009's checklist: each language's .mo, and every qtbase_*.qm (i5)."""
+    missing = build_script.missing_catalogs(tmp_path)
+    assert "caddcalc/locale/en_001/LC_MESSAGES/caddcalc.mo" in missing
+    assert "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.mo" in missing
+    qt = build_script.qt_catalogs()
+    assert qt, "this PySide6 has its qtbase catalogs"
+    assert f"PySide6/translations/{qt[0].name}" in missing
+    for name in missing:
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_bytes(b"")
+    assert build_script.missing_catalogs(tmp_path) == []
+    [include] = [a for a in build_script.nuitka_args(None) if a.startswith("--include-data-files")]
+    assert include.endswith("qtbase_*.qm=PySide6/translations/"), include

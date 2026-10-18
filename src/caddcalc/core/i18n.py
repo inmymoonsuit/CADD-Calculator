@@ -176,6 +176,25 @@ def lineage(language: str) -> tuple[str, ...]:
     return tuple(chain if base in chain else [*chain, base])
 
 
+def shipped_languages(folder: Traversable | Path | None = None) -> tuple[str, ...]:
+    """Return the languages with a compiled catalog shipped in ``folder``, sorted.
+
+    Args:
+        folder: The catalogs' folder; the package's own when ``None``. A packaged build
+            reports these, so a build that left them out fails its smoke test (ADR-0009).
+    """
+    folder = resources.files(LOCALE_PACKAGE) / LOCALE_FOLDER if folder is None else folder
+    if not folder.is_dir():
+        return ()
+    return tuple(
+        sorted(
+            entry.name
+            for entry in folder.iterdir()
+            if (entry / "LC_MESSAGES" / f"{DOMAIN}.mo").is_file()
+        )
+    )
+
+
 def _catalog(
     language: str, directories: Sequence[Traversable | Path]
 ) -> _gettext.GNUTranslations | None:

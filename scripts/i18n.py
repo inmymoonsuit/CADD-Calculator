@@ -207,6 +207,20 @@ def translated(catalog: Catalog) -> Catalog:
     return kept
 
 
+def compile_catalogs(folder: Path = LOCALE) -> list[Path]:
+    """Compile every language's catalog into ``folder``, as the builds do; return the files.
+
+    Each goes to ``<folder>/<language>/LC_MESSAGES/caddcalc.mo``, where ``core.i18n`` reads
+    it. ``folder`` is the source tree's locale folder, or a wheel's staging folder.
+    """
+    written = []
+    for path in languages():
+        target = folder / path.parents[1].name / "LC_MESSAGES" / f"{DOMAIN}.mo"
+        compile_to(read(path), target)
+        written.append(target)
+    return written
+
+
 def compile_to(catalog: Catalog, path: Path) -> None:
     """Write the messages ``catalog`` translates as a .mo file at ``path``."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -263,8 +277,8 @@ def main(argv: list[str]) -> int:
             catalog.update(template)
             path.write_bytes(po_text(catalog))
     elif command == "compile":
-        for path in languages():
-            compile_to(read(path), path.with_suffix(".mo"))
+        for path in compile_catalogs():
+            print(path.relative_to(ROOT))
     elif command == "check":
         problems = check()
         for problem in problems:

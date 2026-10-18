@@ -120,23 +120,29 @@ KI-016 for what the notices still lack.
 
 1. Copies `packaging/launcher.py` into `work/` as `CADDCalculator.py`. pyside6-deploy
    compiles a script, not an entry point. The launcher calls `caddcalc.gui.app:main`.
-2. Writes `work/pysidedeploy.spec`: the Qt modules (`Core,Gui,Widgets`), the icon, and
+2. Compiles the catalogs, each language's `.po` to its `.mo`, into the source tree's
+   `caddcalc/locale`, where they're package data (`scripts/i18n.py compile`).
+3. Writes `work/pysidedeploy.spec`: the Qt modules (`Core,Gui,Widgets`), the icon, and
    the Nuitka options. Those include Windows version info, `--include-package-data=caddcalc`
-   for the generic icon, and, for a branded build, `--include-data-dir=<staged pack>=branding`.
-3. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
+   for the generic icon and the catalogs, Qt's `qtbase_*.qm` catalogs into
+   `PySide6/translations/` (and no other Qt translation), and, for a branded build,
+   `--include-data-dir=<staged pack>=branding`.
+4. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
    mode. Nuitka must already be installed by uv (the `build` dependency group).
-4. Renames the `.dist` folder, copies `LICENSE.md` into it, and checks that a generic build
+5. Renames the `.dist` folder, copies `LICENSE.md` into it, and checks that a generic build
    has no `branding/` folder and a branded build has one, and that every reference table
    in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
    bundled (`--include-package-data=caddcalc` carries them), as is every file the display
-   face's `manifest.toml` lists: the font and its license.
-5. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
+   face's `manifest.toml` lists: the font and its license, and every catalog: each
+   language's `.mo`, and every `qtbase_*.qm` (ADR-0009's checklist).
+6. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
    run opens the welcome screen and the window, loads every reference table, writes the
    report, and exits. The script checks the reported name, edition, icon, that the
    welcome screen showed with the pack's art and logo (or the generic ones), that it
    loaded the display face (the report's `display_font` is `VT323`, or `fallback` if it
-   couldn't), the number of reference tables loaded, and that the app knew it was
-   packaged.
+   couldn't), the number of reference tables loaded, the catalogs the app finds
+   (`catalogs`), that Qt loads its own catalog from the build (`qt_catalog`), and that
+   the app knew it was packaged.
 
 `--mode onefile` builds a single self-extracting executable instead. It works, branded too,
 but starts about 0.9 s slower and unpacks to a temp folder on every start, which

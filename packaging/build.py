@@ -31,10 +31,12 @@ import tomllib
 from importlib.metadata import version as dist_version
 from pathlib import Path
 
+from PySide6.QtCore import QLibraryInfo
 from PySide6.QtGui import QImage
 
 from caddcalc import __version__
 from caddcalc.calculators import REFERENCE_TABLES
+from caddcalc.core import i18n
 from caddcalc.gui.branding import (
     GENERIC,
     PACK_DIR_NAME,
@@ -55,6 +57,13 @@ EXE_STEM = "CADDCalculator"
 NOTICE_WORDS = ("NOTICE", "LICENSE", "LICENCE", "COPYING")
 """Pack files whose names contain one of these ship with the app, e.g. ART-NOTICE.md."""
 COMPANY = "CADD Calculator contributors"
+CATALOGS = ROOT / "src" / "caddcalc" / "locale"
+"""The source catalogs: each language's .po, compiled to its .mo for the build."""
+QT_CATALOG = "qtbase"
+"""Qt's own text, such as standard buttons and a field's context menu, comes from its
+``qtbase_<language>.qm`` catalogs, which ship beside it (ADR-0020 §1)."""
+QT_CATALOGS_DIR = "PySide6/translations"
+"""Where a build keeps them: where PySide6's Qt looks for its translations."""
 
 
 class BuildError(Exception):
@@ -187,10 +196,40 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     return out
 
 
+def qt_catalogs() -> list[Path]:
+    """Return Qt's ``qtbase`` catalogs, from the PySide6 the build runs with."""
+    folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
+    return sorted(folder.glob(f"{QT_CATALOG}_*.qm"))
+
+
+def compile_catalogs() -> list[str]:
+    """Compile our catalogs into the source tree, where the build takes package data from.
+
+    Returns:
+        The languages compiled.
+
+    Raises:
+        BuildError: The catalog tool failed.
+    """
+    tool = ROOT / "scripts" / "i18n.py"
+    result = subprocess.run(  # this interpreter, on the project's own script
+        [sys.executable, str(tool), "compile"], capture_output=True, text=True, check=False
+    )
+    if result.returncode:
+        raise BuildError(f"compiling the catalogs failed: {result.stdout}{result.stderr}")
+    return list(i18n.shipped_languages(CATALOGS))
+
+
 def nuitka_args(staged_pack: Path | None) -> list[str]:
-    """Return the Nuitka options for an edition, passed through pyside6-deploy's spec."""
+    """Return the Nuitka options for an edition, passed through pyside6-deploy's spec.
+
+    Of Qt's translations, only its ``qtbase`` catalogs ship: they're the text Qt shows
+    in our window. The rest, for Qt modules we don't use, stay out.
+    """
+    qt_folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
     args = [
         "--noinclude-qt-translations",
+        f"--include-data-files={qt_folder / f'{QT_CATALOG}_*.qm'}={QT_CATALOGS_DIR}/",
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
         "--include-package-data=caddcalc",  # the generic icon and the reference tables
         f"--company-name={COMPANY}",
@@ -262,6 +301,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         shutil.rmtree(old) if old.is_dir() else old.unlink()
 
     shutil.copy2(LAUNCHER, work / f"{EXE_STEM}.py")
+    languages = compile_catalogs()  # package data, so before the build reads it
     staged = None
     if not branding.is_generic:
         staged = work / "pack"
@@ -306,6 +346,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
                 raise BuildError(f"the reference table {missing} is missing from the build")
             for missing in missing_fonts(exe.parent):
                 raise BuildError(f"the display face's {missing} is missing from the build")
+            for missing in missing_catalogs(exe.parent):
+                raise BuildError(f"the catalog {missing} is missing from the build")
 
     files = [p for p in output.rglob("*") if p.is_file()] if output.is_dir() else [output]
     return {
@@ -324,6 +366,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "pyside6": dist_version("PySide6-Essentials"),
         "nuitka": dist_version("Nuitka"),
         "reference_tables": [f"{s.package}/{s.filename}" for s in REFERENCE_TABLES],
+        "catalogs": languages,
+        "qt_catalogs": len(qt_catalogs()),
     }
 
 
@@ -350,6 +394,20 @@ def missing_fonts(app_dir: Path) -> list[str]:
         for name in manifest["files"]
         if not (shipped / name).is_file()
     ]
+
+
+def missing_catalogs(app_dir: Path) -> list[str]:
+    """Return the catalogs, ours and Qt's ``qtbase`` ones, missing from a build's folder.
+
+    Ours are every language a .po exists for, compiled; Qt's are every ``qtbase`` catalog
+    the build's PySide6 has (ADR-0009, the build's checklist).
+    """
+    ours = [
+        f"caddcalc/locale/{path.parents[1].name}/LC_MESSAGES/caddcalc.mo"
+        for path in sorted(CATALOGS.glob("*/LC_MESSAGES/caddcalc.po"))
+    ]
+    qt = [f"{QT_CATALOGS_DIR}/{path.name}" for path in qt_catalogs()]
+    return [name for name in (*ours, *qt) if not (app_dir / name).is_file()]
 
 
 def locate_output(edition_dir: Path, name: str, mode: str) -> tuple[Path, Path]:
@@ -412,6 +470,11 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
             f"loaded {report.get('reference_tables')} reference tables, "
             f"expected {len(REFERENCE_TABLES)}"
         )
+    languages = list(i18n.shipped_languages(CATALOGS))
+    if report.get("catalogs") != languages:
+        problems.append(f"found the catalogs {report.get('catalogs')}, expected {languages}")
+    if not report.get("qt_catalog"):
+        problems.append("Qt couldn't load its own catalog from the build")
     if problems:
         raise BuildError(f"smoke test failed: {'; '.join(problems)}")
     return {"start_to_exit_s": times, "report_dir": str(report_dir), **report}

@@ -97,3 +97,29 @@ isn't installed.
   frequently flagged by antivirus software. Kept as the fallback.
 * **Running Nuitka directly**: works the same (the spike's bisection builds did this), but
   pyside6-deploy knows which Qt plugins and options PySide6 needs, and Qt maintains it.
+
+## Amendments
+
+### 2026-10-18: the build's checklist (ADR-0020's i5)
+
+What every build must carry, and how it's checked. `packaging/build.py` fails the build
+for a missing file, and its `--smoke-test` fails when the built app can't use one.
+The file checks skip macOS, whose `.app` layout is still unchecked.
+
+| Item | Bundled by | Checked by |
+|---|---|---|
+| The reference tables | `--include-package-data=caddcalc` | `missing_tables`; the smoke report's `reference_tables` (each loaded and built) |
+| The display face and its OFL license | the same | `missing_fonts`; the report's `display_font` |
+| **Our catalogs**, each language's `.mo` | compiled from the committed `.po` by the build (`scripts/i18n.py compile`), before Nuitka reads the package data | `missing_catalogs`; the report's `catalogs`, the languages the built app finds |
+| **Qt's `qtbase_*.qm` catalogs** | `--include-data-files` from the build's PySide6 into `PySide6/translations/`, where its Qt looks; every other Qt translation stays out | `missing_catalogs`; the report's `qt_catalog`, that Qt loads its German catalog from the build |
+| `LICENSE.md` and `THIRD_PARTY_NOTICES.md` | copied into the folder | (copied; what the notices still lack is KI-016) |
+| The branding pack, or none | `--include-data-dir`, branded builds only | a generic build has no `branding/`, a branded one has its `branding.toml`; the report's name, edition, icon, and welcome art |
+
+* **The wheel** takes our catalogs too: `hatch_build.py`, hatchling's build hook,
+  compiles them into a staging folder and includes each in `caddcalc/locale`. So Babel is
+  a build requirement, beside hatchling; an editable install reads the source tree, where
+  `scripts/i18n.py compile` puts them.
+* **Qt's catalogs for languages we don't have yet** ship anyway. The window loads one only
+  with a catalog of ours for the same language (ADR-0020, amendments), so until then
+  they cost space: 33 files, 5.8 MB, in PySide6 6.12. In return, a new language needs
+  no packaging change.

@@ -519,3 +519,14 @@ def test_the_calculators_prose_holds_no_number_of_the_apps_own() -> None:
     texts += [s.help for d in registry.domains() for s in d.settings]
     typed = {number for text in texts for number in re.findall(r"\d+[.,]\d+", text or "")}
     assert typed <= QUOTED.keys(), sorted(typed - QUOTED.keys())
+
+
+def test_the_shipped_languages_are_those_with_a_compiled_catalog(tmp_path: Path) -> None:
+    """A packaged build reports them, so one that left a catalog out fails (i5)."""
+    assert i18n.shipped_languages(tmp_path / "none") == ()
+    assert i18n.shipped_languages(tmp_path) == ()
+    written = tooling().compile_catalogs(tmp_path)
+    assert {p.parents[1].name for p in written} == {"en_001", "en_CA"}
+    assert i18n.shipped_languages(tmp_path) == ("en_001", "en_CA")
+    (tmp_path / "fr" / "LC_MESSAGES").mkdir(parents=True)  # a .po alone isn't shipped
+    assert i18n.shipped_languages(tmp_path) == ("en_001", "en_CA")
