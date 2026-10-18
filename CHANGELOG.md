@@ -325,7 +325,7 @@ All notable changes are recorded here. The format follows
   1.1 s, looking the same.
 - The work in a calculator's notes was meant to be fixed-width, but on Windows it was
   set in Tahoma, and finding a face for it held the main window for over a second. It's
-  now set in the platform's fixed-width face: Courier New on Windows.
+  now set in Consolas on Windows, and in the platform's fixed-width face elsewhere.
 - **The welcome screen flickered at startup.** The main window showed on top of it, then
   the card came back on top. Now the card shows once, and the main window is prepared
   hidden and appears behind it once, 1.5 s after the card shows, without taking its

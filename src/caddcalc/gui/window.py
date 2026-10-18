@@ -1805,15 +1805,23 @@ def _text_style(kind: NoteKind, scheme: Scheme) -> str:
     return "" if role is None else f" style='color:{role_color(role, scheme)}'"
 
 
+FIXED_FAMILY = "Consolas"
+"""The face the work's lines are set in where it's installed, as on Windows (UI/UX's
+choice, ADR-0016, amendments)."""
+
+
 @cache
 def fixed_family() -> str:
-    """Return the platform's fixed-width family, which the work's lines are set in.
+    """Return the fixed-width family the work's lines are set in.
 
-    It's named, rather than CSS's generic "monospace": Windows has no face by that name,
-    so Qt searched its whole fallback list for it at the first use, over a second with
-    many fonts installed, and then set the work in a proportional face (ADR-0016,
-    amendments).
+    ``FIXED_FAMILY`` where it's installed, and the platform's own fixed-width family
+    elsewhere. It's named, rather than CSS's generic "monospace": Windows has no face by
+    that name, so Qt searched its whole fallback list for it at the first use, over a
+    second with many fonts installed, and then set the work in a proportional face
+    (ADR-0016, amendments).
     """
+    if QFontDatabase.hasFamily(FIXED_FAMILY):
+        return FIXED_FAMILY
     return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
 
 

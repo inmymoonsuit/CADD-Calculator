@@ -185,11 +185,16 @@ def test_the_card_is_owned_by_the_window_and_stays_above_it(
 
     if sys.platform != "win32" or QGuiApplication.platformName() != "windows":
         pytest.skip("the windows' owner and z-order are the Windows platform's")
+    from ctypes import wintypes
+
     user32 = ctypes.windll.user32  # type: ignore[attr-defined]
     user32.GetWindow.restype = user32.GetTopWindow.restype = ctypes.c_void_p
     user32.GetWindow.argtypes = [ctypes.c_void_p, ctypes.c_uint]
     user32.GetTopWindow.argtypes = [ctypes.c_void_p]
-    next_window, owner = 2, 4  # GW_HWNDNEXT, GW_OWNER
+    user32.WindowFromPoint.argtypes = [wintypes.POINT]
+    user32.WindowFromPoint.restype = user32.GetAncestor.restype = ctypes.c_void_p
+    user32.GetAncestor.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+    next_window, owner, root = 2, 4, 2  # GW_HWNDNEXT, GW_OWNER, GA_ROOT
 
     launch = _Launch(monkeypatch, 100)
     launch.welcome.show()
@@ -204,4 +209,8 @@ def test_the_card_is_owned_by_the_window_and_stays_above_it(
         order.append(hwnd)
         hwnd = user32.GetWindow(hwnd, next_window)
     assert order.index(card) < order.index(window), "the card is above the window"
+    frame, ratio = launch.welcome.frameGeometry(), launch.welcome.devicePixelRatioF()
+    centre = wintypes.POINT(round(frame.center().x() * ratio), round(frame.center().y() * ratio))
+    shown = user32.GetAncestor(user32.WindowFromPoint(centre), root)
+    assert shown == card, "on screen, the card is what's at its centre"
     launch.close()

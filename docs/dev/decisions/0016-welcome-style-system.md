@@ -445,15 +445,16 @@ about 2 s of it inside its first show, in font work. Profiled natively on Window
   its whole fallback list for it at the first use, 1.44 s, and then set the work in
   Tahoma, a proportional face. With the card's fix, that search moved into the main
   window's first show, so the reveal came 2.8 s after the card's paint, not 1.5 s, and
-  the card didn't respond meanwhile. The work now names the platform's fixed-width
-  family (`QFontDatabase.systemFont(FixedFont)`: Courier New on Windows), found in 3 ms.
-  The work's face changes on Windows, from Tahoma to Courier New, for UI/UX to review.
+  the card didn't respond meanwhile. The work now names its family. UI/UX chose
+  Consolas where it's installed, as on Windows, found in 51 ms the first time, and the
+  platform's own fixed-width family elsewhere (`QFontDatabase.systemFont(FixedFont)`),
+  on Linux and macOS. On Windows the work's face changes from Tahoma to Consolas.
 * **A real launch now** (Windows, natively, through `main()`): the card paints at
   1.07–1.33 s, and the main window shows behind it 1.51–1.52 s later, at the hold.
 * **What's left is Qt's.** The first text measure populates Qt's font database, about
   0.6 s with DirectWrite, Qt's default font engine on Windows. The GDI engine populates
-  it in about 45 ms, but changes how every text in the app is drawn, so it isn't
-  changed here; it's for UI/UX and the maintainer to judge, with renders.
+  it in about 45 ms, but changes how every text in the app is drawn; UI/UX's review
+  keeps DirectWrite.
 * **Tests** check that the display font names only its face when it's loaded, and its
-  fallbacks after it when it isn't, and that the work names the platform's fixed-width
-  family.
+  fallbacks after it when it isn't, and that the work names Consolas where it's
+  installed, and the platform's fixed-width family elsewhere.

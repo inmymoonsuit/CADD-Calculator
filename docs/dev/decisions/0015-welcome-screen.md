@@ -298,3 +298,14 @@ window the user couldn't use, blocked by a modal card they couldn't see.
   shows once, at 960 × 572; the window shows behind it at the hold, once, at its launch
   size; the card is owned and above it; closing the card activates it. KI-020's check
   by hand covers macOS and Wayland.
+* **Watched from outside the app,** with Support & Review's watcher, which samples the
+  app's windows through Win32 every 8 ms, over three real launches: the main window was
+  above the card for 0 ms, and the card held the top and the foreground until it closed.
+  So Support & Review's fallback, placing the hidden window under the card with
+  `SetWindowPos`, isn't needed.
+* **The native test** also checks what's on screen: after the reveal, the window at the
+  card's centre (`WindowFromPoint`) is the card. On the first stable startup, its owner
+  check and its z-order check each fail on their own.
+* **The hold's timer is tied to the card** (`QTimer.singleShot` with the card as its
+  context), so a card deleted first takes its pending hold with it, and the reveal does
+  nothing once the main window is gone (Support & Review's L1).

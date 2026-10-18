@@ -106,9 +106,12 @@ def test_the_work_is_set_in_the_platforms_fixed_width_face() -> None:
     """
     from PySide6.QtGui import QFontDatabase
 
-    from caddcalc.gui.window import fixed_family, result_html
+    from caddcalc.gui.window import FIXED_FAMILY, fixed_family, result_html
 
-    fixed = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+    if QFontDatabase.hasFamily(FIXED_FAMILY):
+        fixed = FIXED_FAMILY  # Consolas, as on Windows
+    else:
+        fixed = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
     assert fixed_family() == fixed
     window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")

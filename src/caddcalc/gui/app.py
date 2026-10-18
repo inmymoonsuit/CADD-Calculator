@@ -204,7 +204,8 @@ class _Startup:
     def _on_card_painted(self) -> None:
         from PySide6.QtCore import QTimer
 
-        QTimer.singleShot(self.hold_ms, self._on_hold_passed)
+        # Tied to the card: a card deleted first takes its pending hold with it.
+        QTimer.singleShot(self.hold_ms, self.welcome, self._on_hold_passed)
 
     def _on_hold_passed(self) -> None:
         self._held = True
@@ -225,7 +226,11 @@ class _Startup:
 
     def _reveal_when_due(self) -> None:
         """Reveal the main window once it's ready, and the hold is over or the card closed."""
+        from shiboken6 import isValid
+
         if not self.ready or self.revealed or not (self._held or not self._card_open):
+            return
+        if not isValid(self.window):  # deleted already, as on the way out
             return
         self.window.show()  # below the card it owns, and without taking the card's focus
         self.revealed = True
