@@ -12,7 +12,7 @@ from typing import Any, ClassVar, Protocol
 from caddcalc.core import expr
 from caddcalc.core.choices import DerivedValue
 from caddcalc.core.domain import DomainValues, ValueOrigin
-from caddcalc.core.errors import InputError, SpecError, UsageError
+from caddcalc.core.errors import CaddCalcError, InputError, SpecError, UsageError
 from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
@@ -331,7 +331,9 @@ class Calculator(ABC):
                 labels a key that isn't in ``inputs`` or gives a kind other than explicit;
                 or ``explicit_notes`` names a key that isn't in ``inputs``, or gives a note
                 that already has subjects.
-            SpecError: compute left an output unset, or a result check changed the work.
+            SpecError: compute raised an error that isn't caddcalc's own, such as a
+                plugin's ZeroDivisionError, or left an output unset; or a result check
+                raised or changed the work.
         """
         inputs = dict(inputs or {})
         labels = dict(explicit_sources or {})
@@ -383,7 +385,15 @@ class Calculator(ABC):
         # of each derived value used, ahead of the calculator's own (ADR-0014).
         ctx.notes.extend(replace(n, subjects=tuple(keys)) for n, keys in used_notes.items())
         ctx.steps.extend(derived_work)
-        self.compute(ctx)
+        try:
+            self.compute(ctx)
+        except CaddCalcError:
+            raise  # an input or calculation error, worded for users
+        except Exception as exc:
+            # As a check's is: so every front end reports it, never a stale result.
+            raise SpecError(
+                f"{self.id} ({m.key}): compute failed: {type(exc).__name__}: {exc}"
+            ) from exc
 
         missing = [o.key for o in self.outputs if o.key not in ctx.outputs]
         if missing:

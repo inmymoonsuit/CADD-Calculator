@@ -541,8 +541,9 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
     window = open_window(registry)
     assert opened and set(opened) <= builtin_ids(), opened
     assert window.calculator is not None and window.calculator.id in builtin_ids()
-    with pytest.raises(ZeroDivisionError):
-        window.select_calculator("acme.failing")  # only once it's chosen
+    window.select_calculator("acme.failing")  # its code runs only once it's chosen
+    assert window.result is None
+    assert "compute failed: ZeroDivisionError" in window.output.toPlainText()
     window.select_calculator("sheet_metal.bend_allowance")
     window.show()
     settle(window)
@@ -554,14 +555,22 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
 def test_a_page_that_fails_to_measure_leaves_the_window_working(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The measure's isolation boundary: a page whose code raises is left out of it."""
-    from caddcalc.calculators.sheet_metal import VDieOpening
-    from caddcalc.core import Context
+    """The measure's isolation boundary: a page that fails to show is left out of it.
 
-    def failing(_self: Any, _ctx: Context) -> None:
-        raise ZeroDivisionError("a calculator's own error")
+    A compute's error is shown on its page instead, and measured so
+    (test_unexpected_errors.py); a page whose form can't be built is left out.
+    """
+    from caddcalc.gui.window import MainWindow
 
-    monkeypatch.setattr(VDieOpening, "compute", failing)
+    rebuild = MainWindow._rebuild_form
+
+    def failing(window: MainWindow) -> None:
+        calc = window.calculator
+        if calc is not None and calc.id == "sheet_metal.v_die_opening":
+            raise ZeroDivisionError("its form's own error")
+        rebuild(window)
+
+    monkeypatch.setattr(MainWindow, "_rebuild_form", failing)
     with pytest.warns(UserWarning, match=r"leaves out .*\(sheet_metal\.v_die_opening\)"):
         window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
@@ -577,21 +586,20 @@ def test_a_method_that_fails_to_measure_leaves_out_its_own_page_only(
 ) -> None:
     """Each method is its own isolation boundary (S&R's note on 1f5cec9).
 
-    The V-die's 8·T rule raising leaves out that page, with one warning that names it,
-    and its percentage rule is still measured.
+    The V-die's 8·T page failing to show leaves out that page, with one warning that
+    names it, and its percentage rule is still measured.
     """
     import warnings
 
-    from caddcalc.calculators.sheet_metal import VDieOpening
-    from caddcalc.core import Context
     from caddcalc.gui import window as window_module
+    from caddcalc.gui.window import MainWindow
 
-    compute = VDieOpening.compute
+    rebuild = MainWindow._rebuild_form
 
-    def failing_eight_t(self: VDieOpening, ctx: Context) -> None:
-        if ctx.method == "eight_t":
-            raise ZeroDivisionError("the 8·T rule's own error")
-        compute(self, ctx)
+    def failing_eight_t(window: MainWindow) -> None:
+        if window.calculator is not None and window.method_key == "eight_t":
+            raise ZeroDivisionError("the 8·T page's own error")
+        rebuild(window)
 
     fit_height = window_module.fit_height
     measured: list[tuple[str, str]] = []
@@ -602,7 +610,7 @@ def test_a_method_that_fails_to_measure_leaves_out_its_own_page_only(
         height: int = fit_height(page, width, document)
         return height
 
-    monkeypatch.setattr(VDieOpening, "compute", failing_eight_t)
+    monkeypatch.setattr(MainWindow, "_rebuild_form", failing_eight_t)
     monkeypatch.setattr(window_module, "fit_height", spy)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
@@ -614,6 +622,34 @@ def test_a_method_that_fails_to_measure_leaves_out_its_own_page_only(
     assert "(eight_t)" in left_out[0]
     assert ("sheet_metal.v_die_opening", "radius_ratio") in measured
     assert ("sheet_metal.v_die_opening", "eight_t") not in measured
+    window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_the_measure_opens_each_further_method_once_directly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The measure calls the method handler itself, once per further method (S&R's H2).
+
+    It sets each method after a calculator's first with the box's signal blocked.
+    Without the blocker, the signal would call the handler a second time, from where its
+    errors go to sys.excepthook.
+    """
+    from caddcalc.gui.window import MainWindow, builtin_ids
+
+    calls: list[int] = []
+    handler = MainWindow._on_method_changed
+
+    def spy(window: MainWindow, index: int) -> None:
+        calls.append(index)
+        handler(window, index)
+
+    monkeypatch.setattr(MainWindow, "_on_method_changed", spy)
+    window = open_window()
+    further = [
+        i for c in window.registry if c.id in builtin_ids() for i in range(1, len(c.methods))
+    ]
+    assert calls == further
     window.close()
 
 

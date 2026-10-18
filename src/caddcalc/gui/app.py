@@ -6,8 +6,9 @@ import json
 import sys
 import time
 import traceback
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from types import TracebackType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -78,6 +79,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     # put back on the way out, as main() found it, however it ends.
     base_font = app.font()
     app.setFont(scaled_font(base_font, system_text_scale()))
+    # An error nothing caught is shown, not lost; a smoke test just writes it out.
+    restore_hook = None if smoke_test else install_error_hook(app)
     try:
         # The welcome screen shows first and paints, so startup is never blank; the main
         # window is built after it (ADR-0015 §1, amendments).
@@ -104,10 +107,67 @@ def main(argv: Sequence[str] | None = None) -> int:
             status = int(app.exec())
         _dispose(app, welcome, startup.window, actions, translator)
     finally:
+        if restore_hook is not None:
+            restore_hook()
         app.setFont(base_font)
         if isValid(translator):  # _dispose deletes it, which takes it off the app too
             app.removeTranslator(translator)  # as main() found the app, however it ends
     return status
+
+
+def install_error_hook(
+    app: QApplication, show: Callable[[str, str], None] | None = None
+) -> Callable[[], None]:
+    """Show an error nothing caught, rather than lose it; return what undoes the hook.
+
+    An error raised in a Qt slot goes to ``sys.excepthook``, past every isolation
+    boundary, and the default hook writes it only to stderr, which a packaged app hasn't
+    got. This one still writes it there, and then shows it, with its traceback in the
+    details, while the application runs: not as it closes down, when its windows are
+    going (KI-019), and never a second box while one shows.
+
+    Args:
+        app: The application.
+        show: Shows a message and its details; a message box when ``None``.
+    """
+    previous = sys.excepthook
+    showing = False
+
+    def hook(kind: type[BaseException], error: BaseException, tb: TracebackType | None) -> None:
+        nonlocal showing
+        previous(kind, error, tb)
+        if showing or app.closingDown() or not issubclass(kind, Exception):
+            return
+        showing = True
+        try:
+            details = "".join(traceback.format_exception(kind, error, tb))
+            (show or _error_box)(f"{kind.__name__}: {error}", details)
+        finally:
+            showing = False
+
+    sys.excepthook = hook
+
+    def restore() -> None:
+        sys.excepthook = previous
+
+    return restore
+
+
+def _error_box(message: str, details: str) -> None:
+    """Show an unexpected error in a message box, over the active window."""
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from caddcalc.gui.branding import PRODUCT_NAME
+
+    box = QMessageBox(QApplication.activeWindow())
+    box.setIcon(QMessageBox.Icon.Critical)
+    box.setWindowTitle(PRODUCT_NAME)
+    box.setText(f"Something went wrong: {message}")
+    box.setInformativeText(
+        "What you last did may not have finished. The details can be copied into a report."
+    )
+    box.setDetailedText(details)
+    box.exec()
 
 
 class _Startup:

@@ -58,3 +58,27 @@ forking the app.
   entry-point group names.
 * Tests pass a fake entry-point source (`Registry(entry_points=...)`,
   `default_registry(entry_points=...)`) instead of patching `importlib.metadata`.
+
+### 2026-10-18: a plugin's unexpected errors are reported, not lost
+
+Support & Review found that a plugin's compute raising an error other than caddcalc's
+own, a ZeroDivisionError say, went to Python's default `sys.excepthook`: stderr, or
+nothing in the packaged app, while the window showed the previous method's results.
+
+* **The core wraps a compute's error** that isn't a `CaddCalcError` as a `SpecError`
+  naming the calculator and method, caused by the original, as it already wrapped a
+  result check's. Errors worded for users, such as an `InputError` or a
+  `CalculationError`, pass through as they are. So every front end reports it: the
+  window blanks its results and shows it (ADR-0017, amendments), and the CLI exits with
+  status 2 and the message, with or without `--json`.
+* **The app's error hook** (`gui.app.install_error_hook`) catches what's left, such as
+  an error raised in a Qt slot, which goes to `sys.excepthook` past every isolation
+  boundary. It still writes the error to stderr, then shows it in a message box with its
+  traceback in the details, which can be copied into a report. It shows nothing as the
+  application closes down, when windows are going (KI-019), and never a second box while
+  one shows. `main()` installs it and puts the previous hook back however it ends; a
+  smoke test leaves the default hook, so it never blocks.
+* **The launch measure** opens each further method directly, not through the method
+  box's signal, so a page that fails to show is left out with a warning (ADR-0021,
+  amendments). A compute's error no longer reaches it: the page shows the error, and is
+  measured so.

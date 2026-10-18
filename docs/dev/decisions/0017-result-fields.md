@@ -578,3 +578,20 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * The disclaimer is the panel's last line, word-wrapped, in the secondary text, and the
   status bar carries only passing messages (ADR-0021 §7). The panel's height is its
   height for its width.
+
+### 2026-10-18: never stale, whatever fails (Support & Review's review of f97d230)
+
+* **What S&R found.** A compute that raised an error other than caddcalc's own, such as a
+  plugin's ZeroDivisionError, wasn't caught. It went to `sys.excepthook`, and the window
+  kept the previous method's results and work on screen under the new method's name: a
+  stale result, against "Never stale" (§4).
+* **The core wraps it** as a `SpecError`, "… (method): compute failed: ZeroDivisionError:
+  …", as it already wrapped a result check's error, so the window shows it as it shows
+  any calculator error, and the CLI and JSON report it (ADR-0006, amendments).
+* **The window's recalculation is an isolation boundary.** Running the calculator and
+  showing its result and work are one step: whatever fails in it, the result fields go
+  blank ("—") and the error shows in the work, in the usual error style. A result is kept
+  only once it's shown. An error that isn't caddcalc's own is also written to stderr.
+* **Tests:** a plugin method whose compute raises blanks the fields and shows the error,
+  and choosing a good method again shows its results; an error while showing a result
+  blanks it too.

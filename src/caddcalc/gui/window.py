@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import sys
+import traceback
 import warnings
 import weakref
 from collections.abc import Callable, Iterator, Sequence
@@ -1250,31 +1252,40 @@ class MainWindow(QMainWindow):
         if calc is None:
             return
         problems = self._refresh_fields(calc)
-        scheme = current_scheme()
         self.result = None
         if problems:
-            self.results.show_result(None, self.prefs)
-            self.output.setHtml(_error_html(problems, scheme))
+            self._show_failure(problems)
             return
+        # An isolation boundary: whatever goes wrong running or showing it, the fields go
+        # blank and the error shows; a result from before never stays on screen
+        # (ADR-0017 §4, amendments).
         try:
             inputs, labels, notes, settings = self._run_arguments(calc)
-            self.result = calc.run(
+            result = calc.run(
                 inputs,
                 method=self.method_key,
                 settings=settings,
                 explicit_sources=labels,
                 explicit_notes=notes,
             )
+            for key, outline in strongest(result.notes, self.fields).items():
+                _set_outline(self.fields[key][1], outline)
+            self.results.show_result(result, self.prefs)
+            self.output.setHtml(
+                result_html(calc, result, self.prefs, current_scheme(), include_results=False)
+            )
+            self.result = result
         except CaddCalcError as exc:
-            self.results.show_result(None, self.prefs)
-            self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
-            return
-        for key, outline in strongest(self.result.notes, self.fields).items():
-            _set_outline(self.fields[key][1], outline)
-        self.results.show_result(self.result, self.prefs)
-        self.output.setHtml(
-            result_html(calc, self.result, self.prefs, scheme, include_results=False)
-        )
+            self._show_failure([describe_error(exc, self.prefs)])
+        except Exception as exc:  # noqa: BLE001
+            traceback.print_exception(exc, file=sys.stderr)
+            self._show_failure([f"Unexpected error: {type(exc).__name__}: {exc}"])
+
+    def _show_failure(self, errors: list[str]) -> None:
+        """Blank the results, and show why there are none in the work."""
+        self.result = None
+        self.results.show_result(None, self.prefs)
+        self.output.setHtml(_error_html(errors, current_scheme()))
 
     # --- domain settings page -------------------------------------------------------------
     # Fields apply on Enter or when focus leaves them, and are checked as the user types.
