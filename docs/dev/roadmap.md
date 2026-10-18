@@ -73,6 +73,10 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [ ] Installers for Windows, macOS, and Linux, built in CI on tags. GitHub Releases.
       A workflow that builds generic archives on tags and drafts a release is sketched in
       `.github/workflows/release.yml`. It hasn't run on GitHub, and macOS and Linux are untested.
+- [ ] Move CI's Linux jobs to Ubuntu 26 once its package names are checked. They're pinned
+      to `ubuntu-24.04` (`.github/workflows/ci.yml`), since the test job installs Qt's
+      runtime libraries by name: libegl1, libgl1, libxkbcommon0, libfontconfig1 and
+      libdbus-1-3.
 - [ ] Third-party license notices in the app folder (KI-016)
 - [ ] Light and dark Qt themes built from the UI palette (`gui/assets/palette.toml`,
       [design/palette.md](design/palette.md)), replacing the ad-hoc HTML colors in `gui/window.py`

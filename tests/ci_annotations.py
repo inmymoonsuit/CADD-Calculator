@@ -4,7 +4,8 @@ A job's log can be read only by a signed-in user, but a check run's annotations 
 public through GitHub's API. So under GitHub Actions each failure is also printed as a
 workflow command, ``::error file=…,line=…::…``, which GitHub makes an annotation of
 (GitHub Docs, "Workflow commands for GitHub Actions": "Setting an error message").
-``conftest.py`` registers the hook; it prints nothing elsewhere.
+``conftest.py`` registers the hook; it prints nothing elsewhere. GitHub keeps at most ten
+annotations of a kind per step; the log has every failure.
 """
 
 from __future__ import annotations
@@ -45,9 +46,18 @@ def _where(report: pytest.TestReport | pytest.CollectReport, root: Path) -> tupl
 
 
 def annotation(report: pytest.TestReport | pytest.CollectReport, root: Path) -> str:
-    """Return the ``::error`` workflow command for a failed test's report."""
+    """Return the ``::error`` workflow command for a failed test's report.
+
+    The message is the exception's first line. A report with no exception, such as a
+    fixture that isn't found at setup, gives its error on the first line marked "E ".
+    """
     crash = getattr(report.longrepr, "reprcrash", None)
-    message = crash.message if crash is not None else str(report.longrepr)
+    if crash is not None:
+        message = crash.message
+    else:
+        text = str(report.longrepr)
+        marked = [line[1:].strip() for line in text.splitlines() if line.startswith("E ")]
+        message = marked[0] if marked else text
     first = message.strip().splitlines()[0] if message.strip() else "failed"
     file, line = _where(report, root.resolve())
     return f"::error file={_property(file)},line={line}::{_data(f'{report.nodeid}: {first}')}"

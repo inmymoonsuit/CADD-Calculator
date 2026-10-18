@@ -24,6 +24,10 @@ def test_raises_outside():
 
 def test_passes():
     pass
+
+
+def test_needs_a_missing_fixture(nowhere):
+    pass
 """
 
 
@@ -60,7 +64,10 @@ def _run(tmp_path: Path, github: bool) -> list[str]:
 
 
 def test_each_failure_is_an_annotation_on_its_line(tmp_path: Path) -> None:
-    """The failed assert's own line; for a raise outside the project, the test's line."""
+    """The failed assert's own line; for a raise outside the project, the test's line.
+
+    A setup error with no exception, a missing fixture, gives its "E " line (S&R's note).
+    """
     lines = [line for line in _run(tmp_path, github=True) if line.startswith("::error ")]
     assert lines == [
         "::error file=test_sample.py,line=6::test_sample.py::test_asserts: "
@@ -68,6 +75,8 @@ def test_each_failure_is_an_annotation_on_its_line(tmp_path: Path) -> None:
         "::error file=test_sample.py,line=10::test_sample.py::test_raises_outside: "
         "json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: "
         "line 1 column 2 (char 1)",
+        "::error file=test_sample.py,line=17::test_sample.py::test_needs_a_missing_fixture: "
+        "fixture 'nowhere' not found",
     ]
 
 

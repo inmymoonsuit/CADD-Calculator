@@ -15,7 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Ubuntu pinned: the Linux job installs Qt's runtime libraries by package name,
+        # not yet checked on Ubuntu 26 (docs/dev/roadmap.md).
+        os: [ubuntu-24.04, windows-latest, macos-latest]
         python: ["3.12", "3.14"]
     env:
       QT_QPA_PLATFORM: offscreen
@@ -49,7 +51,7 @@ jobs:
 
   wheel:
     name: Wheel and sdist
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
