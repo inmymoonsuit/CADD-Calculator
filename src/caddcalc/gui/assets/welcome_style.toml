@@ -74,3 +74,6 @@ display_em_pixels = 25             # 1000 units per em, 40 per design pixel
 display_cap_height = 0.56          # 560 of 1000 units
 fallback_families = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
 min_font_size = 9
+
+[startup]
+hold_ms = 1500                     # the card alone, still, before the window shows behind it

@@ -239,6 +239,15 @@ class TypographyTokens:
 
 
 @dataclass(frozen=True)
+class StartupTokens:
+    """How the card and the main window come up together (ADR-0015, amendments)."""
+
+    hold_ms: int
+    """How long the card is on screen alone, from its first paint, before the main window
+    is revealed behind it; or less, if the card is closed first."""
+
+
+@dataclass(frozen=True)
 class WelcomeStyle:
     """Every token of the welcome screen, checked."""
 
@@ -250,6 +259,7 @@ class WelcomeStyle:
     name_pane: PaneTokens
     version_pane: PaneTokens
     typography: TypographyTokens
+    startup: StartupTokens
 
     @property
     def window(self) -> Size:
@@ -366,6 +376,7 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "min_font_size": check_number(1, 64),
         },
     ),
+    "startup": (StartupTokens, {"hold_ms": check_number(0, 10_000, whole=True)}),
 }
 
 

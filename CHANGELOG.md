@@ -319,6 +319,10 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **The welcome screen flickered at startup.** The main window showed on top of it, then
+  the card came back on top. Now the card shows once, and the main window is prepared
+  hidden and appears behind it once, 1.5 s after the card shows, without taking its
+  focus; closing the card gives the window the focus (ADR-0015, amendments).
 - A result field's value or unit could lose its last pixel: their columns were sized to
   the nearest pixel of the text's width, and are now rounded up.
 - Changing the units, or another calculator, while an outlined input had keyboard focus

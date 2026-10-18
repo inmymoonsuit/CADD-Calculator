@@ -163,6 +163,10 @@ by hand before a release on each platform:
 * **macOS:** About and Exit (Quit) must appear in the application menu for the main
   window, and the card must open as a window, not as a sheet attached to the main
   window.
+* **The startup order (ADR-0015, amendments):** check that the main window appears once,
+  behind the card, without taking its focus, and that the card stays above it until it's
+  closed: it's a window the main window owns. Wayland ignores stacking requests, so check
+  there especially, and on macOS.
 * **Frameless windows everywhere:** check whether the system draws a shadow, and that the
   ⓘ, the X, Esc, and dragging work.
 * **Rounded corners (ADR-0016 §4):** the card is a translucent window that paints its own

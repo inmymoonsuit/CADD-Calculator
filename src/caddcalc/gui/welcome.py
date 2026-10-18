@@ -20,8 +20,9 @@ import warnings
 from pathlib import Path
 from typing import override
 
-from PySide6.QtCore import QEvent, QPointF, QRect, QRectF, QSize, Qt
+from PySide6.QtCore import QEvent, QPointF, QRect, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import (
+    QCloseEvent,
     QColor,
     QFont,
     QFontMetricsF,
@@ -524,7 +525,14 @@ class WelcomeScreen(QWidget):
     It is application-modal, so it blocks the main window until it's closed (ADR-0015 W5,
     amendments). Esc or the X closes it, and it's deleted when closed. Connections use
     bound methods only (KI-019).
+
+    Attributes:
+        painted: Emitted once, when the card first paints: it's on screen.
+        closed: Emitted when the card closes.
     """
+
+    painted = Signal()
+    closed = Signal()
 
     def __init__(
         self, branding: Branding, actions: AppActions, parent: QWidget | None = None
@@ -533,6 +541,7 @@ class WelcomeScreen(QWidget):
         super().__init__(parent, Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._painted = False
         self.setWindowTitle(PRODUCT_NAME)
         self.setAccessibleName(f"Welcome to {PRODUCT_NAME}")
         tokens = branding.welcome_tokens
@@ -650,6 +659,15 @@ class WelcomeScreen(QWidget):
         outline = card_outline(p, QRectF(self.rect()), self.radius, self.border_width)
         p.fillPath(outline, card_background(current_scheme()))
         p.end()
+        if not self._painted:
+            self._painted = True
+            self.painted.emit()
+
+    @override
+    def closeEvent(self, event: QCloseEvent) -> None:
+        super().closeEvent(event)
+        if event.isAccepted():
+            self.closed.emit()
 
     @override
     def keyPressEvent(self, event: QKeyEvent) -> None:

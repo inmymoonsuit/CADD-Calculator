@@ -229,3 +229,46 @@ This replaces, for the welcome screen, W3 and §5's shared top bar.
 * **The version line is just the version.** The name panel already names the edition,
   and the edition's slug is a build-folder id, so the line reads "Version x.y.z".
 
+### 2026-10-18: a stable startup (maintainer; UI/UX)
+
+The maintainer saw "a sort of flickering between the initial splash, the app loading,
+then the splash screen again. It feels very sloppy", and proposed "a minimum static
+splashscreen of just a few seconds even, while the app was prepared and then launched
+stable". UI/UX diagnosed it on real launches: the startup showed the main window, which
+Windows activates and animates in on top of the card, then raised the card again, so the
+card was covered for about a quarter of a second. The project decided UI/UX's rule: every
+window shows once, in a stable order. W1 and W5 stand: the card shows at every start,
+and stays, modal, until the user closes it.
+
+* **The card shows once, final:** at its place and size, decided before it shows, and
+  it's never hidden, moved, re-shown or raised during startup.
+* **The main window is prepared hidden:** built, with its first calculator computed and
+  the launch height measured, then fitted to the card's screen, all before it shows.
+* **It's revealed once, behind the card, without taking the focus.** The card becomes a
+  window the main window owns (`setTransientParent`), so the system keeps it above its
+  owner with no raise, and the main window shows with `WA_ShowWithoutActivating`, so the
+  card keeps the focus and Esc still closes it. When the card closes, the main window
+  takes the focus. Qt reads the attribute as it makes the native window, which fitting
+  does, and again after the show, so it's set before fitting and cleared only then.
+* **A hold before the reveal: `startup.hold_ms`, 1500 ms from the card's first paint.**
+  The main window is revealed when it's ready and the hold is over, so the card is
+  alone and still for a moment, never just flashing. It doesn't delay the user: the card
+  is modal, so the window can't be used until the card closes anyway. A card closed
+  before the hold reveals the window at once, or as soon as it's ready. The token is
+  tunable; the maintainer suggested "a few seconds". A smoke test reveals at once, as it
+  runs no event loop to wait in.
+* **Not done:** turning off Windows' open animation (`DWMWA_TRANSITIONS_FORCEDISABLED`).
+  The animation now plays behind the card, so it's left unless a fade is still noticed.
+* **What a real launch now does** (Windows, natively): the card paints at 2.9 s, the
+  main window is ready, hidden, at 3.3 s, and shows behind the card at 4.4 s, 1.5 s after
+  the card's paint, without activating; closing the card activates it. The card's late
+  first paint, about 2 s of font work, is a separate slice.
+* **Tests** record every window's show, hide, move, resize and activation through a
+  launch: the card shows once and never moves, the window shows once and never resizes
+  after, nothing is raised, the window isn't activated while the card is open, and it's
+  revealed no earlier than the hold, or at once when the card closes first. Raising the
+  card, skipping the hold, dropping the owner, or letting the window take focus each
+  fails them. Offscreen, Qt activates every window it shows, so the activation itself is
+  checked only on a real platform.
+* **KI-020** gains a check by hand: that the owned card stays above the main window on
+  Windows, macOS and Wayland, where stacking requests are ignored.

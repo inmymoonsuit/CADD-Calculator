@@ -102,11 +102,25 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 class _Startup:
-    """Builds the main window once the welcome screen has painted (ADR-0015 §1).
+    """Prepares the main window behind the welcome screen, and reveals it once.
+
+    Every window shows once, final, in a stable order (ADR-0015 §1, amendments):
+
+    1. The welcome card shows first, at its final place and size, and stays.
+    2. The main window is built, fitted to the card's screen, and laid out, hidden.
+    3. It's revealed once it's ready and the card has been on screen alone for
+       ``hold_ms`` from its first paint, or as soon as it's ready once the card is
+       closed. It's revealed behind the card, which it owns, so the system keeps the
+       card above it, and it doesn't take focus: the card keeps it until it closes, and
+       then the main window takes it.
 
     Until the main window shows, the welcome screen is the app's only window, so closing
     it early mustn't end the app. If building the main window fails, the app says so and
     ends with status 1, rather than running on with no window.
+
+    Attributes:
+        hold_ms: How long the card is alone before the reveal; 0 reveals as soon as the
+            main window is ready, as a smoke test does, which has no event loop to wait in.
     """
 
     def __init__(
@@ -117,6 +131,7 @@ class _Startup:
         welcome: WelcomeScreen,
         *,
         smoke_test: bool = False,
+        hold_ms: int | None = None,
     ) -> None:
         self.app = app
         self.branding = branding
@@ -126,10 +141,19 @@ class _Startup:
         self.window: MainWindow | None = None
         self.failed = False
         """Whether building the main window failed."""
+        self.revealed = False
+        """Whether the main window has been shown."""
+        hold = branding.welcome_tokens.startup.hold_ms if hold_ms is None else hold_ms
+        self.hold_ms = 0 if smoke_test else hold
+        self._held = self.hold_ms <= 0
+        self._card_open = True
         app.setQuitOnLastWindowClosed(False)
+        welcome.painted.connect(self._on_card_painted)
+        welcome.closed.connect(self._on_card_closed)
 
     def build_main_window(self) -> None:
-        """Build and show the main window behind the welcome screen."""
+        """Build the main window, hidden, fitted to the welcome card's screen."""
+        from PySide6.QtCore import Qt
         from shiboken6 import isValid
 
         from caddcalc.gui.window import MainWindow
@@ -141,13 +165,54 @@ class _Startup:
         except Exception as exc:  # noqa: BLE001
             self._fail(exc)
             return
+        # It mustn't take the card's focus when it shows. Qt reads this as it makes the
+        # native window, which fitting does, and again after the show, so it's set now
+        # and stays set until the card closes.
+        if self._card_open:
+            self.window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         # On the welcome card's screen, so the two stay together (ADR-0021 §3).
         self.window.fit_to_screen(self.welcome.screen() if isValid(self.welcome) else None)
-        self.window.show()
-        if isValid(self.welcome) and self.welcome.isVisible():
-            self.welcome.raise_()
-            self.welcome.activateWindow()
+        self._reveal_when_due()
+
+    def _on_card_painted(self) -> None:
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(self.hold_ms, self._on_hold_passed)
+
+    def _on_hold_passed(self) -> None:
+        self._held = True
+        self._reveal_when_due()
+
+    def _on_card_closed(self) -> None:
+        self._card_open = False
+        if self.revealed and self.window is not None:
+            self._take_focus()
+        self._reveal_when_due()
+
+    def _take_focus(self) -> None:
+        """Give the main window the focus the card had, and let it take focus from now on."""
+        from PySide6.QtCore import Qt
+
+        if self.window is not None:
+            self.window.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
+            self.window.activateWindow()
+
+    def _reveal_when_due(self) -> None:
+        """Reveal the main window once it's ready, and the hold is over or the card closed."""
+        if self.window is None or self.revealed or not (self._held or not self._card_open):
+            return
+        from shiboken6 import isValid
+
+        window, welcome = self.window, self.welcome
+        card = welcome.windowHandle() if self._card_open and isValid(welcome) else None
+        if card is not None:
+            window.winId()  # the native window, so the card can be given to it
+            card.setTransientParent(window.windowHandle())  # the owner stays below
+        window.show()  # without taking the focus: the card keeps it, and Esc still works
+        self.revealed = True
         self.app.setQuitOnLastWindowClosed(True)
+        if card is None:
+            self._take_focus()
 
     def _fail(self, exc: Exception) -> None:
         """Report a failed startup, and end the app with status 1."""

@@ -166,6 +166,10 @@ uv run python packaging/fetch_fonts.py --commit SHA
 
 ## On screen
 
+* **At startup** the card shows first, once, and the main window is prepared hidden and
+  shown behind it once, `startup.hold_ms` after the card first paints, without taking
+  its focus (ADR-0015, amendments). The card stays on top until it's closed.
+
 * **Smaller screens.** The card's preferred size is its tokens' (960 × 572). On a screen
   whose available area is smaller, the whole card scales down to fit, and the art slot
   stays 16:9. The corners' radius, the spacing, and the lines shrink with it; a line
@@ -264,3 +268,4 @@ hex values, so both themes and the palette's contrast tests apply.
 | `typography.display_cap_height` | 0.56 | Its capitals' height, as a fraction of the em: 560 of 1000 units |
 | `typography.fallback_families` | Consolas, DejaVu Sans Mono, Menlo, monospace | Tried in order when the display face can't be loaded |
 | `typography.min_font_size` | 9 | The least size the version's text shrinks to on a small screen |
+| `startup.hold_ms` | 1500 | How long the card is alone, from its first paint, before the main window shows behind it |
