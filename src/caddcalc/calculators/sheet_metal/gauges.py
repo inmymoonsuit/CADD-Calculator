@@ -132,7 +132,7 @@ _MULTI_ZERO = re.compile(r"([1-9])/0")
 
 
 def designation(text: str) -> str:
-    """Return a gauge size as its item key, e.g. ``"0000000"`` for MH29's ``"7/0"``.
+    """Return a gauge size as its item key, e.g. ``"0000000"`` for the Handbook's ``"7/0"``.
 
     Raises:
         UsageError: ``text`` isn't a gauge size.

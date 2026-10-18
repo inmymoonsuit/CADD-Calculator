@@ -4,7 +4,8 @@ Cite edition, section, figure, and page in each docstring. Copy only the numbers
 the test; never copy text or tables (ADR-0008). These tests are what a method needs before
 it can be promoted to Verification.VERIFIED (CONTRIBUTING.md).
 
-MH29 = Machinery's Handbook, 29th ed., Industrial Press, "Bending Sheet Metal".
+MH31 = Machinery's Handbook, 31st ed., Industrial Press, 2020, "Bending Sheet Metal".
+The same example is MH29's (29th ed.) Fig. 12, pp. 1347 and 1351, with the same numbers.
 EDD5 = Madsen & Madsen, Engineering Drawing and Design, 5th ed., Cengage, 2012.
 """
 
@@ -26,17 +27,17 @@ def printed(value: float, decimals: int = 3) -> object:
     """Match a value printed to ``decimals`` places (half a unit in the last place, plus eps).
 
     Keep the inclusive half-unit tolerance. Some exact values sit right on the rounding
-    boundary: MH29 prints 1.338 for 1.3375 and 0.707 for 0.7075.
+    boundary: MH31 prints 1.338 for 1.3375 and 0.707 for 0.7075.
     """
     return pytest.approx(value, abs=0.5 * 10**-decimals + 1e-9)
 
 
-def test_mh29_fig12_soft_steel_part() -> None:
-    """MH29 "Example, Showing Application of Formulas", Fig. 12, printed pp. 1347 and 1351.
+def test_mh31_fig13_soft_steel_part() -> None:
+    """MH31 "Example, Showing Application of Formulas 32–34", Fig. 13, printed p. 1421.
 
     Soft steel (Eq. 33), T = 0.125. Bends: 180° at R = 0.375 and 60° at R = 0.625, with
-    straight lengths totaling 3.5. Scaling by bend angle / 90 is MH29 "Angle of Bend Other
-    Than 90 Degrees", p. 1351. The calculator rejects A = 180° because the outside setback
+    straight lengths totaling 3.5. Scaling by bend angle / 90 is MH31 "Angle of Bend Other
+    Than 90 Degrees", p. 1421. The calculator rejects A = 180° because the outside setback
     is undefined for a hem (KI-014), so the 180° bend applies that rule to the 90° value.
     """
     calc = BendAllowance()

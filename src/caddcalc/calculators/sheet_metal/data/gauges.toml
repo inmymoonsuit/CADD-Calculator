@@ -8,7 +8,7 @@
 [table]
 schema = 1
 name = "Gauge systems"
-version = 2
+version = 3
 
 [[publication]]
 id = "us_code"
@@ -34,8 +34,8 @@ public_domain_basis = "17 U.S.C. §105: a work of the US Bureau of Standards"
 id = "machinerys_handbook"
 kind = "book"
 title = "Machinery's Handbook"
-short_title = "Machinery's Handbook (29th ed.)"
-edition = "29th ed., Industrial Press, 2012"
+short_title = "Machinery's Handbook (31st ed.)"
+edition = "31st ed., Industrial Press, 2020"
 license = "cite_only_fact"
 cite_only_cap = 1
 
@@ -109,8 +109,8 @@ scope = "American wire gage, for copper, aluminum, and other nonferrous alloys"
 [[source]]
 id = "steel_basis"
 publication = "machinerys_handbook"
-locator = "Sheet-Metal Gages, Table 2, printed p. 2608"
-accessed = 2026-10-17
+locator = "Sheet Metal Gages, Table 2, printed p. 2706"
+accessed = 2026-10-18
 scope = "approximate decimals of an inch"
 
 [[source]]
@@ -178,7 +178,7 @@ defined_by = "statute_weights"
 checked_against = ["steel_basis"]
 tolerances = ["uncoated_steel_tolerances"]
 
-# 32 ga ships as computed, not as MH29 Table 2 lists it (ADR-0014, amendments).
+# 32 ga ships as computed, not as the Handbook's Table 2 lists it (ADR-0014, amendments).
 [[system]]
 id = "galv"
 name = "Galvanized"

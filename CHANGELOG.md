@@ -365,6 +365,10 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- Citations of *Machinery's Handbook* move from the 29th edition to the 31st (2020): the
+  course formula (p. 1421), the angle rule and its worked example (p. 1421, Fig. 13), and
+  the 41.82 steel basis (Table 2, p. 2706), so the gauge table is version 3. The
+  formulas and values are the same.
 - **The window and page layout (ADR-0021).** The window opens centred on the welcome
   card's screen, sized to fit it, and in Windows follows the user's text size, read at
   startup: every size is in text units, so larger text makes the whole layout larger in

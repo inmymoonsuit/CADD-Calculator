@@ -63,7 +63,7 @@ def constant(
 
 
 TABLE_DIGESTS: dict[tuple[str, int], str] = {
-    ("Gauge systems", 2): "ed728b1429ce42cc307ebbde75b0a119e5a4fa3a80498b16f2bce0845adc1fe2",
+    ("Gauge systems", 3): "ae1da48bd0f688660b0d91169db074712b55f7ddb36f458938e15c04e4e7dfc6",
     ("Sheet-metal materials", 1): (
         "c064d35b8e642f87db09c96747918186f0ec3cfe0b5b284e89c715b34ce3672f"
     ),

@@ -38,3 +38,14 @@ The ADR-0014 §5 checklist, applied to the gauge table before its first public r
   session's re-verification.
 * Re-verified by the review session (Support & Review) at 914432d: version 2 changes citation metadata only; its 157 values, its sources' editions and licenses, and all 152 gauge thicknesses and cautions are identical to version 1; digest ed728b1429ce…1fe2; all seven items still pass. Date: 2026-10-17
 * Version 2 approved for release by the maintainer. Date: 2026-10-17
+* 2026-10-18, by the maintainer's decision: **version 3**. *Machinery's Handbook* moves
+  from the 29th edition to the 31st (Industrial Press, 2020): the publication's edition
+  and `short_title` ("Machinery's Handbook (31st ed.)"), and the steel basis's locator,
+  now "Sheet Metal Gages, Table 2, printed p. 2706", accessed 2026-10-18. The 31st
+  edition gives the same 41.82 basis, and Table 2 the same Manufacturers' Standard values
+  at 12, 16, 20 and 24 ga; its title is now "Sheet Metal Gages in Approximate Decimals of
+  an Inch". Citation metadata only: values unchanged, the license unchanged (cite-only),
+  and the cap still one value. Digest
+  `ae1da48bd0f688660b0d91169db074712b55f7ddb36f458938e15c04e4e7dfc6`.
+* Re-verified by the review session (Support & Review):
+* Version 3 approved for release by the maintainer:

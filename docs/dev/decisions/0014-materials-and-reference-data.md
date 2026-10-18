@@ -1141,3 +1141,23 @@ materials table, and the gauge table's version 2 is re-verified. Its Lows, as bu
   the list of sources with their scope follows the note. The 6061-T6 line at 0.063 in is
   671 characters.
 * No table data changed.
+
+### 2026-10-18: *Machinery's Handbook*'s 31st edition (maintainer)
+
+* The citations move from the 29th edition (2012) to the 31st (Industrial Press, 2020),
+  by the maintainer's decision. The formulas and values are the same, so no golden value
+  moves. This ADR's MH29 references above record what was checked then, and stay as
+  written; the current locators are:
+  * the course formula, Eqs (32)–(34), and the angle rule: p. 1421 (MH29 pp. 1347 and
+    1351); the worked example is now Fig. 13 (MH29's Fig. 12)
+  * Table 13, the V-die bend deduction 1.67·B·G and its gauge column: p. 1422
+  * the 41.82 lb/ft² per inch basis and Table 2: p. 2706 (MH29 p. 2608). Table 2 is now
+    titled "Sheet Metal Gages in Approximate Decimals of an Inch", with the same values at
+    12, 16, 20 and 24 ga, and lists 32 ga galvanized as MH29 did
+  * the shift from AWG to decimals for aluminum and copper: p. 2707 (MH29 p. 2609)
+* The gauge table becomes version 3: citation metadata only, with the cap still one
+  value. Its record is in `docs/dev/research/release-checklist-gauges-v1.md`, for Support
+  & Review and then the maintainer to sign.
+* MH31's new Table 20, "Sheet Metal Gauge Sizes" (p. 1453), isn't cited: its inch and
+  millimetre columns disagree in places, and its stainless column isn't the steel
+  Manufacturers' Standard Gage (`docs/dev/research/materials-data-sources.md`).

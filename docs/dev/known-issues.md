@@ -37,9 +37,9 @@ default is the maintainer's call.
 
 ### KI-002: Course bend-allowance formula is for one material class (Low)
 
-`0.64T + 1.57R` is *Machinery's Handbook* 29th ed., Eq. (33) (printed p. 1347): 90° bends in
-half-hard copper and brass, soft steel, and aluminum. The Handbook uses 0.55T (Eq. 32) and
-0.71T (Eq. 34) for other material classes. It is equivalent to K ≈ 0.408 with π/2 rounded
+`0.64T + 1.57R` is *Machinery's Handbook* 31st ed., Eq. (33) (printed p. 1421; p. 1347 in
+the 29th ed.): 90° bends in half-hard copper and brass, soft steel, and aluminum. The
+Handbook uses 0.55T (Eq. 32) and 0.71T (Eq. 34) for other material classes. It is equivalent to K ≈ 0.408 with π/2 rounded
 to 1.57. **Possible next step:** a "Handbook 90° empirical" method with a material-class
 input, plus the Handbook's worked example as a `verified` test.
 
@@ -48,8 +48,9 @@ input, plus the Handbook's worked example as a `verified` test.
 The legacy `FDO = R/0.156` encodes the air-bending rule that the inside radius forms at
 about 15.6% of the V-die opening, the course's mild-steel value. Other materials differ.
 **Now:** `P` is an input (default 0.156). **Still missing:** a per-material table with
-cited sources (roadmap). The rule is not in MH29 or EDD5. The review session points to
-The Fabricator's "20 percent rule" articles (Steve Benson). Their terms couldn't be read,
+cited sources (roadmap). The rule is not in MH29, MH31's bending section (pp. 1417–1423),
+or EDD5. The review session points to The Fabricator's "20 percent rule" articles (Steve
+Benson). Their terms couldn't be read,
 so their figures aren't reproduced here (ADR-0014 §5.2, M3), and they haven't been
 re-checked.
 
@@ -109,8 +110,8 @@ the maintainer's.
 ### KI-014: 180° hems are rejected (Low)
 
 Bend angles must be below 180° because the outside setback, tan(A/2)·(R + T), is undefined
-for a hem. BA itself is fine at 180° (MH29 Fig. 12 has one), so the MH29 test has to double
-the 90° value in test code. **Possible fix:** let an `Output` be marked optional or
+for a hem. BA itself is fine at 180° (MH31 Fig. 13 has one, MH29's Fig. 12), so the
+published example's test has to double the 90° value in test code. **Possible fix:** let an `Output` be marked optional or
 not-applicable, so `bend_allowance` accepts A = 180° and reports BA with OSSB and BD shown
 as "n/a (hem)". That needs a small change in `Calculator.run`, which today raises SpecError
 when any output is missing.
@@ -257,4 +258,5 @@ is a test (`tests/test_published_examples.py`).
 ### KI-012: Source for scaling the 90° formula by A/90 (resolved 2026-10-16)
 
 MH29 "Angle of Bend Other Than 90 Degrees", printed p. 1351, gives this rule, and Fig. 12 is
-tested. The first draft of this entry wrongly said the Handbook didn't cover it (see the engineering log).
+tested. In the 31st edition the rule is on p. 1421 and the example is Fig. 13, the same
+numbers; the test cites MH31 now. The first draft of this entry wrongly said the Handbook didn't cover it (see the engineering log).

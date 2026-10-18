@@ -1,7 +1,7 @@
 """Gauge systems: the table, the thicknesses it defines, and the gauge choice (ADR-0014 §2).
 
 Spot checks are isolated published values: Manufacturers' Standard and galvanized from
-Machinery's Handbook, 29th ed., Table 2, printed p. 2608; US Standard from 15 U.S.C. §206;
+Machinery's Handbook, 31st ed., Table 2, printed p. 2706; US Standard from 15 U.S.C. §206;
 AWG from NBS Circular 391, Table 13. None is a reproduced table.
 """
 
@@ -136,7 +136,7 @@ def test_galvanized_32_ships_as_computed() -> None:
     assert GAUGES.by_key["galv:32"][1].exact == Fraction(9, 16) / Fraction("41.82")
 
 
-def test_multi_zero_sizes_read_and_parse_as_mh29_writes_them() -> None:
+def test_multi_zero_sizes_read_and_parse_as_the_handbook_writes_them() -> None:
     assert GAUGES.key("uss", "7/0") == "uss:0000000"
     assert GAUGES.key("awg", "4/0") == GAUGES.key("awg", "0000") == "awg:0000"
     assert GAUGES.key("msg", " 12 ") == "msg:12"
@@ -166,7 +166,7 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     derived = settings.for_domain(DOMAIN).derived["thickness"]
     assert derived.stated is not None and derived.stated.text == "0.1046 in"
     assert describe_source(derived.source) == (
-        "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 2"
+        "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 3"
     )
 
     gauged = BendAllowance().run(settings=settings.for_domain(DOMAIN))
@@ -177,7 +177,7 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     assert describe_note(note, DisplayPrefs()).lines == (
         "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check "
         "the material's specification or measure before cutting.",
-        "Sources: Gauge systems, version 2 · ASTM A568/A568M, 2025, rev. a, scope: general "
+        "Sources: Gauge systems, version 3 · ASTM A568/A568M, 2025, rev. a, scope: general "
         "requirements for carbon and HSLA steel sheet (A1008, A1011)",
     )
 

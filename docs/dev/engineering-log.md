@@ -199,7 +199,8 @@ display, and only while it creates its QGuiApplication.
 **Tried:** documenting (KI-012 and the course method note) that scaling 0.64T + 1.57R by A/90
 was the prototype's own extension, after checking only the Eq. (33) page.
 **Outcome:** reverted the same day. The review session pointed to MH29 p. 1351 ("Angle of Bend
-Other Than 90 Degrees"), and reading that page confirmed the rule.
+Other Than 90 Degrees"), and reading that page confirmed the rule. (It's p. 1421 in the 31st
+edition.)
 **Instead / next time:** search the whole section, not just the equation's page, before
 writing that a source doesn't support something.
 

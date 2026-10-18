@@ -568,6 +568,9 @@ class MainWindow(QMainWindow):
         palette = self.output.palette()
         palette.setColor(QPalette.ColorRole.Base, color)
         self.output.setPalette(palette)
+        # Windows 11's style stops a scroll area's viewport filling its background and
+        # paints its own control colour there, which would hide this surface.
+        self.output.viewport().setAutoFillBackground(True)
 
     def _calculator_items(self) -> Iterator[QTreeWidgetItem]:
         """Yield the tree's calculator rows, in order."""

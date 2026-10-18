@@ -37,9 +37,10 @@ methods that use it follow the colon.
   [glossary](../glossary.md)).
 * **K-factor:** cited starting values are 0.445 for aircraft aluminum (FAA-H-8083-31B,
   p. 4-63); about 0.408 for aluminum and soft steel and 0.452 for cold-rolled steel,
-  implied by *Machinery's Handbook* (29th ed., p. 1347, Eqs 33 and 34); and the textbook's
-  0.4. It approaches 0.5 for large R/T. Use your shop's test-bend value for production.
-  The course methods have their factor built in, so they don't use this setting.
+  implied by *Machinery's Handbook* (31st ed., p. 1421, Eqs (33) and (34)); and the
+  textbook's 0.4. It approaches 0.5 for large R/T. Use your shop's test-bend value for
+  production. The course methods have their factor built in, so they don't use this
+  setting.
 * The V-die calculator's die ratio P is not shared; each calculation sets its own.
 
 The settings page shows the same list under each field.
@@ -74,7 +75,7 @@ until you pick one, so by default you type the decimal thickness.
   cutting." Each system points to its own tolerance standard.
 * Each value comes from a cited definition: the 1893 gauge statute (15 U.S.C. §206),
   NBS Circular 391, and one fact from *Machinery's Handbook*. Results name the table,
-  "Gauge systems, version 2". To report a value that looks wrong, see
+  "Gauge systems, version 3". To report a value that looks wrong, see
   [Reporting a wrong value](#reporting-a-wrong-value).
 
 ### Choosing a material
@@ -159,7 +160,7 @@ note names its sources and how far each applies.
   and a ticked **Use Sheet Metal value** box. The field is read-only while the box is
   ticked, and the result lists the value as *Sheet Metal settings*.
 * A gauge's thickness works the same way. The result lists it by its gauge, e.g.
-  *12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 2*,
+  *12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 3*,
   carries the caution, and shows the gauge's work before the calculator's own.
 * To give one calculator its own value, **untick the box**. The field keeps an exact
   copy of the family value, so nothing changes until you edit it; the result lists it
@@ -207,10 +208,10 @@ Both methods then compute:
 * OSSB = tan(A/2)·(R + T)
 * BD = 2·OSSB − BA
 
-The course formula is *Machinery's Handbook* (29th ed.) Eq. (33). It is for 90° bends in
-half-hard copper and brass, soft steel, and aluminum, and is scaled by A/90 for other angles.
-It equals the K-factor formula with K ≈ 0.408. For other materials, or for production work,
-use the K-factor method with your shop's measured K.
+The course formula is *Machinery's Handbook* (31st ed.) Eq. (33), p. 1421. It is for 90°
+bends in half-hard copper and brass, soft steel, and aluminum, and is scaled by A/90 for
+other angles. It equals the K-factor formula with K ≈ 0.408. For other materials, or for
+production work, use the K-factor method with your shop's measured K.
 
 **Course example:** T = 0.1046, R = 0.156, A = 90° gives BA = 0.311864 in.
 

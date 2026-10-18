@@ -27,13 +27,13 @@ has been checked. The suite starts with sheet metal and grows by domain.
 ### 0.2: Trustworthy sheet metal
 - [ ] Verify formulas against cited sources and promote methods to `verified` (KI-001, KI-004)
 - [ ] Promote methods that now pass published worked examples to `verified`, after the
-      maintainer agrees (course BA: MH29 Fig. 12; K-factor: EDD5 Fig. 19.12, at 90° only, see
+      maintainer agrees (course BA: MH31 Fig. 13; K-factor: EDD5 Fig. 19.12, at 90° only, see
       KI-013). `COURSE_METHOD` and `K_FACTOR_METHOD` are shared by two calculators, so give
       each calculator its own copy (`dataclasses.replace`) before promoting one.
-- [ ] MH29 Eq. (32)/(33)/(34) as a material-class method (soft copper/brass; soft steel and aluminum; cold-rolled steel and hard copper)
+- [ ] MH31 Eq. (32)/(33)/(34), p. 1421, as a material-class method (soft copper/brass; soft steel and aluminum; cold-rolled steel and hard copper)
 - [ ] Dimension-origin input for bends past 90° (KI-013), with an ADR on the default
 - [ ] Hems: 180° bends (KI-014)
-- [ ] MH29 V-die bend deduction, 1.67·B·G (Table 13 method, pp. 1351–1352)
+- [ ] MH31 V-die bend deduction, 1.67·B·G (Table 13 method, p. 1422)
 - [ ] K-factor from a test bend (the inverse calculation)
 - [ ] Whole-part flat pattern: a chain of flanges (Σ outside dimensions − Σ BD)
 - [ ] Dimensioning reference: outside, inside, or centerline (KI-006)
@@ -47,7 +47,11 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [x] Minimum inside bend radius checks per material and temper, as result notes that say
       so when no source covers the case (ADR-0014 phase 2b)
 - [ ] **Next for materials:**
-      - sign off the materials release record, and re-verify the gauge table's version 2
+      - sign off the materials release record, and re-verify the gauge table's version 3
+      - candidates from MH31's bending section, cite-only: minimum bend radius from the
+        tensile reduction, Eq. (30), and maximum bend radius, Eq. (31), p. 1417;
+        springback, Eq. (35), p. 1421; bending force, Eq. (36), p. 1422; and three-roll
+        bending, p. 1423
       - more tempers and alloys, such as 6061-O and 5052-H34, as public-domain sources allow
       - a public-domain minimum radius for galvanized and HR P&O, which have none
       - press-brake tonnage, once an upper strength value passes ADR-0014 §5

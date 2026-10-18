@@ -31,13 +31,13 @@ LEGACY_ROUGH_DRAFT = Reference(
     "CADD Calculator Rough Draft V1/V2 (Excel/VBA prototype, 2024)",
     "sheet 'Non-90 Degree Bend Calculations'; see docs/dev/legacy-workbooks.md",
 )
-MH29_EQ33 = Reference(
-    "Machinery's Handbook, 29th ed.",
-    "Bending Sheet Metal: Allowances for Bending Sheet Metal, Eq. (33), printed p. 1347",
+MH31_EQ33 = Reference(
+    "Machinery's Handbook, 31st ed.",
+    "Bending Sheet Metal: Allowances for Bending Sheet Metal, Eq. (33), printed p. 1421",
 )
-MH29_ANGLE_RULE = Reference(
-    "Machinery's Handbook, 29th ed.",
-    "Bending Sheet Metal: Angle of Bend Other Than 90 Degrees, printed p. 1351",
+MH31_ANGLE_RULE = Reference(
+    "Machinery's Handbook, 31st ed.",
+    "Bending Sheet Metal: Angle of Bend Other Than 90 Degrees, printed p. 1421",
 )
 EDD5_BEND_ALLOWANCE = Reference(
     "Madsen & Madsen, Engineering Drawing and Design, 5th ed.",
@@ -71,9 +71,9 @@ K_FACTOR = replace(
         "Neutral-axis position as a fraction of thickness, measured from the inside surface. "
         "Cited starting values: 0.445 for aircraft aluminum (FAA-H-8083-31B, p. 4-63); about "
         "0.408 for aluminum and soft steel and 0.452 for cold-rolled steel, implied by "
-        "Machinery's Handbook (29th ed., p. 1347, Eqs 33 and 34). It approaches 0.5 for large "
-        "R/T. The default, 0.4, is the instructional value in Engineering Drawing and Design "
-        "(5th ed., Ch. 19). Use your shop's test-bend value for production."
+        "Machinery's Handbook (31st ed., p. 1421, Eqs (33) and (34)). It approaches 0.5 for "
+        "large R/T. The default, 0.4, is the instructional value in Engineering Drawing and "
+        "Design (5th ed., Ch. 19). Use your shop's test-bend value for production."
     ),
     methods=("k_factor",),
 )
@@ -120,8 +120,8 @@ COURSE_METHOD = Method(
     references=(
         LEGACY_LESSON_2,
         LEGACY_ROUGH_DRAFT,
-        MH29_EQ33,
-        MH29_ANGLE_RULE,
+        MH31_EQ33,
+        MH31_ANGLE_RULE,
     ),
     notes=(
         "Machinery's Handbook gives 0.64T + 1.57R for 90° bends in half-hard copper and brass, "

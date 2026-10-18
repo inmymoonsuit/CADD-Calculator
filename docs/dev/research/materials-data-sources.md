@@ -41,8 +41,8 @@ is computed by us from public-domain data, unless it is marked as a cited fact.
 * **The statute.** 15 U.S.C. §206 (Act of March 3, 1893, ch. 221, 27 Stat. 746). It is
   public domain, as a US government work (17 U.S.C. §105).
 * **The basis.**
-  * The 41.82 figure is a fact cited from *Machinery's Handbook*, 29th ed. (MH29),
-    "Sheet-Metal Gages", printed p. 2608.
+  * The 41.82 figure is a fact cited from *Machinery's Handbook*, 31st ed. (MH31),
+    "Sheet Metal Gages", printed p. 2706 (p. 2608 in the 29th ed., MH29).
   * We couldn't confirm the AISI origin that is often given for it.
   * NBS Circular 391 (1931) uses 40.80 for steel instead. The basis is a choice, and
     each system must disclose its own.
@@ -57,7 +57,8 @@ is computed by us from public-domain data, unless it is marked as a cited fact.
   | 20 | 0.0359 |
   | 24 | 0.0239 |
 
-  These agree with MH29 Table 2 (printed p. 2608), which we checked by spot values only.
+  These agree with MH31 Table 2, now titled "Sheet Metal Gages in Approximate Decimals of an
+  Inch" (printed p. 2706; MH29's p. 2608), which we checked by spot values only.
 * **A naming trap.** USAF TO 1-1A-9 Table A-19 lists the same values (we checked 20 ga)
   under a column labelled "USSG (Revised)".
 
@@ -68,7 +69,7 @@ is computed by us from public-domain data, unless it is marked as a cited fact.
 * **Source of the coating rule.** NBS Circular 391, *Gage Systems* (1931), public domain:
   https://nvlpubs.nist.gov/nistpubs/Legacy/circ/nbscircular391.pdf
 * **Computed values at the 41.82 basis:** 12 ga = 0.1084 in, 16 ga = 0.0635 in,
-  20 ga = 0.0396 in. These also agree with MH29 Table 2, by spot check.
+  20 ga = 0.0396 in. These also agree with MH31 Table 2, by spot check.
 
 ### 2.3 US Standard Gauge (1893), as commonly used for stainless
 
@@ -77,15 +78,21 @@ is computed by us from public-domain data, unless it is marked as a cited fact.
 * **Computed values:** 12 ga = 0.109375 in, 14 ga = 0.078125 in, 16 ga = 0.0625 in.
 * **Vendor listings disagree with this column at some gauges,** for example 14 ga. We
   don't reproduce vendor figures.
-* **Rounding differs between tables.** MH29 Table 13 (printed p. 1352) lists 12 ga as
-  0.1093.
+* **Rounding differs between tables.** MH31 Table 13 (printed p. 1422; MH29's p. 1352) lists
+  12 ga as 0.1093.
+* **MH31's new Table 20, "Sheet Metal Gauge Sizes" (p. 1453), isn't cited.** Its inch and
+  millimetre columns disagree in places, so it has printing errors: 10 ga mild steel is
+  0.1395 in against 3.416 mm (0.1345 in), 21 ga stainless 0.0244 in against 0.873 mm
+  (0.0344 in), and 31 ga aluminum 0.0089 in (0.226 mm) against 0.261 mm. Its stainless
+  column isn't the steel Manufacturers' Standard Gage either.
 
 ### 2.4 AWG (Brown & Sharpe), formerly used for aluminum
 
 * **Definition.** A geometric series: No. 0000 = 0.4600 in to No. 36 = 0.0050 in, each
   step a fixed ratio (NBS Circular 391). For example, 12 AWG = 0.0808 in.
 * **Practice.** In practice, aluminum sheet is ordered by decimal thickness (ASTM B209;
-  MH29 p. 2609 describes the same shift to decimals).
+  MH31 p. 2707 describes the same shift to decimals for aluminum and copper; MH29's
+  p. 2609).
 
 ### 2.5 Why the system must always be named
 
@@ -112,7 +119,8 @@ gauge number can produce a wrong part.
 * **What sources we can cite imply.**
   * The FAA bend-allowance formula, (0.01743R + 0.0078T)·N, implies k ≈ 0.447. Source:
     FAA-H-8083-31B pp. 4-63–4-64, public domain; aluminum, bench forming.
-  * MH29 Eqs (32)–(34), printed p. 1347 (cite-only), imply about 0.35, 0.407, and 0.452
+  * MH31 Eqs (32)–(34), printed p. 1421 (cite-only; MH29's p. 1347), imply about 0.35,
+    0.407, and 0.452
     for three material classes.
   * *Engineering Drawing and Design* (5th ed., Ch. 19) uses 0.4 as an instructional
     value.
@@ -289,7 +297,7 @@ Resolved for phase 2a (2026-10-17; ADR-0014 amendments):
 * **ASTM B209** lists ANSI H35.2 among its referenced documents, by the standards-store
   listings. Reading ASTM's own page stays open, above.
 * **US Standard 1893's precision** is the statute's own exact decimal column, read in the
-  official GPO text: 12 ga is .109375 in, and 37 ga .006640625 in. MH29 Table 13's 0.1093
+  official GPO text: 12 ga is .109375 in, and 37 ga .006640625 in. MH31 Table 13's 0.1093
   is the same value truncated.
 * **ASTM A480's position on gauge numbers** couldn't be confirmed, so the claim was
   withdrawn rather than resolved.

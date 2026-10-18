@@ -17,7 +17,7 @@ pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 BEND = "sheet_metal.bend_allowance"
 MSG = "Manufacturers' Standard, steel sheet"
 GALVANIZED = "Galvanized, coated steel sheet"
-GAUGE_SOURCE = "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 2"
+GAUGE_SOURCE = "12 ga, Manufacturers' Standard, steel sheet (nominal), Gauge systems, version 3"
 CAUTION = (
     "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check the "
     "material's specification or measure before cutting."
@@ -176,7 +176,7 @@ def test_the_us_standard_source_keeps_its_scope() -> None:
     window.select_calculator(BEND)
     assert source_of(window, "thickness") == (
         "12 ga, US Standard 1893, as commonly used for stainless; practice varies (nominal), "
-        "Gauge systems, version 2"
+        "Gauge systems, version 3"
     )
     assert window.fields["thickness"][1].text().startswith("0.109375")
     window.close()

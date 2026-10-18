@@ -48,14 +48,18 @@ properties together, so the user doesn't have to choose "area" or "perimeter" fi
   | Arc and sector | an included angle outside 0° < θ ≤ 360° (past 180° is a valid major arc) |
 
 * **Formulas** go through `ctx.calc` and show their work (ADR-0004). Each method cites
-  MH29, Mathematics: "Areas and Volumes" (printed pp. 70–76) and "Solution of Triangles"
-  (pp. 95–102); the DLMF §4.42 is a second source for the triangles. Citing a formula in
-  a method is not reference data, so ADR-0014's cap doesn't apply (ADR-0014 D7
-  amendment). Constants are computed with `math.pi` and `math.radians`, not MH29's
-  rounded ones.
-* **Each triangle angle comes from the law of cosines** (MH29 p. 96). MH29's three-sides
-  procedure (p. 102) takes the second angle from the law of sines, which can't return an
-  obtuse angle: sides 3, 7, 5 would give 60° where the answer is 120°.
+  *Machinery's Handbook*, 31st ed. (MH31), Mathematics: "Dimensions of Plane Figures"
+  (printed pp. 75–82) and "Solution of Triangles" (pp. 96–101); the DLMF §4.42 is a second
+  source for the triangles. Citing a formula in a method is not reference data, so
+  ADR-0014's cap doesn't apply (ADR-0014 D7 amendment). Constants are computed with
+  `math.pi` and `math.radians`, not the Handbook's rounded ones.
+* **For students, the Geometry help points to** the *Machinery's Handbook Pocket
+  Companion* (32nd ed., Industrial Press, 2024): "Dimensions of Plane Figures", pp. 1–6,
+  and the triangles, pp. 16–19. It's a "see also", not the source of record.
+* **Each triangle angle comes from the law of cosines** (MH31 p. 96). MH31's three-sides
+  procedure ("All Three Sides Known", p. 101) takes the second angle from the law of sines,
+  which can't return an obtuse angle: sides 3, 7, 5 would give 60° where the answer is
+  120°. We depart from the Handbook there on purpose, and the help says so.
 * **Formulas are arranged to keep their digits,** since a full-precision copy carries 10
   significant figures. Heron's area in Kahan's needle-safe form, cosines clamped before
   `acos`, a leg as √((c − a)(c + a)), and the sagitta as 2r sin²(θ/4). Each is the cited
@@ -107,3 +111,15 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
 * Two core additions (AREA, fixed-unit outputs) that later families can reuse.
 * Every new calculator gets the result fields, the CLI, JSON and the show-work steps with
   no special code.
+
+## Amendments
+
+### 2026-10-18: *Machinery's Handbook*'s 31st edition (maintainer)
+
+* The citations move from the 29th edition to the 31st (Industrial Press, 2020). MH29's
+  "Areas and Volumes" (pp. 70–76) is MH31's "Dimensions of Plane Figures" (pp. 75–82): the
+  rectangle p. 75, the triangles p. 76, the regular polygon, circle and sector p. 78, the
+  segment p. 79, and "Formulas and Table for Regular Polygons" p. 82. The law of cosines
+  stays on p. 96; "Solution of Right Triangles" is p. 98, and "All Three Sides Known"
+  p. 101 (MH29's p. 102), with the same law-of-sines step we don't follow.
+* The *Pocket Companion* (32nd ed.) is added as the help's pointer for students.

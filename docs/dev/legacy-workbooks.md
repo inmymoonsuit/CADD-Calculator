@@ -23,8 +23,8 @@ FDO = female (V) die opening.
 
 The sheet says: "Do not type in red cells as the equations will be erased."
 
-**Source:** `0.64T + 1.57R` is *Machinery's Handbook* 29th ed., Allowances for Bending Sheet
-Metal, Eq. (33), printed p. 1347. `R/0.156` is not in that book (KI-003).
+**Source:** `0.64T + 1.57R` is *Machinery's Handbook* 31st ed., Allowances for Bending Sheet
+Metal, Eq. (33), printed p. 1421 (p. 1347 in the 29th ed.). `R/0.156` is not in that book (KI-003).
 
 **In the app:** `sheet_metal.bend_allowance` (method `course`),
 `sheet_metal.segment_flat_length` (`course`; one bend is A2 = 0°), and
