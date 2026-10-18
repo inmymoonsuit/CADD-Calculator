@@ -29,3 +29,4 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0014](0014-materials-and-reference-data.md) | Materials and reference data for sheet metal (ADR-0013 phase 2) | Accepted (phases 2a and 2b built; 2b's release sign-offs pending) |
 | [0015](0015-welcome-screen.md) | A welcome screen composed from branding-pack parts | Accepted (built) |
 | [0016](0016-welcome-style-system.md) | A style system for the welcome screen | Accepted |
+| [0017](0017-result-fields.md) | Result fields: one boxed, copyable component for every calculator | Accepted; being built |

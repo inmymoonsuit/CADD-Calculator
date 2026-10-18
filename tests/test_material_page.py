@@ -242,20 +242,20 @@ def test_limit_and_no_value_notes_outline_their_fields_distinctly() -> None:
     window.select_calculator(BEND)
     limit = role_color("outline_limit", "light")
     for key in ("inside_radius", "thickness"):
-        assert f"1px solid {limit}" in window.fields[key][1].styleSheet(), key
+        assert f"2px solid {limit}" in window.fields[key][1].styleSheet(), key
     shown = window.output.toHtml().lower()
     assert role_color("text_limit", "light").lower() in shown, "the limit note's colour"
     set_family(window, "thickness", "0.3")
     set_family(window, "inside_radius", "0.5")
     window.select_calculator(BEND)
     unchecked = role_color("outline_no_value", "light")
-    assert f"1px dashed {unchecked}" in window.fields["thickness"][1].styleSheet()
+    assert f"2px dashed {unchecked}" in window.fields["thickness"][1].styleSheet()
     assert window.fields["inside_radius"][1].styleSheet() == ""
     set_family(window, "inside_radius", "0.1")
     window.select_calculator(BEND)
     note = role_color("outline_note", "light")
-    assert f"1px solid {note}" in window.fields["thickness"][1].styleSheet()
-    assert f"1px solid {note}" in window.fields["inside_radius"][1].styleSheet(), (
+    assert f"2px solid {note}" in window.fields["thickness"][1].styleSheet()
+    assert f"2px solid {note}" in window.fields["inside_radius"][1].styleSheet(), (
         "the rule of thumb outranks the unchecked outline"
     )
     window.close()

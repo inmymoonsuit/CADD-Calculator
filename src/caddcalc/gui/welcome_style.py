@@ -638,10 +638,12 @@ def pane_fill(
     Each pair is a text colour and its own fill: dark text on a light fill, light text on
     a dark fill. A pair's fill starts at ``panes.fill_opacity_min`` and rises only as far
     as its text needs to read over the art beneath (``pane_reads``). Both the contrast
-    and the calm rise with opacity, the contrast for a fill on the far side of its text
-    and the calm because blending toward one colour narrows the spread, so the least
-    opacity is found by bisection; any opacity returned has been checked. The pair that
-    needs the least opacity wins; at the same opacity, the one with more contrast.
+    and the calm are nearly monotone in opacity: the contrast for a fill on the far side
+    of its text, and the calm because blending toward one colour narrows the spread, up
+    to 8-bit rounding. So the least opacity is found by bisection, and bisection returns
+    only an opacity it has checked; where the rise isn't strict, that may be a little
+    above the least. The pair that needs the least opacity wins; at the same opacity,
+    the one with more contrast.
 
     Args:
         art: The art's colours under the pane, sampled.

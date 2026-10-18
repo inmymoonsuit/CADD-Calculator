@@ -12,6 +12,7 @@ The maintainer designed it in Adobe Color on 2026-10-17. The original export is
 | Slate | `#77848B` | 119, 132, 139 | Muted: borders, dividers, icons, disabled states |
 | Amber | `#F2BA52` | 242, 186, 82 | Accent: highlights, warnings; headings and links on dark |
 | Ink | `#21251F` | 33, 37, 31 | Text on light; the background in dark mode |
+| Focus blue | `#2E7BCF` | 46, 123, 207 | Keyboard focus only (ADR-0017); approved by the maintainer on 2026-10-17 |
 
 White (`#FFFFFF`) is the light-mode background and the text color in dark mode.
 
@@ -74,6 +75,8 @@ and dark themes. A test keeps hex colors out of the GUI code except the palette 
 | `welcome_line` | ink | slate (ink vanishes on the ink top bar) | the welcome card's top-bar separator and logo box border |
 | `welcome_ink` | ink | ink | welcome pane text, and the fill under the light text; the art is the same in both themes |
 | `welcome_paper` | white | white | welcome pane text, the fill under the dark text, and the logo box's fill |
+| `field_border` | slate | slate | a result field's 1 px border (3:1 or more, tested) |
+| `focus_ring` | focus blue | focus blue | the keyboard focus ring: 4.33:1 on white and 3.60:1 on ink, and ΔE2000 15 or more from every outline and border role, so focus never looks like a warning (tested) |
 
 Text roles keep at least 4.5:1 against the background, and outline roles at least 3:1.
 

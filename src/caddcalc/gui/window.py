@@ -85,6 +85,7 @@ from caddcalc.gui.icons import (
     render,
     role_color,
 )
+from caddcalc.gui.outlines import Outline, error_outline, strongest
 from caddcalc.gui.welcome import WelcomeScreen
 
 ID_ROLE = Qt.ItemDataRole.UserRole
@@ -852,7 +853,7 @@ class MainWindow(QMainWindow):
         for key, (p, edit) in self.fields.items():
             pending = self.pending_fields.get((calc.id, key))
             problem = None if pending is None else self._field_problem(p, pending)
-            edit.setStyleSheet(_outline("outline_error") if problem else "")
+            edit.setStyleSheet(_outline(error_outline()) if problem else "")
             if problem:
                 problems.append(problem)
             edit.setReadOnly(self._inherits_family_value(calc, p))
@@ -896,16 +897,8 @@ class MainWindow(QMainWindow):
         except CaddCalcError as exc:
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
-        outlines: dict[str, tuple[str, str]] = {}
-        for note in self.result.notes:
-            outline = _NOTE_OUTLINES[note.kind]
-            for key in note.subjects:
-                if key in self.fields and _OUTLINE_RANK[outline] > _OUTLINE_RANK.get(
-                    outlines.get(key, ("", "")), 0
-                ):
-                    outlines[key] = outline
-        for key, (role, style) in outlines.items():
-            self.fields[key][1].setStyleSheet(_outline(role, style))
+        for key, outline in strongest(self.result.notes, self.fields).items():
+            self.fields[key][1].setStyleSheet(_outline(outline))
         self.output.setHtml(result_html(calc, self.result, self.prefs, scheme))
 
     # --- domain settings page -------------------------------------------------------------
@@ -1272,7 +1265,7 @@ class MainWindow(QMainWindow):
         for key, (setting, edit) in self.setting_fields.items():
             pending = self.pending_settings.get((domain.id, key))
             problem = None if pending is None else self._setting_problem(setting, pending)
-            edit.setStyleSheet(_outline("outline_error") if problem else "")
+            edit.setStyleSheet(_outline(error_outline()) if problem else "")
             if problem:
                 problems.append(problem)
         self.domain_note.setText(
@@ -1302,29 +1295,14 @@ _NOTE_ICONS = {
 }
 """The icon and palette role that mark each kind of note in the results pane."""
 
-_NOTE_OUTLINES = {
-    NoteKind.WARNING: ("outline_note", "solid"),
-    NoteKind.INFEASIBLE: ("outline_note", "solid"),
-    NoteKind.LIMIT_EXCEEDED: ("outline_limit", "solid"),
-    NoteKind.NO_APPLICABLE_VALUE: ("outline_no_value", "dashed"),
-}
-"""How a field a note concerns is outlined: a palette role and a border style.
-
-A field several notes concern takes the strongest (``_OUTLINE_RANK``): a cited limit over
-a warning over a check that couldn't be made, whose dashed border reads as "unchecked".
-"""
-_OUTLINE_RANK = {
-    ("outline_no_value", "dashed"): 1,
-    ("outline_note", "solid"): 2,
-    ("outline_limit", "solid"): 3,
-}
 _NOTE_TEXT = {NoteKind.LIMIT_EXCEEDED: "text_limit"}
 """The palette role of a note's text in the results pane, where it isn't the body text's."""
 
 
-def _outline(role: str, style: str = "solid") -> str:
-    """Return a style sheet outlining a field in a palette role's colour for the scheme."""
-    return f"QLineEdit {{ border: 1px {style} {role_color(role, current_scheme())}; }}"
+def _outline(outline: Outline) -> str:
+    """Return a style sheet outlining an input field, in its role's colour for the scheme."""
+    color = role_color(outline.role, current_scheme())
+    return f"QLineEdit {{ border: {outline.width:g}px {outline.style} {color}; }}"
 
 
 def _error_html(errors: list[str], scheme: Scheme = "light") -> str:

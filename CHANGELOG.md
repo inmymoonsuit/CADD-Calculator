@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Groundwork for result fields (ADR-0017): their design tokens in
+  `gui/assets/ui_style.toml`, documented in `docs/dev/design/result-fields.md`; a new
+  palette colour, focus blue, for keyboard focus, kept well apart from every warning
+  outline; the Tabler copy and check icons; and spoken unit names ("inches") for
+  screen readers.
 - `core.formatting` shows a value in parts, for copying it (the coming result fields):
   `value_parts()` gives its number, its unit, and its inch fraction, and `format_value()`
   now joins them, unchanged. `copy_text()` gives the clipboard text: the number as shown,
@@ -312,7 +317,7 @@ All notable changes are recorded here. The format follows
   a negative sweep angle, or failed with a division by zero when they were equal. It now
   refuses the input, as it already did for the top diameter.
 - **The course cone method with a bottom diameter no larger than the thickness.** It gave a
-  sweep angle of 0° or less (−35.30° for Db = 2 mm, T = 3 mm). With the maintainer's
+  sweep angle of 0° or less (−35.30° for Db = 2 mm, Dt = 0, H = 5 mm, T = 3 mm). With the maintainer's
   approval it now refuses the input as the mean-diameter method does; its formula and
   the course example are unchanged (KI-021, ADR-0010 amendments).
 - **A window given an empty registry.** `MainWindow(registry=...)` replaced a registry with
@@ -330,6 +335,8 @@ All notable changes are recorded here. The format follows
   display.
 
 ### Changed
+- An input field a note concerns is outlined 2 px, not 1 px, so the outline reads without
+  its colour; result fields will share it (ADR-0017).
 - **Welcome screen refinements (ADR-0016, amendments).**
   * The name is VT323 at 50 px, snapped to the face's pixel grid at every display
     scale, drawn regular, and centred on its capitals. `typography.display_weight`

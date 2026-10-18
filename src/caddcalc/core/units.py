@@ -48,6 +48,15 @@ class Unit:
     factor: float
     """Multiply a value in this unit by ``factor`` to get base units."""
     aliases: tuple[str, ...] = ()
+    spoken_plural: str = ""
+    """The unit's name for any amount but exactly one, e.g. ``"inches"``, as a screen reader
+    says it (ADR-0017 §5). A unitless ratio has none: only its number is spoken."""
+
+    def spoken(self, amount: float) -> str:
+        """Return the unit's name as spoken after ``amount``: singular for exactly 1."""
+        if not self.symbol:
+            return ""
+        return self.name if amount == 1 else self.spoken_plural
 
 
 _PSI_IN_MPA = 0.45359237 * 9.80665 / 25.4**2
@@ -55,20 +64,47 @@ _PSI_IN_MPA = 0.45359237 * 9.80665 / 25.4**2
 inch (NIST SP 811, Appendix B)."""
 
 UNITS: tuple[Unit, ...] = (
-    Unit("mm", "millimetre", Dimension.LENGTH, 1.0, ("millimeter", "millimeters", "millimetres")),
-    Unit("cm", "centimetre", Dimension.LENGTH, 10.0, ("centimeter", "centimeters", "centimetres")),
-    Unit("m", "metre", Dimension.LENGTH, 1000.0, ("meter", "meters", "metres")),
-    Unit("in", "inch", Dimension.LENGTH, 25.4, ('"', "″", "inch", "inches")),
-    Unit("ft", "foot", Dimension.LENGTH, 304.8, ("'", "′", "foot", "feet")),
-    Unit("deg", "degree", Dimension.ANGLE, 1.0, ("°", "degree", "degrees")),
-    Unit("rad", "radian", Dimension.ANGLE, 180.0 / math.pi, ("radian", "radians")),
+    Unit(
+        "mm",
+        "millimetre",
+        Dimension.LENGTH,
+        1.0,
+        ("millimeter", "millimeters", "millimetres"),
+        "millimetres",
+    ),
+    Unit(
+        "cm",
+        "centimetre",
+        Dimension.LENGTH,
+        10.0,
+        ("centimeter", "centimeters", "centimetres"),
+        "centimetres",
+    ),
+    Unit("m", "metre", Dimension.LENGTH, 1000.0, ("meter", "meters", "metres"), "metres"),
+    Unit("in", "inch", Dimension.LENGTH, 25.4, ('"', "″", "inch", "inches"), "inches"),
+    Unit("ft", "foot", Dimension.LENGTH, 304.8, ("'", "′", "foot", "feet"), "feet"),
+    Unit("deg", "degree", Dimension.ANGLE, 1.0, ("°", "degree", "degrees"), "degrees"),
+    Unit("rad", "radian", Dimension.ANGLE, 180.0 / math.pi, ("radian", "radians"), "radians"),
     Unit("", "ratio", Dimension.RATIO, 1.0),
-    Unit("%", "percent", Dimension.RATIO, 0.01, ("percent",)),
-    Unit("MPa", "megapascal", Dimension.STRESS, 1.0, ("megapascal", "megapascals")),
-    Unit("kPa", "kilopascal", Dimension.STRESS, 0.001, ("kilopascal", "kilopascals")),
-    Unit("GPa", "gigapascal", Dimension.STRESS, 1000.0, ("gigapascal", "gigapascals")),
-    Unit("psi", "pound per square inch", Dimension.STRESS, _PSI_IN_MPA),
-    Unit("ksi", "kip per square inch", Dimension.STRESS, 1000 * _PSI_IN_MPA),
+    Unit("%", "percent", Dimension.RATIO, 0.01, ("percent",), "percent"),
+    Unit("MPa", "megapascal", Dimension.STRESS, 1.0, ("megapascal", "megapascals"), "megapascals"),
+    Unit(
+        "kPa", "kilopascal", Dimension.STRESS, 0.001, ("kilopascal", "kilopascals"), "kilopascals"
+    ),
+    Unit(
+        "GPa", "gigapascal", Dimension.STRESS, 1000.0, ("gigapascal", "gigapascals"), "gigapascals"
+    ),
+    Unit(
+        "psi", "pound per square inch", Dimension.STRESS, _PSI_IN_MPA, (), "pounds per square inch"
+    ),
+    Unit(
+        "ksi",
+        "kip per square inch",
+        Dimension.STRESS,
+        1000 * _PSI_IN_MPA,
+        (),
+        "kips per square inch",
+    ),
 )
 
 BASE_UNITS: dict[Dimension, str] = {

@@ -12,6 +12,7 @@
 | [packaging.md](packaging.md) | Building the app, the two editions, branding packs | the build or the pack format changes |
 | [design/palette.md](design/palette.md) | UI colors, their roles, and contrast rules | the palette or the themes change |
 | [design/icons.md](design/icons.md) | Vendored Tabler icons: pinning, adding, recoloring | you add or update an icon |
+| [design/result-fields.md](design/result-fields.md) | Result fields: their look, states, and design tokens | you restyle the results or add a token |
 | [research/materials-data-sources.md](research/materials-data-sources.md) | Sources, terms, and legal framing behind ADR-0014's reference data | a source, its terms, or a verification item changes |
 | [legacy-workbooks.md](legacy-workbooks.md) | Transcription of the original Excel tools | never, except corrections. It is a historical record. |
 

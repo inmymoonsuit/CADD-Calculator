@@ -189,8 +189,8 @@ The art specification (docs/dev/design/welcome-screen.md) points here.
 ### KI-021: The cone's course method took a bottom diameter no larger than the thickness (resolved 2026-10-17)
 
 The course method's sweep angle is `FPA = 180·(Db − T)/FPOR`, so a bottom diameter equal to
-the thickness gave 0°, and a smaller one a negative angle: a pointed cone with Db = 2 mm
-and T = 3 mm gave −35.30°. The maintainer approved a guard: "Yes, add the same input guard
+the thickness gave 0°, and a smaller one a negative angle: a pointed cone with Db = 2 mm,
+Dt = 0, H = 5 mm, and T = 3 mm gave −35.30°. The maintainer approved a guard: "Yes, add the same input guard
 to the course cone method; it doesn't change the formula." Both methods now refuse such
 input with "Bottom diameter must be larger than the thickness for this method." The
 formula, the golden values, and the course example (132.70°, and 132.30° with Lesson 2's

@@ -100,6 +100,13 @@ def check_choice(allowed: frozenset[str]) -> Check:
     return check
 
 
+def check_bool(where: str, value: Any) -> bool:
+    """Check ``true`` or ``false``."""
+    if not isinstance(value, bool):
+        raise StyleError(f"{where} must be true or false, not {value!r}")
+    return value
+
+
 def check_text(where: str, value: Any) -> str:
     """Check non-empty text."""
     if not isinstance(value, str) or not value.strip():

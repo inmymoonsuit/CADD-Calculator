@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="208" viewBox="0 0 800 208" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="996" height="208" viewBox="0 0 996 208" font-family="Segoe UI, Helvetica, Arial, sans-serif">
 <title>CADD Calculator UI palette</title>
-<rect width="800" height="208" fill="#FFFFFF"/>
+<rect width="996" height="208" fill="#FFFFFF"/>
 <rect x="16" y="16" width="180" height="120" rx="6" fill="#A3122F"/>
 <text x="16" y="158" font-size="16" font-weight="600" fill="#21251F">Crimson #A3122F</text>
 <text x="16" y="178" font-size="13" fill="#21251F">Primary</text>
@@ -13,4 +13,7 @@
 <rect x="604" y="16" width="180" height="120" rx="6" fill="#21251F"/>
 <text x="604" y="158" font-size="16" font-weight="600" fill="#21251F">Ink #21251F</text>
 <text x="604" y="178" font-size="13" fill="#21251F">Text / dark surface</text>
+<rect x="800" y="16" width="180" height="120" rx="6" fill="#2E7BCF"/>
+<text x="800" y="158" font-size="16" font-weight="600" fill="#21251F">Focus blue #2E7BCF</text>
+<text x="800" y="178" font-size="13" fill="#21251F">Keyboard focus</text>
 </svg>

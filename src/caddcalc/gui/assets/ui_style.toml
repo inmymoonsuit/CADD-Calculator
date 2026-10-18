@@ -1,0 +1,41 @@
+# The app's design tokens beyond the welcome screen (ADR-0017 §7): every size, colour
+# role, and state its components use. gui/ui_style.py reads and checks them, and refuses
+# unknown keys; docs/dev/design/result-fields.md documents each, and a test keeps it
+# quoting these values. Sizes are logical pixels. Insets, gaps, and paddings come from the
+# spacing scale (2, 4, 6, 8, 12, 16, 24, 32). Colours are palette roles (palette.toml).
+schema = 1
+
+[result_field]                     # one boxed, copyable result (ADR-0017 §2 and §3)
+padding = [6, 12]                  # inside a field: vertical, horizontal
+gap = 12                           # between a field's columns
+stack_gap = 6                      # between fields
+panel_inset = [12, 16]             # around the results panel: top, sides
+min_height = 40                    # a field's least height, for a comfortable button
+button_size = 28                   # the copy button's width and height
+icon_size = 16
+border_width = 1
+border_role = "field_border"
+hover_border_role = "text"
+hover_fill_role = "text"
+hover_fill_opacity = 0.04          # the hover fill: the text role, faintly
+focus_role = "focus_ring"
+focus_width = 2
+focus_gap = 1                      # between the frame and the focus ring
+copied_ms = 1500                   # how long the copied check shows
+value_weight = "bold"
+tabular_figures = true
+decimal_align = true
+document_min_height = 160          # what the document under the panel always keeps
+copy_icon = "copy"
+copied_icon = "check"
+
+[note_outline]                     # a field a note concerns, input or result alike
+width = 2                          # heavier than the 1 px border, so it reads without colour
+limit_role = "outline_limit"       # a cited limit is exceeded
+limit_style = "solid"
+note_role = "outline_note"         # a warning, or an impossibility
+note_style = "solid"
+no_value_role = "outline_no_value" # no reference value could check it
+no_value_style = "dashed"          # dashed reads as "unchecked"
+error_role = "outline_error"       # an input whose text can't be read
+error_style = "solid"

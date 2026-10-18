@@ -14,6 +14,9 @@ ROOT = Path(__file__).resolve().parent.parent
 TABLER = ROOT / "src" / "caddcalc" / "gui" / "assets" / "icons" / "tabler"
 MANIFEST = tomllib.loads((TABLER / "manifest.toml").read_text(encoding="utf-8"))
 VENDORED = set(MANIFEST["icons"])
+UI_TOKENS = tomllib.loads(
+    (ROOT / "src" / "caddcalc" / "gui" / "assets" / "ui_style.toml").read_text(encoding="utf-8")
+)
 
 
 def sha256(path: Path) -> str:
@@ -41,6 +44,10 @@ def test_only_the_icons_the_app_uses_are_vendored() -> None:
     used: set[str] = set()
     for path in (ROOT / "src" / "caddcalc" / "gui").glob("*.py"):
         used |= set(pattern.findall(path.read_text(encoding="utf-8")))
+    # A component may name its icons by design tokens, such as result_field.copy_icon.
+    for table in UI_TOKENS.values():
+        if isinstance(table, dict):
+            used |= {value for key, value in table.items() if key.endswith("_icon")}
     assert used == VENDORED
 
 

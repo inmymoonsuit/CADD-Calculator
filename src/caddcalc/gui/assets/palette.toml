@@ -9,6 +9,7 @@ slate = "#77848B"
 amber = "#F2BA52"
 ink = "#21251F"
 white = "#FFFFFF"
+focus_blue = "#2E7BCF"   # keyboard focus only; approved 2026-10-17 (ADR-0017 §3)
 
 # Roles name a color above. "on_X" is the text or icon color used on top of X.
 [light]
@@ -40,6 +41,8 @@ card_border = "ink"        # the welcome card's outer border
 welcome_line = "ink"       # the welcome card's top-bar separator and logo box
 welcome_ink = "ink"        # welcome pane text over art: the same in both themes,
 welcome_paper = "white"    #   since the art is; the screen picks the one that reads
+field_border = "slate"     # a result field's default 1 px border
+focus_ring = "focus_blue"  # keyboard focus, never an outline colour
 
 [dark]
 background = "ink"
@@ -70,3 +73,5 @@ card_border = "white"      # light, so the card stays outlined on a dark desktop
 welcome_line = "slate"     # ink lines vanish against the ink top bar
 welcome_ink = "ink"
 welcome_paper = "white"
+field_border = "slate"
+focus_ring = "focus_blue"
