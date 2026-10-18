@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from caddcalc.core import Dimension, TypedValue
-from tests.qt_helpers import open_window, page_text, type_into
+from tests.qt_helpers import open_window, page_text, results_text, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -26,8 +26,7 @@ def set_family(window: Any, key: str, text: str) -> None:
 
 
 def result(window: Any) -> str:
-    text: str = window.output.toPlainText()
-    return text
+    return results_text(window)
 
 
 def source_of(window: Any, key: str) -> str:

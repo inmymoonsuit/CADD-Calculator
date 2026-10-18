@@ -16,7 +16,7 @@ def open_window(registry: Registry | None = None) -> Any:
     """A main window over the built-ins (no plugins), or over ``registry``."""
     from caddcalc.gui.window import MainWindow
 
-    return MainWindow(registry or default_registry(load_plugins=False))
+    return MainWindow(default_registry(load_plugins=False) if registry is None else registry)
 
 
 def type_into(edit: Any, text: str, *, enter: bool = True) -> None:
@@ -47,3 +47,17 @@ def page_text(widget: Any) -> str:
     from PySide6.QtWidgets import QLabel
 
     return "\n".join(plain(label.text()) for label in widget.findChildren(QLabel))
+
+
+def results_text(window: Any) -> str:
+    """What a calculator page's results show: each result field's line, then the document.
+
+    A field's line is its symbol, its label, and its value as shown, e.g.
+    ``BA Bend allowance 0.3119 in``, or ``—`` while there's no value (ADR-0017).
+    """
+    lines = [
+        f"{field.output.symbol} {field.output.label} "
+        f"{'—' if field.parts is None else field.parts.with_unit}"
+        for field in window.results.panel.fields.values()
+    ]
+    return "\n".join([*lines, window.output.toPlainText()])

@@ -97,12 +97,13 @@ def test_gui_results_mark_each_kind_of_note() -> None:
 @pytest.mark.gui
 def test_gui_window_computes(qt: Any) -> None:
     from caddcalc.gui.window import MainWindow
+    from tests.qt_helpers import results_text
 
     app = qt.QApplication.instance()
     window = MainWindow()
     window.select_calculator("sheet_metal.bend_allowance")
     window.method_box.setCurrentIndex(0)  # course
-    assert "0.3119 in" in window.output.toPlainText()
+    assert "BA Bend allowance 0.3119 in" in results_text(window)
 
     window.units_box.setCurrentText("mm")
     _param, thickness = window.fields["thickness"]
@@ -112,7 +113,7 @@ def test_gui_window_computes(qt: Any) -> None:
 
     thickness.selectAll()
     QTest.keyClicks(thickness, "-1")  # typed, so it is the user's intent (ADR-0013 §9)
-    assert "must be greater than 0 mm" in window.output.toPlainText()
+    assert "must be greater than 0 mm" in results_text(window)
     window.close()
     app.processEvents()
 

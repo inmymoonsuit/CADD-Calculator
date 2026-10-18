@@ -24,6 +24,7 @@ from caddcalc.core.formatting import (
     describe_note,
     describe_source,
     entry_unit,
+    format_output,
     format_value,
     render_step,
 )
@@ -215,7 +216,7 @@ def format_result(
                 lines.append(f"  {pad}({step.note})")
     lines += ["", "Results"]
     for o in calc.outputs:
-        value = format_value(result.outputs[o.key], o.dimension, prefs)
+        value = format_output(o, result.outputs[o.key], prefs)
         lines.append(f"  {o.symbol:<6} {o.label:<32} {value}")
     if result.notes:
         lines += ["", "Notes"]

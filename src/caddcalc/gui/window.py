@@ -69,6 +69,7 @@ from caddcalc.core.formatting import (
     entry_text,
     entry_unit,
     field_text,
+    format_output,
     format_value,
     render_step,
     unit_suffix,
@@ -86,6 +87,8 @@ from caddcalc.gui.icons import (
     role_color,
 )
 from caddcalc.gui.outlines import Outline, error_outline, strongest
+from caddcalc.gui.result_fields import ResultsArea
+from caddcalc.gui.ui_style import ui_style
 from caddcalc.gui.welcome import WelcomeScreen
 
 ID_ROLE = Qt.ItemDataRole.UserRole
@@ -281,7 +284,10 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_menu()
         self._apply_icons()
-        self.statusBar().showMessage(DISCLAIMER)
+        # A widget, not a message: a passing message, such as "Copied", covers it for a
+        # moment, and it comes back (ADR-0017).
+        self.disclaimer = QLabel(DISCLAIMER)
+        self.statusBar().addWidget(self.disclaimer, 1)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
         first = next(self._calculator_items(), None)
@@ -343,13 +349,17 @@ class MainWindow(QMainWindow):
         example_row = QHBoxLayout()
         example_row.addWidget(self.example_button)
         example_row.addStretch(1)
+        self.results = ResultsArea()
         self.output = ResultsBrowser()
+        # The document under the results always keeps its height; the results scroll.
+        self.output.setMinimumHeight(round(ui_style().result_field.document_min_height))
         self.output.setOpenExternalLinks(True)
         self.calculator_page = QWidget()
         calc_col = QVBoxLayout(self.calculator_page)
         calc_col.setContentsMargins(0, 0, 0, 0)
         calc_col.addLayout(example_row)
         calc_col.addWidget(self.form_box)
+        calc_col.addWidget(self.results)
         calc_col.addWidget(self.output, 1)
 
         self.settings_box = QGroupBox("Family settings")
@@ -422,6 +432,7 @@ class MainWindow(QMainWindow):
     def _on_color_scheme_changed(self, *_args: object) -> None:
         clear_cache()
         self._apply_icons()
+        self.results.panel.restyle()
         self.recompute()
         self._show_setting_problems()
 
@@ -461,6 +472,7 @@ class MainWindow(QMainWindow):
         for m in calc.methods:
             self.method_box.addItem(f"{m.label}  [{m.status}]", m.key)
         self.method_box.blockSignals(False)
+        self.results.build(calc)
         self._rebuild_form()
 
     def select_domain(self, domain_id: str) -> None:
@@ -883,6 +895,7 @@ class MainWindow(QMainWindow):
         scheme = current_scheme()
         self.result = None
         if problems:
+            self.results.panel.show_result(None, self.prefs)
             self.output.setHtml(_error_html(problems, scheme))
             return
         try:
@@ -895,11 +908,15 @@ class MainWindow(QMainWindow):
                 explicit_notes=notes,
             )
         except CaddCalcError as exc:
+            self.results.panel.show_result(None, self.prefs)
             self.output.setHtml(_error_html([describe_error(exc, self.prefs)], scheme))
             return
         for key, outline in strongest(self.result.notes, self.fields).items():
             self.fields[key][1].setStyleSheet(_outline(outline))
-        self.output.setHtml(result_html(calc, self.result, self.prefs, scheme))
+        self.results.panel.show_result(self.result, self.prefs)
+        self.output.setHtml(
+            result_html(calc, self.result, self.prefs, scheme, include_results=False)
+        )
 
     # --- domain settings page -------------------------------------------------------------
     # Fields apply on Enter or when focus leaves them, and are checked as the user types.
@@ -1448,17 +1465,26 @@ def _text_style(kind: NoteKind, scheme: Scheme) -> str:
 
 
 def result_html(
-    calc: Calculator, result: Result, prefs: DisplayPrefs, scheme: Scheme = "light"
+    calc: Calculator,
+    result: Result,
+    prefs: DisplayPrefs,
+    scheme: Scheme = "light",
+    *,
+    include_results: bool = True,
 ) -> str:
-    """Return the results pane as rich text: results, notes, inputs, work, and method."""
+    """Return the results as rich text: results, notes, inputs, work, and method.
+
+    The window shows the results in their own fields (ADR-0017), so it leaves them out;
+    the whole document stays available, for export and for print.
+    """
     method = calc.get_method(result.method)
     rows = "".join(
         f"<tr><td><b>{escape(o.symbol)}</b></td><td>{escape(o.label)}</td>"
-        f"<td align='right'><b>{escape(format_value(result.outputs[o.key], o.dimension, prefs))}"
+        f"<td align='right'><b>{escape(format_output(o, result.outputs[o.key], prefs))}"
         "</b></td></tr>"
         for o in calc.outputs
     )
-    parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"]
+    parts = [f"<h3>Results</h3><table cellpadding='4'>{rows}</table>"] if include_results else []
     if result.notes:
         warn = "".join(
             f"<li{_text_style(note.kind, scheme)}>{_img(*_NOTE_ICONS[note.kind], scheme)}"

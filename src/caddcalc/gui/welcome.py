@@ -44,6 +44,7 @@ from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC_ICON, PRODUCT_NAME, Branding
 from caddcalc.gui.fonts import display_family
 from caddcalc.gui.icons import Scheme, current_scheme, icon, role_color
+from caddcalc.gui.painting import on_device_pixels, stroke
 from caddcalc.gui.welcome_art import generic_art
 from caddcalc.gui.welcome_layout import (
     Rect,
@@ -140,37 +141,6 @@ def can_round_corners() -> bool:
     return (
         platform.startswith(COMPOSITING_PLATFORMS) and QGuiApplication.primaryScreen() is not None
     )
-
-
-def on_device_pixels(p: QPainter, rect: QRectF, inset: float = 0) -> QRectF:
-    """Return ``rect`` with its edges on whole device pixels, then ``inset`` device pixels in.
-
-    The result is in the painter's own coordinates, so whatever is drawn on it lands on
-    the display's pixel grid at any scaling.
-    """
-    to_device = p.deviceTransform()
-    device = to_device.mapRect(rect)
-    edges = QRectF(
-        QPointF(round(device.left()), round(device.top())),
-        QPointF(round(device.right()), round(device.bottom())),
-    )
-    to_logical, _invertible = to_device.inverted()
-    return to_logical.mapRect(edges.adjusted(inset, inset, -inset, -inset))
-
-
-def stroke(p: QPainter, rect: QRectF, color: QColor, width: float) -> None:
-    """Draw a line ``width`` logical pixels wide just inside ``rect``, crisply.
-
-    The line is a whole number of device pixels, at least one, centred on device-pixel
-    centres, so it stays sharp at 125% and 150% scaling.
-    """
-    ratio = p.deviceTransform().m11()
-    device = device_line(width, ratio)
-    if not device:
-        return
-    p.setPen(QPen(color, device / ratio))
-    p.setBrush(Qt.BrushStyle.NoBrush)
-    p.drawRect(on_device_pixels(p, rect, device / 2))
 
 
 def card_outline(p: QPainter, rect: QRectF, radius: float, border: float) -> QPainterPath:

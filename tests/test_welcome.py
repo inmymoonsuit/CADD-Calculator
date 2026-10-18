@@ -422,7 +422,7 @@ def test_lines_are_whole_device_pixels_on_the_pixel_grid(ratio: float) -> None:
     from PySide6.QtCore import QRectF, Qt
     from PySide6.QtGui import QColor, QImage, QPainter
 
-    from caddcalc.gui.welcome import stroke
+    from caddcalc.gui.painting import stroke
     from caddcalc.gui.welcome_layout import device_line
 
     width, height = 50, 30

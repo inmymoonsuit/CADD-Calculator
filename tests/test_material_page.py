@@ -13,7 +13,7 @@ from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
 from caddcalc.calculators.sheet_metal.materials import MATERIAL_TABLE
 from caddcalc.core import Dimension, Note, NoteKind, TypedValue, ValueOrigin
 from caddcalc.core.formatting import describe_source
-from tests.qt_helpers import open_window, plain, type_into
+from tests.qt_helpers import open_window, plain, results_text, type_into
 
 BEND = "sheet_metal.bend_allowance"
 TEST_BEND = Note(NoteKind.WARNING, "A starting value: confirm K with a test bend.")
@@ -317,7 +317,7 @@ def test_a_bend_below_the_materials_minimum_says_so_on_its_page() -> None:
     type_into(window.setting_fields["thickness"][1], "0.063")
     type_into(window.setting_fields["inside_radius"][1], "0.1")
     window.select_calculator("sheet_metal.bend_allowance")
-    shown = window.output.toPlainText()
+    shown = results_text(window)
     assert "Limit exceeded: The inside radius is below the recommended minimum for 6061-T6" in shown
     assert "Inside radius is smaller than the material thickness" not in shown
     window.close()

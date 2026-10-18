@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
-from tests.qt_helpers import open_window, plain, type_into
+from tests.qt_helpers import open_window, plain, results_text, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -43,8 +43,7 @@ def about(window: Any, key: str) -> str:
 
 
 def result(window: Any) -> str:
-    text: str = window.output.toPlainText()
-    return text
+    return results_text(window)
 
 
 def source_of(window: Any, key: str) -> str:

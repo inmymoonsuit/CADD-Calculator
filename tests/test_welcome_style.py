@@ -184,9 +184,10 @@ _ALLOWED_NUMBERS = {0, 1, 2}
 _LITERAL = re.compile(r"#[0-9A-Fa-f]{3,8}\b|\d\s*px\b|rgba?\(")
 
 
-def test_the_widget_takes_every_size_and_colour_from_the_tokens() -> None:
-    """ADR-0016 §1: no layout number or colour is written in welcome.py."""
-    tree = ast.parse(WELCOME.read_text(encoding="utf-8"))
+@pytest.mark.parametrize("module", ["welcome.py", "result_fields.py"])
+def test_the_widget_takes_every_size_and_colour_from_the_tokens(module: str) -> None:
+    """ADR-0016 §1, ADR-0017 §7: no layout number or colour is written in a widget."""
+    tree = ast.parse((WELCOME.parent / module).read_text(encoding="utf-8"))
     found = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Constant):

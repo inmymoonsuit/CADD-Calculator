@@ -26,6 +26,23 @@ token, so the specification can't drift from the code.
   it has copied.
 * Lines follow the welcome screen's rule: whole device pixels, never under one.
 
+## The panel
+
+* `gui/result_fields.py`: a `ResultsPanel` of `ResultField`s, in a `ResultsArea` scroll
+  area between the inputs and the document. The panel is built when the calculator
+  changes, and its values update on every recompute, so focus and hover survive
+  typing. While the inputs have no result, every field shows "—" at once.
+* A field shows its output through `core.formatting.output_parts()`, the one place
+  outputs are presented; the CLI and the document use `format_output()` on it. An
+  output's own presentation (ADR-0018) will apply there.
+* The document under the panel starts at Notes and always keeps
+  `document_min_height`. The panel takes its fields' height up to that, never less
+  than its title and one field, and scrolls on its own beyond it.
+* The status bar's disclaimer is a widget, so a passing message covers it for a moment
+  and it comes back.
+* A test keeps layout numbers and colours out of `result_fields.py`, as out of
+  `welcome.py`.
+
 ## States
 
 * **Hover:** the border takes the text colour, and the field a faint fill of it.
@@ -58,6 +75,8 @@ heavier than the border.
 | `result_field.icon_size` | 16 | Its icon's size |
 | `result_field.border_width` | 1 | A field's border |
 | `result_field.border_role` | field_border | Its colour role |
+| `result_field.fill_role` | background | A field's surface |
+| `result_field.text_role` | text | Its symbol, label, value, and unit; the label differs by weight, not colour |
 | `result_field.hover_border_role` | text | The border's role on hover |
 | `result_field.hover_fill_role` | text | The hover fill's role |
 | `result_field.hover_fill_opacity` | 0.04 | ... at this opacity, painted at paint time |

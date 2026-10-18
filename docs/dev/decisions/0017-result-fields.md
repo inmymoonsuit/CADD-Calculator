@@ -346,3 +346,28 @@ Seen in the current pane (`results/results-notes-light.png`).
 * **§6, per the code check:** the panel is built when the calculator changes, and its
   values update on each recompute, rather than being rebuilt every time results render.
   That keeps keyboard focus and hover through typing (k3).
+
+### 2026-10-17: the panel as built (k3)
+
+* `gui/result_fields.py` holds `ResultField`, `ResultsPanel`, and `ResultsArea`, the
+  scroll area. The panel is built per calculator and updated per recompute; both error
+  paths blank every field and disable its copy button ("No value to copy").
+* Fields present outputs through `core.formatting.output_parts()`, and the document and
+  the CLI through `format_output()`, so ADR-0018's output presentation lands in one
+  place. On screen, `result_html(..., include_results=False)` starts the document at
+  Notes.
+* Notes outline the result fields they name, through `gui/outlines.py`.
+* Values align on the decimal point with tabular figures, as §2 describes.
+* **Two tokens added:** `result_field.fill_role` (`background`) and
+  `result_field.text_role` (`text`). §2's "secondary text role" for the label doesn't
+  exist in the palette, and slate, the nearest, is 3.85:1 on white, under 4.5:1 for
+  normal text (palette.md forbids slate for small text). So the label is the text role
+  at regular weight, set apart from the bold symbol and value by weight. For the same
+  reason, the dormant "(≈ 5/16\")" uses the text role, not the muted one.
+* **The disclaimer** is a normal status-bar widget, not a permanent one: a passing
+  message, such as "Copied", covers it for a moment and it comes back, rather than both
+  sharing one line.
+* **Shared painting:** the crisp-line helpers moved from `welcome.py` to
+  `gui/painting.py`, with a dashed style for the no-value outline.
+* The copy button is shown and enabled with a value, but copying, the copied state,
+  the keyboard, and the accessible names come with k4.

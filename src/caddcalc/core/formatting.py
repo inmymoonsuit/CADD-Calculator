@@ -14,7 +14,7 @@ from caddcalc.core.calculator import Calculator, Result
 from caddcalc.core.errors import CaddCalcError, UsageError
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
-from caddcalc.core.spec import Method, OutOfRangeError
+from caddcalc.core.spec import Method, OutOfRangeError, Output
 from caddcalc.core.steps import Step
 from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit
 
@@ -161,11 +161,29 @@ def format_value(
         unit: Append the unit (and the nearest fraction, when enabled).
     """
     parts = value_parts(value, dimension, prefs)
-    if not unit:
-        return parts.number
+    return _shown(parts) if unit else parts.number
+
+
+def _shown(parts: ValueParts) -> str:
+    """Return a value's parts as one text: number, unit, and any fraction."""
     if parts.fraction is None:
         return parts.with_unit
     return f'{parts.with_unit}  (≈ {parts.fraction}")'
+
+
+def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValueParts:
+    """Return a calculator output's value as shown, in parts.
+
+    Every front end presents outputs through here or ``format_output``, so an output's
+    own presentation, such as a converter row's fixed unit (ADR-0018), will apply in one
+    place. Today it's the output's dimension, as ``value_parts`` shows it.
+    """
+    return value_parts(value, output.dimension, prefs)
+
+
+def format_output(output: Output, value: float, prefs: DisplayPrefs) -> str:
+    """Return a calculator output's value as display text, e.g. ``0.3119 in``."""
+    return _shown(output_parts(output, value, prefs))
 
 
 class CopyForm(Enum):
@@ -222,7 +240,7 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     """
     rows = []
     for output in calc.outputs:
-        parts = value_parts(result.outputs[output.key], output.dimension, prefs)
+        parts = output_parts(output, result.outputs[output.key], prefs)
         cells = (output.symbol, output.label, parts.number, parts.unit)
         rows.append("\t".join(_cell(cell) for cell in cells) + "\n")
     return "".join(rows)

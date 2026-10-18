@@ -55,6 +55,8 @@ class ResultFieldTokens:
     icon_size: float
     border_width: float
     border_role: str
+    fill_role: str
+    text_role: str
     hover_border_role: str
     hover_fill_role: str
     hover_fill_opacity: float
@@ -124,6 +126,8 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "icon_size": _SIZE,
             "border_width": _WIDTH,
             "border_role": check_role,
+            "fill_role": check_role,
+            "text_role": check_role,
             "hover_border_role": check_role,
             "hover_fill_role": check_role,
             "hover_fill_opacity": check_number(0, 1),
