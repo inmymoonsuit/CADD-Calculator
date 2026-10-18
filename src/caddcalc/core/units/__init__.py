@@ -8,9 +8,11 @@ here still.
 
 from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
+    Derivation,
     Dimension,
     DimensionSpec,
     Exact,
+    Precision,
     Unit,
     UnitSystem,
 )
@@ -42,10 +44,12 @@ __all__ = [
     "CLOSE_UP_SYMBOLS",
     "ENTRY_POINT_GROUP",
     "UNITS",
+    "Derivation",
     "Dimension",
     "DimensionSpec",
     "Exact",
     "ParsedQuantity",
+    "Precision",
     "TypedValue",
     "Unit",
     "UnitRegistry",

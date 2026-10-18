@@ -539,7 +539,7 @@ def test_parameter_symbols_must_be_usable_in_formulas(symbol: str) -> None:
         (
             "5 in",
             "'length' has a bad default '5 in' (= 127 mm), which must be at most 10 mm. "
-            "Minimum and maximum are in base units (mm, deg, ratio, MPa).",
+            "Minimum and maximum are in base units (mm, deg, ratio, MPa, mm²).",
         ),
         ("-1 in", "bad default '-1 in' (= -25.4 mm), which must be at least 0 mm."),
         ("abc", "bad default 'abc': Cannot read a value from 'abc'"),

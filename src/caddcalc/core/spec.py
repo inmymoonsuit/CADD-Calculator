@@ -139,6 +139,10 @@ class Output:
     label: str
     dimension: Dimension
     help: str = ""
+    unit: str = ""
+    """The key symbol of a unit it's always shown in, whatever the display preferences,
+    e.g. ``"mm"`` for a converter's millimetre row (ADR-0018 §3); empty to follow them.
+    It's shown with the registry's precision for that unit (``precision_for``)."""
 
 
 @dataclass(frozen=True)

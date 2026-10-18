@@ -7,6 +7,15 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Areas (ADR-0018 §3, ADR-0019).** A new kind of quantity, the area, in in², ft², mm²,
+  cm² and m², each the exact square of its length unit, so 1 ft² is 92 903.04 mm²
+  exactly. Type `3 in²`, `3 in^2`, `3 in2`, `3 sq in` or `3 square inches`; it's always
+  written `in²`. Areas show in the square of your length unit, and JSON gives them in
+  mm², with `"dimension": "area"`. Messages that list the base units now end in "mm²".
+- **Results in a fixed unit.** A calculator's output may be shown in one unit always,
+  whatever the unit system, to 6 significant figures (`Output.unit`), as the coming unit
+  converters' rows are. Copying, Copy all, the document and the command line all show it
+  so.
 - **Numbers in your regional format (ADR-0020 §4).** The desktop app shows numbers with
   your regional format's decimal mark, such as `0,3119`, and takes it when you type, with
   "." always accepted too. Digits are never grouped, and a comma that isn't your mark is

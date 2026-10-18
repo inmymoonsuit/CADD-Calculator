@@ -18,7 +18,7 @@ from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
 from caddcalc.core.steps import Step
-from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names
+from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names, get_unit
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
 
@@ -472,6 +472,8 @@ class Calculator(ABC):
         _unique(cls.id, "parameter key", [p.key for p in cls.params])
         _unique(cls.id, "parameter symbol", [p.symbol for p in cls.params])
         _unique(cls.id, "output key", [o.key for o in cls.outputs])
+        for o in cls.outputs:
+            _check_output_unit(cls.id, o)
         for p in cls.params:
             if not expr.is_usable_symbol(p.symbol):
                 raise SpecError(
@@ -494,6 +496,21 @@ class Calculator(ABC):
                     raise SpecError(
                         f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
+
+
+def _check_output_unit(owner: str, output: Output) -> None:
+    """Check that an output's fixed unit, if it names one, is a unit of its dimension."""
+    if not output.unit:
+        return
+    try:
+        unit = get_unit(output.unit, output.dimension)
+    except (InputError, UsageError) as exc:
+        raise SpecError(f"{owner}: output {output.key!r} has a bad unit: {exc}") from None
+    if unit.dimension is not output.dimension or unit.symbol != output.unit:
+        raise SpecError(
+            f"{owner}: output {output.key!r} names {output.unit!r}, which isn't the key "
+            f"symbol of {output.dimension.with_article} unit"
+        )
 
 
 def _resolve(

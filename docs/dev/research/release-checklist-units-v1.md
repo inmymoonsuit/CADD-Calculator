@@ -45,3 +45,21 @@ changes. ksi's factor, 1000 psi rounded once, is unchanged.
   built-in unit's definition, factor, system and sources are identical to ac1d2c5's; i3
   changes their names to US spelling with British aliases, and i4 the parsing of typed
   numbers, both by ADR-0020, reviewed separately.
+
+## Version 2: the squares (ADR-0019, u2), for review
+
+The squares cite the same two works, which pass every item above; what's new is each
+square's locator. Each factor is its length unit's exact factor squared, not a factor
+read from SP 811.
+
+| Unit | Locator in SP 811 | Also cited |
+|---|---|---|
+| mm² | Table 2 (area: square meter) and Table 5 (milli) | |
+| cm² | Table 2 (area: square meter) and Table 5 (centi) | |
+| m² | Table 2 (area: square meter) | |
+| in² | Appendix B.8 (square inch to square meter) | 24 FR 5348, with the inch |
+| ft² | Appendix B.8 (square foot to square meter) | 24 FR 5348, with the foot |
+
+* **Prepared by:** the Calculator Engine session, 2026-10-18, building u2. Not yet
+  reviewed or signed.
+

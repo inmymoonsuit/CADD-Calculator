@@ -88,3 +88,11 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
   in their base units. A stress field labelled ksi would have read "36" as 36 MPa.
 * `unit_suffix` names the display unit for every dimension but angle, which keeps its
   "°".
+
+### 2026-10-18: an area dimension (ADR-0018 §3; ADR-0019, u2)
+
+* **`Dimension.AREA`**, base unit the square millimetre, with mm², cm², m², in² and ft²,
+  each generated from its length unit in exact arithmetic. It shows in the square of the
+  length preference, to 4 decimals, and never with an inch fraction. ADR-0019's u2
+  amendment has the details.
+

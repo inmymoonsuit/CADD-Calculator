@@ -21,7 +21,15 @@ from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output
 from caddcalc.core.steps import Step
-from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit, registry
+from caddcalc.core.units import (
+    Dimension,
+    Precision,
+    TypedValue,
+    Unit,
+    from_base,
+    get_unit,
+    registry,
+)
 
 DISCLAIMER = (
     "Results are for drafting and education. Verify against your shop's tooling, "
@@ -159,6 +167,41 @@ def format_number(value: float, decimals: int, decimal: str = ".") -> str:
     return text.replace(".", decimal)
 
 
+def format_significant(value: float, digits: int, decimal: str = ".") -> str:
+    """Return ``value`` to ``digits`` significant figures, as plain decimals.
+
+    It keeps trailing zeros, which say how many figures are shown (``25.4000`` to six),
+    writes no exponent, and is never a negative zero. A rounding that carries into a new
+    place keeps the count, so 9.999997 to six is ``10.0000``. Zero is ``0.00000`` to six.
+
+    Args:
+        value: The number.
+        digits: Its significant figures, at least one.
+        decimal: The decimal mark to write it with.
+    """
+    if not math.isfinite(value):
+        return str(value)
+    exact = Decimal(value)
+    if not exact:
+        return format_number(0.0, digits - 1, decimal)
+
+    def rounded(adjusted: int) -> Decimal:
+        step = Decimal(1).scaleb(adjusted - digits + 1)
+        return exact.quantize(step, rounding=ROUND_HALF_EVEN)
+
+    text = rounded(exact.adjusted())
+    if text.adjusted() > exact.adjusted():  # the rounding carried, as 9.99 to 10.0
+        text = rounded(text.adjusted())
+    return format(text, "f").replace(".", decimal)
+
+
+def format_precise(value: float, precision: Precision, decimal: str = ".") -> str:
+    """Return ``value`` to ``precision``: decimal places, or significant figures."""
+    if precision.significant:
+        return format_significant(value, precision.digits, decimal)
+    return format_number(value, precision.digits, decimal)
+
+
 _DECIMAL_NUMBER = re.compile(r"(?<![\w.])(\d+)\.(\d+)")
 """A number with decimals, as the app writes it, never part of a longer word."""
 
@@ -214,12 +257,24 @@ def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> Valu
         dimension: What the value measures.
         prefs: The display unit, decimals, and fraction preference.
     """
-    shown = display_value(value, dimension, prefs)
+    return _parts(value, display_unit(dimension, prefs), _decimals(dimension, prefs), prefs)
+
+
+def _parts(value: float, unit: Unit, precision: int | Precision, prefs: DisplayPrefs) -> ValueParts:
+    """Return a base-unit value as shown in ``unit``, to ``precision``, in parts.
+
+    ``precision`` is a number of decimal places, or a ``Precision``.
+    """
+    shown = from_base(value, unit)
     fraction = None
-    if prefs.fraction_denominator and display_unit(dimension, prefs).fractions:
+    if prefs.fraction_denominator and unit.fractions:
         fraction = to_fraction(shown, prefs.fraction_denominator)
-    number = format_number(shown, _decimals(dimension, prefs), prefs.symbols.decimal)
-    return ValueParts(number, _shown_unit(dimension, prefs), fraction)
+    mark = prefs.symbols.decimal
+    if isinstance(precision, Precision):
+        number = format_precise(shown, precision, mark)
+    else:
+        number = format_number(shown, precision, mark)
+    return ValueParts(number, unit.written, fraction)
 
 
 def format_value(
@@ -259,14 +314,25 @@ def spoken_value(parts: ValueParts) -> str:
     return SPOKEN.format(number=parts.number, unit=name) if name else parts.number
 
 
+def output_unit(output: Output, prefs: DisplayPrefs) -> Unit:
+    """Return the unit an output is shown in: its fixed unit, or its dimension's display unit."""
+    if output.unit:
+        return get_unit(output.unit, output.dimension)
+    return display_unit(output.dimension, prefs)
+
+
 def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValueParts:
     """Return a calculator output's value as shown, in parts.
 
     Every front end presents outputs through here or ``format_output``, so an output's
-    own presentation, such as a converter row's fixed unit (ADR-0018), will apply in one
-    place. Today it's the output's dimension, as ``value_parts`` shows it.
+    own presentation applies in one place. An output with a fixed unit, as a converter's
+    row has (ADR-0018 §3), is shown in it, whatever the display unit, to the registry's
+    precision for it; any other is shown as ``value_parts`` shows its dimension.
     """
-    return value_parts(value, output.dimension, prefs)
+    if not output.unit:
+        return value_parts(value, output.dimension, prefs)
+    unit = output_unit(output, prefs)
+    return _parts(value, unit, registry().precision_for(unit), prefs)
 
 
 def format_output(output: Output, value: float, prefs: DisplayPrefs) -> str:
@@ -320,7 +386,7 @@ def copy_output(output: Output, value: float, prefs: DisplayPrefs, form: CopyFor
     Raises:
         UsageError: ``FRACTION`` for a value shown without one.
     """
-    shown = display_value(value, output.dimension, prefs)
+    shown = from_base(value, output_unit(output, prefs))
     return _copied(output_parts(output, value, _copy_prefs(prefs, form)), shown, form)
 
 

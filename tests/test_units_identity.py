@@ -4,6 +4,10 @@
 a corpus through both and wants the same answer: the same value and unit, or the same
 error, word for word. The one allowed difference is psi's factor, now its exact
 definition rounded once, one unit in the last place from before.
+
+Dimensions and units added since (the area and its squares, ADR-0018 §3) are new, so
+the corpus is the old dimensions and units. A text the old module refused may now name
+a new unit, as ``3 sq in`` does; it's held to that unit instead (``AREA_TEXTS``).
 """
 
 from __future__ import annotations
@@ -61,7 +65,13 @@ INVALID = (
     "3,5 mm",
 )
 """Text the parser has always refused, each with its own message."""
-OLD_DIMENSIONS = {d: old.Dimension(d.value) for d in Dimension}
+OLD_DIMENSIONS = {d: old.Dimension(d.value) for d in Dimension if d is not Dimension.AREA}
+"""The dimensions the old module had, by the new ones."""
+OLD_UNITS = tuple(u for u in UNITS if u.dimension in OLD_DIMENSIONS)
+"""The units the old module had: every unit but the squares."""
+AREA_TEXTS = {"3 m2": "m²", "3 sq in": "in²"}
+"""Texts the old module refused that name a square now: each reads as that area, and in
+any other dimension is refused for measuring an area."""
 NEW_SPELLINGS = {"millimetre": "mm", "centimetre": "cm", "metre": "m", "per cent": "%"}
 """Spellings units gained after the registry (ADR-0019 U5: every spelling reads in every
 locale). The old module didn't know them, so they're held to their units instead."""
@@ -85,14 +95,17 @@ def _corpus() -> Iterator[tuple[str, Dimension, str | None]]:
     That's every built-in name in every case and spacing, the invalid texts, every
     default, and every value a shipped table states.
     """
-    for unit, number, space, dimension in product(UNITS, NUMBERS, ("", " ", "  "), Dimension):
+    for unit, number, space, dimension in product(
+        OLD_UNITS, NUMBERS, ("", " ", "  "), OLD_DIMENSIONS
+    ):
         for key in (k for k in unit.keys if k not in NEW_SPELLINGS):
             for name in {key, key.upper(), key.title()}:
                 yield f"{number}{space}{name}", dimension, None
-    for number, dimension, unit in product(NUMBERS, Dimension, (None, *(u.symbol for u in UNITS))):
+    defaults = (None, *(u.symbol for u in OLD_UNITS))
+    for number, dimension, unit in product(NUMBERS, OLD_DIMENSIONS, defaults):
         yield number, dimension, unit
         yield f"  {number}  ", dimension, unit
-    for text, dimension in product(INVALID, Dimension):
+    for text, dimension in product(INVALID, OLD_DIMENSIONS):
         yield text, dimension, None
     for calc in default_registry(load_plugins=False):
         for param in calc.params:
@@ -136,15 +149,28 @@ def test_every_text_reads_as_it_always_has() -> None:
         if "," in text:  # still refused, now saying why (ADR-0020 §4)
             assert new[0] == was[0] == "InputError" and "has a comma" in new[1], (new, was)
             continue
+        if text in AREA_TEXTS:  # refused still, now because it names an area
+            assert was[0] == "InputError" and new == (
+                "InputError",
+                f"{text!r} is an area, but {dimension.with_article} is expected",
+            ), (new, was)
+            continue
         if not _same(new, was):
             differ.append((text, dimension.value, default, new, was))
     assert count > 10_000, count
     assert differ == [], differ[:10]
 
 
+@pytest.mark.parametrize(("text", "symbol"), AREA_TEXTS.items())
+def test_a_text_that_names_a_square_now_reads_as_that_area(text: str, symbol: str) -> None:
+    got = parse_quantity_detailed(text, Dimension.AREA, None)
+    assert (got.unit.symbol, got.explicit_unit) == (symbol, True)
+    assert got.value == pytest.approx(3 * get_unit(symbol).factor)
+
+
 def test_every_name_finds_the_unit_it_always_has() -> None:
     """Names are now US English, the source language, each one an old alias (ADR-0020 §2)."""
-    for unit in UNITS:
+    for unit in OLD_UNITS:
         for key in (*(k for k in unit.keys if k not in NEW_SPELLINGS), unit.symbol):
             new, was = get_unit(key), old.get_unit(key)
             assert (new.symbol, new.dimension.value) == (was.symbol, was.dimension.value)
@@ -170,7 +196,7 @@ def test_the_new_spellings_read_as_their_units(spelling: str, symbol: str) -> No
 
 def test_every_factor_is_as_it_was_but_psis_one_unit_in_the_last_place() -> None:
     changed = {}
-    for new, was in zip(UNITS, old.UNITS, strict=True):
+    for new, was in zip(OLD_UNITS, old.UNITS, strict=True):
         assert new.symbol == was.symbol
         if new.factor != was.factor:
             changed[new.symbol] = (new.factor - was.factor) / math.ulp(was.factor)
@@ -178,11 +204,13 @@ def test_every_factor_is_as_it_was_but_psis_one_unit_in_the_last_place() -> None
 
 
 def test_dimensions_and_base_units_are_as_they_were() -> None:
-    assert {d.value: u for d, u in BASE_UNITS.items()} == {
+    """The old dimensions keep their order, base units, and articles; the area follows."""
+    assert {d.value: u for d, u in BASE_UNITS.items() if d in OLD_DIMENSIONS} == {
         d.value: u for d, u in old.BASE_UNITS.items()
     }
-    assert base_unit_names() == old.base_unit_names()
-    for dimension in Dimension:
+    assert list(Dimension)[: len(OLD_DIMENSIONS)] == list(OLD_DIMENSIONS)
+    assert base_unit_names() == f"{old.base_unit_names()}, mm²"
+    for dimension in OLD_DIMENSIONS:
         assert dimension.with_article == OLD_DIMENSIONS[dimension].with_article
         assert [u.symbol for u in units_for(dimension)] == [
             u.symbol for u in old.units_for(OLD_DIMENSIONS[dimension])
@@ -196,7 +224,7 @@ LENGTH_CHOICES = tuple(
 
 @pytest.mark.parametrize("length", LENGTH_CHOICES)
 def test_every_dimension_shows_as_it_did_for_every_length_choice(length: str) -> None:
-    for dimension, fraction in product(Dimension, (None, 64)):
+    for dimension, fraction in product(OLD_DIMENSIONS, (None, 64)):
         prefs = formatting.DisplayPrefs(length_unit=length, fraction_denominator=fraction)
         was = OLD_DIMENSIONS[dimension]
         assert formatting.display_unit(dimension, prefs).symbol == (

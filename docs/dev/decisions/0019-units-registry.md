@@ -1,7 +1,8 @@
 # ADR-0019: A units registry, the one source of unit knowledge
 
 * **Status:** **Accepted**; the behaviour-neutral refactor (§7's first step) is built, as
-  u1 and u1b, and U5's spellings as i3 (see Amendments). The maintainer asked for this ADR
+  u1 and u1b, U5's spellings as i3, and §7's area and fixed-unit outputs as u2 (see
+  Amendments). The maintainer asked for this ADR
   on 2026-10-17
   ("create a registry of units in our codebase (maybe even a subsystem for units and
   conversions) with definitions and attributes and the ability to add new ones"), decided
@@ -236,3 +237,41 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
   plugin can't take one, in any case or dimension. The identity test holds these four to
   their units, since the old module refused them, and holds every other text to what it
   read before.
+
+### 2026-10-18: the area, and outputs in a fixed unit, as built (u2)
+
+* **`Dimension.AREA`**, base mm², declared as a power of the length
+  (`DimensionSpec.derivation`, `Derivation(LENGTH, 2)`). It's last in the enum, so the
+  old dimensions keep their order, and messages that list the base units end in "mm²".
+* **The squares are generated** in `builtin.py` from their length units: mm², cm², m²,
+  in² and ft², each with its root's exact factor squared, as a `Fraction`, so ft² is
+  92 903.04 mm² exactly (`304.8**2` is 92 903.040 000 000 01). A unit declares its root
+  with `Unit.power_of`, and the registry refuses a square whose factor isn't its root's
+  exact factor to the dimension's power, or whose root isn't a registered unit of the
+  dimension it's a power of. A plugin may add a square the same way.
+* **Key symbols are SP 811's symbols,** "mm²" and "in²", as "MPa" is: they're what JSON
+  writes. The typed forms are aliases, read but never written (SP 811 §6.1.8): "in^2",
+  "in2", "sq in", and the names, in US and British spelling.
+* **Display follows the length choice:** an area shows in the square of the chosen
+  length unit (`follows_length` with a derivation), or in mm² for a plugin's length with
+  no square declared. Areas never show an inch fraction, and they take the registry's 4
+  decimals, as `decimals_for` already allowed for a dimension without a preference.
+* **Citations:** the metric squares cite SP 811's Table 2 (area, the square meter) and
+  their prefix in Table 5; in² and ft² cite Appendix B.8's square inch and square foot,
+  and 24 FR 5348 with their root. They're the two works the units' checklist record
+  already passes; the new locators are listed there for review.
+* **Names** are `NP_("unit", "square inch", "square inches")` pairs; the British catalog
+  writes "square millimetre", "square centimetre" and "square metre", and en_CA reads it.
+* **An output may fix its unit:** `Output.unit` names a key symbol, checked when the
+  calculator is registered (`validate_spec`), and every front end shows the output in it
+  through `formatting.output_parts`, `format_output` and `copy_output`. Its precision is
+  the registry's for that unit (`UnitRegistry.precision_for`), whatever the preferences:
+  each dimension declares one, `DimensionSpec.fixed`, six significant figures for all of
+  them so far. `core.units.Precision` holds decimal places or significant figures, and
+  `formatting.format_significant` writes the latter as plain decimals with their zeros,
+  carrying into a new place without gaining a figure (9.999997 is "10.0000" to six). A
+  fixed inch row still shows the inch fraction when it's preferred.
+* **The identity test** now runs over the old dimensions and units. Two texts it held as
+  refused, "3 m2" and "3 sq in", name a square now: each reads as that area, and
+  elsewhere is refused for being an area. Every other text reads exactly as before.
+

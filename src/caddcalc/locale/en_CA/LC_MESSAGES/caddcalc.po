@@ -179,3 +179,38 @@ msgid_plural "radians"
 msgstr[0] ""
 msgstr[1] ""
 
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square centimeter"
+msgid_plural "square centimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square foot"
+msgid_plural "square feet"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square inch"
+msgid_plural "square inches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square meter"
+msgid_plural "square meters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square millimeter"
+msgid_plural "square millimeters"
+msgstr[0] ""
+msgstr[1] ""
+

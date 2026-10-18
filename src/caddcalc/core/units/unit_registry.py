@@ -22,6 +22,7 @@ from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
     Dimension,
     DimensionSpec,
+    Precision,
     Unit,
     UnitSystem,
 )
@@ -115,6 +116,7 @@ class UnitRegistry:
             raise SpecError(f"{where}: it must read back the symbol it's written with")
         if unit.close_up and unit.written not in CLOSE_UP_SYMBOLS:
             raise SpecError(f"{where}: only °, ′, and ″ are written close up (SP 811 §7.2)")
+        self._check_power(unit, spec, where)
         if any(not alias for alias in unit.aliases):
             raise SpecError(f"{where}: an alias is empty")
         for key in unit.keys:
@@ -137,6 +139,25 @@ class UnitRegistry:
                             f"{where}: {key!r} is already {taken!r}, unit {other.symbol!r} "
                             f"({other.name})"
                         )
+
+    def _check_power(self, unit: Unit, spec: DimensionSpec, where: str) -> None:
+        """Check a unit declared as a power of another, such as in², against its root."""
+        if not unit.power_of:
+            return
+        derivation = spec.derivation
+        if derivation is None:
+            raise SpecError(f"{where}: {unit.dimension.value} isn't a power of a dimension")
+        root = next((u for u in self.units_for(derivation.of) if u.symbol == unit.power_of), None)
+        if root is None or root.exact is None:
+            raise SpecError(
+                f"{where}: it's a power of {unit.power_of!r}, which isn't "
+                f"{self._dimensions[derivation.of].article} unit registered before it"
+            )
+        if unit.exact != root.exact**derivation.power:
+            raise SpecError(
+                f"{where}: its factor must be {root.symbol!r}'s exact factor to the power "
+                f"{derivation.power}"
+            )
 
     @property
     def units(self) -> tuple[Unit, ...]:
@@ -186,10 +207,24 @@ class UnitRegistry:
     def shown_unit(self, dimension: Dimension, length: Unit) -> Unit:
         """Return the unit ``dimension`` is shown in, beside the length unit ``length``."""
         spec = self._dimensions[dimension]
-        if spec.follows_length:
+        if spec.follows_length and spec.derivation is None:
             return length
+        if spec.follows_length:
+            # The power of the chosen length, or the base unit where it has none declared.
+            power = next(
+                (u for u in self.units_for(dimension) if u.power_of == length.symbol), None
+            )
+            return power or self.find(spec.base, dimension)
         system = length.system or UnitSystem.NONE
         return self.find(spec.shown_with.get(system, spec.base), dimension)
+
+    def precision_for(self, unit: Unit) -> Precision:
+        """Return the precision a value is shown with in ``unit`` when an output fixes it.
+
+        That's its dimension's declared one, whatever the display preferences (ADR-0018
+        §3): a converter's millimetre row reads the same when the app shows inches.
+        """
+        return self._dimensions[unit.dimension].fixed
 
     def ending(self, text: str, dimension: Dimension) -> tuple[Unit, int] | None:
         """Return the unit whose symbol or alias ends ``text``, and that name's length.

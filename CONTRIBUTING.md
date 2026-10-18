@@ -61,7 +61,7 @@ class MyCalc(Calculator):
             help="...",
         ),
     )
-    outputs = (Output("area", "S", "Cross-section area", Dimension.LENGTH),)  # see note
+    outputs = (Output("area", "S", "Cross-section area", Dimension.AREA),)
     methods = (
         Method(
             "basic",
@@ -73,11 +73,12 @@ class MyCalc(Calculator):
     )
 
     def compute(self, ctx: Context) -> None:
-        ctx.calc("S", "W*T", label="Area", dimension=Dimension.LENGTH, output="area")
+        ctx.calc("S", "W*T", label="Area", dimension=Dimension.AREA, output="area")
 ```
 
-   (Area needs a new `Dimension`, which needs an ADR-0005 amendment. The example is only
-   to show the shape of the code.)
+   An output may also name a unit it's always shown in, such as `unit="mm"` for a
+   converter's millimetre row (ADR-0018 §3). A new `Dimension` needs an ADR-0005
+   amendment.
 3. Formulas go in `ctx.calc` strings. Use `tand`, `sind`, and so on for degree-based trig.
    Values computed in Python go through `ctx.record(..., note="why")`.
 4. Warn about engineering hazards with `ctx.warn(...)`. Lead with the verdict, and name
