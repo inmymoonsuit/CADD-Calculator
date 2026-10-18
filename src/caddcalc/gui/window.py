@@ -137,11 +137,11 @@ ID_ROLE = Qt.ItemDataRole.UserRole
 DOMAIN_ROLE = int(Qt.ItemDataRole.UserRole) + 1
 """Tree item data holding a family row's domain id."""
 NO_CALCULATORS = "No calculators loaded"
+"""Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 CHECK_INPUTS = "Check the inputs:"
 """Heads the work when an input can't be used: the user can fix it."""
 CALCULATION_FAILED = "The calculation failed:"
 """Heads the work when the calculation itself failed, such as a plugin's bug."""
-"""Shown under a family with no calculator, e.g. when all its plugin calculators failed."""
 ICON_URL_SCHEME = "icon"
 ICON_PX = 32
 """Pixel size icons are rendered at for the results pane; shown at 16 px, so sharp on HiDPI."""
@@ -1666,6 +1666,7 @@ class MainWindow(QMainWindow):
             self.pending_settings[self.domain.id, key] = text
             self._show_setting_problems()
 
+    @_settings_boundary
     def _apply_setting(self, key: str) -> None:
         """Apply a field's edited text; empty text unsets, and refused text applies nothing."""
         domain = self.domain

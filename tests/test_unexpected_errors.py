@@ -78,16 +78,18 @@ def test_the_core_wraps_a_computes_unexpected_error() -> None:
     assert _Flaky().run(method="good").outputs["copy"] == pytest.approx(25.4), "1 in, in mm"
 
 
+class _Picky(_Flaky):
+    """A plugin calculator whose compute refuses its input, as an input error."""
+
+    id = "acme.picky"
+
+    @override
+    def compute(self, ctx: Context) -> None:
+        raise InputError("a value the user can fix")
+
+
 def test_caddcalcs_own_errors_pass_through() -> None:
     """An input error is worded for users already, so it isn't wrapped."""
-
-    class _Picky(_Flaky):
-        id = "acme.picky"
-
-        @override
-        def compute(self, ctx: Context) -> None:
-            raise InputError("a value the user can fix")
-
     with pytest.raises(InputError, match="a value the user can fix"):
         _Picky().run()
 
@@ -208,6 +210,8 @@ class _FaultyPlates(_Plates):
     def derive(self, selections: Mapping[str, str]) -> Mapping[str, DerivedValue]:
         if "derive" in self.failing:
             raise ZeroDivisionError("derive's own error")
+        if "derive with an input error" in self.failing:
+            raise InputError("a plate the user can fix")
         return super().derive(selections)
 
 
@@ -379,3 +383,75 @@ def test_the_hook_only_writes_out_when_a_box_cant_or_shouldnt_show(
         restore()
     assert written == [error], "still written out"
     assert shown == []
+
+
+def test_a_domains_own_input_error_passes_through() -> None:
+    """Worded for users already, a family's input error isn't wrapped (S&R's K2)."""
+    domain, resolver, _details = _faulty()
+    resolver.failing.add("derive with an input error")
+    with pytest.raises(InputError, match="a plate the user can fix"):
+        domain.derived({"plate": "std:1"})
+
+
+@pytest.mark.gui
+def test_a_setting_applied_while_the_family_fails_shows_its_error() -> None:
+    """S&R's L1: applying a typed setting is a settings-page boundary too."""
+    window, _domain, resolver = _faulty_window()
+    window.select_domain("faulty")
+    settle(window)
+    resolver.failing.add("derive")
+    _setting, edit = window.setting_fields["thickness"]
+    type_into(edit, "1")  # Enter: the field's editingFinished applies it
+    settle(window)
+    assert window.settings_failed and window.settings_box.isHidden()
+    assert window.settings_form.rowCount() == 0
+    assert "its resolver's derive failed" in unescape(window.domain_note.text())
+    window.close()
+
+
+@pytest.mark.gui
+def test_opening_the_familys_calculator_while_it_fails_builds_no_form() -> None:
+    """S&R's K4: building the form is a boundary, opening it from another calculator."""
+    window, _domain, resolver = _faulty_window()
+    window.select_calculator("sheet_metal.bend_allowance")
+    settle(window)
+    resolver.failing.add("derive")
+    window.select_calculator("faulty.bend")  # the form asks what its fields inherit
+    settle(window)
+    assert window.form.rowCount() == 0 and window.result is None
+    assert window.results.fields["total"].value.text() in ("", "—")
+    assert "its resolver's derive failed" in window.output.toPlainText()
+    window.close()
+
+
+@pytest.mark.gui
+def test_a_page_built_again_before_the_deferred_clear_keeps_its_form() -> None:
+    """S&R's K7: the failed page's clear, deferred to the event loop, skips a rebuilt page."""
+    window, _domain, resolver = _faulty_window()
+    window.select_domain("faulty")
+    settle(window)
+    resolver.failing.add("derive")
+    box = window.choice_rows["plate"][1]
+    box.setCurrentIndex(box.findData("std:2"))  # fails; the form's clear waits for the loop
+    assert window.settings_failed
+    resolver.failing.clear()
+    window.select_domain("faulty")  # built again before the loop runs
+    rows = window.settings_form.rowCount()
+    assert rows > 0 and not window.settings_failed
+    settle(window)
+    assert window.settings_form.rowCount() == rows and not window.settings_box.isHidden()
+    window.close()
+
+
+@pytest.mark.gui
+def test_an_input_error_from_the_run_is_headed_check_the_inputs() -> None:
+    """S&R's K9: a run's input error is the user's to fix, so it's headed so."""
+    registry = _registry()
+    registry.register(_Picky)
+    window = open_window(registry)
+    window.select_calculator("acme.picky")
+    settle(window)
+    work = window.output.toPlainText()
+    assert "Check the inputs:" in work and "a value the user can fix" in work
+    assert "The calculation failed:" not in work
+    window.close()
