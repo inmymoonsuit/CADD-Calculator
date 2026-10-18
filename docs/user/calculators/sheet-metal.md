@@ -249,7 +249,7 @@ radius FPOR, and sweep angle FPA.
 
 | Method | Status | Notes |
 |---|---|---|
-| Course spreadsheet | unverified · reproduces legacy | The radii use the diameters as given, while the angle uses (Db − T). See below. |
+| Course spreadsheet | unverified · reproduces legacy | The radii use the diameters as given, while the angle uses (Db − T). See below. Refuses a bottom diameter no larger than the thickness, which would give a sweep of 0° or less |
 | Mean diameter | unverified | Treats the diameters as outside diameters and develops the mid-thickness surface throughout. Refuses a top diameter (other than 0, a pointed cone) or a bottom diameter no larger than the thickness, which leave no mid-surface |
 
 Course method:

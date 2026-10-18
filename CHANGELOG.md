@@ -310,8 +310,11 @@ All notable changes are recorded here. The format follows
   measured again when the theme changes.
 - **The mean-diameter cone with a bottom diameter no larger than the thickness.** It gave
   a negative sweep angle, or failed with a division by zero when they were equal. It now
-  refuses the input, as it already did for the top diameter. The course method is
-  unchanged (KI-021).
+  refuses the input, as it already did for the top diameter.
+- **The course cone method with a bottom diameter no larger than the thickness.** It gave a
+  sweep angle of 0° or less (−35.30° for Db = 2 mm, T = 3 mm). With the maintainer's
+  approval it now refuses the input as the mean-diameter method does; its formula and
+  the course example are unchanged (KI-021, ADR-0010 amendments).
 - **A window given an empty registry.** `MainWindow(registry=...)` replaced a registry with
   domains but no calculators by the built-in one, because an empty registry is falsy. It
   now keeps the registry it's given.

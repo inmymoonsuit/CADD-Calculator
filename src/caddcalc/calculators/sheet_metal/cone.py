@@ -112,6 +112,7 @@ class TruncatedConeLayout(Calculator):
                 "cylinder layout if they are equal."
             )
         if ctx.method == "course":
+            _require_bottom_above_thickness(ctx)
             ctx.calc(
                 "CH",
                 "sqrt(((Db - Dt)/2)**2 + H**2)",
@@ -144,9 +145,7 @@ class TruncatedConeLayout(Calculator):
 
         if ctx["top_diameter"] and ctx["top_diameter"] <= ctx["thickness"]:
             raise InputError("Top diameter must be larger than the thickness for this method.")
-        if ctx["bottom_diameter"] <= ctx["thickness"]:
-            # Db - T would be zero or negative: no mid-thickness circle to develop.
-            raise InputError("Bottom diameter must be larger than the thickness for this method.")
+        _require_bottom_above_thickness(ctx)
         ctx.calc("Dtm", "max(Dt - T, 0)", label="Mean top diameter", dimension=LENGTH)
         ctx.calc("Dbm", "Db - T", label="Mean bottom diameter", dimension=LENGTH)
         ctx.calc(
@@ -177,3 +176,15 @@ class TruncatedConeLayout(Calculator):
             dimension=Dimension.ANGLE,
             output="sweep_angle",
         )
+
+
+def _require_bottom_above_thickness(ctx: Context) -> None:
+    """Refuse a bottom diameter no larger than the thickness, in either method.
+
+    Both sweep angles take ``Db - T``, which would then be zero or negative: no cone to lay
+    out, only a zero or negative angle, or a division by zero. Refusing it is an input
+    guard, not a change to a formula, and the course method takes it by the maintainer's
+    approval (ADR-0010, amendments).
+    """
+    if ctx["bottom_diameter"] <= ctx["thickness"]:
+        raise InputError("Bottom diameter must be larger than the thickness for this method.")

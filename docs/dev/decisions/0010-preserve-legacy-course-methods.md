@@ -26,3 +26,15 @@ and the cone sheet uses two different diameter bases (KI-001).
 
 * Coursework answers stay reproducible forever.
 * Users always see which method produced a number, and how far it has been checked.
+
+## Amendments
+
+### 2026-10-17: guards on impossible input
+
+* A legacy method may refuse input that describes impossible geometry, with the
+  maintainer's approval. Such a guard changes no formula and no result for valid input:
+  it only turns a meaningless answer, such as a negative angle, into an input error.
+* The first is the cone's course method, which now refuses a bottom diameter no larger
+  than the thickness, as the mean-diameter method does (KI-021, resolved). The
+  maintainer: "Yes, add the same input guard to the course cone method; it doesn't change
+  the formula." Its golden tests pass unchanged.

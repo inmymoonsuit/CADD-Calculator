@@ -184,17 +184,17 @@ by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
-### KI-021: The cone's course method takes a bottom diameter no larger than the thickness (Low)
+## Resolved
+
+### KI-021: The cone's course method took a bottom diameter no larger than the thickness (resolved 2026-10-17)
 
 The course method's sweep angle is `FPA = 180·(Db − T)/FPOR`, so a bottom diameter equal to
-the thickness gives 0°, and a smaller one a negative angle: a pointed cone with Db = 2 mm
-and T = 3 mm gives −35.30°. The mean-diameter method now refuses such input with "Bottom
-diameter must be larger than the thickness for this method." The course method is left as
-the coursework had it (ADR-0010), so it isn't guarded. **Next:** the maintainer decides
-whether the course method refuses the same input, which changes no formula, or keeps it
-with this note.
-
-## Resolved
+the thickness gave 0°, and a smaller one a negative angle: a pointed cone with Db = 2 mm
+and T = 3 mm gave −35.30°. The maintainer approved a guard: "Yes, add the same input guard
+to the course cone method; it doesn't change the formula." Both methods now refuse such
+input with "Bottom diameter must be larger than the thickness for this method." The
+formula, the golden values, and the course example (132.70°, and 132.30° with Lesson 2's
+thickness) are unchanged (ADR-0010, amendments).
 
 ### KI-019: The app and the tests could crash on exit (resolved 2026-10-17)
 

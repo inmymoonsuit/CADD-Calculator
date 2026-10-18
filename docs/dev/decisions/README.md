@@ -22,7 +22,7 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0007](0007-documentation-in-repo-not-wiki.md) | Documentation lives in the repo, not a wiki | Accepted |
 | [0008](0008-licensing-and-third-party-assets.md) | Licensing, and keeping third-party assets out of the repo | Accepted (Apache-2.0) |
 | [0009](0009-packaging-and-distribution.md) | Packaging and distribution | Accepted (pyside6-deploy + Nuitka); installers, macOS/Linux, signing still proposed |
-| [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted |
+| [0010](0010-preserve-legacy-course-methods.md) | Preserve the legacy course methods alongside general methods | Accepted; amended to allow approved guards on impossible input |
 | [0011](0011-branding-packs.md) | Brand private editions with a branding pack folder | **Proposed**; its `splash` key is replaced by 0015, and its `name` key is removed by 0016 |
 | [0012](0012-engineering-standards-enforced-by-tooling.md) | Write down the engineering standards, and enforce them with tooling | Accepted |
 | [0013](0013-domains-with-shared-settings.md) | Domains with shared settings that their calculators inherit | Accepted (phase 1 built); superseded in part by 0014 |
