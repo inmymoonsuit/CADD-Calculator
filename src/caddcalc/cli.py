@@ -3,7 +3,8 @@
 caddcalc list
 caddcalc show sheet_metal.bend_allowance
 caddcalc run sheet_metal.bend_allowance T=0.1046 R=0.156 A=90 --method course
-caddcalc run sheet_metal.bend_allowance T=3mm R=4mm A=120 --units mm --json
+caddcalc run sheet_metal.bend_allowance T=3mm R=4mm A=120 --output-set mm --json
+caddcalc run geometry.circle --unit d=ft_in d=10-2 --output-set ft_in
 caddcalc gui
 """
 
@@ -18,21 +19,33 @@ from collections.abc import Mapping, Sequence
 
 from caddcalc import __version__
 from caddcalc.calculators import default_registry
-from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result, i18n
+from caddcalc.core import (
+    CaddCalcError,
+    Calculator,
+    InputError,
+    Output,
+    Param,
+    Result,
+    TypedValue,
+    i18n,
+)
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
     ShownUnits,
+    choice_unit,
     describe_error,
     describe_note,
     describe_source,
+    entered_form,
     format_input,
     format_output,
     method_notes,
     render_step,
+    result_json,
 )
 from caddcalc.core.i18n import _
-from caddcalc.core.units import parse_quantity
+from caddcalc.core.units import UnitInTextError, registry
 
 LANGUAGE_VARIABLES = ("CADDCALC_LANG", "LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG")
 """Where the CLI finds its language after ``--lang``: ours, then the variables Python's
@@ -113,23 +126,37 @@ def _build_parser() -> argparse.ArgumentParser:
         "inputs",
         nargs="*",
         metavar="NAME=VALUE",
-        help="input by key or symbol, e.g. T=0.1046 or thickness=3mm",
+        help="input by key or symbol, with its unit, e.g. T=3mm or A=90°; a bare number is "
+        "in the input's default unit, which 'caddcalc show' lists",
     )
     p_run.add_argument("--method", help="method key (default: the calculator's first method)")
     p_run.add_argument(
-        "--units",
-        default="in",
-        choices=["in", "mm"],
-        help="units for unitless inputs and for display (default: in)",
+        "--unit",
+        action="append",
+        default=[],
+        metavar="NAME=ID",
+        help="read input NAME in the unit or form ID, as a field picked in it reads it, "
+        "e.g. --unit L=ft_in L=10-2; repeatable",
+    )
+    p_run.add_argument(
+        "--output-set",
+        metavar="SET",
+        help="the units the results show in, e.g. mm or in_16 (default: the calculator's "
+        "first; 'caddcalc show' lists them)",
+    )
+    p_run.add_argument(
+        "--output-unit",
+        action="append",
+        default=[],
+        metavar="KEY=ID",
+        help="the unit an output with its own picker shows in; repeatable",
     )
     p_run.add_argument("--decimals", type=int, default=4)
     p_run.add_argument(
-        "--fraction",
-        type=int,
-        metavar="DENOM",
-        help="also show inch results as the nearest 1/DENOM fraction",
+        "--json",
+        action="store_true",
+        help="machine-readable output: schema 1, each value in base units and as shown",
     )
-    p_run.add_argument("--json", action="store_true", help="machine-readable output (base units)")
     p_run.add_argument("--no-work", action="store_true", help="hide the step-by-step work")
     p_run.set_defaults(handler=_cmd_run)
 
@@ -173,11 +200,23 @@ def _cmd_show(args: argparse.Namespace) -> int:
         scope = f"  (methods: {', '.join(p.methods)})" if p.methods else ""
         default = f"  default {p.default}" if p.default else ""
         print(f"  {p.symbol:<6} {p.key:<20} {p.label}{default}{scope}")
+        if any(p.choices):
+            print(f"         Units (--unit): {_choices_text(p.choices, p.default_choice)}")
         if p.help:
             print(f"         {p.help}")
     print("\nOutputs")
     for o in calc.outputs:
         print(f"  {o.symbol:<6} {o.key:<20} {o.label}")
+        if o.picks:
+            print(f"         Units (--output-unit): {_choices_text(o.picks, o.picks[0])}")
+        elif o.unit or o.form:
+            print(f"         Always in {o.form or o.unit}")
+    sets = calc.unit_sets()
+    if sets:
+        print("\nOutput sets (--output-set)")
+        for i, unit_set in enumerate(sets):
+            first = "  (default)" if i == 0 else ""
+            print(f"  {unit_set.key:<10} {unit_set.label}{first}")
     print("\nMethods")
     for m in calc.methods:
         print(f"  {m.key:<14} {m.label}  [{m.status}]")
@@ -187,6 +226,11 @@ def _cmd_show(args: argparse.Namespace) -> int:
         for ref in m.references:
             print(f"         Ref: {ref}")
     return 0
+
+
+def _choices_text(choices: Sequence[str], default: str | None) -> str:
+    """Return choices' ids as ``show`` lists them: ``in (default), ft_in, mm``."""
+    return ", ".join(f"{c} (default)" if c == default else c for c in choices)
 
 
 def _resolve_param(calc: Calculator, name: str, used: Sequence[Param]) -> Param:
@@ -231,24 +275,34 @@ def _resolve_param(calc: Calculator, name: str, used: Sequence[Param]) -> Param:
 
 
 def parse_inputs(
-    calc: Calculator, items: Sequence[str], length_unit: str, method: str | None = None
-) -> dict[str, float]:
-    """Parse ``NAME=VALUE`` arguments into base-unit values keyed by parameter key.
+    calc: Calculator,
+    items: Sequence[str],
+    method: str | None = None,
+    *,
+    unit_items: Sequence[str] = (),
+) -> dict[str, TypedValue]:
+    """Read ``NAME=VALUE`` arguments into typed values keyed by parameter key.
+
+    A value reads with its unit in its text, ``T=3mm``, and a bare number in its input's
+    default choice (ADR-0024 E5). A ``--unit NAME=ID`` reads that input as a field picked
+    in ``ID`` reads it, with the field's grammar, and refuses a unit in its text.
 
     Args:
         calc: The calculator the inputs belong to.
         items: Arguments such as ``T=0.1046`` or ``thickness=3mm``.
-        length_unit: The output set whose units values typed without one are read in.
         method: The method the inputs are for; ``None`` for the calculator's first.
+        unit_items: ``--unit`` arguments, such as ``L=ft_in``.
 
     Raises:
         InputError: An argument is malformed, names an unknown input, has a bad value, or
-            gives an input twice or one the method doesn't use, which would be lost.
+            gives an input twice or one the method doesn't use, which would be lost; or a
+            ``--unit`` names a choice its input doesn't offer, an input twice, or an input
+            with no value.
     """
     chosen = calc.get_method(method)
     used = calc.params_for(chosen.key)
-    units = ShownUnits.generated(length_unit)
-    values: dict[str, float] = {}
+    picked = _picked_choices(calc, unit_items, used)
+    entries: dict[str, TypedValue] = {}
     given: dict[str, str] = {}
     for item in items:
         name, sep, text = item.partition("=")
@@ -261,29 +315,155 @@ def parse_inputs(
                 "give it once"
             )
         given[p.key] = item
-        values[p.key] = parse_quantity(text, p.dimension, units.unit(p.dimension).symbol)
-    unused = [given[key] for key in values if key not in {p.key for p in used}]
+        entries[p.key] = _read(p, text, picked.get(p.key))
+    unused = [given[key] for key in entries if key not in {p.key for p in used}]
     if unused:
         inputs = ", ".join(f"{p.symbol}/{p.key}" for p in used)
         raise InputError(
             f"Method {chosen.key!r} of {calc.id} doesn't use {', '.join(unused)}; "
             f"its inputs are {inputs}"
         )
-    return values
+    for key, (choice, item) in picked.items():
+        if key not in entries:
+            p = next(p for p in calc.params if p.key == key)
+            raise InputError(
+                f"--unit {item} names {p.symbol}/{p.key}, which isn't given; "
+                f"give it as {p.symbol}=VALUE, read in {choice}"
+            )
+    return entries
+
+
+def _picked_choices(
+    calc: Calculator, unit_items: Sequence[str], used: Sequence[Param]
+) -> dict[str, tuple[str, str]]:
+    """Return each ``--unit`` input's choice and argument, by parameter key.
+
+    Raises:
+        InputError: An argument is malformed, names an input twice, or names a choice
+            its input doesn't offer.
+    """
+    picked: dict[str, tuple[str, str]] = {}
+    for item in unit_items:
+        name, sep, choice = item.partition("=")
+        if not sep or not name.strip():
+            raise InputError(f"Expected --unit NAME=ID, got {item!r}")
+        p = _resolve_param(calc, name.strip(), used)
+        choice = choice.strip()
+        if p.key in picked:
+            raise InputError(
+                f"--unit names {p.symbol}/{p.key} twice, as {picked[p.key][1]!r} and "
+                f"{item!r}; give it once"
+            )
+        if choice not in p.choices:
+            offered = ", ".join(c for c in p.choices if c) or "none: it takes a plain number"
+            raise InputError(
+                f"--unit {item}: {choice!r} isn't a unit for {p.symbol}/{p.key}; "
+                f"its units are {offered}"
+            )
+        picked[p.key] = (choice, item)
+    return picked
+
+
+def _read(p: Param, text: str, picked: tuple[str, str] | None) -> TypedValue:
+    """Read one input's text: in its ``--unit`` choice, or with its unit in its text."""
+    if picked is None:
+        default = choice_unit(p.default_choice or "", p.dimension)
+        return TypedValue.parse(text, p.dimension, default.symbol)
+    choice, item = picked
+    try:
+        return TypedValue.read(text, choice, p.dimension)
+    except UnitInTextError as exc:
+        raise InputError(
+            f"Input {p.symbol}/{p.key}: {text.strip()!r} names a unit, {exc.shown}, but "
+            f"--unit {item} reads it in {choice}; give the number alone, or drop the --unit"
+        ) from None
+
+
+def _output_units(
+    calc: Calculator,
+    set_key: str | None,
+    output_items: Sequence[str],
+    entries: Mapping[str, TypedValue],
+) -> ShownUnits:
+    """Return the units a run is shown in: its set, each output's pick, each input's own.
+
+    An input given is shown in the unit or form it was read in, and any other in its
+    default choice.
+
+    Raises:
+        InputError: The set isn't one of the calculator's, or an ``--output-unit`` is
+            malformed, names an output twice, or one without its own picker, or a choice
+            it doesn't offer.
+    """
+    sets = calc.unit_sets()
+    if set_key is not None and set_key not in {s.key for s in sets}:
+        offered = ", ".join(s.key for s in sets) or "none: every result has its own unit"
+        raise InputError(
+            f"--output-set {set_key!r} isn't one of {calc.id}'s; its sets are {offered}"
+        )
+    picks: dict[str, str] = {}
+    for item in output_items:
+        name, sep, choice = item.partition("=")
+        output = _resolve_output(calc, name.strip()) if sep else None
+        if output is None:
+            raise InputError(f"Expected --output-unit KEY=ID, got {item!r}")
+        if not output.picks:
+            raise InputError(
+                f"--output-unit {item}: {output.symbol}/{output.key} has no unit of its own "
+                "to pick; --output-set sets its unit"
+            )
+        if output.key in picks:
+            raise InputError(f"--output-unit names {output.symbol}/{output.key} twice")
+        if choice.strip() not in output.picks:
+            raise InputError(
+                f"--output-unit {item}: {choice.strip()!r} isn't a unit for "
+                f"{output.symbol}/{output.key}; its units are {', '.join(output.picks)}"
+            )
+        picks[output.key] = choice.strip()
+    inputs = {p.key: _shown_choice(p, entries.get(p.key)) for p in calc.params}
+    if not sets:
+        return ShownUnits.generated().with_inputs(inputs)
+    chosen = next((s for s in sets if s.key == set_key), sets[0])
+    return ShownUnits.of(chosen, picks=picks, inputs=inputs)
+
+
+def _resolve_output(calc: Calculator, name: str) -> Output | None:
+    """Return the output ``name`` names, by its key or symbol, if one does."""
+    return next((o for o in calc.outputs if name in (o.key, o.symbol)), None)
+
+
+def _shown_choice(p: Param, entry: TypedValue | None) -> str:
+    """Return the choice an input is shown in: the one it was read in, else its default.
+
+    A unit typed that isn't one of the picker's, such as a yard, is shown in the default.
+    """
+    if entry is None:
+        return p.default_choice or ""
+    form = entered_form(entry)
+    if form is not None:
+        return form
+    if entry.choice is not None:
+        return entry.choice
+    if entry.unit.symbol in registry().output_choices(p.dimension):
+        return entry.unit.symbol
+    return p.default_choice or ""
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
     calc = default_registry().get(args.calculator)
-    units = ShownUnits.generated(args.units)
-    prefs = DisplayPrefs(decimals=args.decimals, fraction_denominator=args.fraction)
+    prefs = DisplayPrefs(decimals=args.decimals)
+    units = ShownUnits.generated()
     try:
-        inputs = parse_inputs(calc, args.inputs, args.units, args.method)
+        entries = parse_inputs(calc, args.inputs, args.method, unit_items=args.unit)
+        units = _output_units(calc, args.output_set, args.output_unit, entries)
+        inputs = {key: entry.value for key, entry in entries.items()}
         result = calc.run(inputs, method=args.method)
     except CaddCalcError as exc:
         _write_cause(exc)
         return _fail(describe_error(exc, units, prefs))
     if args.json:
-        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+        data = result_json(calc, result, units, prefs, entries)
+        print(json.dumps(data, indent=2, ensure_ascii=False))
         return 0
     print(format_result(calc, result, units, prefs, show_work=not args.no_work))
     return 0

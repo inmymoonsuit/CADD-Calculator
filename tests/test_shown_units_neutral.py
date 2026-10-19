@@ -71,9 +71,7 @@ def _texts() -> dict[str, Any]:
                     for o in calc.outputs:
                         v = r.outputs[o.key]
                         copies = {
-                            form.value: copy_output(o, v, units, prefs, form)
-                            for form in CopyForm
-                            if form is not CopyForm.FRACTION
+                            form.value: copy_output(o, v, units, prefs, form) for form in CopyForm
                         }
                         outputs[o.key] = {
                             "shown": format_output(o, v, units, prefs),

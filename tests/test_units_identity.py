@@ -264,17 +264,15 @@ LENGTH_CHOICES = tuple(
 
 @pytest.mark.parametrize("length", LENGTH_CHOICES)
 def test_every_dimension_shows_as_it_did_for_every_length_choice(length: str) -> None:
-    for dimension, fraction in product(OLD_DIMENSIONS, (None, 64)):
+    for dimension in OLD_DIMENSIONS:
         # The preference took any of a length's names; a set is keyed by its symbol.
         units = formatting.ShownUnits.generated(get_unit(length, Dimension.LENGTH).symbol)
-        prefs = formatting.DisplayPrefs(fraction_denominator=fraction)
+        prefs = formatting.DisplayPrefs()
         was = OLD_DIMENSIONS[dimension]
         assert units.unit(dimension).symbol == old.display_unit(was, length).symbol
         suffix = formatting.unit_suffix(units.unit(dimension))
         assert suffix == old.suffix(old.shown_symbol(was, length))
         parts = formatting.value_parts(7.9375, dimension, units, prefs)
         assert parts.unit == old.shown_symbol(was, length)
-        shows = fraction is not None and old.shows_fraction(was, length)
-        assert (parts.fraction is not None) == shows, (dimension, length, fraction)
         decimals = {"angle": 2, "stress": 1}.get(dimension.value, 4)
         assert prefs.decimals_for(dimension) == decimals

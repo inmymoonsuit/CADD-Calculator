@@ -67,7 +67,7 @@ degrees or ksi:
 
 | You type | Means |
 |---|---|
-| `0.1046` | 0.1046 inches on a settings page; on the command line, in its `--units` (in or mm) |
+| `0.1046` | 0.1046 inches, on a settings page and on the command line (its default unit) |
 | `3mm`, `3 mm` | 3 millimetres, whatever the unit system |
 | `1/8`, `1/8in` | 0.125 (inches if no unit is typed and the system is `in`) |
 | `1-1/2"`, `1 1/2 in` | 1.5 inches |
@@ -112,9 +112,8 @@ two units in its last digit, as written in inches, of the half counts as the hal
 three units off, as `11.976562500000005 in` is, is a value of its own, and rounds as it
 is. A value so large that a
 sixteenth of an inch is lost in its last digits is rounded as it is. Seconds of an angle
-round the same way. Every inch fraction rounds by this one rule: feet and inches, the
-nearest 1/16, 1/32 and 1/64 inch, and the `(≈ …")` beside an inch value, so they never
-disagree.
+round the same way. Every inch fraction rounds by this one rule: feet and inches, and
+the nearest 1/16, 1/32 and 1/64 inch, so they never disagree.
 
 ## Precision and rounding
 
@@ -124,7 +123,9 @@ disagree.
   `1.00000e+300`.
 * **Rounding happens only for display.** Results show 4 decimals by default (angles show 2,
   stresses 1).
-  The CLI's `--decimals` changes this, and `--fraction 64` adds the nearest 1/64".
+  The CLI's `--decimals` changes this. To show inches as the nearest fraction, choose
+  `in 1/16`, `in 1/32` or `in 1/64` in Show in, or `--output-set in_64` on the command
+  line.
 * Stresses follow the results' units: ksi beside inches or feet, MPa beside metric units.
 * Areas follow them too, as the square of the length unit: in² beside inches, mm²
   beside millimeters, to 6 significant figures, such as `6451.60 mm²` or `10.0000 in²`.
@@ -134,14 +135,21 @@ disagree.
 * Some results are always shown in one unit, whatever the results' units, such as each row
   of a unit converter. They show 6 significant figures, e.g. `25.4000 mm` or
   `0.0833333 ft`.
-* JSON output (`--json`) is unrounded, in millimetres, degrees, megapascals, and square
-  millimetres, and each value names its unit.
+* **JSON output** (`--json`) is schema 1 (`"schema": 1`), and gives every value twice.
+  Each input, result and step has its `dimension`, its `base` value and unit (unrounded,
+  in millimetres, degrees, megapascals, square millimetres or a plain number), which is
+  what a script should calculate with, and how it's `shown`: its `unit`, its unrounded
+  `value` in it, and its `text`, rounded as shown. A value in a form, such as feet and
+  inches, adds its `form` and the `copied` text CAD takes, and its `value` is in inches
+  (or degrees). An input given on the command line adds `entered`: its `text`, the
+  `unit` (and `form`) it was read in, and `unit_in_text`, whether the text named it.
+  The top level names the `output_set`.
   Each step also gives `substitution`, a map from its formula's symbols to the text shown
   for them (not numbers), `expression_unit`, the unit its formula yields, and `stated`,
   the value as its source states it, e.g. `"0.109375 in"`; all three are `null` for an
   ordinary step, whose formula yields base units.
-  Each note gives its lead as `text` and the rest as `detail`, with any values in base
-  units, and `quantities` with each value it names and that value's unit.
+  Each note gives its lead as `text` and the rest as `detail`, with its values as shown,
+  and `quantities` with each value it names, in `base` and as `shown`.
 
 Round only when you put the final number on a drawing. Rounding intermediate values,
 such as a bend allowance before adding up a flat pattern, builds up error.

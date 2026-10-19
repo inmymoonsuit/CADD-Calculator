@@ -85,10 +85,17 @@ def test_the_cli_writes_words_in_its_language_and_numbers_with_a_point(
 
 
 def test_cli_run_json_and_metric(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["run", "sheet_metal.v_die_opening", "R=1.5", "--units", "mm", "--json"]) == 0
+    args = ["run", "sheet_metal.v_die_opening", "R=1.5mm", "--output-set", "mm", "--json"]
+    assert main(args) == 0
     data = json.loads(capsys.readouterr().out)
-    assert data["outputs"]["die_opening"]["unit"] == "mm"
-    assert data["outputs"]["die_opening"]["value"] == pytest.approx(1.5 / 0.156)
+    assert (data["schema"], data["output_set"]) == (1, "mm")
+    opening = data["outputs"]["die_opening"]
+    assert opening["base"]["unit"] == "mm" and opening["shown"]["unit"] == "mm"
+    assert opening["base"]["value"] == pytest.approx(1.5 / 0.156)
+    assert opening["shown"]["value"] == pytest.approx(1.5 / 0.156)
+    radius = data["inputs"]["inside_radius"]
+    assert radius["entered"] == {"text": "1.5mm", "unit": "mm", "unit_in_text": True}
+    assert radius["shown"]["unit"] == "mm", "an input in the unit it was entered in"
 
 
 def test_cli_reports_notes_with_their_kind(capsys: pytest.CaptureFixture[str]) -> None:
@@ -98,9 +105,15 @@ def test_cli_reports_notes_with_their_kind(capsys: pytest.CaptureFixture[str]) -
     assert [(n["kind"], n["references"], n["subjects"]) for n in notes] == [
         ("warning", [], ["inside_radius", "thickness"])
     ]
-    assert notes[0]["text"].startswith("Inside radius 2.54 mm is less than the thickness")
+    assert notes[0]["text"].startswith("Inside radius 0.1000 in is less than the thickness")
     assert "minimum bend radius" in notes[0]["detail"]
-    assert notes[0]["quantities"]["T"] == {"value": 6.35, "unit": "mm", "dimension": "length"}
+    thickness = notes[0]["quantities"]["T"]
+    assert (thickness["dimension"], thickness["base"]) == ("length", {"value": 6.35, "unit": "mm"})
+    assert thickness["shown"]["unit"] == "in" and thickness["shown"]["text"] == "0.2500 in"
+    assert thickness["shown"]["value"] == pytest.approx(0.25)
+    assert main([*args, "--output-set", "mm", "--json"]) == 0
+    notes = json.loads(capsys.readouterr().out)["notes"]
+    assert notes[0]["text"].startswith("Inside radius 2.5400 mm is less than"), "as shown"
     assert main(args) == 0
     out = capsys.readouterr().out
     assert "Notes\n  ! Inside radius 0.1000 in is less than the thickness 0.2500 in." in out
@@ -114,7 +127,9 @@ def test_cli_reports_notes_with_their_kind(capsys: pytest.CaptureFixture[str]) -
 def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["run", "sheet_metal.bend_allowance", "T=-1"]) == 2
     assert "Material thickness (T) must be greater than 0 in" in capsys.readouterr().err
-    assert main(["run", "sheet_metal.bend_allowance", "T=-1", "--units", "mm"]) == 2
+    assert main(["run", "sheet_metal.bend_allowance", "T=-1mm"]) == 2
+    assert "must be greater than 0 mm" in capsys.readouterr().err, "in the unit it's typed in"
+    assert main(["run", "sheet_metal.bend_allowance", "--unit", "T=mm", "T=-1"]) == 2
     assert "must be greater than 0 mm" in capsys.readouterr().err
     assert main(["run", "sheet_metal.bend_allowance", "Q=1"]) == 2
     assert main(["run", "no.such_calc"]) == 2
@@ -204,6 +219,11 @@ def test_an_explicit_registry_is_kept_even_with_no_calculators() -> None:
     window.close()
 
 
+def _values(entries: dict[str, Any]) -> dict[str, float]:
+    """The base-unit value of each parsed input, by parameter key."""
+    return {key: entry.value for key, entry in entries.items()}
+
+
 def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
     """A side ``a`` and an angle ``A`` both read; only a name that's both in any case fails."""
     from caddcalc.calculators.geometry import RightTriangle
@@ -219,9 +239,9 @@ def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
     )
 
     calc = RightTriangle()
-    values = parse_inputs(calc, ["a=3", "A=30"], "in", "leg_angle")
+    values = _values(parse_inputs(calc, ["a=3", "A=30"], "leg_angle"))
     assert values == {"leg_a": pytest.approx(76.2), "angle_a": 30}
-    values = parse_inputs(calc, ["C=5", "LEG_A=4"], "in", "leg_hypotenuse")
+    values = _values(parse_inputs(calc, ["C=5", "LEG_A=4"], "leg_hypotenuse"))
     assert values == {"hypotenuse": pytest.approx(127), "leg_a": pytest.approx(101.6)}
 
     class Twins(Calculator):
@@ -240,8 +260,8 @@ def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
             ctx.calc("Y", "aB", label="Same", dimension=Dimension.LENGTH, output="same")
 
     with pytest.raises(InputError, match=r"'ab' for test\.twins could be aB/first, Ab/second"):
-        parse_inputs(Twins(), ["ab=1"], "in")
-    assert parse_inputs(Twins(), ["Ab=1"], "in") == {"second": pytest.approx(25.4)}
+        parse_inputs(Twins(), ["ab=1"])
+    assert _values(parse_inputs(Twins(), ["Ab=1"])) == {"second": pytest.approx(25.4)}
 
 
 @pytest.mark.parametrize("calc_id", ["geometry.right_triangle", "geometry.triangle"])
@@ -254,9 +274,9 @@ def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_i
     calc = default_registry(load_plugins=False).get(calc_id)
     message = rf"'B' for {calc_id} isn't one: as written it's a result, angle_b. Did you mean b/"
     with pytest.raises(InputError, match=message) as refused:
-        parse_inputs(calc, ["B=30"], "in")
+        parse_inputs(calc, ["B=30"])
     assert "B/angle_b" not in str(refused.value), "a result is never offered as an input"
-    (key,) = parse_inputs(calc, ["b=30"], "in")
+    (key,) = parse_inputs(calc, ["b=30"])
     assert next(p for p in calc.params if p.key == key).symbol == "b"
 
 
@@ -268,13 +288,13 @@ def test_a_cli_suggestion_is_an_input_of_the_chosen_method() -> None:
 
     calc = default_registry(load_plugins=False).get("geometry.right_triangle")
     with pytest.raises(InputError) as refused:
-        parse_inputs(calc, ["a=3", "B=30"], "in", "leg_angle")
+        parse_inputs(calc, ["a=3", "B=30"], "leg_angle")
     assert str(refused.value) == (
         "Input 'B' for geometry.right_triangle isn't one: as written it's a result, "
         "angle_b. Inputs: a/leg_a, A/angle_a"
     )
     with pytest.raises(InputError, match=r"Unknown input 'q' .*Inputs: a/leg_a, A/angle_a$"):
-        parse_inputs(calc, ["q=3"], "in", "leg_angle")
+        parse_inputs(calc, ["q=3"], "leg_angle")
 
 
 @pytest.mark.parametrize(

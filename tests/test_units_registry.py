@@ -80,7 +80,6 @@ def test_symbols_keep_their_case_and_only_degrees_minutes_seconds_are_close_up()
     assert {u.symbol for u in UNITS if u.symbol != u.symbol.lower()} == {"MPa", "kPa", "GPa"}
     assert {u.written for u in UNITS if u.close_up} == {"°", "′", "″"}
     assert get_unit("%").close_up is False, "the percent sign is spaced (§7.10.2)"
-    assert {u.symbol for u in UNITS if u.fractions} == {"in"}
 
 
 def _fresh() -> UnitRegistry:

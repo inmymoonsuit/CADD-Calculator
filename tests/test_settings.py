@@ -33,6 +33,7 @@ from caddcalc.core.formatting import (
     describe_source,
     entry_text,
     field_text,
+    result_json,
 )
 from caddcalc.core.units import get_unit
 
@@ -290,7 +291,8 @@ def test_an_applied_value_keeps_its_entry_and_citation_in_results() -> None:
     assert str(FAA).endswith("p. 4-63, Ch. 4, Step 4; and Fig 4-126, p. 4-64"), "locator first"
     assert str(FAA).startswith("FAA-H-8083-31B, Aviation Maintenance Technician Handbook")
     assert replace(TEST_BEND, subjects=("k_factor",)) in result.notes
-    reference = result.to_dict()["inputs"]["k_factor"]["source"]["reference"]
+    data = result_json(BendAllowance(), result, ShownUnits.generated(), DisplayPrefs())
+    reference = data["inputs"]["k_factor"]["source"]["reference"]
     assert reference["scope"] == FAA.scope
 
 

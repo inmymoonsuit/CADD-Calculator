@@ -6,7 +6,7 @@ from itertools import product
 
 import pytest
 
-from caddcalc.core import Calculator, Context, Method, Output, Param, UsageError, Verification
+from caddcalc.core import Calculator, Context, Method, Output, Param, Verification
 from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
@@ -16,7 +16,6 @@ from caddcalc.core.formatting import (
     format_number,
     format_value,
     results_tsv,
-    to_fraction,
     unit_suffix,
     value_parts,
 )
@@ -42,16 +41,14 @@ def format_value_as_it_was(
     text = format_number(shown, _decimals(dimension, prefs))
     if unit:
         text += unit_suffix(units.unit(dimension))
-    if unit and dimension is L and prefs.fraction_denominator and units.choice(L) == "in":
-        text += f'  (≈ {to_fraction(shown, prefs.fraction_denominator)}")'
     return text
 
 
 VALUES = (0.0, -0.0, 1e-9, -1e-9, -0.00001, 0.5, 7.9223, -3.75, 25.4, 1234.5678, 1e6)
 LENGTHS = ("in", "mm", "ft", "cm", "m")
 PREFS = [
-    DisplayPrefs(decimals, angle, stress, fraction)
-    for decimals, angle, stress, fraction in product((0, 2, 4), (1, 2), (0, 1), (None, 16, 64))
+    DisplayPrefs(decimals, angle, stress)
+    for decimals, angle, stress in product((0, 2, 4), (1, 2), (0, 1))
 ]
 
 
@@ -71,8 +68,7 @@ def test_format_value_is_unchanged_by_being_built_on_value_parts() -> None:
     ("value", "dimension", "units", "prefs", "parts"),
     [
         (7.9223, L, IN, DisplayPrefs(), ValueParts("0.3119", "in")),
-        (7.9223, L, IN, DisplayPrefs(fraction_denominator=64), ValueParts("0.3119", "in", "5/16")),
-        (7.9223, L, MM, DisplayPrefs(fraction_denominator=64), ValueParts("7.9223", "mm")),
+        (7.9223, L, MM, DisplayPrefs(), ValueParts("7.9223", "mm")),
         (120.0, A, IN, DisplayPrefs(), ValueParts("120.00", "°")),
         (0.44, R, IN, DisplayPrefs(), ValueParts("0.4400", "")),
         (275.8, S, IN, DisplayPrefs(), ValueParts("40.0", "ksi")),
@@ -101,7 +97,7 @@ def test_the_unit_joins_spaced_except_a_degree_sign() -> None:
             7.9223,
             L,
             IN,
-            DisplayPrefs(fraction_denominator=64),
+            DisplayPrefs(),
             ("0.3119", "0.3119 in", "0.3119015748"),
         ),
         (-1.0668, L, IN, DisplayPrefs(), ("-0.0420", "-0.0420 in", "-0.042")),
@@ -131,18 +127,6 @@ def test_full_precision_rounds_to_ten_significant_digits_without_an_exponent() -
     for value in (1e-30, 1e30, -7e-15):
         text = copy_text(value, L, MM, prefs, CopyForm.FULL)
         assert "e" not in text.lower() and float(text) == pytest.approx(value, rel=1e-9)
-
-
-def test_only_the_fraction_form_copies_the_fraction_with_its_inch_mark() -> None:
-    """R6: ``5/16"``, or ``1-5/16"``; a bare ``5/16`` would paste as a date."""
-    prefs = DisplayPrefs(fraction_denominator=64)
-    for form in CopyForm:
-        if form is not CopyForm.FRACTION:
-            assert "/" not in copy_text(7.9223, L, IN, prefs, form)
-    assert copy_text(7.9375, L, IN, prefs, CopyForm.FRACTION) == '5/16"'
-    assert copy_text(33.3375, L, IN, prefs, CopyForm.FRACTION) == '1-5/16"'
-    with pytest.raises(UsageError, match="without a fraction"):
-        copy_text(7.9375, L, IN, DisplayPrefs(), CopyForm.FRACTION)
 
 
 def test_a_spreadsheet_never_reads_a_text_cell_as_a_formula() -> None:
@@ -198,11 +182,3 @@ def test_results_tabulate_one_row_per_output_without_breaking_cells() -> None:
     assert results_tsv(_Bracket(), result, MM, DisplayPrefs()).startswith(
         "H\tHalf of it\t12.7000\tmm\n"
     )
-
-
-def test_a_fraction_that_rounds_to_zero_is_never_negative() -> None:
-    assert to_fraction(-0.001, 64) == "0"
-    assert to_fraction(-0.5, 64) == "-1/2" and to_fraction(-1.015625, 64) == "-1-1/64"
-    prefs = DisplayPrefs(fraction_denominator=64)
-    assert format_value(-0.00001, L, IN, prefs) == '0.0000 in  (≈ 0")'
-    assert value_parts(-0.00001, L, IN, prefs).fraction == "0"

@@ -94,8 +94,7 @@ All notable changes are recorded here. The format follows
 - **Copying results (ADR-0017).** Each result field's copy button copies its value as
   shown, without its unit, ready for a spreadsheet cell or a CAD dimension box; so do
   Space, Enter, and Ctrl+C (Cmd+C) on the focused button. Its menu (right-click or the
-  Menu key) also copies with the unit, at full precision, or, while a fraction shows,
-  as `5/16"`. **Copy all**, beside the Results title or Ctrl+Shift+C (Cmd+Shift+C),
+  Menu key) also copies with the unit, or at full precision. **Copy all**, beside the Results title or Ctrl+Shift+C (Cmd+Shift+C),
   copies every output as rows for a spreadsheet, with any text cell that a spreadsheet
   would read as a formula kept as text. A check shows on the button for a moment, and
   the status bar and screen readers say what was copied.
@@ -109,7 +108,7 @@ All notable changes are recorded here. The format follows
   outline; the Tabler copy and check icons; and spoken unit names ("inches") for
   screen readers.
 - `core.formatting` shows a value in parts, for copying it (the coming result fields):
-  `value_parts()` gives its number, its unit, and its inch fraction, and `format_value()`
+  `value_parts()` gives its number and its unit, and `format_value()`
   now joins them, unchanged. `copy_text()` gives the clipboard text: the number as shown,
   the number with its unit, or full precision (10 significant digits), always plain
   decimals with an ASCII minus and no negative zero. `results_tsv()` gives a result's
@@ -431,9 +430,6 @@ All notable changes are recorded here. The format follows
 - **A stress too large for its kPa or psi row is refused,** never shown as `inf`; a
   number too large to calculate with, such as `1e308 ft`, is refused as too large, not
   as "not a finite number".
-- **The `(≈ …")` beside an inch value rounds as every inch fraction does,** so it
-  agrees with feet and inches and the nearest 1/16, 1/32 and 1/64 inch on a tie: 7/32 in
-  is 1/4" in each. An error row has no `(≈ …")`.
 - **The polygon's number of sides is at most 1 000 000,** refused plainly past that,
   where 1e300 failed with internal text.
 - **A whole circle's chord is exactly 0,** not 2.4e-15 in: `sind` is exactly 0 at a
@@ -518,8 +514,6 @@ All notable changes are recorded here. The format follows
 - **A window given an empty registry.** `MainWindow(registry=...)` replaced a registry with
   domains but no calculators by the built-in one, because an empty registry is falsy. It
   now keeps the registry it's given.
-- **A negative zero in an inch fraction.** A tiny negative length showed `(≈ -0")`; it now
-  shows `(≈ 0")`.
 - The app, and the test suite, could crash on exit after the window closed (KI-019): the
   window's own widgets held it through their signal connections, so it was torn down
   during interpreter exit. Every CI job failed from it. The `caddcalc-gui` command also
@@ -533,6 +527,23 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The command line's units (ADR-0024 E-4):** a bare number reads in the input's default
+  unit, which `caddcalc show` now lists with each input's units and the calculator's
+  output sets: inches and degrees for every sheet-metal and geometry input. `--unit
+  NAME=ID` reads an input as a field picked in that unit or form does (`--unit L=ft_in
+  L=10-2`), refusing a unit in its text and a comma. `--output-set SET` (the first by
+  default) and `--output-unit KEY=ID` choose the results' units, and each input is
+  shown in the unit it was given in. **`--units` and `--fraction` are removed**, and
+  with them the `(≈ 5/16")` hint, in the app too: `--output-set in_16` and the app's
+  `in 1/16` replace them. A `--unit` without its input, twice for one input, or with a
+  unit it doesn't offer is refused, as is an `--output-unit` for a result with no
+  picker of its own.
+- **JSON is schema 1:** every input, result and step gives its value in base units and
+  as shown, a form adds its `copied` text, a given input adds `entered`, and the top
+  level has `schema` and `output_set`. For calculator authors, `Result.to_dict` and
+  `Note.to_dict` are replaced by `core.formatting.result_json`, and
+  `DisplayPrefs.fraction_denominator`, `CopyForm.FRACTION`, `to_fraction` and
+  `Unit.fractions` are removed.
 - **The Units box is gone; the results have a Show in picker** (ADR-0024 U2), between
   their title and Copy all. It offers a set per length unit, `in`, `in 1/16`, `in 1/32`,
   `in 1/64`, `ft-in`, `ft`, `mm`, `cm` and `m`, labelled by what the calculator shows

@@ -88,7 +88,6 @@ def _unit(
     aliases: tuple[str, ...] = (),
     written: str = "",
     close_up: bool = False,
-    fractions: bool = False,
     primary: bool = False,
     decimals: int | None = None,
 ) -> Unit:
@@ -111,7 +110,6 @@ def _unit(
         exact=exact,
         system=system,
         close_up=close_up,
-        fractions=fractions,
         sources=(source, YARD_POUND) if primary else (source,),
         decimals=decimals,
     )
@@ -224,7 +222,6 @@ UNITS: tuple[Unit, ...] = (
         US,
         "Appendix B.8 (inch to meter)",
         aliases=('"', "″", "inch", "inches"),
-        fractions=True,
         primary=True,
     ),
     _unit(

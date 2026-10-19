@@ -7,11 +7,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from string import Formatter
 from types import MappingProxyType
-from typing import Any
 
 from caddcalc.core.errors import SpecError
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import BASE_UNITS, Dimension, base_text
+from caddcalc.core.units import Dimension
 
 Quantity = tuple[float, Dimension]
 """A value in base units, and what it measures."""
@@ -132,21 +131,3 @@ class Note:
             return template
         values = {name: show(*quantity) for name, quantity in self.quantities.items()}
         return template.format_map({**values, **self.phrases})
-
-    def to_dict(self) -> dict[str, Any]:
-        """Return a JSON-serialisable form, with ``references`` and ``subjects`` as lists.
-
-        ``text`` and ``detail`` are filled in base units, as the rest of the JSON is, and
-        ``quantities`` gives each named value in base units with its unit.
-        """
-        return {
-            "kind": self.kind.value,
-            "text": self.fill(self.text, base_text),
-            "detail": self.fill(self.detail, base_text),
-            "quantities": {
-                name: {"value": value, "unit": BASE_UNITS[dim], "dimension": dim.value}
-                for name, (value, dim) in self.quantities.items()
-            },
-            "references": [reference.to_dict() for reference in self.references],
-            "subjects": list(self.subjects),
-        }

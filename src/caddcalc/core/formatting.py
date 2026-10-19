@@ -14,6 +14,7 @@ from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum
 from fractions import Fraction
 from types import MappingProxyType
+from typing import Any
 
 from caddcalc.core import expr
 from caddcalc.core.calculator import Calculator, Result
@@ -24,6 +25,7 @@ from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output, UnitSet
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
+    BASE_UNITS,
     CompoundForm,
     CompoundText,
     Dimension,
@@ -40,8 +42,6 @@ from caddcalc.core.units.compound import (
     PARTS,
     POSITIVE_SPOKEN,
     NearestInches,
-    nearest_inches,
-    round_half_even,
 )
 from caddcalc.core.units.entry import lone_fraction
 
@@ -85,7 +85,7 @@ POINT = NumberSymbols()
 
 @dataclass(frozen=True)
 class DisplayPrefs:
-    """How numbers look: their decimals, an optional inch fraction, and their symbols.
+    """How numbers look: their decimals and their symbols.
 
     Which unit or form each value is shown in is ``ShownUnits``' (ADR-0024 E4).
     """
@@ -93,8 +93,6 @@ class DisplayPrefs:
     decimals: int = 4
     angle_decimals: int = 2
     stress_decimals: int = 1
-    fraction_denominator: int | None = None
-    """When set (e.g. 64) and the length unit is inches, also show the nearest fraction."""
     symbols: NumberSymbols = POINT
     """How numbers on screen are written: the locale's decimal mark (ADR-0020 §4)."""
 
@@ -198,7 +196,7 @@ class ShownUnits:
         The work, notes and messages use it: a line of work reads ``= 2 × 16.1875 in``,
         never ``2 × 1'-4 3/16"`` (ADR-0024 E4).
         """
-        return _unit_of(self.choice(dimension), dimension)
+        return choice_unit(self.choice(dimension), dimension)
 
     def output_choice(self, output: Output) -> str:
         """Return the id an output is shown in: its fixed unit or form, its pick, or the set's.
@@ -225,8 +223,12 @@ class ShownUnits:
         return self.inputs.get(key) or self.choice(dimension)
 
 
-def _unit_of(choice: str, dimension: Dimension) -> Unit:
-    """Return a choice's unit: itself, or a form's full unit."""
+def choice_unit(choice: str, dimension: Dimension) -> Unit:
+    """Return the unit of a choice, by its id: the unit itself, or a form's full unit.
+
+    Raises:
+        UsageError: ``choice`` isn't one of ``dimension``'s.
+    """
     picked = registry().choice(choice, dimension)
     if isinstance(picked, CompoundForm):
         return registry().find(picked.full_unit, dimension)
@@ -339,7 +341,7 @@ def typeset(text: str, symbols: NumberSymbols) -> str:
 
 @dataclass(frozen=True)
 class ValueParts:
-    """A value as shown, in parts: its number, its unit, and its nearest inch fraction.
+    """A value as shown, in parts: its number and its unit, or its compound form.
 
     ``format_value`` joins them, so a value shown whole and a value shown in parts, such
     as a result field's, can't disagree.
@@ -350,8 +352,6 @@ class ValueParts:
     locale's decimal mark (``DisplayPrefs.symbols``), never a negative zero."""
     unit: str
     """The unit's symbol, e.g. ``"in"``, ``"ksi"``, or ``"°"``; ``""`` for a ratio."""
-    fraction: str | None = None
-    """The nearest drafting fraction of an inch length, e.g. ``"5/16"``, when it's shown."""
     compound: CompoundText | None = None
     """The value in a compound form, when it's shown in one, e.g. feet and inches. Its
     ``number`` is then the form as shown, with no unit of its own, and it's copied and
@@ -359,7 +359,7 @@ class ValueParts:
 
     @property
     def with_unit(self) -> str:
-        """The number and its unit, e.g. ``"0.3119 in"`` or ``"120.00°"``, without the fraction."""
+        """The number and its unit, e.g. ``"0.3119 in"`` or ``"120.00°"``."""
         return self.number + _suffix(self.unit)
 
     @property
@@ -392,7 +392,7 @@ def choice_parts(
     picked = registry().choice(choice, dimension)
     if isinstance(picked, CompoundForm):
         written = picked.text(value, prefs.symbols.decimal)
-        return ValueParts(written.shown, "", None, written)
+        return ValueParts(written.shown, "", written)
     return unit_parts(value, picked, prefs)
 
 
@@ -417,14 +417,8 @@ def input_parts(
 
 def _parts(value: float, unit: Unit, precision: Precision, prefs: DisplayPrefs) -> ValueParts:
     """Return a base-unit value as shown in ``unit``, to ``precision``, in parts."""
-    shown = from_base(value, unit)
-    fraction = None
-    if prefs.fraction_denominator and unit.fractions:
-        # Only the inch has fractions. Its hint rounds the base value as the nearest
-        # fraction rows do, so the two never disagree (ADR-0019, amendments).
-        fraction = _fraction_text(nearest_inches(value, prefs.fraction_denominator))
-    number = format_precise(shown, precision, prefs.symbols.decimal)
-    return ValueParts(number, unit.written, fraction)
+    number = format_precise(from_base(value, unit), precision, prefs.symbols.decimal)
+    return ValueParts(number, unit.written)
 
 
 def format_value(
@@ -445,21 +439,14 @@ def format_value(
         unit: Append the unit (and the nearest fraction, when enabled).
     """
     parts = value_parts(value, dimension, units, prefs)
-    return _shown(parts) if unit else parts.number
+    return parts.with_unit if unit else parts.number
 
 
 def format_input(
     key: str, value: float, dimension: Dimension, units: ShownUnits, prefs: DisplayPrefs
 ) -> str:
     """Return an input's value as display text, in its field's choice or else the set's."""
-    return _shown(input_parts(key, value, dimension, units, prefs))
-
-
-def _shown(parts: ValueParts) -> str:
-    """Return a value's parts as one text: number, unit, and any fraction."""
-    if parts.fraction is None:
-        return parts.with_unit
-    return f'{parts.with_unit}  (≈ {parts.fraction}")'
+    return input_parts(key, value, dimension, units, prefs).with_unit
 
 
 def spoken_value(parts: ValueParts) -> str:
@@ -489,7 +476,7 @@ def output_unit(output: Output, units: ShownUnits) -> Unit:
     An output in a compound form gives the form's full-precision unit, such as the inch
     for feet and inches.
     """
-    return _unit_of(units.output_choice(output), output.dimension)
+    return choice_unit(units.output_choice(output), output.dimension)
 
 
 def output_parts(
@@ -503,8 +490,7 @@ def output_parts(
     ``Output.precision`` or else the registry's precision for the unit; one with a fixed
     form, in that form; one with its own picker, in its pick; and any other in its
     dimension's choice in the set, a unit or a form (ADR-0024 E4). A signed output
-    (``Output.signed``) shows a plus sign above zero and no inch fraction; a form writes
-    its own sign.
+    (``Output.signed``) shows a plus sign above zero; a form writes its own sign.
     """
     if output.unit:
         unit = output_unit(output, units)
@@ -513,8 +499,7 @@ def output_parts(
     else:
         parts = choice_parts(value, units.output_choice(output), output.dimension, prefs)
     if output.signed and parts.compound is None:
-        # A difference takes no fraction hint: "(≈ 0")" beside an error says nothing.
-        return replace(parts, number=_plus(parts.number), fraction=None)
+        return replace(parts, number=_plus(parts.number))
     return parts
 
 
@@ -525,7 +510,7 @@ def _plus(number: str) -> str:
 
 def format_output(output: Output, value: float, units: ShownUnits, prefs: DisplayPrefs) -> str:
     """Return a calculator output's value as display text, e.g. ``0.3119 in``."""
-    return _shown(output_parts(output, value, units, prefs))
+    return output_parts(output, value, units, prefs).with_unit
 
 
 class CopyForm(Enum):
@@ -544,10 +529,6 @@ class CopyForm(Enum):
     FULL = "full"
     """The value in the unit it's shown in, a form's full unit for a form, unrounded to
     ``FULL_DIGITS`` significant digits."""
-    FRACTION = "fraction"
-    """The nearest inch fraction as shown, with the inch mark, e.g. ``5/16"`` or
-    ``1-5/16"``: a bare ``5/16`` would paste into a spreadsheet as a date. Only a value
-    shown with a fraction has one."""
 
 
 FULL_DIGITS = 10
@@ -562,10 +543,7 @@ def copy_text(
     Every number form writes plain decimals, never an exponent, with an ASCII ``-`` and
     never a negative zero, so it pastes into a spreadsheet or a CAD input as it reads.
     Each writes ``"."`` for its decimal point, but ``SHOWN``, which writes the locale's
-    mark. Only ``FRACTION`` copies the inch fraction.
-
-    Raises:
-        UsageError: ``FRACTION`` for a value shown without one.
+    mark. A value in a compound form copies as CAD takes it.
     """
     parts = value_parts(value, dimension, units, _copy_prefs(prefs, form))
     return _copied(parts, from_base(value, units.unit(dimension)), form)
@@ -574,11 +552,7 @@ def copy_text(
 def copy_output(
     output: Output, value: float, units: ShownUnits, prefs: DisplayPrefs, form: CopyForm
 ) -> str:
-    """Return a calculator output's value as clipboard text, as ``output_parts`` shows it.
-
-    Raises:
-        UsageError: ``FRACTION`` for a value shown without one.
-    """
+    """Return a calculator output's value as clipboard text, as ``output_parts`` shows it."""
     shown = from_base(value, output_unit(output, units))
     return _copied(output_parts(output, value, units, _copy_prefs(prefs, form)), shown, form)
 
@@ -596,10 +570,6 @@ def _copied(parts: ValueParts, shown: float, form: CopyForm) -> str:
         return parts.number
     if form is CopyForm.WITH_UNIT:
         return parts.with_unit
-    if form is CopyForm.FRACTION:
-        if parts.fraction is None:
-            raise UsageError("This value is shown without a fraction, so there's none to copy")
-        return f'{parts.fraction}"'
     return _significant(shown, FULL_DIGITS)
 
 
@@ -798,31 +768,6 @@ def entry_text(entry: TypedValue, unit: Unit, prefs: DisplayPrefs) -> str:
     return field_text(entry.value, unit, prefs)
 
 
-def to_fraction(value: float, denominator: int = 64) -> str:
-    """Nearest drafting fraction of ``value`` inches: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``.
-
-    It rounds as every inch fraction does, half to even, with a value within its own last
-    place of a half taken as the half (``core.units.compound.round_half_even``).
-    """
-    if not math.isfinite(value):
-        return str(value)
-    sign = -1 if value < 0 else 1
-    return _fraction_text(
-        Fraction(sign * round_half_even(value, Fraction(denominator)), denominator)
-    )
-
-
-def _fraction_text(frac: Fraction) -> str:
-    """Write an inch fraction as it's copied, e.g. ``1-1/64``, ``1/2`` or ``-1/4``."""
-    sign = "-" if frac < 0 else ""  # a value that rounds to 0 is never "-0"
-    frac = abs(frac)
-    whole, rem = divmod(frac.numerator, frac.denominator)
-    if rem == 0:
-        return f"{sign}{whole}"
-    part = f"{rem}/{frac.denominator}"
-    return f"{sign}{whole}-{part}" if whole else f"{sign}{part}"
-
-
 def render_step(
     step: Step, result: Result | None, units: ShownUnits, prefs: DisplayPrefs
 ) -> tuple[str, str | None, str]:
@@ -858,7 +803,7 @@ def _step_lines(
     A step with no formula has neither: its formula is ``""`` and its substitution
     ``None``.
     """
-    value_text = _shown(unit_parts(step.value, units.unit(step.dimension), prefs))
+    value_text = unit_parts(step.value, units.unit(step.dimension), prefs).with_unit
     if step.signed:
         number, space, written = value_text.partition(" ")
         value_text = _plus(number) + space + written
@@ -883,7 +828,7 @@ def _step_lines(
     for name in expr.names(step.expression):
         v, dim = result.symbols[name]
         parts = unit_parts(v, units.unit(dim), prefs)
-        text = _shown(parts) if dim is Dimension.ANGLE else parts.number
+        text = parts.with_unit if dim is Dimension.ANGLE else parts.number
         values[name] = f"({text})" if text.startswith("-") else text
     return (symbolic, expr.render_numeric(step.expression, values), value_text)
 
@@ -1026,8 +971,8 @@ def describe_override(
             shown in.
         prefs: The decimals and symbols.
     """
-    inherited_text = _shown(choice_parts(inherited, choice, dimension, prefs))
-    own_text = _shown(choice_parts(own, choice, dimension, prefs))
+    inherited_text = choice_parts(inherited, choice, dimension, prefs).with_unit
+    own_text = choice_parts(own, choice, dimension, prefs).with_unit
     return f"{family} value is {inherited_text}; this calculator uses {own_text}."
 
 
@@ -1040,7 +985,7 @@ def describe_error(error: CaddCalcError, units: ShownUnits, prefs: DisplayPrefs)
     """
     if isinstance(error, OutOfRangeError):
         param = error.param
-        unit = _unit_of(units.input_choice(param.key, param.dimension), param.dimension)
+        unit = choice_unit(units.input_choice(param.key, param.dimension), param.dimension)
         return error.describe(lambda v: quantity_text(v, unit, prefs))
     return str(error)
 
@@ -1055,3 +1000,160 @@ def quantity_text(value: float, unit: Unit, prefs: DisplayPrefs) -> str:
     whole = unit.dimension is Dimension.COUNT and shown.is_integer()
     number = f"{shown:.0f}" if whole else f"{shown:g}"  # a count is never "1e+06"
     return typeset(number, prefs.symbols) + unit_suffix(unit)
+
+
+JSON_SCHEMA = 1
+"""The number of ``result_json``'s format, which a script can check (ADR-0024 E5)."""
+
+
+def result_json(
+    calc: Calculator,
+    result: Result,
+    units: ShownUnits,
+    prefs: DisplayPrefs,
+    entered: Mapping[str, TypedValue] | None = None,
+) -> dict[str, Any]:
+    """Return a result as JSON's schema 1: every value in base units and as shown.
+
+    Each input, output and step gives its ``dimension``, its ``base`` value and unit,
+    which a script calculates with, and its ``shown`` unit, unrounded value and text, a
+    form adding ``form`` and ``copied``. An input is shown in its own choice, an output in
+    its fixed unit, its pick or the set's choice, and a step in the set's unit, never a
+    form (ADR-0024 E4, E5). An input the run was given adds ``entered``: its text, the
+    unit or form it was read in, and whether the text named it.
+
+    Args:
+        calc: The calculator that ran.
+        result: Its result.
+        units: The units it's shown in, with each input's choice.
+        prefs: The decimals, for each ``text``.
+        entered: The text of each input the run was given, by parameter key.
+    """
+    entered = entered or {}
+    inputs: dict[str, Any] = {}
+    for key, value in result.inputs.items():
+        dimension = result.dimensions[key]
+        choice = units.input_choice(key, dimension)
+        parts = choice_parts(value, choice, dimension, prefs)
+        item = {
+            "dimension": dimension.value,
+            "base": _base_json(value, dimension),
+            "shown": _shown_json(value, choice_unit(choice, dimension), parts, choice),
+        }
+        if key in entered:
+            item["entered"] = _entered_json(entered[key])
+        item["source"] = result.source_of(key).to_dict()
+        inputs[key] = item
+    outputs: dict[str, Any] = {}
+    for output in calc.outputs:
+        value = result.outputs[output.key]
+        parts = output_parts(output, value, units, prefs)
+        unit = output_unit(output, units)
+        outputs[output.key] = {
+            "dimension": output.dimension.value,
+            "base": _base_json(value, output.dimension),
+            "shown": _shown_json(value, unit, parts, units.output_choice(output)),
+        }
+    steps = []
+    for step in result.steps:
+        unit = units.unit(step.dimension)
+        parts = unit_parts(step.value, unit, prefs)
+        if step.signed:
+            parts = replace(parts, number=_plus(parts.number))
+        steps.append(
+            {
+                "symbol": step.symbol,
+                "label": step.label,
+                "expression": step.expression,
+                "note": step.note,
+                "substitution": None if step.substitution is None else dict(step.substitution),
+                "expression_unit": step.expression_unit,
+                "stated": step.stated,
+                "dimension": step.dimension.value,
+                "base": _base_json(step.value, step.dimension),
+                "shown": _shown_json(step.value, unit, parts, unit.symbol),
+            }
+        )
+    return {
+        "schema": JSON_SCHEMA,
+        "calculator": result.calculator_id,
+        "method": result.method,
+        "output_set": units.key or None,
+        "inputs": inputs,
+        "outputs": outputs,
+        "steps": steps,
+        "notes": [_note_json(note, units, prefs) for note in result.notes],
+    }
+
+
+def _base_json(value: float, dimension: Dimension) -> dict[str, Any]:
+    """Return a value in its dimension's base unit, as JSON: a count as a whole number."""
+    return {"value": _json_number(value, dimension), "unit": BASE_UNITS[dimension]}
+
+
+def _json_number(value: float, dimension: Dimension) -> float | int:
+    return int(value) if dimension is Dimension.COUNT else value
+
+
+def _shown_json(value: float, unit: Unit, parts: ValueParts, choice: str) -> dict[str, Any]:
+    """Return a value as shown, as JSON: its unit, its unrounded value, and its text.
+
+    A form adds its key and its copied text, and its value is in its full unit.
+    """
+    shown: dict[str, Any] = {
+        "unit": unit.symbol,
+        "value": _json_number(from_base(value, unit), unit.dimension),
+    }
+    if parts.compound is not None:
+        return {**shown, "form": choice, "text": parts.number, "copied": parts.compound.copied}
+    return {**shown, "text": parts.with_unit}
+
+
+def _entered_json(entry: TypedValue) -> dict[str, Any]:
+    """Return an input's text as entered, the unit or form it was read in, as JSON."""
+    entered: dict[str, Any] = {"text": entry.text, "unit": entry.unit.symbol}
+    form = entered_form(entry)
+    if form is not None:
+        entered["form"] = form
+    entered["unit_in_text"] = entry.explicit_unit
+    return entered
+
+
+def entered_form(entry: TypedValue) -> str | None:
+    """Return the form an input's text was read in: its pick, or the form its marks write.
+
+    ``None`` for text read in a unit, as ``3 mm`` or a bare ``3`` is.
+    """
+    units = registry()
+    if entry.choice is not None:
+        picked = units.choice(entry.choice, entry.dimension)
+        return picked.key if isinstance(picked, CompoundForm) else None
+    for form in units.compounds_for(entry.dimension):
+        try:
+            if form.reads and form.parse(entry.text, entry.decimal) is not None:
+                return form.key
+        except CaddCalcError:
+            continue
+    return None
+
+
+def _note_json(note: Note, units: ShownUnits, prefs: DisplayPrefs) -> dict[str, Any]:
+    """Return a note as JSON: its text as shown, and each value it names twice."""
+    text = describe_note(note, units, prefs)
+    quantities = {}
+    for name, (value, dimension) in note.quantities.items():
+        unit = units.unit(dimension)
+        parts = unit_parts(value, unit, prefs)
+        quantities[name] = {
+            "dimension": dimension.value,
+            "base": _base_json(value, dimension),
+            "shown": _shown_json(value, unit, parts, unit.symbol),
+        }
+    return {
+        "kind": note.kind.value,
+        "text": text.lead,
+        "detail": text.detail,
+        "quantities": quantities,
+        "references": [reference.to_dict() for reference in note.references],
+        "subjects": list(note.subjects),
+    }

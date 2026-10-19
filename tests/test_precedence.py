@@ -24,7 +24,13 @@ from caddcalc.core import (
     UsageError,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_error, describe_source
+from caddcalc.core.formatting import (
+    DisplayPrefs,
+    ShownUnits,
+    describe_error,
+    describe_source,
+    result_json,
+)
 
 L = Dimension.LENGTH
 SHOP = Domain(
@@ -184,8 +190,9 @@ def test_a_result_reports_sources_only_for_its_inputs() -> None:
         result.source_of("thickness")
 
 
-def test_to_dict_reports_each_inputs_source() -> None:
-    data = _Plate().run(settings=SET_T).to_dict()
+def test_json_reports_each_inputs_source() -> None:
+    result = _Plate().run(settings=SET_T)
+    data = result_json(_Plate(), result, ShownUnits.generated(), DisplayPrefs())
     assert data["inputs"]["thickness"]["source"] == {
         "kind": "domain",
         "label": "Shop settings",

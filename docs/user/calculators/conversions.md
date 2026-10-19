@@ -34,10 +34,9 @@ where the fraction is longer than the value, and shown with its `+` so its direc
 reads at a glance. The error row's tooltip says so too. A value that is that very
 fraction has an error of exactly 0, whether it's typed in inches or in millimeters, such
 as `411.1625 mm` for 16 3/16 in. A value half-way between two fractions takes the one
-with the even numerator: `3/32 in` and `2.38125 mm` are both `1/8"` to the nearest 1/16,
-as the `(≈ …")` beside the inch row says too ([Units and precision](../units-and-precision.md)).
-An error has no `(≈ …")` of its own, and a value and its negative show the same error,
-signs apart.
+with the even numerator: `3/32 in` and `2.38125 mm` are both `1/8"` to the nearest 1/16
+([Units and precision](../units-and-precision.md)). A value and its negative show the
+same error, signs apart.
 
 Stress and pressure have a smaller largest value than the others: every stress is held
 in MPa, which is larger than kPa and psi, so a value whose kPa or psi row would be

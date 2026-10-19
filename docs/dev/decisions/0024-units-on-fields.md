@@ -1191,3 +1191,43 @@ UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
 * Nine mutants, one for each guard (a pick is the user's, kept, and restored; the follow
   needs one shared choice and counts every length; the picker's Tab stop; its hiding;
   the Inputs list's second value; the settings' inches), are each killed.
+
+### 2026-10-19: as built, E-4
+
+* **Input:** `parse_inputs` returns each given input as a `TypedValue`. A `NAME=VALUE` is
+  read by `TypedValue.parse`, a bare number in the input's default choice's unit (a form's
+  full unit); a `--unit NAME=ID` input by `TypedValue.read`, the field's reader, with "."
+  only. A unit in its text is refused in the CLI's words, "'3mm' names a unit, mm, but
+  --unit T=in reads it in in; give the number alone, or drop the --unit", since E2's
+  message says "pick". Each refusal E5 lists is tested, and malformed `--unit` and
+  `--output-unit` arguments are refused too.
+* **Output:** `--output-set` (the first set by default; refused for a key the calculator
+  hasn't) and `--output-unit` (refused for an output without picks, a pick it doesn't
+  offer, or an output named twice). **Each input is shown in the choice it was read in:**
+  its `--unit`, the form its marks write (`10'-2"`), the unit its text names when that's
+  an output choice, or else its default. So the CLI's Inputs lines are in the typed unit,
+  and ADR-0019's last tie-window case, typed in one unit and shown in an inch form, is
+  left to family settings until U2b.
+* **The hint goes everywhere:** `DisplayPrefs.fraction_denominator`, `ValueParts.fraction`,
+  `CopyForm.FRACTION` and the "Copy fraction" item, `to_fraction`, `Unit.fractions` and the
+  result field's hint label. That closes the cloud review's Lows 1 and 2 at stop 1 (the
+  hint's test and its disagreement at huge sizes), PR #1's Lows 1 and 3.
+* **JSON** is `formatting.result_json`, as E5's example, which a run reproduces key for key.
+  `Result.to_dict` and `Note.to_dict` are removed; ADR-0013 and ADR-0014 are amended.
+  `output_set` is `null` for a calculator with no sets. The roadmap's "a converter's JSON
+  rows in their own units" is done.
+* **`caddcalc show`** lists each input's choice ids, its default marked, each output's
+  picks or fixed unit, and the output sets with the default marked.
+* **The corpus:** S&R's scripts weren't in the repository, so it's regenerated as E8
+  allows: 448 sheet-metal invocations from a fixed seed, 112 with `--json`, 219 that
+  run, captured with c7b1772's CLI (`tests/tooling/capture_cli_corpus.py`). Each is
+  rewritten as E8 says (`--units in` → `--output-set in`; `--units mm` →
+  `--output-set mm` and " mm" on each bare length). All 448 exit as they did, and every
+  input, output and step `base` value of the 219 equals c7b1772's bit for bit.
+* **Tests:** the schema test over every built-in and method; MH31 Fig. 13's figures as
+  `base` and `shown`, and in `in_16` with its `copied`; each refusal; `--units` and
+  `--fraction` gone. Thirteen mutants, one for each guard (the CLI's refusal, a `--unit`
+  without its input, twice, or not offered; an unknown set; an output without picks; an
+  input shown as read; a bare number in the default choice; `entered` only when given; a
+  whole count; a form's `copied`; an unrounded `shown.value`; a signed step's plus), are
+  each killed.

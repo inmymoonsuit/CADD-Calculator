@@ -44,7 +44,13 @@ from caddcalc.core import (
     ValueOrigin,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_error, describe_source
+from caddcalc.core.formatting import (
+    DisplayPrefs,
+    ShownUnits,
+    describe_error,
+    describe_source,
+    result_json,
+)
 from caddcalc.core.provenance import InputSource
 
 L = Dimension.LENGTH
@@ -269,7 +275,8 @@ def test_a_derived_value_reaches_the_result_with_its_source_and_note() -> None:
         SourceKind.DERIVED,
         "plate 1, Standard (nominal), Plates, version 1",
     )
-    assert result.to_dict()["inputs"]["thickness"]["source"]["kind"] == "derived"
+    data = result_json(_Bend(), result, ShownUnits.generated(), DisplayPrefs())
+    assert data["inputs"]["thickness"]["source"]["kind"] == "derived"
     assert result.notes == (replace(CAUTION, subjects=("thickness", "inside_radius")),), (
         "one note, naming both inputs that took a value from the choice"
     )

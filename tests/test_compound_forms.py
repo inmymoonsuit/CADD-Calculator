@@ -39,7 +39,6 @@ from caddcalc.core.formatting import (
     output_parts,
     results_tsv,
     spoken_value,
-    to_fraction,
     value_parts,
 )
 from caddcalc.core.i18n import use
@@ -47,7 +46,6 @@ from caddcalc.core.units import (
     CompoundText,
     Dimension,
     Precision,
-    from_base,
     get_unit,
     parse_quantity,
     parse_quantity_detailed,
@@ -191,10 +189,10 @@ def test_a_value_half_way_between_two_fractions_takes_the_even_one(
 def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: str) -> None:
     """Each odd 1/(2d) inch to 4 ft, typed in inches or exactly in mm, either sign.
 
-    The nearest fraction, feet and inches, the ``(≈ …")`` hint and ``to_fraction`` all
-    round by one rule, so they agree on every tie (ADR-0019, amendments).
+    The nearest fraction, feet and inches, and the inch-fraction set all round by one
+    rule, so they agree on every tie (ADR-0019, amendments).
     """
-    inches, prefs = ShownUnits.generated("in"), DisplayPrefs(fraction_denominator=denominator)
+    fractions, prefs = ShownUnits.generated(f"in_{denominator}"), DisplayPrefs()
     for odd in range(1, 4 * 12 * 2 * denominator, 2):
         half = Fraction(odd, 2 * denominator)
         text = (
@@ -206,16 +204,16 @@ def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: st
         for sign in (1, -1):
             value = sign * parse_quantity(text, L)
             assert nearest_inches(value, denominator) == sign * expected, (sign, text)
-            hint = _copied_fraction(sign * expected)
-            assert value_parts(value, L, inches, prefs).fraction == hint, (sign, text)
-            assert to_fraction(from_base(value, "in"), denominator) == hint, (sign, text)
+            written = value_parts(value, L, fractions, prefs).compound
+            assert written is not None, (sign, text)
+            assert written.copied == f'{_copied_fraction(sign * expected)}"', (sign, text)
             if denominator == 16:
                 again = parse_quantity(FeetInches(16).text(value).copied, L)
                 assert nearest_inches(again, 16) == sign * expected, (sign, text)
 
 
 def _copied_fraction(inches: Fraction) -> str:
-    """An inch fraction as the hint writes it, e.g. ``1-1/8`` or ``-3/16``."""
+    """An inch fraction as a copy writes it, before its mark, e.g. ``1-1/8`` or ``-3/16``."""
     whole, part = divmod(abs(inches), 1)
     text = "-".join(t for t in (str(whole) if whole else "", str(part) if part else "") if t)
     return ("-" if inches < 0 else "") + (text or "0")
@@ -465,13 +463,11 @@ def test_an_output_in_a_compound_form_is_shown_copied_and_spoken_in_it() -> None
     units, prefs = ShownUnits.generated("mm"), DisplayPrefs(symbols=NumberSymbols(","))
     parts = output_parts(out, result.outputs["ft_in"], units, prefs)
     expected = CompoundText("1'-4 3/16\"", "1'4-3/16\"", "1 foot 4 and 3 sixteenths inches")
-    assert parts == ValueParts("1'-4 3/16\"", "", None, expected)
+    assert parts == ValueParts("1'-4 3/16\"", "", expected)
     assert format_output(out, result.outputs["ft_in"], units, prefs) == "1'-4 3/16\""
     assert spoken_value(parts) == "1 foot 4 and 3 sixteenths inches"
     copies = {
-        form: copy_output(out, result.outputs["ft_in"], units, prefs, form)
-        for form in CopyForm
-        if form is not CopyForm.FRACTION
+        form: copy_output(out, result.outputs["ft_in"], units, prefs, form) for form in CopyForm
     }
     assert copies == {
         CopyForm.VALUE: "1'4-3/16\"",
@@ -479,8 +475,6 @@ def test_an_output_in_a_compound_form_is_shown_copied_and_spoken_in_it() -> None
         CopyForm.WITH_UNIT: "1'4-3/16\"",
         CopyForm.FULL: "16.1875",
     }
-    with pytest.raises(UsageError, match="without a fraction"):
-        copy_output(out, result.outputs["ft_in"], units, prefs, CopyForm.FRACTION)
     dms = output_parts(calc.output("dms"), result.outputs["dms"], units, prefs)
     assert dms.number == "-0°30′0,00″" and dms.unit == ""
     assert copy_output(calc.output("dms"), -0.5, units, prefs, CopyForm.VALUE) == "-0d30'0.00\""

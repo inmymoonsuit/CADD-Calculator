@@ -144,7 +144,8 @@ has:
 * `reference`: an optional `Reference` (`core.reference`) naming a table and its version,
   used in phase 2
 
-`Result.to_dict()` includes the source of every input. `core.formatting` writes the
+`Result.to_dict()` includes the source of every input (*amended 2026-10-19:*
+`formatting.result_json` does, ADR-0024 E5). `core.formatting` writes the
 wording of sources (`describe_source`), errors (`describe_error`, in display units), and
 result notes (`describe_note`), so the GUI and the CLI print the same text, e.g.
 "T = 0.1046 in (Sheet Metal settings)".
@@ -372,3 +373,10 @@ Metal, so the families registered directly, the built-ins, come in the order
 `BUILTIN_DOMAINS` gives (ADR-0018's m1 amendment), and plugins' families after them,
 sorted by name, then ID (fix round 3), so their order never follows how the installed
 packages were found. Calculators within a family are still sorted by name.
+
+### 2026-10-19: JSON's schema 1 (ADR-0024 E-4)
+
+`Result.to_dict` is removed. The CLI's `--json` prints `core.formatting.result_json`,
+schema 1, which gives each input's source as before (`InputSource.to_dict`), beside its
+value in base units and as shown and, for an input the run was given, its text as
+entered. §5's promise holds: every input's source is in the JSON.

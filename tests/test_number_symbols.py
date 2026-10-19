@@ -56,8 +56,6 @@ def test_numbers_on_screen_take_the_locales_decimal_mark() -> None:
     assert format_value(132.7, ANGLE, IN, IN_COMMA) == "132,70°"
     assert format_value(0.44, RATIO, IN, IN_COMMA) == "0,4400"
     assert format_value(1234.5 * INCH, LENGTH, IN, IN_COMMA) == "1234,5000 in", "no grouping"
-    with_fraction = DisplayPrefs(fraction_denominator=64, symbols=COMMA)
-    assert format_value(0.3119 * INCH, LENGTH, IN, with_fraction) == '0,3119 in  (≈ 5/16")'
     assert field_text(2.65684, get_unit("mm"), IN_COMMA) == "2,65684"
     assert field_text(25.4, get_unit("in"), IN_COMMA) == "1", "no mark when there are no decimals"
 

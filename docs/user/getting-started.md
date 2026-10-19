@@ -53,10 +53,20 @@ uv run caddcalc-gui
 uv run caddcalc list                                   # all calculators
 uv run caddcalc show sheet_metal.bend_allowance         # inputs, outputs, methods
 uv run caddcalc run sheet_metal.bend_allowance T=0.1046 R=0.156 A=90 --method course
-uv run caddcalc run sheet_metal.segment_flat_length T=3mm R=4mm FVD=50mm A1=90 A2=90 --units mm
-uv run caddcalc run sheet_metal.bend_allowance A=45 --fraction 64   # also show nearest 1/64"
+uv run caddcalc run sheet_metal.segment_flat_length T=3mm R=4mm FVD=50mm A1=90 A2=90 --output-set mm
+uv run caddcalc run sheet_metal.bend_allowance A=45 --output-set in_64   # to the nearest 1/64"
+uv run caddcalc run geometry.circle --unit d=ft_in d=10-2 --output-set ft_in
 uv run caddcalc run sheet_metal.truncated_cone_layout --json        # machine-readable
 ```
+
+**A value says its unit:** `T=3mm`, `A=90°`, `L=10'-2"`. A number with none is in the
+input's default unit, which `caddcalc show` lists, inches and degrees for every
+sheet-metal and geometry input. `--unit NAME=ID` reads an input as a field picked in that
+unit or form does, with its arithmetic and its forms, `--unit L=ft_in L=10-2`; its text
+then names no unit. `--output-set` chooses the units the results show in, from the sets
+`caddcalc show` lists (the first is the default), and `--output-unit KEY=ID` a result
+with its own picker. Each input is shown in the unit it was given in. Numbers use "."
+as their decimal mark, in any language.
 
 Inputs can be given by symbol (`T`) or key (`thickness`). Anything you leave out uses the
 default shown by `caddcalc show`. A name is matched exactly first, then in any case, but

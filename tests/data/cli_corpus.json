@@ -1,0 +1,10296 @@
+[
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"A=30",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 30.0
+},
+"outputs": {
+"bend_allowance": 2.6404485333333336,
+"outside_setback": 1.7736200125077846,
+"bend_deduction": 0.9067914916822355
+},
+"steps": [
+2.6404485333333336,
+1.7736200125077846,
+0.9067914916822355
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=6.35 mm",
+"R=0.25",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"A=40°30'",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.0747",
+"A=90 deg",
+"K=0.33"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.25in",
+"R=0.25in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 6.35,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 14.033500000000002,
+"outside_setback": 12.699999999999998,
+"bend_deduction": 11.366499999999993
+},
+"steps": [
+14.033500000000002,
+12.699999999999998,
+11.366499999999993
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.01 m",
+"R=6.35 mm",
+"A=90°",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=2",
+"A=90 deg",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=4mm",
+"A=30",
+"K=0.4",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1/32",
+"R=2'",
+"A=30",
+"K=0.33",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"R=0.25in",
+"A=30",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 411.16249999999997,
+"inside_radius": 6.35,
+"bend_angle": 30.0
+},
+"outputs": {
+"bend_allowance": 91.03783333333332,
+"outside_setback": 111.87213720489912,
+"bend_deduction": 132.7064410764649
+},
+"steps": [
+91.03783333333332,
+111.87213720489912,
+132.7064410764649
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=3/16",
+"K=0.44"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"A=120",
+"K=0.33",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.25",
+"A=1.5708 rad",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.25in",
+"A=90",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 6.35,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 11.6698776,
+"outside_setback": 9.006839999999999,
+"bend_deduction": 6.343802399999998
+},
+"steps": [
+11.6698776,
+9.006839999999999,
+6.343802399999998
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=1/32",
+"K=44%",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=3/16",
+"K=0.44",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.25in",
+"K=0.33"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=4mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 4.0,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 7.980377600000001,
+"outside_setback": 6.656839999999999,
+"bend_deduction": 5.333302399999997
+},
+"steps": [
+7.980377600000001,
+6.656839999999999,
+5.333302399999997
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.5 cm",
+"R=2'",
+"A=1.5708 rad",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 609.6,
+"bend_angle": 90.00021045914971
+},
+"outputs": {
+"bend_allowance": 960.2742455336514,
+"outside_setback": 614.6022575560028,
+"bend_deduction": 268.9302695783541
+},
+"steps": [
+960.2742455336514,
+614.6022575560028,
+268.9302695783541
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.25in",
+"R=6.35 mm",
+"A=30",
+"K=0.4",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1/32",
+"R=3mm",
+"K=0.5"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.25in",
+"R=0.5 cm",
+"A=120"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 5.0,
+"bend_angle": 120.0
+},
+"outputs": {
+"bend_allowance": 15.885333333333337,
+"outside_setback": 19.65877666590675,
+"bend_deduction": 23.432219998480164
+},
+"steps": [
+15.885333333333337,
+19.65877666590675,
+23.432219998480164
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.25",
+"A=30",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 0.25,
+"bend_angle": 30.0
+},
+"outputs": {
+"bend_allowance": 0.6976258666666666,
+"outside_setback": 0.7788854305264846,
+"bend_deduction": 0.8601449943863027
+},
+"steps": [
+0.6976258666666666,
+0.7788854305264846,
+0.8601449943863027
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.25in",
+"R=3mm",
+"K=44%",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=6.35 mm",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 7.9213456,
+"outside_setback": 6.619239999999999,
+"bend_deduction": 5.317134399999997
+},
+"steps": [
+7.9213456,
+6.619239999999999,
+5.317134399999997
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1/4\"",
+"R=0.5 cm",
+"A=40°30'",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 5.0,
+"bend_angle": 40.5
+},
+"outputs": {
+"bend_allowance": 5.361300000000001,
+"outside_setback": 4.1872360651965375,
+"bend_deduction": 3.013172130393074
+},
+"steps": [
+5.361300000000001,
+4.1872360651965375,
+3.013172130393074
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=6.35 mm",
+"R=3/16",
+"A=0",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 0.1875,
+"bend_angle": 0.0
+},
+"outputs": {
+"bend_allowance": 0.0,
+"outside_setback": 0.0,
+"bend_deduction": 0.0
+},
+"steps": [
+0.0,
+0.0,
+0.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"K=0.33",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=3mm",
+"A=0",
+"K=0.33",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=6.35 mm",
+"A=0",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 0.0
+},
+"outputs": {
+"bend_allowance": 0.0,
+"outside_setback": 0.0,
+"bend_deduction": 0.0
+},
+"steps": [
+0.0,
+0.0,
+0.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.25",
+"R=1/32",
+"K=0.4",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"A=30",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.0747",
+"A=0",
+"K=44%",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.01 m",
+"R=2'",
+"A=135"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 609.6,
+"bend_angle": 135.0
+},
+"outputs": {
+"bend_allowance": 1445.208,
+"outside_setback": 1495.8467232463697,
+"bend_deduction": 1546.4854464927394
+},
+"steps": [
+1445.208,
+1495.8467232463697,
+1546.4854464927394
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1/32",
+"R=0.0747",
+"A=135",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.79375,
+"inside_radius": 1.89738,
+"bend_angle": 135.0
+},
+"outputs": {
+"bend_allowance": 5.2303299,
+"outside_setback": 6.496962544109108,
+"bend_deduction": 7.763595188218216
+},
+"steps": [
+5.2303299,
+6.496962544109108,
+7.763595188218216
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"A=135",
+"K=0.4",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 7.9213456,
+"outside_setback": 6.619239999999999,
+"bend_deduction": 5.317134399999997
+},
+"steps": [
+7.9213456,
+6.619239999999999,
+5.317134399999997
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.1046",
+"R=2",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 50.8,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 81.4563776,
+"outside_setback": 53.45683999999999,
+"bend_deduction": 25.45730239999999
+},
+"steps": [
+81.4563776,
+53.45683999999999,
+25.45730239999999
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1-1/2",
+"R=1/32",
+"K=0.5",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"A=90°",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=4mm",
+"A=45",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 45.0
+},
+"outputs": {
+"bend_allowance": 4.390484,
+"outside_setback": 3.298134069039532,
+"bend_deduction": 2.205784138079064
+},
+"steps": [
+4.390484,
+3.298134069039532,
+2.205784138079064
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"R=2",
+"A=135",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=2",
+"A=90°",
+"K=0.44",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"K=0.33"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.0747",
+"A=0",
+"K=0.5"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=1'-4 3/16\"",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=1'-4 3/16\"",
+"K=0.5",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 7.9213456,
+"outside_setback": 6.619239999999999,
+"bend_deduction": 5.317134399999997
+},
+"steps": [
+7.9213456,
+6.619239999999999,
+5.317134399999997
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"R=0.5 cm",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1/4\"",
+"R=1-1/2",
+"A=0",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=1/4\"",
+"R=0.25in",
+"A=120",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 6.35,
+"bend_angle": 120.0
+},
+"outputs": {
+"bend_allowance": 18.711333333333332,
+"outside_setback": 21.997045256124732,
+"bend_deduction": 25.282757178916132
+},
+"steps": [
+18.711333333333332,
+21.997045256124732,
+25.282757178916132
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0
+},
+"outputs": {
+"bend_allowance": 7.9213456,
+"outside_setback": 6.619239999999999,
+"bend_deduction": 5.317134399999997
+},
+"steps": [
+7.9213456,
+6.619239999999999,
+5.317134399999997
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.1046",
+"A=90°",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"course",
+"T=0.25in",
+"A=120",
+"K=0.4"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.0747",
+"R=1-1/2",
+"A=135",
+"K=0.4",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 1.89738,
+"inside_radius": 38.099999999999994,
+"bend_angle": 135.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 91.55924859704879,
+"outside_setback": 96.56221725539037,
+"bend_deduction": 101.56518591373194
+},
+"steps": [
+91.55924859704879,
+96.56221725539037,
+101.56518591373194
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.5 cm",
+"R=1/32",
+"A=40°30'",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 0.03125,
+"bend_angle": 40.5,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 1.577177686872501,
+"outside_setback": 1.8561261192088174,
+"bend_deduction": 2.135074551545134
+},
+"steps": [
+1.577177686872501,
+1.8561261192088174,
+2.135074551545134
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=2'",
+"A=90"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 609.6,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 959.2267826193216,
+"outside_setback": 612.2568399999999,
+"bend_deduction": 265.28689738067817
+},
+"steps": [
+959.2267826193216,
+612.2568399999999,
+265.28689738067817
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=2'",
+"R=0.0747",
+"A=30",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6,
+"inside_radius": 0.0747,
+"bend_angle": 30.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 127.7134382704264,
+"outside_setback": 163.361843510687,
+"bend_deduction": 199.01024875094762
+},
+"steps": [
+127.7134382704264,
+163.361843510687,
+199.01024875094762
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.25in",
+"R=3/16",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 4.762499999999999,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 11.470740176419731,
+"outside_setback": 11.112499999999997,
+"bend_deduction": 10.754259823580263
+},
+"steps": [
+11.470740176419731,
+11.112499999999997,
+10.754259823580263
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.25in",
+"R=2",
+"A=135",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 2.0,
+"bend_angle": 135.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 11.295596385982103,
+"outside_setback": 20.158683245815343,
+"bend_deduction": 29.021770105648585
+},
+"steps": [
+11.295596385982103,
+20.158683245815343,
+29.021770105648585
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=1-1/2",
+"R=0.0747",
+"K=44%"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 38.099999999999994,
+"inside_radius": 1.89738,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 29.313227156923748,
+"outside_setback": 39.997379999999986,
+"bend_deduction": 50.681532843076226
+},
+"steps": [
+29.313227156923748,
+39.997379999999986,
+50.681532843076226
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=3/16",
+"A=120",
+"K=0.33"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.762499999999999,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 120.0,
+"k_factor": 0.33
+},
+"outputs": {
+"bend_allowance": 11.590434856521503,
+"outside_setback": 15.111970090957689,
+"bend_deduction": 18.633505325393877
+},
+"steps": [
+11.590434856521503,
+15.111970090957689,
+18.633505325393877
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=1/32",
+"A=1.5708 rad",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 0.79375,
+"bend_angle": 90.00021045914971,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 2.9161682088,
+"outside_setback": 3.450602674748076,
+"bend_deduction": 3.9850371406961522
+},
+"steps": [
+2.9161682088,
+3.450602674748076,
+3.9850371406961522
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.1046",
+"R=2",
+"A=90 deg",
+"K=0.33",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 50.8,
+"bend_angle": 90.0,
+"k_factor": 0.33
+},
+"outputs": {
+"bend_allowance": 81.17366039043172,
+"outside_setback": 53.45683999999999,
+"bend_deduction": 25.740019609568265
+},
+"steps": [
+81.17366039043172,
+53.45683999999999,
+25.740019609568265
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=1/4\"",
+"R=3mm",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.0,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 9.101193917449631,
+"outside_setback": 9.349999999999998,
+"bend_deduction": 9.598806082550364
+},
+"steps": [
+9.101193917449631,
+9.349999999999998,
+9.598806082550364
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.01 m",
+"R=2'"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 609.6,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 963.8406261213486,
+"outside_setback": 619.5999999999999,
+"bend_deduction": 275.35937387865124
+},
+"steps": [
+963.8406261213486,
+619.5999999999999,
+275.35937387865124
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.5 cm",
+"R=0.0747",
+"K=44%",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 1.89738,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 6.436149453482874,
+"outside_setback": 6.897379999999999,
+"bend_deduction": 7.3586105465171245
+},
+"steps": [
+6.436149453482874,
+6.897379999999999,
+7.3586105465171245
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.25",
+"A=40°30'",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.25,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 40.5,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 2.8786099325577914,
+"outside_setback": 1.5540364053774356,
+"bend_deduction": 0.22946287819707978
+},
+"steps": [
+2.8786099325577914,
+1.5540364053774356,
+0.22946287819707978
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=3/16",
+"R=0.25",
+"A=90",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1875,
+"inside_radius": 0.25,
+"bend_angle": 90.0,
+"k_factor": 0.5
+},
+"outputs": {
+"bend_allowance": 0.5399612373357456,
+"outside_setback": 0.43749999999999994,
+"bend_deduction": 0.33503876266425425
+},
+"steps": [
+0.5399612373357456,
+0.43749999999999994,
+0.33503876266425425
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"A=1.5708 rad",
+"K=0.44"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.00021045914971,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 8.060418199679999,
+"outside_setback": 6.6192643138708025,
+"bend_deduction": 5.178110428061606
+},
+"steps": [
+8.060418199679999,
+6.6192643138708025,
+5.178110428061606
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.25in",
+"R=2",
+"A=45",
+"K=44%",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 2.0,
+"bend_angle": 45.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 3.7651987953273673,
+"outside_setback": 3.4586832458153434,
+"bend_deduction": 3.1521676963033194
+},
+"steps": [
+3.7651987953273673,
+3.4586832458153434,
+3.1521676963033194
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=6.35 mm",
+"A=90",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.5
+},
+"outputs": {
+"bend_allowance": 11.211401702865894,
+"outside_setback": 10.312399999999998,
+"bend_deduction": 9.413398297134103
+},
+"steps": [
+11.211401702865894,
+10.312399999999998,
+9.413398297134103
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=4mm",
+"R=0.01 m",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 10.0,
+"bend_angle": 90.0,
+"k_factor": 0.5
+},
+"outputs": {
+"bend_allowance": 18.84955592153876,
+"outside_setback": 13.999999999999998,
+"bend_deduction": 9.150444078461238
+},
+"steps": [
+18.84955592153876,
+13.999999999999998,
+9.150444078461238
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.0747",
+"R=3mm",
+"K=44%",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 1.89738,
+"inside_radius": 3.0,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 6.023763895579694,
+"outside_setback": 4.897379999999999,
+"bend_deduction": 3.7709961044203046
+},
+"steps": [
+6.023763895579694,
+4.897379999999999,
+3.7709961044203046
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=6.35 mm",
+"R=0.25in",
+"A=45",
+"K=0.4",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 6.35,
+"bend_angle": 45.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 6.982189672603315,
+"outside_setback": 5.260512242138307,
+"bend_deduction": 3.538834811673299
+},
+"steps": [
+6.982189672603315,
+5.260512242138307,
+3.538834811673299
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=2'",
+"A=45",
+"K=0.33"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 45.0,
+"k_factor": 0.33
+},
+"outputs": {
+"bend_allowance": 161.10903941698393,
+"outside_setback": 254.1458674421859,
+"bend_deduction": 347.1826954673879
+},
+"steps": [
+161.10903941698393,
+254.1458674421859,
+347.1826954673879
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"A=90 deg",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 8.060399350960068,
+"outside_setback": 6.619239999999999,
+"bend_deduction": 5.178080649039929
+},
+"steps": [
+8.060399350960068,
+6.619239999999999,
+5.178080649039929
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=4mm",
+"R=4mm",
+"K=44%"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 4.0,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 9.047786842338605,
+"outside_setback": 7.999999999999999,
+"bend_deduction": 6.952213157661394
+},
+"steps": [
+9.047786842338605,
+7.999999999999999,
+6.952213157661394
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=10",
+"A=90°",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 12.507308672471684,
+"outside_setback": 13.962399999999997,
+"bend_deduction": 15.41749132752831
+},
+"steps": [
+12.507308672471684,
+13.962399999999997,
+15.41749132752831
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.1046",
+"R=3mm",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1046,
+"inside_radius": 3.0,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 4.784683310529098,
+"outside_setback": 3.1045999999999996,
+"bend_deduction": 1.4245166894709014
+},
+"steps": [
+4.784683310529098,
+3.1045999999999996,
+1.4245166894709014
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.25in",
+"A=90",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 10.612928302357037,
+"outside_setback": 10.312399999999998,
+"bend_deduction": 10.01187169764296
+},
+"steps": [
+10.612928302357037,
+10.312399999999998,
+10.01187169764296
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=2'",
+"A=90°",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 427.5493973235264,
+"outside_setback": 613.5623999999999,
+"bend_deduction": 799.5754026764735
+},
+"steps": [
+427.5493973235264,
+613.5623999999999,
+799.5754026764735
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=3mm",
+"K=0.4",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.0,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 6.381730785537391,
+"outside_setback": 5.656839999999999,
+"bend_deduction": 4.931949214462607
+},
+"steps": [
+6.381730785537391,
+5.656839999999999,
+4.931949214462607
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=2'",
+"R=2",
+"A=45"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6,
+"inside_radius": 50.8,
+"bend_angle": 45.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 231.4097148634242,
+"outside_setback": 273.54663659119194,
+"bend_deduction": 315.6835583189597
+},
+"steps": [
+231.4097148634242,
+273.54663659119194,
+315.6835583189597
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=1/32",
+"R=2",
+"A=90",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.03125,
+"inside_radius": 2.0,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 3.1631911030832227,
+"outside_setback": 2.0312499999999996,
+"bend_deduction": 0.8993088969167764
+},
+"steps": [
+3.1631911030832227,
+2.0312499999999996,
+0.8993088969167764
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=1'-4 3/16\"",
+"A=90 deg",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 411.16249999999997,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 647.5218865209592,
+"outside_setback": 413.8193399999999,
+"bend_deduction": 180.11679347904055
+},
+"steps": [
+647.5218865209592,
+413.8193399999999,
+180.11679347904055
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=3mm",
+"R=3/16",
+"A=0",
+"K=0.33",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 3.0,
+"inside_radius": 4.762499999999999,
+"bend_angle": 0.0,
+"k_factor": 0.33
+},
+"outputs": {
+"bend_allowance": 0.0,
+"outside_setback": 0.0,
+"bend_deduction": 0.0
+},
+"steps": [
+0.0,
+0.0,
+0.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=2'",
+"A=90°",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 609.6,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 959.2267826193216,
+"outside_setback": 612.2568399999999,
+"bend_deduction": 265.28689738067817
+},
+"steps": [
+959.2267826193216,
+612.2568399999999,
+265.28689738067817
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=2",
+"R=3mm",
+"A=120",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.0,
+"inside_radius": 3.0,
+"bend_angle": 120.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 7.958701389094141,
+"outside_setback": 8.660254037844384,
+"bend_deduction": 9.361806686594626
+},
+"steps": [
+7.958701389094141,
+8.660254037844384,
+9.361806686594626
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=6.35 mm",
+"R=0.5 cm",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 5.0,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 11.84380430403352,
+"outside_setback": 11.349999999999998,
+"bend_deduction": 10.856195695966475
+},
+"steps": [
+11.84380430403352,
+11.349999999999998,
+10.856195695966475
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.01 m",
+"A=0",
+"K=0.4",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 0.0,
+"outside_setback": 0.0,
+"bend_deduction": 0.0
+},
+"steps": [
+0.0,
+0.0,
+0.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=1'-4 3/16\"",
+"R=2'",
+"A=1.5708 rad",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 411.16249999999997,
+"inside_radius": 609.6,
+"bend_angle": 90.00021045914971,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 1241.7354642,
+"outside_setback": 1020.7662494769106,
+"bend_deduction": 799.7970347538212
+},
+"steps": [
+1241.7354642,
+1020.7662494769106,
+799.7970347538212
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=1-1/2",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 1.5,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 4.025536295345046,
+"outside_setback": 4.156839999999999,
+"bend_deduction": 4.288143704654952
+},
+"steps": [
+4.025536295345046,
+4.156839999999999,
+4.288143704654952
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=10",
+"A=45",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 45.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 6.253654336235842,
+"outside_setback": 5.783415443278102,
+"bend_deduction": 5.313176550320362
+},
+"steps": [
+6.253654336235842,
+5.783415443278102,
+5.313176550320362
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.1046",
+"R=2",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1046,
+"inside_radius": 2.0,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 3.2073147719028916,
+"outside_setback": 2.1045999999999996,
+"bend_deduction": 1.0018852280971076
+},
+"steps": [
+3.2073147719028916,
+2.1045999999999996,
+1.0018852280971076
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=0.0747",
+"A=90"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 1.89738,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 4.6497393396868025,
+"outside_setback": 4.554219999999999,
+"bend_deduction": 4.458700660313196
+},
+"steps": [
+4.6497393396868025,
+4.554219999999999,
+4.458700660313196
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=3mm",
+"A=0",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.0,
+"bend_angle": 0.0,
+"k_factor": 0.5
+},
+"outputs": {
+"bend_allowance": 0.0,
+"outside_setback": 0.0,
+"bend_deduction": 0.0
+},
+"steps": [
+0.0,
+0.0,
+0.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.01 m",
+"R=0.0747",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 0.0747,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 6.400523792791165,
+"outside_setback": 10.074699999999998,
+"bend_deduction": 13.74887620720883
+},
+"steps": [
+6.400523792791165,
+10.074699999999998,
+13.74887620720883
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=3/16",
+"R=0.25in",
+"A=0",
+"K=0.33",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1875,
+"inside_radius": 6.35,
+"bend_angle": 0.0,
+"k_factor": 0.33
+},
+"outputs": {
+"bend_allowance": 0.0,
+"outside_setback": 0.0,
+"bend_deduction": 0.0
+},
+"steps": [
+0.0,
+0.0,
+0.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=10",
+"R=3mm",
+"A=90°",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 3.0,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 10.995574287564276,
+"outside_setback": 12.999999999999998,
+"bend_deduction": 15.00442571243572
+},
+"steps": [
+10.995574287564276,
+12.999999999999998,
+15.00442571243572
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=2",
+"R=1'-4 3/16\"",
+"A=40°30'",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 50.8,
+"inside_radius": 411.16249999999997,
+"bend_angle": 40.5,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 304.9970067343255,
+"outside_setback": 170.4269639443485,
+"bend_deduction": 35.85692115437149
+},
+"steps": [
+304.9970067343255,
+170.4269639443485,
+35.85692115437149
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=3mm",
+"A=90°",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.0,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 6.381730785537391,
+"outside_setback": 5.656839999999999,
+"bend_deduction": 4.931949214462607
+},
+"steps": [
+6.381730785537391,
+5.656839999999999,
+4.931949214462607
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.25in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 10.213946035351135,
+"outside_setback": 10.312399999999998,
+"bend_deduction": 10.410853964648862
+},
+"steps": [
+10.213946035351135,
+10.312399999999998,
+10.410853964648862
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=0.1046",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 0.1046,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 1.8336471009354474,
+"outside_setback": 2.7614399999999995,
+"bend_deduction": 3.6892328990645513
+},
+"steps": [
+1.8336471009354474,
+2.7614399999999995,
+3.6892328990645513
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=1/32",
+"R=0.5 cm",
+"A=90°",
+"K=44%",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.79375,
+"inside_radius": 5.0,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 8.4025822511076,
+"outside_setback": 5.793749999999999,
+"bend_deduction": 3.184917748892399
+},
+"steps": [
+8.4025822511076,
+5.793749999999999,
+3.184917748892399
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=3/16",
+"K=44%"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.762499999999999,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 9.515727068090804,
+"outside_setback": 8.724899999999996,
+"bend_deduction": 7.9340729319091885
+},
+"steps": [
+9.515727068090804,
+8.724899999999996,
+7.9340729319091885
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=3/16",
+"A=90",
+"K=44%",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1875,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 6.353714062252676,
+"outside_setback": 4.149899999999999,
+"bend_deduction": 1.9460859377473216
+},
+"steps": [
+6.353714062252676,
+4.149899999999999,
+1.9460859377473216
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"R=1-1/2",
+"A=30",
+"K=44%"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 38.099999999999994,
+"bend_angle": 30.0,
+"k_factor": 0.44
+},
+"outputs": {
+"bend_allowance": 20.56120534551784,
+"outside_setback": 10.920762364044478,
+"bend_deduction": 1.2803193825711148
+},
+"steps": [
+20.56120534551784,
+10.920762364044478,
+1.2803193825711148
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"T=0.5 cm",
+"R=0.0747",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 0.0747,
+"bend_angle": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 3.258931139201372,
+"outside_setback": 5.074699999999999,
+"bend_deduction": 6.890468860798626
+},
+"steps": [
+3.258931139201372,
+5.074699999999999,
+6.890468860798626
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.bend_allowance",
+"--method",
+"k_factor",
+"A=120",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"bend_angle": 120.0,
+"k_factor": 0.4
+},
+"outputs": {
+"bend_allowance": 10.524620227259732,
+"outside_setback": 11.464859987492211,
+"bend_deduction": 12.405099747724691
+},
+"steps": [
+10.524620227259732,
+11.464859987492211,
+12.405099747724691
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=0.01 m",
+"FVD=0.5 cm",
+"A1=90°",
+"A2=90 deg",
+"K=0.33",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=4mm",
+"FVD=3mm",
+"A2=45",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=1'-4 3/16\"",
+"A1=90",
+"A2=135",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.5 cm",
+"R=0.01 m",
+"K=0.33",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=6.35 mm",
+"A1=1.5708 rad",
+"K=0.4",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=3/16",
+"FVD=4mm",
+"A1=0",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=4mm",
+"A1=90 deg",
+"A2=90 deg",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=1'-4 3/16\"",
+"FVD=0.01 m",
+"A2=120",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 411.16249999999997,
+"formed_dimension": 10.0,
+"bend_angle_1": 90.0,
+"bend_angle_2": 120.0
+},
+"outputs": {
+"flat_length": -365.47904233461924,
+"bend_allowance_1": 647.2255026,
+"bend_allowance_2": 862.9673368
+},
+"steps": [
+647.2255026,
+862.9673368,
+413.8193399999999,
+716.7561220346195,
+-365.47904233461924
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=10",
+"FVD=0.1046",
+"A1=30",
+"A2=1.5708 rad",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 254.0,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 2.65684,
+"bend_angle_1": 30.0,
+"bend_angle_2": 90.00021045914971
+},
+"outputs": {
+"flat_length": -211.90648163314418,
+"bend_allowance_1": 56.26032266666667,
+"bend_allowance_2": 168.78136268332236
+},
+"steps": [
+56.26032266666667,
+168.78136268332236,
+69.12081675759424,
+257.9633475505444,
+-211.90648163314418
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"FVD=0.0747",
+"A1=40°30'",
+"A2=0",
+"K=44%",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=2'",
+"FVD=2'",
+"A1=45",
+"A2=90 deg"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 609.6,
+"bend_angle_1": 45.0,
+"bend_angle_2": 90.0
+},
+"outputs": {
+"flat_length": 39.16545855781425,
+"bend_allowance_1": 198.18248400000004,
+"bend_allowance_2": 396.3649680000001
+},
+"steps": [
+198.18248400000004,
+396.3649680000001,
+254.1458674421859,
+613.5623999999999,
+39.16545855781425
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3mm",
+"R=6.35 mm",
+"A1=90°",
+"A2=90"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 3.0,
+"inside_radius": 6.35,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.0
+},
+"outputs": {
+"flat_length": 21.637500000000003,
+"bend_allowance_1": 11.8895,
+"bend_allowance_2": 11.8895
+},
+"steps": [
+11.8895,
+11.8895,
+9.349999999999998,
+9.349999999999998,
+21.637500000000003
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.5 cm",
+"FVD=0.0747",
+"A1=40°30'",
+"A2=45",
+"K=0.5",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1/4\"",
+"FVD=2",
+"A2=1.5708 rad",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.01 m",
+"R=4mm",
+"A1=0",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=4mm",
+"R=0.1046",
+"A1=40°30'",
+"A2=40°30'",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 0.1046,
+"formed_dimension": 28.448,
+"bend_angle_1": 40.5,
+"bend_angle_2": 40.5
+},
+"outputs": {
+"flat_length": 26.645366128510013,
+"bend_allowance_1": 1.2258999000000002,
+"bend_allowance_2": 1.2258999000000002
+},
+"steps": [
+1.2258999000000002,
+1.2258999000000002,
+1.5142668857449961,
+1.5142668857449961,
+26.645366128510013
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3/16",
+"R=1/32",
+"FVD=0.5 cm",
+"A1=90°",
+"A2=0",
+"K=0.4",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=4mm",
+"R=3/16",
+"A1=0",
+"A2=45",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 4.762499999999999,
+"formed_dimension": 28.448,
+"bend_angle_1": 0.0,
+"bend_angle_2": 45.0
+},
+"outputs": {
+"flat_length": 27.327734909705757,
+"bend_allowance_1": 0.0,
+"bend_allowance_2": 5.0185625
+},
+"steps": [
+0.0,
+5.0185625,
+0.0,
+3.629546340294245,
+27.327734909705757
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=0.25",
+"FVD=0.5 cm",
+"A2=90",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=2",
+"R=2",
+"A1=90 deg",
+"A2=135",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.0,
+"inside_radius": 2.0,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 135.0
+},
+"outputs": {
+"flat_length": 20.316145750507623,
+"bend_allowance_1": 4.42,
+"bend_allowance_2": 6.630000000000001
+},
+"steps": [
+4.42,
+6.630000000000001,
+3.9999999999999996,
+9.65685424949238,
+20.316145750507623
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=3/16",
+"FVD=4mm",
+"A1=45",
+"A2=0",
+"K=0.44",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3mm",
+"FVD=3mm",
+"A1=90°",
+"A2=0",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3/16",
+"A1=90°",
+"A2=90",
+"K=44%",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"R=1'-4 3/16\"",
+"FVD=0.5 cm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 411.16249999999997,
+"inside_radius": 411.16249999999997,
+"formed_dimension": 5.0,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0
+},
+"outputs": {
+"flat_length": -362.9904374999998,
+"bend_allowance_1": 908.669125,
+"bend_allowance_2": 0.0
+},
+"steps": [
+908.669125,
+0.0,
+822.3249999999998,
+0.0,
+-362.9904374999998
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=2",
+"R=0.5 cm",
+"FVD=0.0747",
+"A1=90",
+"A2=120",
+"K=0.33",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=4mm",
+"R=1/4\"",
+"FVD=3/16",
+"A1=90",
+"A2=1.5708 rad",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 6.35,
+"formed_dimension": 0.1875,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.00021045914971
+},
+"outputs": {
+"flat_length": -7.983023368031996,
+"bend_allowance_1": 12.5295,
+"bend_allowance_2": 12.529529299421293
+},
+"steps": [
+12.5295,
+12.529529299421293,
+10.349999999999998,
+10.350038017742643,
+-7.983023368031996
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=4mm",
+"FVD=2'",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 4.0,
+"formed_dimension": 609.6,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0
+},
+"outputs": {
+"flat_length": 606.9333488000001,
+"bend_allowance_1": 7.980377600000001,
+"bend_allowance_2": 0.0
+},
+"steps": [
+7.980377600000001,
+0.0,
+6.656839999999999,
+0.0,
+606.9333488000001
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 3.0,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0
+},
+"outputs": {
+"flat_length": 25.556084000000002,
+"bend_allowance_1": 8.140968,
+"bend_allowance_2": 0.0
+},
+"steps": [
+8.140968,
+0.0,
+6.962399999999999,
+0.0,
+25.556084000000002
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"FVD=0.25in",
+"A1=40°30'",
+"A2=90",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 411.16249999999997,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 6.35,
+"bend_angle_1": 40.5,
+"bend_angle_2": 90.0
+},
+"outputs": {
+"flat_length": -366.63295924326917,
+"bend_allowance_1": 121.21423560000001,
+"bend_allowance_2": 269.36496800000003
+},
+"steps": [
+121.21423560000001,
+269.36496800000003,
+153.14766104326924,
+415.1248999999999,
+-366.63295924326917
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3/16",
+"A1=1.5708 rad",
+"A2=135",
+"K=0.4"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"R=0.1046",
+"FVD=3/16",
+"A1=90°",
+"A2=0",
+"K=44%"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.0747",
+"R=1'-4 3/16\"",
+"A1=1.5708 rad",
+"A2=90°",
+"K=0.33"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=4mm",
+"R=0.0747",
+"A1=90",
+"A2=40°30'",
+"K=0.5",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=2",
+"A1=45",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=4mm",
+"FVD=2'",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 4.0,
+"formed_dimension": 609.6,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0
+},
+"outputs": {
+"flat_length": 606.9333488000001,
+"bend_allowance_1": 7.980377600000001,
+"bend_allowance_2": 0.0
+},
+"steps": [
+7.980377600000001,
+0.0,
+6.656839999999999,
+0.0,
+606.9333488000001
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.25",
+"R=3/16",
+"FVD=1-1/2",
+"A1=135",
+"A2=0",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3mm",
+"FVD=2'",
+"A2=40°30'",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 3.0,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 609.6,
+"bend_angle_1": 90.0,
+"bend_angle_2": 40.5
+},
+"outputs": {
+"flat_length": 605.9712368325705,
+"bend_allowance_1": 8.140968,
+"bend_allowance_2": 3.6634356000000006
+},
+"steps": [
+8.140968,
+3.6634356000000006,
+6.962399999999999,
+2.56856496742946,
+605.9712368325705
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=4mm",
+"A1=90",
+"A2=135",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 4.0,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 135.0
+},
+"outputs": {
+"flat_length": 15.69559858945229,
+"bend_allowance_1": 7.980377600000001,
+"bend_allowance_2": 11.970566400000003
+},
+"steps": [
+7.980377600000001,
+11.970566400000003,
+6.656839999999999,
+16.071033410547713,
+15.69559858945229
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"FVD=0.25in",
+"A1=40°30'",
+"K=0.44"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.5 cm",
+"R=0.25in",
+"A1=90 deg",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 6.35,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0
+},
+"outputs": {
+"flat_length": 23.682750000000002,
+"bend_allowance_1": 13.1695,
+"bend_allowance_2": 0.0
+},
+"steps": [
+13.1695,
+0.0,
+11.349999999999998,
+0.0,
+23.682750000000002
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.01 m",
+"R=0.01 m",
+"A2=135",
+"K=0.33",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.25",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0
+},
+"outputs": {
+"flat_length": 23.278084000000003,
+"bend_allowance_1": 10.284968,
+"bend_allowance_2": 0.0
+},
+"steps": [
+10.284968,
+0.0,
+10.312399999999998,
+0.0,
+23.278084000000003
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.25",
+"R=2'",
+"FVD=1-1/2",
+"A2=90 deg",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=0.1046",
+"FVD=0.25in",
+"A1=90°",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=2",
+"R=6.35 mm",
+"FVD=1-1/2",
+"A1=120",
+"A2=40°30'",
+"K=0.5",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"FVD=10",
+"A1=90 deg",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.0747",
+"R=1'-4 3/16\"",
+"FVD=0.25",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=3/16",
+"R=3/16",
+"A1=120",
+"A2=30",
+"K=0.44",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=0.25in",
+"A1=90 deg",
+"A2=0",
+"K=0.5",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=6.35 mm",
+"FVD=1-1/2",
+"A2=90 deg",
+"K=0.5"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=0.5 cm",
+"A1=0",
+"A2=45"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 0.0,
+"bend_angle_2": 45.0
+},
+"outputs": {
+"flat_length": 27.090894368587374,
+"bend_allowance_1": 0.0,
+"bend_allowance_2": 4.710484
+},
+"steps": [
+0.0,
+4.710484,
+0.0,
+3.7123476314126265,
+27.090894368587374
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=6.35 mm",
+"A1=0",
+"K=0.44",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1'-4 3/16\"",
+"FVD=6.35 mm",
+"K=44%",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"R=0.5 cm",
+"FVD=0.01 m",
+"A1=1.5708 rad",
+"A2=90",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 5.0,
+"formed_dimension": 10.0,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 90.0
+},
+"outputs": {
+"flat_length": 4.236680641273191,
+"bend_allowance_1": 9.550399932937214,
+"bend_allowance_2": 9.550377600000001
+},
+"steps": [
+9.550399932937214,
+9.550377600000001,
+7.656868125195418,
+7.656839999999999,
+4.236680641273191
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1/4\"",
+"A2=90",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"course",
+"T=1/32",
+"FVD=2'",
+"A1=90°",
+"A2=40°30'",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.79375,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 609.6,
+"bend_angle_1": 90.0,
+"bend_angle_2": 40.5
+},
+"outputs": {
+"flat_length": 607.9677154289441,
+"bend_allowance_1": 6.728968,
+"bend_allowance_2": 3.0280356000000004
+},
+"steps": [
+6.728968,
+3.0280356000000004,
+4.756149999999999,
+1.754636371055904,
+607.9677154289441
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=6.35 mm",
+"R=0.1046",
+"A1=45",
+"A2=90",
+"K=0.44",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 2.65684,
+"formed_dimension": 28.448,
+"bend_angle_1": 45.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": 22.132024305335534,
+"bend_allowance_1": 4.281079724973346,
+"bend_allowance_2": 8.562159449946693
+},
+"steps": [
+4.281079724973346,
+8.562159449946693,
+3.7307552821244876,
+9.006839999999999,
+22.132024305335534
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1/4\"",
+"R=3/16",
+"FVD=0.25",
+"K=0.5"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 4.762499999999999,
+"formed_dimension": 6.35,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 1.4715979219672475,
+"bend_allowance_1": 12.46819584393449,
+"bend_allowance_2": 0.0
+},
+"steps": [
+12.46819584393449,
+0.0,
+11.112499999999997,
+0.0,
+1.4715979219672475
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=2",
+"R=1/32",
+"FVD=0.01 m",
+"A1=40°30'",
+"A2=40°30'",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.0,
+"inside_radius": 0.03125,
+"formed_dimension": 10.0,
+"bend_angle_1": 40.5,
+"bend_angle_2": 40.5,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 9.088840625233043,
+"bend_allowance_1": 0.587576000991716,
+"bend_allowance_2": 0.587576000991716
+},
+"steps": [
+0.587576000991716,
+0.587576000991716,
+0.7493676878793363,
+0.7493676878793363,
+9.088840625233043
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=3mm",
+"R=6.35 mm",
+"FVD=1'-4 3/16\"",
+"A1=135",
+"A2=90",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 3.0,
+"inside_radius": 6.35,
+"formed_dimension": 411.16249999999997,
+"bend_angle_1": 135.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 394.65304214848646,
+"bend_allowance_1": 18.496126748009907,
+"bend_allowance_2": 12.330751165339937
+},
+"steps": [
+18.496126748009907,
+12.330751165339937,
+22.572896808188435,
+9.349999999999998,
+394.65304214848646
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25in",
+"R=1/4\"",
+"FVD=1-1/2",
+"A1=135",
+"A2=1.5708 rad",
+"K=0.33",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 6.35,
+"formed_dimension": 38.099999999999994,
+"bend_angle_1": 135.0,
+"bend_angle_2": 90.00021045914971,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": 11.322157091530926,
+"bend_allowance_1": 19.899240566919445,
+"bend_allowance_2": 13.266191399999999
+},
+"steps": [
+19.899240566919445,
+13.266191399999999,
+30.660512242138303,
+12.700046649790488,
+11.322157091530926
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25",
+"R=2",
+"A2=30",
+"K=0.5"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 50.8,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 30.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 12.507191478397708,
+"bend_allowance_1": 84.78373173875454,
+"bend_allowance_2": 28.261243912918175
+},
+"steps": [
+84.78373173875454,
+28.261243912918175,
+57.14999999999999,
+15.313296347438662,
+12.507191478397708
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25in",
+"A1=90",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 23.24257301767557,
+"bend_allowance_1": 10.213946035351135,
+"bend_allowance_2": 0.0
+},
+"steps": [
+10.213946035351135,
+0.0,
+10.312399999999998,
+0.0,
+23.24257301767557
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=1'-4 3/16\"",
+"A1=1.5708 rad",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 411.16249999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 0.0,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": -61.75722744122328,
+"bend_allowance_1": 647.23126520976,
+"bend_allowance_2": 0.0
+},
+"steps": [
+647.23126520976,
+0.0,
+413.82086004610323,
+0.0,
+-61.75722744122328
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=1/4\"",
+"FVD=1/32",
+"A1=0",
+"A2=90 deg",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 6.35,
+"formed_dimension": 0.79375,
+"bend_angle_1": 0.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -2.3911407598498524,
+"bend_allowance_1": 0.0,
+"bend_allowance_2": 11.643898480300294
+},
+"steps": [
+0.0,
+11.643898480300294,
+0.0,
+9.006839999999999,
+-2.3911407598498524
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25",
+"R=10",
+"FVD=0.0747",
+"A1=90 deg",
+"A2=0",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.25,
+"inside_radius": 10.0,
+"formed_dimension": 0.0747,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -2.242778549685771,
+"bend_allowance_1": 15.865042900628454,
+"bend_allowance_2": 0.0
+},
+"steps": [
+15.865042900628454,
+0.0,
+10.249999999999998,
+0.0,
+-2.242778549685771
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1-1/2",
+"R=0.01 m",
+"A1=1.5708 rad",
+"A2=135",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 1.5,
+"inside_radius": 10.0,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 135.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 9.997572588792563,
+"bend_allowance_1": 16.650479999999998,
+"bend_allowance_2": 24.975661596038854
+},
+"steps": [
+16.650479999999998,
+24.975661596038854,
+11.50004224193627,
+27.763455967290593,
+9.997572588792563
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.01 m",
+"R=3/16",
+"FVD=2'",
+"A1=135",
+"A2=135",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 0.1875,
+"formed_dimension": 609.6,
+"bend_angle_1": 135.0,
+"bend_angle_2": 135.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 572.633157584521,
+"bend_allowance_1": 12.222758917872788,
+"bend_allowance_2": 12.222758917872788
+},
+"steps": [
+12.222758917872788,
+12.222758917872788,
+24.594800666675905,
+24.594800666675905,
+572.633157584521
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"FVD=0.01 m",
+"A1=90",
+"A2=1.5708 rad",
+"K=0.5",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 10.0,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.00021045914971,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 5.072306024995687,
+"bend_allowance_1": 8.310800621732975,
+"bend_allowance_2": 8.310820056
+},
+"steps": [
+8.310800621732975,
+8.310820056,
+6.619239999999999,
+6.6192643138708025,
+5.072306024995687
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=2",
+"FVD=1/4\"",
+"A1=45",
+"K=0.4"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 50.8,
+"formed_dimension": 6.35,
+"bend_angle_1": 45.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 4.573900671974799,
+"bend_allowance_1": 40.73289760316672,
+"bend_allowance_2": 0.0
+},
+"steps": [
+40.73289760316672,
+0.0,
+22.14254812960856,
+0.0,
+4.573900671974799
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=3/16",
+"R=0.01 m",
+"FVD=1/32",
+"A1=45",
+"A2=40°30'",
+"K=0.44"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.762499999999999,
+"inside_radius": 10.0,
+"formed_dimension": 0.79375,
+"bend_angle_1": 45.0,
+"bend_angle_2": 40.5,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": -1.7424571842614922,
+"bend_allowance_1": 9.499783485373836,
+"bend_allowance_2": 8.549805136836452
+},
+"steps": [
+9.499783485373836,
+8.549805136836452,
+6.114827714532815,
+5.446173780833822,
+-1.7424571842614922
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=0.5 cm",
+"FVD=0.1046",
+"A2=1.5708 rad",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 5.0,
+"formed_dimension": 0.1046,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.00021045914971,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": -5.5188391755341915,
+"bend_allowance_1": 9.690257619642454,
+"bend_allowance_2": 9.69028027968
+},
+"steps": [
+9.690257619642454,
+9.69028027968,
+7.656839999999999,
+7.656868125195418,
+-5.5188391755341915
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1-1/2",
+"R=1-1/2",
+"FVD=1-1/2",
+"A1=1.5708 rad",
+"A2=45",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 38.099999999999994,
+"inside_radius": 38.099999999999994,
+"formed_dimension": 38.099999999999994,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 45.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -6.823548333762837,
+"bend_allowance_1": 83.78647199999997,
+"bend_allowance_2": 41.893138035619884
+},
+"steps": [
+83.78647199999997,
+41.893138035619884,
+76.20027989874292,
+31.563073452829837,
+-6.823548333762837
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.1046",
+"R=0.25in",
+"FVD=0.5 cm",
+"A1=90 deg",
+"A2=1.5708 rad",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 6.35,
+"formed_dimension": 5.0,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.00021045914971,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": -0.9524650502371808,
+"bend_allowance_1": 12.061233931588468,
+"bend_allowance_2": 12.061262135999998
+},
+"steps": [
+12.061233931588468,
+12.061262135999998,
+9.006839999999999,
+9.006873084031415,
+-0.9524650502371808
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1'-4 3/16\"",
+"K=0.33"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 411.16249999999997,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": -276.99916843924575,
+"bend_allowance_1": 219.3554631215083,
+"bend_allowance_2": 0.0
+},
+"steps": [
+219.3554631215083,
+0.0,
+415.1248999999999,
+0.0,
+-276.99916843924575
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=6.35 mm",
+"R=1/32",
+"A2=90°",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 0.03125,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 19.724410055271385,
+"bend_allowance_1": 4.038910055271378,
+"bend_allowance_2": 4.038910055271378
+},
+"steps": [
+4.038910055271378,
+4.038910055271378,
+6.381249999999999,
+6.381249999999999,
+19.724410055271385
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=3/16",
+"R=0.01 m",
+"FVD=1'-4 3/16\"",
+"K=44%",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.762499999999999,
+"inside_radius": 10.0,
+"formed_dimension": 411.16249999999997,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": 405.8997834853738,
+"bend_allowance_1": 18.999566970747672,
+"bend_allowance_2": 0.0
+},
+"steps": [
+18.999566970747672,
+0.0,
+14.762499999999998,
+0.0,
+405.8997834853738
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1'-4 3/16\"",
+"R=2'",
+"FVD=0.1046",
+"A1=135",
+"A2=135",
+"K=0.5",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 411.16249999999997,
+"inside_radius": 609.6,
+"formed_dimension": 0.1046,
+"bend_angle_1": 135.0,
+"bend_angle_2": 135.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": -3007.8471731656236,
+"bend_allowance_1": 1920.7255697581083,
+"bend_allowance_2": 1920.7255697581083
+},
+"steps": [
+1920.7255697581083,
+1920.7255697581083,
+2464.3386714618664,
+2464.3386714618664,
+-3007.8471731656236
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.01 m",
+"A1=90°",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 21.52465249963329,
+"bend_allowance_1": 14.078104999266579,
+"bend_allowance_2": 0.0
+},
+"steps": [
+14.078104999266579,
+0.0,
+13.962399999999997,
+0.0,
+21.52465249963329
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=1-1/2",
+"FVD=2",
+"A1=1.5708 rad",
+"A2=40°30'"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 38.099999999999994,
+"formed_dimension": 50.8,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 40.5,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 39.60668446205208,
+"bend_allowance_1": 61.51682570879999,
+"bend_allowance_2": 27.682506835217215
+},
+"steps": [
+61.51682570879999,
+27.682506835217215,
+40.75698970850764,
+15.035992101448883,
+39.60668446205208
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25in",
+"FVD=1/32",
+"A1=40°30'",
+"A2=90 deg",
+"K=44%",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 0.03125,
+"bend_angle_1": 40.5,
+"bend_angle_2": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": -6.391222196538527,
+"bend_allowance_1": 4.7758177360606675,
+"bend_allowance_2": 10.612928302357037
+},
+"steps": [
+4.7758177360606675,
+10.612928302357037,
+3.804445215747381,
+10.312399999999998,
+-6.391222196538527
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1/4\"",
+"R=3mm",
+"K=0.5"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.0,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": 23.947833658979246,
+"bend_allowance_1": 9.699667317958486,
+"bend_allowance_2": 0.0
+},
+"steps": [
+9.699667317958486,
+0.0,
+9.349999999999998,
+0.0,
+23.947833658979246
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=2",
+"R=3mm",
+"FVD=10",
+"A1=1.5708 rad",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.0,
+"inside_radius": 3.0,
+"formed_dimension": 10.0,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 7.984501633940752,
+"bend_allowance_1": 5.96904,
+"bend_allowance_2": 0.0
+},
+"steps": [
+5.96904,
+0.0,
+5.000018366059248,
+0.0,
+7.984501633940752
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"A1=1.5708 rad",
+"A2=40°30'",
+"K=0.33",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 40.5,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": 24.89774252111694,
+"bend_allowance_1": 7.60134812976,
+"bend_allowance_2": 3.4205986595443845
+},
+"steps": [
+7.60134812976,
+3.4205986595443845,
+6.6192643138708025,
+2.4419665596644515,
+24.89774252111694
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=1'-4 3/16\"",
+"A1=90",
+"A2=90°",
+"K=0.4",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 411.16249999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -151.66879347904057,
+"bend_allowance_1": 647.5218865209592,
+"bend_allowance_2": 647.5218865209592
+},
+"steps": [
+647.5218865209592,
+647.5218865209592,
+413.8193399999999,
+413.8193399999999,
+-151.66879347904057
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=4mm",
+"FVD=0.0747",
+"A1=120",
+"A2=45",
+"K=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 4.0,
+"formed_dimension": 1.89738,
+"bend_angle_1": 120.0,
+"bend_angle_2": 45.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": -4.717584491752425,
+"bend_allowance_1": 11.159816751493949,
+"bend_allowance_2": 4.184931281810231
+},
+"steps": [
+11.159816751493949,
+4.184931281810231,
+11.529985097856802,
+2.7573534105477138,
+-4.717584491752425
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.5 cm",
+"R=0.25",
+"FVD=0.25",
+"A1=0",
+"A2=90 deg",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 5.0,
+"inside_radius": 0.25,
+"formed_dimension": 0.25,
+"bend_angle_1": 0.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -3.2328541323557403,
+"bend_allowance_1": 0.0,
+"bend_allowance_2": 3.5342917352885173
+},
+"steps": [
+0.0,
+3.5342917352885173,
+0.0,
+5.249999999999999,
+-3.2328541323557403
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25in",
+"R=2",
+"A1=45",
+"A2=120",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 50.8,
+"formed_dimension": 28.448,
+"bend_angle_1": 45.0,
+"bend_angle_2": 120.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -17.406922343547215,
+"bend_allowance_1": 41.89313803561989,
+"bend_allowance_2": 111.71503476165303
+},
+"steps": [
+41.89313803561989,
+111.71503476165303,
+23.67230508962238,
+98.9867036525613,
+-17.406922343547215
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.0747",
+"R=0.5 cm",
+"FVD=0.0747",
+"A2=90°",
+"K=0.5",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 1.89738,
+"inside_radius": 5.0,
+"formed_dimension": 1.89738,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": -2.5531995987584644,
+"bend_allowance_1": 9.344180401241534,
+"bend_allowance_2": 9.344180401241534
+},
+"steps": [
+9.344180401241534,
+9.344180401241534,
+6.897379999999999,
+6.897379999999999,
+-2.5531995987584644
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1/32",
+"R=2",
+"FVD=0.25in",
+"A1=90 deg",
+"K=0.33",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.03125,
+"inside_radius": 2.0,
+"formed_dimension": 6.35,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": 5.897645745354932,
+"bend_allowance_1": 3.157791490709865,
+"bend_allowance_2": 0.0
+},
+"steps": [
+3.157791490709865,
+0.0,
+2.0312499999999996,
+0.0,
+5.897645745354932
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1-1/2",
+"FVD=0.5 cm",
+"A1=120",
+"A2=40°30'"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 38.099999999999994,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 5.0,
+"bend_angle_1": 120.0,
+"bend_angle_2": 40.5,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -56.47645788340154,
+"bend_allowance_1": 40.21741251419509,
+"bend_allowance_2": 13.573376723540843
+},
+"steps": [
+40.21741251419509,
+13.573376723540843,
+72.85421388828512,
+15.51763861398439,
+-56.47645788340154
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=0.25",
+"A1=0",
+"A2=30",
+"K=44%",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 0.25,
+"formed_dimension": 28.448,
+"bend_angle_1": 0.0,
+"bend_angle_2": 30.0,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": 28.04061041403463,
+"bend_allowance_1": 0.0,
+"bend_allowance_2": 0.7429916891222317
+},
+"steps": [
+0.0,
+0.7429916891222317,
+0.0,
+0.7788854305264846,
+28.04061041403463
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.1046",
+"FVD=0.1046",
+"A1=135",
+"A2=90",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1046,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 0.1046,
+"bend_angle_1": 135.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -5.918699703664879,
+"bend_allowance_1": 9.434768225407794,
+"bend_allowance_2": 6.289845483605196
+},
+"steps": [
+9.434768225407794,
+6.289845483605196,
+9.818606558171375,
+4.066999999999998,
+-5.918699703664879
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=10",
+"R=0.5 cm",
+"A1=1.5708 rad",
+"A2=90 deg"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 254.0,
+"inside_radius": 5.0,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -322.10586714370095,
+"bend_allowance_1": 167.44728,
+"bend_allowance_2": 167.446888436336
+},
+"steps": [
+167.44728,
+167.446888436336,
+259.00095136186906,
+258.99999999999994,
+-322.10586714370095
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=3mm",
+"R=0.5 cm",
+"FVD=0.01 m",
+"A1=120",
+"A2=135",
+"K=0.4",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 3.0,
+"inside_radius": 5.0,
+"formed_dimension": 10.0,
+"bend_angle_1": 120.0,
+"bend_angle_2": 135.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -9.373287222520597,
+"bend_allowance_1": 12.98524963483781,
+"bend_allowance_2": 14.608405839192539
+},
+"steps": [
+12.98524963483781,
+14.608405839192539,
+13.856406460551014,
+19.31370849898476,
+-9.373287222520597
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.0747",
+"R=6.35 mm",
+"A1=40°30'",
+"A2=0",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.0747,
+"inside_radius": 6.35,
+"formed_dimension": 28.448,
+"bend_angle_1": 40.5,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 28.332638751025744,
+"bend_allowance_1": 4.509671431226501,
+"bend_allowance_2": 0.0
+},
+"steps": [
+4.509671431226501,
+0.0,
+2.370196964587506,
+0.0,
+28.332638751025744
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"A1=90°",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 25.775492585222402,
+"bend_allowance_1": 7.893465170444799,
+"bend_allowance_2": 0.0
+},
+"steps": [
+7.893465170444799,
+0.0,
+6.619239999999999,
+0.0,
+25.775492585222402
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=6.35 mm",
+"FVD=0.25in",
+"K=0.4"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 6.35,
+"formed_dimension": 6.35,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 3.165109240150148,
+"bend_allowance_1": 11.643898480300294,
+"bend_allowance_2": 0.0
+},
+"steps": [
+11.643898480300294,
+0.0,
+9.006839999999999,
+0.0,
+3.165109240150148
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25",
+"R=1/32",
+"FVD=1/32",
+"A1=40°30'",
+"A2=90",
+"K=0.5"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 0.79375,
+"formed_dimension": 0.79375,
+"bend_angle_1": 40.5,
+"bend_angle_2": 90.0,
+"k_factor": 0.5
+},
+"outputs": {
+"flat_length": -4.4657475211770725,
+"bend_allowance_1": 2.8053440648852606,
+"bend_allowance_2": 6.234097921967246
+},
+"steps": [
+2.8053440648852606,
+6.234097921967246,
+2.635468514603327,
+7.143749999999999,
+-4.4657475211770725
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=6.35 mm",
+"FVD=3mm",
+"A1=135",
+"A2=45",
+"K=0.4",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 3.0,
+"bend_angle_1": 135.0,
+"bend_angle_2": 45.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -15.953925845881473,
+"bend_allowance_1": 15.320919053026703,
+"bend_allowance_2": 5.106973017675568
+},
+"steps": [
+15.320919053026703,
+5.106973017675568,
+24.896335940616304,
+4.271535940616305,
+-15.953925845881473
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.0747",
+"R=10",
+"FVD=4mm",
+"A1=40°30'",
+"A2=30",
+"K=0.33",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 1.89738,
+"inside_radius": 254.0,
+"formed_dimension": 4.0,
+"bend_angle_1": 40.5,
+"bend_angle_2": 30.0,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": -2.3197529809640116,
+"bend_allowance_1": 179.984609186535,
+"bend_allowance_2": 133.32193273076666
+},
+"steps": [
+179.984609186535,
+133.32193273076666,
+94.40552762337472,
+68.56749631624012,
+-2.3197529809640116
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=0.25",
+"FVD=2",
+"A1=135",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 0.25,
+"formed_dimension": 2.0,
+"bend_angle_1": 135.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -3.4712018865100385,
+"bend_allowance_1": 3.0930613302771377,
+"bend_allowance_2": 0.0
+},
+"steps": [
+3.0930613302771377,
+0.0,
+7.017732551648607,
+0.0,
+-3.4712018865100385
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=2'",
+"R=10",
+"FVD=0.1046",
+"A1=1.5708 rad",
+"A2=90 deg",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6,
+"inside_radius": 254.0,
+"formed_dimension": 2.65684,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 90.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -942.5401745199676,
+"bend_allowance_1": 782.007072,
+"bend_allowance_2": 782.0052433315714
+},
+"steps": [
+782.007072,
+782.0052433315714,
+863.6031721857534,
+863.5999999999999,
+-942.5401745199676
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.25in",
+"FVD=10",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 10.0,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 4.794573017675569,
+"bend_allowance_1": 10.213946035351135,
+"bend_allowance_2": 0.0
+},
+"steps": [
+10.213946035351135,
+0.0,
+10.312399999999998,
+0.0,
+4.794573017675569
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1-1/2",
+"R=1-1/2",
+"A1=90",
+"A2=90°",
+"K=44%",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 1.5,
+"inside_radius": 1.5,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 90.0,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": 25.84092006587698,
+"bend_allowance_1": 3.392920065876977,
+"bend_allowance_2": 3.392920065876977
+},
+"steps": [
+3.392920065876977,
+3.392920065876977,
+2.9999999999999996,
+2.9999999999999996,
+25.84092006587698
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=3/16",
+"FVD=0.1046",
+"A1=40°30'",
+"A2=0",
+"K=0.4",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.762499999999999,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 2.65684,
+"bend_angle_1": 40.5,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 1.511764786927655,
+"bend_allowance_1": 4.1474206655263695,
+"bend_allowance_2": 0.0
+},
+"steps": [
+4.1474206655263695,
+0.0,
+3.2187855458355297,
+0.0,
+1.511764786927655
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.01 m",
+"FVD=1-1/2",
+"A1=1.5708 rad",
+"A2=30",
+"K=0.33",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 10.0,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 38.099999999999994,
+"bend_angle_1": 90.00021045914971,
+"bend_angle_2": 30.0,
+"k_factor": 0.33
+},
+"outputs": {
+"flat_length": 28.0015157426991,
+"bend_allowance_1": 11.40777792,
+"bend_allowance_2": 3.8025837479050852
+},
+"steps": [
+11.40777792,
+3.8025837479050852,
+13.962451286853128,
+3.7412138044003074,
+28.0015157426991
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=4mm",
+"R=3/16",
+"FVD=1-1/2",
+"A1=90°",
+"K=44%"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 4.0,
+"inside_radius": 4.762499999999999,
+"formed_dimension": 38.099999999999994,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.44
+},
+"outputs": {
+"flat_length": 34.460259520759855,
+"bend_allowance_1": 10.245519041519712,
+"bend_allowance_2": 0.0
+},
+"steps": [
+10.245519041519712,
+0.0,
+8.762499999999998,
+0.0,
+34.460259520759855
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"R=1'-4 3/16\"",
+"A1=45",
+"K=0.4",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 411.16249999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 45.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 18.918888629956825,
+"bend_allowance_1": 323.7609432604796,
+"bend_allowance_2": 0.0
+},
+"steps": [
+323.7609432604796,
+0.0,
+171.409583000283,
+0.0,
+18.918888629956825
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=1/4\"",
+"A1=40°30'",
+"A2=120",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 6.35,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 28.448,
+"bend_angle_1": 40.5,
+"bend_angle_2": 120.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 15.889389251134094,
+"bend_allowance_1": 4.5962757159080105,
+"bend_allowance_2": 13.618594713801512
+},
+"steps": [
+4.5962757159080105,
+13.618594713801512,
+3.804445215747381,
+17.861600747973284,
+15.889389251134094
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"T=0.1046",
+"R=0.1046",
+"A2=40°30'",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 0.1046,
+"inside_radius": 0.1046,
+"formed_dimension": 28.448,
+"bend_angle_1": 90.0,
+"bend_angle_2": 40.5,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": 28.328391920608112,
+"bend_allowance_1": 0.23002741409584468,
+"bend_allowance_2": 0.1035123363431301
+},
+"steps": [
+0.23002741409584468,
+0.1035123363431301,
+0.20919999999999997,
+0.07717795461137583,
+28.328391920608112
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.segment_flat_length",
+"--method",
+"k_factor",
+"FVD=1-1/2",
+"A1=90",
+"K=0.4",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684,
+"inside_radius": 3.9623999999999997,
+"formed_dimension": 1.5,
+"bend_angle_1": 90.0,
+"bend_angle_2": 0.0,
+"k_factor": 0.4
+},
+"outputs": {
+"flat_length": -1.1725074147775993,
+"bend_allowance_1": 7.893465170444799,
+"bend_allowance_2": 0.0
+},
+"steps": [
+7.893465170444799,
+0.0,
+6.619239999999999,
+0.0,
+-1.1725074147775993
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=3mm",
+"T=10",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.0747",
+"H=10",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 0.0747,
+"bottom_diameter": 254.0,
+"height": 10.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 127.35585771774495,
+"inside_radius": 0.03746567424165905,
+"outside_radius": 127.39332339198661,
+"sweep_angle": 356.20761270487765
+},
+"steps": [
+127.35585771774495,
+0.03746567424165905,
+127.39332339198661,
+356.20761270487765
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=4mm",
+"H=3/16",
+"T=0.25in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.5 cm",
+"Db=0.5 cm",
+"H=0.25in",
+"T=6.35 mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=4mm",
+"H=2'",
+"T=2",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 4.0,
+"bottom_diameter": 254.0,
+"height": 609.6,
+"thickness": 50.8
+},
+"outputs": {
+"slant_height": 622.2838259186881,
+"inside_radius": 9.956541214699008,
+"outside_radius": 632.240367133387,
+"sweep_angle": 57.851415223355026
+},
+"steps": [
+622.2838259186881,
+9.956541214699008,
+632.240367133387,
+57.851415223355026
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=2",
+"H=0.01 m",
+"T=3mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 2.0,
+"bottom_diameter": 254.0,
+"height": 10.0,
+"thickness": 3.0
+},
+"outputs": {
+"slant_height": 126.39620247459969,
+"inside_radius": 1.0031444640841245,
+"outside_radius": 127.39934693868382,
+"sweep_angle": 354.6329010755819
+},
+"steps": [
+126.39620247459969,
+1.0031444640841245,
+127.39934693868382,
+354.6329010755819
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"H=6.35 mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 6.35,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 51.1953367016958,
+"inside_radius": 76.79300505254368,
+"outside_radius": 127.98834175423949,
+"sweep_angle": 354.55160195086194
+},
+"steps": [
+51.1953367016958,
+76.79300505254368,
+127.98834175423949,
+354.55160195086194
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=1'-4 3/16\"",
+"H=0.01 m"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 411.16249999999997,
+"height": 10.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 129.76712931849306,
+"inside_radius": 76.42726634708794,
+"outside_radius": 206.194395665581,
+"sweep_angle": 357.27315168875356
+},
+"steps": [
+129.76712931849306,
+76.42726634708794,
+206.194395665581,
+357.27315168875356
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1/32",
+"Db=1-1/2",
+"H=0.25in",
+"T=3mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.01 m",
+"Db=0.25",
+"H=1'-4 3/16\"",
+"T=0.25"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1-1/2",
+"Db=1/32",
+"H=3/16"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=1/4\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=0.25",
+"H=2",
+"T=0.01 m",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"H=3mm",
+"T=0.25",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 3.0,
+"thickness": 0.25
+},
+"outputs": {
+"slant_height": 50.88850557837203,
+"inside_radius": 76.33275836755803,
+"outside_radius": 127.22126394593006,
+"sweep_angle": 359.0201714975273
+},
+"steps": [
+50.88850557837203,
+76.33275836755803,
+127.22126394593006,
+359.0201714975273
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=2'",
+"H=0.5 cm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 609.6,
+"height": 5.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 228.65467412672766,
+"inside_radius": 76.2182247089092,
+"outside_radius": 304.8728988356369,
+"sweep_angle": 358.7936875260679
+},
+"steps": [
+228.65467412672766,
+76.2182247089092,
+304.8728988356369,
+358.7936875260679
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.01 m",
+"H=0.5 cm",
+"T=10"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"T=0.01 m",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 127.0,
+"thickness": 10.0
+},
+"outputs": {
+"slant_height": 136.7831861012164,
+"inside_radius": 205.1747791518245,
+"outside_radius": 341.9579652530409,
+"sweep_angle": 128.43683862576566
+},
+"steps": [
+136.7831861012164,
+205.1747791518245,
+341.9579652530409,
+128.43683862576566
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=4mm",
+"H=3/16",
+"T=0.25in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 4.0,
+"bottom_diameter": 254.0,
+"height": 4.762499999999999,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 125.09069272431903,
+"inside_radius": 2.0014510835891044,
+"outside_radius": 127.09214380790813,
+"sweep_angle": 350.74551946637524
+},
+"steps": [
+125.09069272431903,
+2.0014510835891044,
+127.09214380790813,
+350.74551946637524
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1-1/2",
+"Db=2",
+"H=1/32",
+"T=0.01 m"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 38.099999999999994,
+"bottom_diameter": 50.8,
+"height": 0.79375,
+"thickness": 10.0
+},
+"outputs": {
+"slant_height": 6.399417087711975,
+"inside_radius": 19.19825126313592,
+"outside_radius": 25.597668350847893,
+"sweep_angle": 286.90113096792027
+},
+"steps": [
+6.399417087711975,
+19.19825126313592,
+25.597668350847893,
+286.90113096792027
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1'-4 3/16\"",
+"Db=4mm",
+"H=0.01 m",
+"T=1/4\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=6.35 mm",
+"Db=3/16",
+"H=3/16",
+"T=0.5 cm",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1/32",
+"Db=1/4\"",
+"H=0.5 cm",
+"T=0.5 cm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 0.79375,
+"bottom_diameter": 6.35,
+"height": 5.0,
+"thickness": 5.0
+},
+"outputs": {
+"slant_height": 5.719963156841572,
+"inside_radius": 0.8171375938345103,
+"outside_radius": 6.537100750676082,
+"sweep_angle": 37.17244222905212
+},
+"steps": [
+5.719963156841572,
+0.8171375938345103,
+6.537100750676082,
+37.17244222905212
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=3/16",
+"Db=0.1046",
+"H=1/4\"",
+"T=3mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=6.35 mm",
+"Db=3/16",
+"H=1'-4 3/16\"",
+"T=0.01 m",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"H=0.0747",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 1.89738,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 50.835421222454734,
+"inside_radius": 76.25313183368208,
+"outside_radius": 127.08855305613682,
+"sweep_angle": 357.06183215380287
+},
+"steps": [
+50.835421222454734,
+76.25313183368208,
+127.08855305613682,
+357.06183215380287
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.0747",
+"H=1'-4 3/16\"",
+"T=6.35 mm",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 1.89738,
+"bottom_diameter": 254.0,
+"height": 411.16249999999997,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 430.05061813577953,
+"inside_radius": 3.2366559373260992,
+"outside_radius": 433.2872740731056,
+"sweep_angle": 102.88093527639316
+},
+"steps": [
+430.05061813577953,
+3.2366559373260992,
+433.2872740731056,
+102.88093527639316
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1'-4 3/16\"",
+"Db=6.35 mm",
+"H=1/4\"",
+"T=0.5 cm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=10",
+"Db=3mm",
+"H=1/4\"",
+"T=1/4\"",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=2",
+"H=3mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 2.0,
+"bottom_diameter": 254.0,
+"height": 3.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 126.03570922560003,
+"inside_radius": 1.0002834065523811,
+"outside_radius": 127.03599263215241,
+"sweep_angle": 357.2095644688563
+},
+"steps": [
+126.03570922560003,
+1.0002834065523811,
+127.03599263215241,
+357.2095644688563
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=10",
+"H=1'-4 3/16\"",
+"T=6.35 mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 411.16249999999997,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 414.2888381386228,
+"inside_radius": 621.4332572079339,
+"outside_radius": 1035.7220953465567,
+"sweep_angle": 43.039537536451185
+},
+"steps": [
+414.2888381386228,
+621.4332572079339,
+1035.7220953465567,
+43.039537536451185
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=0.01 m"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"H=4mm",
+"T=0.5 cm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 4.0,
+"thickness": 5.0
+},
+"outputs": {
+"slant_height": 50.957236973760665,
+"inside_radius": 76.43585546064098,
+"outside_radius": 127.39309243440164,
+"sweep_angle": 351.82441326698387
+},
+"steps": [
+50.957236973760665,
+76.43585546064098,
+127.39309243440164,
+351.82441326698387
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=2",
+"T=0.5 cm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.01 m",
+"Db=1'-4 3/16\"",
+"H=3mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 10.0,
+"bottom_diameter": 411.16249999999997,
+"height": 3.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 200.60368354435192,
+"inside_radius": 5.00055921339487,
+"outside_radius": 205.6042427577468,
+"sweep_angle": 358.2986450663812
+},
+"steps": [
+200.60368354435192,
+5.00055921339487,
+205.6042427577468,
+358.2986450663812
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1'-4 3/16\"",
+"Db=1-1/2",
+"H=0.0747",
+"T=1-1/2"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=3mm",
+"Db=10",
+"H=3/16",
+"T=10",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"H=6.35 mm",
+"T=0.5 cm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 6.35,
+"thickness": 5.0
+},
+"outputs": {
+"slant_height": 51.1953367016958,
+"inside_radius": 76.79300505254368,
+"outside_radius": 127.98834175423949,
+"sweep_angle": 350.1881451520203
+},
+"steps": [
+51.1953367016958,
+76.79300505254368,
+127.98834175423949,
+350.1881451520203
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.0747",
+"Db=4mm",
+"T=1-1/2",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 0.0747,
+"bottom_diameter": 4.0,
+"height": 127.0,
+"thickness": 1.5
+},
+"outputs": {
+"slant_height": 127.01516442938025,
+"inside_radius": 2.41714844288964,
+"outside_radius": 129.43231287226988,
+"sweep_angle": 3.476720689091618
+},
+"steps": [
+127.01516442938025,
+2.41714844288964,
+129.43231287226988,
+3.476720689091618
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=2",
+"Db=6.35 mm",
+"H=3/16",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 2.0,
+"bottom_diameter": 6.35,
+"height": 0.1875,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 2.1830669366741824,
+"inside_radius": 1.003708936401923,
+"outside_radius": 3.1867758730761055,
+"sweep_angle": 251.49920544188188
+},
+"steps": [
+2.1830669366741824,
+1.003708936401923,
+3.1867758730761055,
+251.49920544188188
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1-1/2",
+"Db=0.5 cm",
+"H=1'-4 3/16\"",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 1.5,
+"bottom_diameter": 5.0,
+"height": 411.16249999999997,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 411.16622417977135,
+"inside_radius": 176.21409607704487,
+"outside_radius": 587.3803202568163,
+"sweep_angle": 0.9507836417737374
+},
+"steps": [
+411.16622417977135,
+176.21409607704487,
+587.3803202568163,
+0.9507836417737374
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1'-4 3/16\"",
+"Db=1-1/2",
+"T=3/16",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1-1/2",
+"Db=1'-4 3/16\"",
+"H=10",
+"T=10",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 38.099999999999994,
+"bottom_diameter": 411.16249999999997,
+"height": 254.0,
+"thickness": 254.0
+},
+"outputs": {
+"slant_height": 315.1347445562969,
+"inside_radius": 32.183973912132444,
+"outside_radius": 347.3187184684293,
+"sweep_angle": 81.45040418422319
+},
+"steps": [
+315.1347445562969,
+32.183973912132444,
+347.3187184684293,
+81.45040418422319
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"H=2'",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 609.6,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 611.7130046026487,
+"inside_radius": 917.5695069039726,
+"outside_radius": 1529.2825115066212,
+"sweep_angle": 29.673046842923718
+},
+"steps": [
+611.7130046026487,
+917.5695069039726,
+1529.2825115066212,
+29.673046842923718
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.1046",
+"Db=0.1046",
+"H=0.1046",
+"T=4mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=3mm",
+"Db=0.5 cm",
+"H=1'-4 3/16\"",
+"T=3mm",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 3.0,
+"bottom_diameter": 5.0,
+"height": 411.16249999999997,
+"thickness": 3.0
+},
+"outputs": {
+"slant_height": 411.16371606240983,
+"inside_radius": 616.7455740936148,
+"outside_radius": 1027.9092901560246,
+"sweep_angle": 0.35022545612498185
+},
+"steps": [
+411.16371606240983,
+616.7455740936148,
+1027.9092901560246,
+0.35022545612498185
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.5 cm",
+"Db=10",
+"T=0.01 m"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 5.0,
+"bottom_diameter": 254.0,
+"height": 127.0,
+"thickness": 10.0
+},
+"outputs": {
+"slant_height": 177.84614136944327,
+"inside_radius": 3.5712076580209495,
+"outside_radius": 181.4173490274642,
+"sweep_angle": 242.0937150467957
+},
+"steps": [
+177.84614136944327,
+3.5712076580209495,
+181.4173490274642,
+242.0937150467957
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.01 m",
+"Db=0.01 m",
+"T=0.1046",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=3/16",
+"Db=10",
+"H=0.0747",
+"T=6.35 mm",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 4.762499999999999,
+"bottom_diameter": 254.0,
+"height": 1.89738,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 124.63319342144331,
+"inside_radius": 2.381525988944776,
+"outside_radius": 127.01471941038808,
+"sweep_angle": 350.9593235093523
+},
+"steps": [
+124.63319342144331,
+2.381525988944776,
+127.01471941038808,
+350.9593235093523
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1-1/2",
+"Db=4mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 1.5,
+"bottom_diameter": 4.0,
+"height": 127.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 127.00615142582662,
+"inside_radius": 76.20369085549598,
+"outside_radius": 203.2098422813226,
+"sweep_angle": 1.8624668753792246
+},
+"steps": [
+127.00615142582662,
+76.20369085549598,
+203.2098422813226,
+1.8624668753792246
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1/4\"",
+"Db=1/32",
+"H=1'-4 3/16\"",
+"T=1'-4 3/16\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=0.01 m",
+"H=0.1046",
+"T=0.25",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=1'-4 3/16\"",
+"H=10",
+"T=2'",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=2'",
+"Db=2'",
+"H=4mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Dt=0.5 cm",
+"Db=4mm",
+"T=1-1/2"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"course",
+"Db=6.35 mm",
+"H=2",
+"T=1/4\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=4mm",
+"Db=1-1/2",
+"T=1'-4 3/16\"",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.0747",
+"Db=1'-4 3/16\"",
+"H=1'-4 3/16\"",
+"T=6.35 mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=6.35 mm",
+"Db=1/4\"",
+"H=6.35 mm",
+"T=2"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.25in",
+"Db=1/4\"",
+"H=1'-4 3/16\"",
+"T=1-1/2",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.25",
+"Db=0.01 m",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 6.35,
+"bottom_diameter": 10.0,
+"height": 127.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 127.01311201998006,
+"inside_radius": 154.9427733814804,
+"outside_radius": 281.9558854014605,
+"sweep_angle": 5.1726942955043045
+},
+"steps": [
+4.45262,
+8.10262,
+127.01311201998006,
+154.9427733814804,
+281.9558854014605,
+5.1726942955043045
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=3mm",
+"T=6.35 mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=3/16",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 4.762499999999999,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 51.022753808962534,
+"inside_radius": 75.5812807860614,
+"outside_radius": 126.60403459502393,
+"sweep_angle": 358.4283213813437
+},
+"steps": [
+150.50261999999998,
+252.10262,
+51.022753808962534,
+75.5812807860614,
+126.60403459502393,
+358.4283213813437
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=0.5 cm",
+"H=2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.01 m",
+"Db=0.1046",
+"H=1/32",
+"T=3mm",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=3/16",
+"H=3mm",
+"T=3/16",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2'",
+"H=0.0747",
+"T=1'-4 3/16\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.25",
+"Db=0.0747",
+"T=4mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=10",
+"H=10",
+"T=0.0747",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=3mm",
+"Db=0.25",
+"H=0.1046",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 3.0,
+"bottom_diameter": 6.35,
+"height": 2.65684,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 3.14076802479903,
+"inside_radius": 1.0337533252250468,
+"outside_radius": 4.174521350024077,
+"sweep_angle": 191.99125667314587
+},
+"steps": [
+1.10262,
+4.45262,
+3.14076802479903,
+1.0337533252250468,
+4.174521350024077,
+191.99125667314587
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=1-1/2",
+"T=0.25",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 38.099999999999994,
+"bottom_diameter": 254.0,
+"height": 127.0,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 166.67994030476493,
+"inside_radius": 24.511755927171308,
+"outside_radius": 191.19169623193625,
+"sweep_angle": 233.15343123439456
+},
+"steps": [
+31.749999999999993,
+247.65,
+166.67994030476493,
+24.511755927171308,
+191.19169623193625,
+233.15343123439456
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=1/32",
+"H=4mm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2",
+"Db=6.35 mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 2.0,
+"bottom_diameter": 6.35,
+"height": 127.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 127.0186231424353,
+"inside_radius": 2.9964715188222306,
+"outside_radius": 130.01509466125754,
+"sweep_angle": 6.164450382381839
+},
+"steps": [
+0.10261999999999993,
+4.45262,
+127.0186231424353,
+2.9964715188222306,
+130.01509466125754,
+6.164450382381839
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=3mm",
+"Db=0.25in",
+"T=0.25in",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=4mm",
+"Db=4mm",
+"H=3mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=4mm",
+"Db=10",
+"H=0.01 m",
+"T=3mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 4.0,
+"bottom_diameter": 10.0,
+"height": 10.0,
+"thickness": 3.0
+},
+"outputs": {
+"slant_height": 10.44030650891055,
+"inside_radius": 1.7400510848184252,
+"outside_radius": 12.180357593728976,
+"sweep_angle": 103.44523880388434
+},
+"steps": [
+1.0,
+7.0,
+10.44030650891055,
+1.7400510848184252,
+12.180357593728976,
+103.44523880388434
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=6.35 mm",
+"H=1'-4 3/16\"",
+"T=6.35 mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.0747",
+"Db=4mm",
+"H=6.35 mm",
+"T=0.25in",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=0.25in",
+"H=1-1/2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2",
+"H=1'-4 3/16\"",
+"T=1-1/2",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 2.0,
+"bottom_diameter": 254.0,
+"height": 411.16249999999997,
+"thickness": 1.5
+},
+"outputs": {
+"slant_height": 430.0355815583752,
+"inside_radius": 0.8532452015047127,
+"outside_radius": 430.8888267598799,
+"sweep_angle": 105.47964388347387
+},
+"steps": [
+0.5,
+252.5,
+430.0355815583752,
+0.8532452015047127,
+430.8888267598799,
+105.47964388347387
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2",
+"H=1/32",
+"T=1/4\"",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.25",
+"Db=6.35 mm",
+"T=0.25",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2",
+"Db=0.1046",
+"H=0.25",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=1'-4 3/16\"",
+"H=0.25in",
+"T=2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=6.35 mm",
+"Db=0.5 cm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=3mm",
+"T=6.35 mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 3.0,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 50.88850557837203,
+"inside_radius": 73.15222676890977,
+"outside_radius": 124.0407323472818,
+"sweep_angle": 359.3738859522047
+},
+"steps": [
+146.04999999999998,
+247.65,
+50.88850557837203,
+73.15222676890977,
+124.0407323472818,
+359.3738859522047
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=1/4\"",
+"Db=2'",
+"H=0.25",
+"T=0.0747"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 6.35,
+"bottom_diameter": 609.6,
+"height": 6.35,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 301.6918347005765,
+"inside_radius": 2.226803310442571,
+"outside_radius": 303.9186380110191,
+"sweep_angle": 359.9202481159909
+},
+"steps": [
+4.45262,
+607.70262,
+301.6918347005765,
+2.226803310442571,
+303.9186380110191,
+359.9202481159909
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2",
+"Db=0.1046",
+"H=0.1046",
+"T=1/4\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=0.25in",
+"H=10",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.1046"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 2.65684,
+"bottom_diameter": 254.0,
+"height": 127.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 178.66825688883966,
+"inside_radius": 0.5398650768009686,
+"outside_radius": 179.20812196564063,
+"sweep_angle": 253.21660147021885
+},
+"steps": [
+0.7594599999999998,
+252.10262,
+178.66825688883966,
+0.5398650768009686,
+179.20812196564063,
+253.21660147021885
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=6.35 mm",
+"H=0.5 cm",
+"T=3mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=3mm",
+"T=1'-4 3/16\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=1'-4 3/16\"",
+"Db=10",
+"H=3mm",
+"T=2",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2'",
+"H=0.5 cm",
+"T=1'-4 3/16\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=3mm",
+"T=6.35 mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"T=0.0747",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 127.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 136.7831861012164,
+"inside_radius": 202.6203531513843,
+"outside_radius": 339.4035392526007,
+"sweep_angle": 133.70064348747738
+},
+"steps": [
+150.50261999999998,
+252.10262,
+136.7831861012164,
+202.6203531513843,
+339.4035392526007,
+133.70064348747738
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.5 cm",
+"Db=0.0747",
+"H=3mm",
+"T=0.0747",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=2'",
+"T=0.25",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=10",
+"T=0.25in",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 254.0,
+"thickness": 6.35
+},
+"outputs": {
+"slant_height": 259.03019129051347,
+"inside_radius": 372.355899980113,
+"outside_radius": 631.3860912706265,
+"sweep_angle": 70.60180864974626
+},
+"steps": [
+146.04999999999998,
+247.65,
+259.03019129051347,
+372.355899980113,
+631.3860912706265,
+70.60180864974626
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.1046",
+"Db=1'-4 3/16\"",
+"H=2",
+"T=1'-4 3/16\"",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=1/4\"",
+"T=0.1046",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 6.35,
+"thickness": 0.1046
+},
+"outputs": {
+"slant_height": 51.1953367016958,
+"inside_radius": 76.74029804251417,
+"outside_radius": 127.93563474420998,
+"sweep_angle": 357.2200356169203
+},
+"steps": [
+152.29539999999997,
+253.8954,
+51.1953367016958,
+76.74029804251417,
+127.93563474420998,
+357.2200356169203
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.25in",
+"Db=0.25in",
+"H=0.0747",
+"T=0.25in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=6.35 mm",
+"Db=0.01 m",
+"T=0.5 cm",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 6.35,
+"bottom_diameter": 10.0,
+"height": 127.0,
+"thickness": 5.0
+},
+"outputs": {
+"slant_height": 127.01311201998006,
+"inside_radius": 46.977452390951505,
+"outside_radius": 173.99056441093157,
+"sweep_angle": 5.1726942955043045
+},
+"steps": [
+1.3499999999999996,
+5.0,
+127.01311201998006,
+46.977452390951505,
+173.99056441093157,
+5.1726942955043045
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=1-1/2",
+"T=1-1/2"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=1-1/2",
+"Db=3mm",
+"T=4mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.5 cm",
+"H=1-1/2",
+"T=3mm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 5.0,
+"bottom_diameter": 254.0,
+"height": 1.5,
+"thickness": 3.0
+},
+"outputs": {
+"slant_height": 124.5090358166828,
+"inside_radius": 1.0000725768408256,
+"outside_radius": 125.50910839352362,
+"sweep_angle": 359.9738742334284
+},
+"steps": [
+2.0,
+251.0,
+124.5090358166828,
+1.0000725768408256,
+125.50910839352362,
+359.9738742334284
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=3/16",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.25",
+"T=10"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=6.35 mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 6.35,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 51.1953367016958,
+"inside_radius": 75.8369321396395,
+"outside_radius": 127.03226884133531,
+"sweep_angle": 357.2200356169203
+},
+"steps": [
+150.50261999999998,
+252.10262,
+51.1953367016958,
+75.8369321396395,
+127.03226884133531,
+357.2200356169203
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"H=10",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"top_diameter": 152.39999999999998,
+"bottom_diameter": 254.0,
+"height": 254.0,
+"thickness": 1.89738
+},
+"outputs": {
+"slant_height": 259.03019129051347,
+"inside_radius": 383.70789811341973,
+"outside_radius": 642.7380894039331,
+"sweep_angle": 70.60180864974627
+},
+"steps": [
+150.50261999999998,
+252.10262,
+259.03019129051347,
+383.70789811341973,
+642.7380894039331,
+70.60180864974627
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Dt=0.01 m",
+"Db=0.0747",
+"H=0.1046",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.truncated_cone_layout",
+"--method",
+"mean_diameter",
+"Db=2'",
+"H=1-1/2",
+"T=10",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=44%",
+"T=1/32",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1-1/2",
+"P=44%",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 38.099999999999994,
+"radius_ratio": 0.44
+},
+"outputs": {
+"die_opening": 86.59090909090908
+},
+"steps": [
+86.59090909090908
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=3/16",
+"P=0.5",
+"T=10",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.25",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 0.25,
+"radius_ratio": 0.156
+},
+"outputs": {
+"die_opening": 1.6025641025641026
+},
+"steps": [
+1.6025641025641026
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"T=3/16",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1/32",
+"T=0.25in",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1-1/2",
+"P=0.4",
+"T=2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1-1/2",
+"T=1'-4 3/16\""
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.1046",
+"P=0.44",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 0.1046,
+"radius_ratio": 0.44
+},
+"outputs": {
+"die_opening": 0.23772727272727273
+},
+"steps": [
+0.23772727272727273
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=6.35 mm",
+"P=44%"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 6.35,
+"radius_ratio": 0.44
+},
+"outputs": {
+"die_opening": 14.431818181818182
+},
+"steps": [
+14.431818181818182
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=3/16",
+"P=0.33",
+"T=6.35 mm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=44%",
+"T=1/32",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1-1/2",
+"P=0.44",
+"T=0.25in",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.25in",
+"P=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 6.35,
+"radius_ratio": 0.44
+},
+"outputs": {
+"die_opening": 14.431818181818182
+},
+"steps": [
+14.431818181818182
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1/4\"",
+"P=44%",
+"T=0.25",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 3.9623999999999997,
+"radius_ratio": 0.156
+},
+"outputs": {
+"die_opening": 25.4
+},
+"steps": [
+25.4
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.5",
+"T=0.0747",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=6.35 mm",
+"P=44%",
+"T=0.1046",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=4mm",
+"P=0.33",
+"T=3/16",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.25in",
+"P=0.5",
+"T=2",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.4",
+"T=0.25in",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 3.9623999999999997,
+"radius_ratio": 0.156
+},
+"outputs": {
+"die_opening": 25.4
+},
+"steps": [
+25.4
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=3mm",
+"P=0.4",
+"T=1/4\"",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.0747",
+"P=44%",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 1.89738,
+"radius_ratio": 0.44
+},
+"outputs": {
+"die_opening": 4.312227272727273
+},
+"steps": [
+4.312227272727273
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"T=3mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"T=2'",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=2'",
+"P=44%",
+"T=3mm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.5",
+"T=10",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1'-4 3/16\"",
+"P=0.44",
+"T=4mm",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.01 m",
+"T=1-1/2",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=6.35 mm",
+"P=0.4",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 6.35,
+"radius_ratio": 0.4
+},
+"outputs": {
+"die_opening": 15.874999999999998
+},
+"steps": [
+15.874999999999998
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1/32",
+"P=44%",
+"T=0.25"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.1046",
+"P=0.33",
+"T=1'-4 3/16\"",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=3mm",
+"P=0.5",
+"T=0.5 cm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.5",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 3.9623999999999997,
+"radius_ratio": 0.5
+},
+"outputs": {
+"die_opening": 7.924799999999999
+},
+"steps": [
+7.924799999999999
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1'-4 3/16\"",
+"T=0.25"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.4",
+"T=0.0747",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1-1/2",
+"P=0.5",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 38.099999999999994,
+"radius_ratio": 0.5
+},
+"outputs": {
+"die_opening": 76.19999999999999
+},
+"steps": [
+76.19999999999999
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.0747",
+"P=0.44",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 0.0747,
+"radius_ratio": 0.44
+},
+"outputs": {
+"die_opening": 0.16977272727272727
+},
+"steps": [
+0.16977272727272727
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.5 cm",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 5.0,
+"radius_ratio": 0.156
+},
+"outputs": {
+"die_opening": 32.05128205128205
+},
+"steps": [
+32.05128205128205
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.4",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 3.9623999999999997,
+"radius_ratio": 0.4
+},
+"outputs": {
+"die_opening": 9.905999999999999
+},
+"steps": [
+9.905999999999999
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.25in",
+"T=1'-4 3/16\""
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.5",
+"T=6.35 mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=3mm",
+"T=3/16"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1/4\"",
+"P=0.33",
+"T=0.1046",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.01 m",
+"P=0.33",
+"T=1/32"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.33",
+"T=0.01 m",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.1046",
+"P=0.4",
+"T=0.25"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1/32",
+"P=0.4",
+"T=3mm",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.01 m",
+"P=0.4",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 10.0,
+"radius_ratio": 0.4
+},
+"outputs": {
+"die_opening": 25.0
+},
+"steps": [
+25.0
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=3/16",
+"P=0.4",
+"T=0.5 cm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=0.25in",
+"P=0.5",
+"T=0.1046",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=1/32",
+"P=0.4",
+"T=0.25",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"P=0.33",
+"--units",
+"in"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 3.9623999999999997,
+"radius_ratio": 0.33
+},
+"outputs": {
+"die_opening": 12.007272727272726
+},
+"steps": [
+12.007272727272726
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 3.9623999999999997,
+"radius_ratio": 0.156
+},
+"outputs": {
+"die_opening": 25.4
+},
+"steps": [
+25.4
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"radius_ratio",
+"R=2",
+"P=0.4"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"inside_radius": 50.8,
+"radius_ratio": 0.4
+},
+"outputs": {
+"die_opening": 126.99999999999999
+},
+"steps": [
+126.99999999999999
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.0747",
+"P=0.44",
+"T=3mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.25in",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3/16"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.44",
+"T=1-1/2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684
+},
+"outputs": {
+"die_opening": 21.25472
+},
+"steps": [
+21.25472
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684
+},
+"outputs": {
+"die_opening": 21.25472
+},
+"steps": [
+21.25472
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1/32",
+"P=0.33",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.5",
+"T=1-1/2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=10",
+"P=44%",
+"T=2'",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=44%",
+"T=1-1/2"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1/32",
+"T=1/32"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3/16",
+"P=0.33",
+"T=3/16",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3/16",
+"T=0.01 m",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.4",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3/16",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1'-4 3/16\"",
+"P=0.5",
+"T=0.5 cm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"T=2'",
+"--units",
+"in",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 609.6
+},
+"outputs": {
+"die_opening": 4876.8
+},
+"steps": [
+4876.8
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3mm",
+"P=0.4",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.44",
+"T=0.01 m",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=2'",
+"P=0.33",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"--units",
+"mm",
+"--json"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684
+},
+"outputs": {
+"die_opening": 21.25472
+},
+"steps": [
+21.25472
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.5",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.1046",
+"P=0.4",
+"T=0.25"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=10"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3/16",
+"P=0.33",
+"T=10",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.25",
+"P=0.4",
+"T=0.1046",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.25",
+"T=3/16"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=44%",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1'-4 3/16\"",
+"P=44%",
+"T=1/4\"",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.25",
+"P=0.5",
+"T=1-1/2",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1'-4 3/16\"",
+"T=4mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3/16"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.1046",
+"P=0.33",
+"T=3mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.1046",
+"T=3mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.5",
+"T=3/16",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.25",
+"P=0.33",
+"T=0.5 cm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=44%",
+"T=0.25in",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.25in",
+"T=3/16"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.0747",
+"P=0.5",
+"T=0.25in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.0747",
+"P=0.44",
+"T=0.1046",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.01 m",
+"T=4mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=2'",
+"T=4mm",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.0747",
+"P=0.4",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.5",
+"T=2'"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=2",
+"P=0.5",
+"T=1'-4 3/16\"",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.0747",
+"T=4mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1/32",
+"P=0.44",
+"T=0.25in",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1-1/2",
+"P=0.5",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.4",
+"T=4mm",
+"--units",
+"mm",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"--units",
+"mm"
+],
+"exit": 0,
+"base": {
+"inputs": {
+"thickness": 2.65684
+},
+"outputs": {
+"die_opening": 21.25472
+},
+"steps": [
+21.25472
+]
+}
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=44%",
+"T=0.25in",
+"--units",
+"in"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=0.5 cm",
+"P=44%",
+"T=4mm",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=1-1/2",
+"T=1/32",
+"--units",
+"in",
+"--json"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"P=0.33",
+"T=0.0747"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3mm",
+"P=0.33",
+"T=0.0747",
+"--units",
+"mm"
+],
+"exit": 2
+},
+{
+"argv": [
+"run",
+"sheet_metal.v_die_opening",
+"--method",
+"eight_t",
+"R=3mm",
+"P=44%",
+"T=1-1/2",
+"--units",
+"mm"
+],
+"exit": 2
+}
+]

@@ -26,6 +26,7 @@ from caddcalc.core.formatting import (
     copy_output,
     format_output,
     output_parts,
+    result_json,
     spoken_value,
     value_parts,
 )
@@ -97,7 +98,7 @@ def test_a_typed_fraction_reads_as_its_exact_conversion_at_every_shown_digit() -
 @pytest.mark.parametrize("length", ["in", "mm", "ft", "m"])
 def test_every_row_keeps_its_unit_whatever_the_unit_system(length: str) -> None:
     units = ShownUnits.generated(length)
-    prefs = DisplayPrefs(decimals=1, fraction_denominator=None)
+    prefs = DisplayPrefs(decimals=1)
     for calc, typed in ((LengthConverter(), "1 in"), (AreaConverter(), "1 ft²")):
         assert _shown(calc, typed, prefs, units) == _shown(calc, typed), calc.id
     assert _shown(StressConverter(), "1 psi", prefs, units) == _shown(StressConverter(), "1 psi")
@@ -271,13 +272,15 @@ def test_each_converter_is_verified_against_sp_811_for_its_scope() -> None:
 def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixture[str]) -> None:
     from caddcalc.cli import main
 
-    assert main(["run", "conversions.length", "X=4.7625mm", "--units", "mm"]) == 0
+    assert main(["run", "conversions.length", "X=4.7625mm"]) == 0
     out = capsys.readouterr().out
     assert "0.187500 in" in out and '3/16"' in out and "0'-0 3/16\"" in out
     assert main(["run", "conversions.stress", "X=1 psi", "--json"]) == 0
     data = json.loads(capsys.readouterr().out)
-    assert data["outputs"]["kpa"]["unit"] == "MPa", "JSON is in base units"
-    assert data["outputs"]["kpa"]["value"] == pytest.approx(0.006894757293168361)
+    assert data["outputs"]["kpa"]["base"]["unit"] == "MPa", "JSON is in base units"
+    assert data["outputs"]["kpa"]["base"]["value"] == pytest.approx(0.006894757293168361)
+    assert data["outputs"]["kpa"]["shown"]["unit"] == "kPa", "and in the row's own unit"
+    assert data["outputs"]["kpa"]["shown"]["value"] == pytest.approx(6.894757293168361)
     assert main(["run", "conversions.length", "X=inf"]) != 0
     capsys.readouterr()
     assert main(["run", "conversions.length", "X=0.31in"]) == 0
@@ -296,29 +299,19 @@ def test_a_half_way_length_takes_the_even_fraction_in_every_row() -> None:
     assert _shown(LengthConverter(), "3/128 in")["nearest_64"] == '1/32"'
 
 
-@pytest.mark.parametrize("typed", ["3/32 in", "2.38125 mm", "7/32 in", "5.55625 mm"])
-def test_the_hint_and_the_nearest_rows_round_a_tie_alike(typed: str) -> None:
-    """The ``(≈ …")`` hint beside the inch row and the nearest 1/16 inch agree on a tie."""
-    prefs = DisplayPrefs(fraction_denominator=16)
+@pytest.mark.parametrize(
+    ("typed", "even"),
+    [("3/32 in", '1/8"'), ("2.38125 mm", '1/8"'), ("7/32 in", '1/4"'), ("5.55625 mm", '1/4"')],
+)
+def test_a_tie_typed_in_inches_or_millimetres_takes_the_even_sixteenth(
+    typed: str, even: str
+) -> None:
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity(typed, L)})
-    hint = output_parts(calc.output("in"), result.outputs["in"], IN, prefs).fraction
     nearest = copy_output(
-        calc.output("nearest_16"), result.outputs["nearest_16"], IN, prefs, CopyForm.VALUE
+        calc.output("nearest_16"), result.outputs["nearest_16"], IN, DisplayPrefs(), CopyForm.VALUE
     )
-    assert f'{hint}"' == nearest.replace("0-", ""), typed
-    assert hint in ("1/8", "1/4"), typed
-
-
-def test_an_error_row_takes_no_fraction_hint() -> None:
-    prefs = DisplayPrefs(fraction_denominator=64)
-    calc = LengthConverter()
-    result = calc.run({"value": parse_quantity("0.31 in", L)})
-    assert (
-        output_parts(calc.output("error_16"), result.outputs["error_16"], IN, prefs).fraction
-        is None
-    )
-    assert output_parts(calc.output("in"), result.outputs["in"], IN, prefs).fraction == "5/16"
+    assert nearest.replace("0-", "") == even, typed
 
 
 def test_a_value_and_its_negative_show_the_same_error_digits() -> None:
@@ -429,7 +422,8 @@ def test_an_errors_work_line_shows_its_sign_as_its_row_does() -> None:
         assert step.signed and render_step(step, result, IN, DisplayPrefs())[2] == shown, typed
     n16 = next(s for s in result.steps if s.symbol == "N16")
     assert not n16.signed and render_step(n16, result, IN, DisplayPrefs())[2] == "0.3125 in"
-    assert "signed" not in result.to_dict()["steps"][0], "JSON's shape is unchanged"
+    data = result_json(calc, result, IN, DisplayPrefs())
+    assert "signed" not in data["steps"][0], "JSON's shape has no sign of its own"
 
 
 def test_the_tsv_keeps_a_plus_value_a_number_and_full_precision_drops_the_plus() -> None:

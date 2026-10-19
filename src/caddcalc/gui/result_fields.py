@@ -108,10 +108,9 @@ MENU = {
     CopyForm.SHOWN: "Copy {number}",
     CopyForm.WITH_UNIT: "Copy with unit",
     CopyForm.FULL: "Copy full precision",
-    CopyForm.FRACTION: "Copy fraction",
 }
-"""The context menu's copy forms (R6), in order. The fraction is there only when it's
-shown, and the number as shown, e.g. "Copy 0,3119", only where the decimal mark isn't "."
+"""The context menu's copy forms (R6), in order. The number as shown, e.g. "Copy 0,3119",
+is there only where the decimal mark isn't "."
 (ADR-0020 §4): "Copy value" writes "." for CAD. Where it isn't, every item is named by
 what it copies, such as "Copy 0.3119" and "Copy 0.3119 in"."""
 
@@ -280,8 +279,6 @@ class ResultField(QWidget):
             self.picker = UnitPicker(output.label, output.picks, output.dimension, self)
             self.picker.picked.connect(self.picked)
             self.picker.stepped.connect(self.picked)
-        self.fraction = QLabel(self)
-        self.fraction.hide()
         self.copy_button = _CopyButton(self, ringed=True)
         self.copy_button.setAutoRaise(True)
         button = round(tokens.button_size)
@@ -293,7 +290,7 @@ class ResultField(QWidget):
         self.copy_button.clicked.connect(self._on_clicked)
         self.copy_button.setAccessibleName(COPY.format(label=output.label))
         self.copied_state = _CopiedState(self.copy_button, tokens)
-        for widget in (self.symbol, self.label, self.value, self.unit, self.picker, self.fraction):
+        for widget in (self.symbol, self.label, self.value, self.unit, self.picker):
             if widget is not None:
                 row.addWidget(widget)
         self.unit.setVisible(self.picker is None)
@@ -330,15 +327,12 @@ class ResultField(QWidget):
             self.amount = None
             self.value.setText(NO_VALUE)
             self.unit.setText("")
-            self.fraction.hide()
             self.copy_button.setEnabled(False)
             self.copy_button.setToolTip(NO_VALUE_TIP)
         else:
             close_up = parts.unit_close_up  # "132.70°", as the document writes it
             self.value.setText(parts.with_unit if close_up else parts.number)
             self.unit.setText("" if close_up else parts.unit)
-            self.fraction.setText("" if parts.fraction is None else f'(≈ {parts.fraction}")')
-            self.fraction.setVisible(parts.fraction is not None)
             self.copy_button.setEnabled(True)
             self.copy_button.setToolTip(COPY.format(label=self.output.label))
         spoken = NO_VALUE_SPOKEN if parts is None else spoken_value(parts)
@@ -363,8 +357,6 @@ class ResultField(QWidget):
         """
         if self.amount is None or self.parts is None:
             return None
-        if form is CopyForm.FRACTION and self.parts.fraction is None:
-            return None
         text = copy_output(self.output, self.amount, self.units, self.prefs, form)
         QGuiApplication.clipboard().setText(text)
         self.copied_state.start()
@@ -379,8 +371,6 @@ class ResultField(QWidget):
         menu = QMenu(self)
         point = decimal_separator(self.prefs) == "."
         for form, text in MENU.items():
-            if form is CopyForm.FRACTION and (self.parts is None or self.parts.fraction is None):
-                continue
             if form is CopyForm.SHOWN and (point or self.parts is None):
                 continue
             if form is CopyForm.WITH_UNIT and self.parts is not None and self.parts.compound:
@@ -415,7 +405,7 @@ class ResultField(QWidget):
         """Take the current light or dark scheme's colours and icon."""
         scheme = current_scheme()
         color = role_color(self.tokens.text_role, scheme)
-        for label in (self.symbol, self.label, self.value, self.unit, self.fraction):
+        for label in (self.symbol, self.label, self.value, self.unit):
             label.setStyleSheet(f"color: {color};")
         self.copied_state.restyle()
         self.update()

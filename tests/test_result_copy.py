@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from itertools import pairwise
 from typing import Any, override
 
 import pytest
 
 from caddcalc.core.formatting import POINT, DisplayPrefs, ShownUnits, results_tsv
-from tests.qt_helpers import open_window, type_into
+from tests.qt_helpers import open_window, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -85,8 +84,8 @@ def test_the_platforms_copy_keys_copy_the_focused_fields_value() -> None:
     window.close()
 
 
-def test_the_context_menu_offers_each_form_and_the_fraction_only_when_shown() -> None:
-    """R6: value, with unit, full precision, and the fraction as 5/16" when it's shown."""
+def test_the_context_menu_offers_each_form() -> None:
+    """R6: value, with unit, and full precision; an inch fraction copies with its mark."""
     window = _bend_window()
     field = window.results.fields["bend_allowance"]
     menu = field.context_menu()
@@ -96,11 +95,11 @@ def test_the_context_menu_offers_each_form_and_the_fraction_only_when_shown() ->
     assert _clipboard().text() == "0.3119 in"
     menu.actions()[2].trigger()
     assert _clipboard().text() == "0.311864", "the display unit, unrounded, 10 digits at most"
-    window.prefs = replace(window.prefs, fraction_denominator=16)
-    window.recompute()
+    show_in(window, "in_16")
+    field = window.results.fields["bend_allowance"]
     menu = field.context_menu()
-    assert [a.text() for a in menu.actions()][-1] == "Copy fraction"
-    menu.actions()[-1].trigger()
+    assert menu.actions()[0].text() == "Copy value"
+    menu.actions()[0].trigger()
     assert _clipboard().text() == '5/16"', "with the inch mark, so it isn't read as a date"
     window.close()
 

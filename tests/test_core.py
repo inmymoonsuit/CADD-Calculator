@@ -8,6 +8,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import replace
 from decimal import Decimal
 from fractions import Fraction
+from typing import Any
 
 import pytest
 
@@ -41,7 +42,7 @@ from caddcalc.core.formatting import (
     describe_note,
     format_value,
     render_step,
-    to_fraction,
+    result_json,
     unit_suffix,
 )
 from caddcalc.core.units import BASE_UNITS, get_unit, to_base, units_for
@@ -124,16 +125,8 @@ def test_a_bare_number_is_read_in_the_display_unit() -> None:
     assert parse_quantity("90", A, IN.unit(A).symbol) == 90.0
 
 
-def test_fraction_display() -> None:
-    assert to_fraction(1.015625) == "1-1/64"
-    assert to_fraction(0.5) == "1/2"
-    assert to_fraction(2.0) == "2"
-    assert to_fraction(-0.25) == "-1/4"
-
-
 def test_format_value_converts_and_rounds_only_for_display() -> None:
-    prefs = DisplayPrefs(decimals=3, fraction_denominator=64)
-    assert format_value(25.4, L, IN, prefs) == '1.000 in  (≈ 1")'
+    assert format_value(25.4, L, IN, DisplayPrefs(decimals=3)) == "1.000 in"
     assert format_value(25.4, L, MM, DisplayPrefs(decimals=1)) == "25.4 mm"
 
 
@@ -185,11 +178,24 @@ def test_run_uses_defaults_and_records_steps() -> None:
     assert result.outputs["doubled"] == pytest.approx(50.8)
     work = render_step(result.steps[0], result, IN, DisplayPrefs())
     assert work == ("2·X", "2·1.0000", "2.0000 in")
-    assert result.to_dict()["outputs"]["doubled"] == {
-        "value": pytest.approx(50.8),
-        "unit": "mm",
+    assert result_json(_Demo(), result, IN, DisplayPrefs())["outputs"]["doubled"] == {
         "dimension": "length",
+        "base": {"value": pytest.approx(50.8), "unit": "mm"},
+        "shown": {"unit": "in", "value": pytest.approx(2.0), "text": "2.0000 in"},
     }
+
+
+def _notes_json(*notes: Note, units: ShownUnits = IN) -> list[dict[str, Any]]:
+    """The notes of a run that gives ``notes``, as ``result_json`` writes them."""
+
+    class Noted(_Demo):
+        def compute(self, ctx: Context) -> None:
+            super().compute(ctx)
+            ctx.notes.extend(notes)
+
+    calc = Noted()
+    notes_json: list[dict[str, Any]] = result_json(calc, calc.run(), units, DisplayPrefs())["notes"]
+    return notes_json
 
 
 def test_notes_carry_a_kind_references_and_subjects() -> None:
@@ -200,7 +206,9 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
         (handbook, Reference("Second source")),
         ("length",),
     )
-    assert limit.to_dict() == {
+    plain = Note(NoteKind.WARNING, "Check this.")
+    limit_json, plain_json = _notes_json(limit, plain)
+    assert limit_json == {
         "kind": "limit_exceeded",
         "text": "Past the bench limit.",
         "detail": "",
@@ -229,8 +237,7 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
         ],
         "subjects": ["length"],
     }
-    plain = Note(NoteKind.WARNING, "Check this.")
-    assert plain.to_dict() == {
+    assert plain_json == {
         "kind": "warning",
         "text": "Check this.",
         "detail": "",
@@ -260,7 +267,7 @@ def test_notes_are_worded_once_for_every_front_end(note: Note, wording: tuple[st
     assert describe_note(note, IN, DisplayPrefs()).lines == wording
 
 
-def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_json() -> None:
+def test_a_notes_fields_are_filled_as_shown_and_given_in_base_units_in_json() -> None:
     note = Note(
         NoteKind.WARNING,
         "Radius {R} is under {T} for {material}.",
@@ -273,11 +280,17 @@ def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_jso
     assert text.detail == "Nothing joined: brass {not a field} {as} written."
     metric = describe_note(note, MM, DisplayPrefs())
     assert metric.lead.startswith("Radius 25.4000 mm is under 50.8000 mm")
-    data = note.to_dict()
-    assert data["text"] == "Radius 25.4 mm is under 50.8 mm for brass {not a field}."
-    assert data["quantities"]["T"] == {"value": 50.8, "unit": "mm", "dimension": "length"}
+    (data,) = _notes_json(note, units=MM)
+    assert data["text"] == metric.lead, "as shown, in the set's units"
+    assert data["detail"] == metric.detail
+    assert data["quantities"]["T"] == {
+        "dimension": "length",
+        "base": {"value": 50.8, "unit": "mm"},
+        "shown": {"unit": "mm", "value": 50.8, "text": "50.8000 mm"},
+    }
     assert hash(note) == hash(Note(NoteKind.WARNING, note.text, detail=note.detail))
-    assert Note(NoteKind.WARNING, "A {plain} note.").to_dict()["text"] == "A {plain} note."
+    (plain,) = _notes_json(Note(NoteKind.WARNING, "A {plain} note."))
+    assert plain["text"] == "A {plain} note."
 
 
 @pytest.mark.parametrize(
@@ -323,7 +336,7 @@ def test_ctx_note_records_kinds_references_and_subjects() -> None:
         Note(NoteKind.WARNING, "Plain.", (), ("length",)),
         Note(NoteKind.NO_APPLICABLE_VALUE, "No data.", (Reference("Table"),), ("doubled",)),
     )
-    assert result.to_dict()["notes"][1] == {
+    assert result_json(Noting(), result, IN, DisplayPrefs())["notes"][1] == {
         "kind": "no_applicable_value",
         "text": "No data.",
         "detail": "",
@@ -813,8 +826,8 @@ def test_work_in_its_own_unit_is_shown_in_it_then_in_the_display_unit() -> None:
 
 
 def test_every_step_lists_its_substitution_and_expression_unit_in_json() -> None:
-    result = default_registry(load_plugins=False).get("sheet_metal.bend_allowance").run()
-    step = result.to_dict()["steps"][0]
+    calc = default_registry(load_plugins=False).get("sheet_metal.bend_allowance")
+    step = result_json(calc, calc.run(), IN, DisplayPrefs())["steps"][0]
     assert (step["substitution"], step["expression_unit"], step["stated"]) == (None, None, None)
 
 

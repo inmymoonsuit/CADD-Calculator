@@ -91,8 +91,6 @@ class Unit:
     system: UnitSystem | None = None
     close_up: bool = False
     """Written against its number, as ``90°`` is; only for °, ′, and ″ (SP 811 §7.2)."""
-    fractions: bool = False
-    """Whether values in it may also show the nearest drafting fraction (the inch)."""
     sources: tuple[Source, ...] = ()
     """Its citations: where its definition and factor come from."""
     case_sensitive: bool = False

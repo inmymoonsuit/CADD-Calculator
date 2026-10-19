@@ -28,10 +28,10 @@ from caddcalc.core.formatting import (
     ShownUnits,
     ValueParts,
     copy_output,
-    format_output,
     format_significant,
     format_value,
     output_parts,
+    result_json,
     results_tsv,
     spoken_value,
     unit_suffix,
@@ -141,11 +141,11 @@ def test_the_typed_forms_are_input_only_and_display_writes_sp_811s_symbol() -> N
 @pytest.mark.parametrize(("length", "square"), SQUARES.items())
 def test_an_area_is_shown_in_the_square_of_the_length_choice(length: str, square: str) -> None:
     units = ShownUnits.generated(length)
-    prefs = DisplayPrefs(fraction_denominator=64)
+    prefs = DisplayPrefs()
     assert units.unit(AREA).symbol == square
     assert unit_suffix(units.unit(AREA)) == f" {square}"
     parts = value_parts(get_unit(square).factor, AREA, units, prefs)
-    assert parts == ValueParts("1.00000", square), "never with an inch fraction"
+    assert parts == ValueParts("1.00000", square)
     assert prefs.precision_for(AREA) == Precision(6, significant=True), "there's no preference"
     with pytest.raises(UsageError, match="area is shown to significant figures"):
         prefs.decimals_for(AREA)
@@ -348,24 +348,12 @@ def test_a_fixed_unit_output_is_shown_in_it_whatever_the_preference() -> None:
         )
 
 
-def test_a_fixed_inch_row_shows_the_fraction_when_its_preferred() -> None:
-    calc = _Rows()
-    output = calc.output("in")
-    units, prefs = ShownUnits.generated("mm"), DisplayPrefs(fraction_denominator=16)
-    parts = output_parts(output, 7.9375, units, prefs)
-    assert parts == ValueParts("0.312500", "in", "5/16")
-    assert format_output(output, 7.9375, units, prefs) == '0.312500 in  (≈ 5/16")'
-    assert output_parts(calc.output("mm"), 7.9375, units, prefs).fraction is None
-
-
 def test_a_fixed_unit_output_copies_in_its_own_unit() -> None:
     calc = _Rows()
     output = calc.output("mm")
     prefs = DisplayPrefs(symbols=NumberSymbols(","))
     copies = {
-        form: copy_output(output, 1 / 3, ShownUnits.generated(), prefs, form)
-        for form in CopyForm
-        if form.name != "FRACTION"
+        form: copy_output(output, 1 / 3, ShownUnits.generated(), prefs, form) for form in CopyForm
     }
     assert copies == {
         CopyForm.VALUE: "0.333333",
@@ -373,16 +361,6 @@ def test_a_fixed_unit_output_copies_in_its_own_unit() -> None:
         CopyForm.WITH_UNIT: "0.333333 mm",
         CopyForm.FULL: "0.3333333333",
     }
-    assert (
-        copy_output(
-            calc.output("in"),
-            7.9375,
-            ShownUnits.generated("mm"),
-            DisplayPrefs(fraction_denominator=16),
-            CopyForm.FRACTION,
-        )
-        == '5/16"'
-    )
 
 
 def test_fixed_rows_tabulate_and_go_to_json_in_base_units() -> None:
@@ -392,8 +370,14 @@ def test_fixed_rows_tabulate_and_go_to_json_in_base_units() -> None:
     assert rows[0] == "MM\tMillimeters\t25.4000\tmm"
     assert rows[1] == "IN\tInches\t1.00000\tin"
     assert rows[3] == "SQ\tSquare\t0.00694444\tft²"
-    data = result.to_dict()["outputs"]
-    assert data["area"] == {"value": pytest.approx(645.16), "unit": "mm²", "dimension": "area"}
+    data = result_json(calc, result, ShownUnits.generated("mm"), DisplayPrefs())["outputs"]
+    assert data["area"]["dimension"] == "area"
+    assert data["area"]["base"] == {"value": pytest.approx(645.16), "unit": "mm²"}
+    assert data["area"]["shown"] == {
+        "unit": "ft²",
+        "value": pytest.approx(645.16 / 92903.04),
+        "text": "0.00694444 ft²",
+    }, "a fixed row in its own unit"
 
 
 @pytest.mark.parametrize(

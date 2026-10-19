@@ -579,12 +579,11 @@ def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixtur
         == 0
     )
     data = json.loads(capsys.readouterr().out)
-    assert data["outputs"]["area"] == {
-        "value": pytest.approx(6 * IN2),
-        "unit": "mm²",
-        "dimension": "area",
-    }
-    assert data["outputs"]["hypotenuse"]["value"] == pytest.approx(127)
+    area = data["outputs"]["area"]
+    assert area["dimension"] == "area" and area["base"]["unit"] == "mm²"
+    assert area["base"]["value"] == pytest.approx(6 * IN2)
+    assert area["shown"]["unit"] == "in²" and area["shown"]["value"] == pytest.approx(6)
+    assert data["outputs"]["hypotenuse"]["base"]["value"] == pytest.approx(127)
     assert main(["run", "geometry.right_triangle", "a=5", "C=4", "--method", "leg_hypotenuse"]) != 0
     assert "must be longer than the leg" in capsys.readouterr().err
 

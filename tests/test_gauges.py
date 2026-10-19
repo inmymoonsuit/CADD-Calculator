@@ -34,6 +34,7 @@ from caddcalc.core.formatting import (
     describe_note,
     describe_source,
     render_step,
+    result_json,
 )
 
 INCHES, MILLIMETRES = ShownUnits.generated("in"), ShownUnits.generated("mm")
@@ -109,7 +110,7 @@ def test_a_derived_thickness_shows_its_work_ahead_of_the_calculators() -> None:
     symbolic, numeric, _ = render_step(work, result, INCHES, DisplayPrefs())
     assert (symbolic, numeric) == ("(w + c) / 16 / B", "(70 + 0) / 16 / 41.82")
     assert result.steps[1:] == BendAllowance().run().steps
-    step = result.to_dict()["steps"][0]
+    step = result_json(BendAllowance(), result, INCHES, DisplayPrefs())["steps"][0]
     assert step["substitution"] == {"w": "70", "c": "0", "B": "41.82"}
     assert (step["expression_unit"], step["stated"]) == ("in", "0.1046 in")
     millimetres = render_step(work, result, MILLIMETRES, DisplayPrefs())

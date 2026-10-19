@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from types import MappingProxyType
-from typing import Any, ClassVar, Protocol
+from typing import ClassVar, Protocol
 
 from caddcalc.core import expr
 from caddcalc.core.choices import DerivedValue
@@ -19,7 +19,6 @@ from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, UnitSet
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
-    BASE_UNITS,
     Dimension,
     Unit,
     base_text,
@@ -50,37 +49,6 @@ class Result:
     """Notes on the result: warnings, cited limits, gaps, and impossibilities, in order."""
     input_sources: Mapping[str, InputSource]
     """Where each input value came from, by parameter key (ADR-0013 §5)."""
-
-    def to_dict(self) -> dict[str, Any]:
-        """A JSON-serialisable form. Values are in base units, and each one names its unit."""
-
-        def q(value: float, dim: Dimension) -> dict[str, Any]:
-            number = int(value) if dim is Dimension.COUNT else value  # a count is whole
-            return {"value": number, "unit": BASE_UNITS[dim], "dimension": dim.value}
-
-        return {
-            "calculator": self.calculator_id,
-            "method": self.method,
-            "inputs": {
-                k: {**q(v, self.dimensions[k]), "source": self.source_of(k).to_dict()}
-                for k, v in self.inputs.items()
-            },
-            "outputs": {k: q(v, self.dimensions[k]) for k, v in self.outputs.items()},
-            "steps": [
-                {
-                    "symbol": s.symbol,
-                    "label": s.label,
-                    "expression": s.expression,
-                    "note": s.note,
-                    **q(s.value, s.dimension),
-                    "substitution": None if s.substitution is None else dict(s.substitution),
-                    "expression_unit": s.expression_unit,
-                    "stated": s.stated,
-                }
-                for s in self.steps
-            ],
-            "notes": [note.to_dict() for note in self.notes],
-        }
 
     def source_of(self, key: str) -> InputSource:
         """Return where the input ``key`` came from.
