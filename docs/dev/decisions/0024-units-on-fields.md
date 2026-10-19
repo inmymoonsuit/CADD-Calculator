@@ -1370,3 +1370,8 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   = 4 had no margin, and 2 ulps reach 6. `ULPS` is 8, which holds a 2-ulp library and
   allows at most 1.2 × 10⁻¹¹ relative; the pinning test passes 8 and fails 16.
 * 34 mutants, one for each guard of this round, are each killed.
+* **The final confirmation's Medium:** S&R's L2 above re-read a typed text with the
+  field's reader for JSON's `shown.value`, but without `--unit` the CLI reads it with
+  `parse_quantity`, where `3 - 1/2"` is a mixed number: 3.5 in, shown as 2.5. The typed
+  amount is used now only where it gives the value the run used, and is base ÷ factor
+  otherwise (`formatting._typed_amount`).

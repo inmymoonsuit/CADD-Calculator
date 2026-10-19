@@ -278,6 +278,28 @@ def test_an_input_s_shown_value_is_the_number_typed(
     assert thickness["base"]["value"] == TypedValue.read(str(value), unit, Dimension.LENGTH).value
 
 
+@pytest.mark.parametrize(
+    ("text", "unit", "value"),
+    [
+        ('value=3 - 1/2"', "in", 3.5),
+        ("value=3- 3/16", "in", 3.1875),
+        ("value=12 - 1/2 mm", "mm", 12.5),
+    ],
+)
+def test_a_shown_value_agrees_with_its_base_however_the_text_was_read(
+    capsys: pytest.CaptureFixture[str], text: str, unit: str, value: float
+) -> None:
+    """Without ``--unit``, ``3 - 1/2"`` is a mixed number, so its shown value is 3.5, not 2.5.
+
+    The CLI reads it as ``parse_quantity`` does; the field's reader would subtract. An
+    amount that doesn't give the base the run used isn't the one typed (the cloud
+    review's final Medium).
+    """
+    data = _json(capsys, "run", "conversions.length", text)["inputs"]["value"]
+    assert (data["shown"]["unit"], data["shown"]["value"]) == (unit, value)
+    assert data["base"]["value"] == pytest.approx(value * (25.4 if unit == "in" else 1.0))
+
+
 def test_an_input_in_a_form_is_listed_as_nearly_as_it_ran(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

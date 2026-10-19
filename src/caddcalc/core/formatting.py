@@ -1192,7 +1192,10 @@ def _typed_amount(entry: TypedValue, unit: str) -> Fraction | None:
     """Return the number an input was typed as, exactly, if it was typed in ``unit``.
 
     A form's text gives its amount in the form's full unit, inches for feet and inches.
-    ``None`` for a text read in another unit, or one this can't read alone.
+    ``None`` for a text read in another unit, or one this can't read alone, or one it
+    reads otherwise than the entry's reader did: the CLI reads ``3 - 1/2"`` without
+    ``--unit`` as a mixed number, where a field's reader subtracts (the cloud review's
+    final Medium). Only an amount that gives the value the run used is the one typed.
     """
     if entry.unit.symbol != unit:
         return None
@@ -1201,15 +1204,18 @@ def _typed_amount(entry: TypedValue, unit: str) -> Fraction | None:
     try:
         form = entered_form(entry)
         if form is not None:
-            return units.compound(form).read(text, entry.decimal)
-        if entry.explicit_unit:
-            ending = units.ending(text, entry.dimension)
-            if ending is None:
-                return None
-            text = text[: len(text) - ending[1]].rstrip()
-        return evaluate(text, entry.decimal)
-    except CaddCalcError:
+            amount = units.compound(form).read(text, entry.decimal)
+        else:
+            if entry.explicit_unit:
+                ending = units.ending(text, entry.dimension)
+                if ending is None:
+                    return None
+                text = text[: len(text) - ending[1]].rstrip()
+            amount = evaluate(text, entry.decimal)
+        same = float(amount) * entry.unit.factor == entry.value
+    except (CaddCalcError, OverflowError):
         return None
+    return amount if same else None
 
 
 def _note_json(note: Note, units: ShownUnits, prefs: DisplayPrefs) -> dict[str, Any]:

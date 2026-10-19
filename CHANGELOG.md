@@ -420,7 +420,8 @@ All notable changes are recorded here. The format follows
   input the method doesn't use, is refused as such; a repeated `--output-set` is refused
   as the other repeated options are.
 - **JSON gives `output_set: null` for a calculator with no output sets,** such as a
-  converter, and an input's `shown.value` is the number as typed (`T=3` is 3).
+  converter, and an input's `shown.value` is the number as typed (`T=3` is 3), and
+  always agrees with its `base`: `value=3 - 1/2"` gives 3.5, as the command line reads it.
 - **An input read in feet and inches is listed as it ran:** `0'-0.1046"` is listed
   `0.1046 in`, not rounded to `0'-0 1/8"`; one the form shows exactly stays in the form.
 - A result's label no longer draws a pixel past its edge where it elides, as on macOS.
