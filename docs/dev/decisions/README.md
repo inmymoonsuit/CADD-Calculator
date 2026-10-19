@@ -34,6 +34,6 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0019](0019-units-registry.md) | A units registry, the one source of unit knowledge | Accepted (its behaviour-neutral first step built, u1 and u1b; U5's spellings in i3) |
 | [0020](0020-localization.md) | Localization, starting with a skeleton | Accepted (its skeleton being built: i1 to i4) |
 | [0021](0021-window-and-page-layout.md) | Window and page layout, in text units | Accepted; built |
-| 0022 | Distribution and signing | Accepted; not yet filed |
-| 0023 | The layout contract | Accepted; not yet built |
-| 0024 | Units on fields | Proposed |
+| [0022](0022-distribution-and-signing.md) | Distribution and signing, starting free | Accepted; not yet built |
+| [0023](0023-layout-contract.md) | The layout contract | Accepted; not yet built (after 0024) |
+| [0024](0024-units-on-fields.md) | Units on fields | Accepted; not yet built |
