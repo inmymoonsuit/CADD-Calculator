@@ -410,7 +410,7 @@ Under A (UI/UX's lean, and mine), the field evaluator accepts:
 
 It's its own small tokenizer and recursive-descent parser, about 100 lines in
 `core/units/entry.py`, not Python's `ast`. Arithmetic is exact `Fraction` arithmetic,
-rounded once, so `1/3*3` is 1, and `3/16` in inches is exactly 4.7625 mm. Division by zero
+rounded once in the picked unit, so `1/3*3` is 1, and `3/16` in inches is 0.1875 in exactly, which the inch's factor makes the double nearest 4.7625 mm to 1e-15 (*amended 2026-10-19:* "exactly 4.7625 mm" contradicted E2's one rounding in the unit, then the factor; see the E-1 amendment). Division by zero
 is an InputError, "can't divide by zero". The text's length and nesting are bounded, as
 `expr.parse` bounds them.
 
@@ -637,7 +637,7 @@ user guide, and the engineering log. E-1 and E-2 change nothing a user sees; the
 
 | Slice | Changes | Tests and figures | Mutation-probe targets |
 |---|---|---|---|
-| **E-1 Entry reader** | `core/units/entry.py`: tokenizer, evaluator (E3's choice), reading in a picked unit and in a picked form, refusal of a unit with its fix. `TypedValue.read`, `TypedValue.choice`. | For every unit-free text in ADR-0019's identity corpus, the picked reading equals `parse_quantity` in that unit, bit for bit. `1-3/16` = 1.1875; `1 - 3/16` = 0.8125; `2 × 1 3/16` = 2.375; `3/16` in = 4.7625 mm; `1/3*3` = 1; `10-2` ft-in = 3098.8 mm; `40 30 15` = 40.504166…°; `1e3` = 1000, as today. Refused: `0x10`, `1_0`, `1j`, `3 mm`, `5'9` in a plain field, `1/0`. | the mixed-number binding; the no-space hyphen rule; rounding once (rational, then one double); the sign at the front only; inches under 12; the unit refusal |
+| **E-1 Entry reader** | `core/units/entry.py`: tokenizer, evaluator (E3's choice), reading in a picked unit and in a picked form, refusal of a unit with its fix. `TypedValue.read`, `TypedValue.choice`. | For every unit-free text in ADR-0019's identity corpus, the picked reading equals `parse_quantity` in that unit, bit for bit. `1-3/16` = 1.1875; `1 - 3/16` = 0.8125; `2 × 1 3/16` = 2.375; `3/16` in = 0.1875 in, 4.7625 mm to 1e-15 (*amended 2026-10-19*, as in E3); `1/3*3` = 1; `10-2` ft-in = 3098.8 mm; `40 30 15` = 40.504166…°; `1e3` = 1000, as today. Refused: `0x10`, `1_0`, `1j`, `3 mm`, `5'9` in a plain field, `1/0`. | the mixed-number binding; the no-space hyphen rule; rounding once (rational, then one double); the sign at the front only; inches under 12; the unit refusal |
 | **E-2 Declarations** | `entry_choices`, `output_choices`, `CompoundForm.reads`, `ft_in_32` and `ft_in_64`; `Param.unit` and `units`; `UnitSet`, `Calculator.output_sets` and the generated sets; `Output.picks`; the `validate_spec` rules, which refuse a plugin Param with no resolvable default choice. | Every built-in resolves a default for every Param. Each rule refuses a bad declaration. The generated `in` and `mm` sets equal today's `display_unit` for every dimension. | set coverage; the default-unit resolution; `picks` exclusive with `unit`/`form`; area following length in every inch form |
 | **E-3 Presentation** | `ShownUnits` through `core.formatting`: fields, Copy, Copy all, speech, work, notes, errors. `DisplayPrefs.length_unit`, `entry_unit` and `display_unit` removed. | **Neutrality:** for every built-in calculator × method × the `in` and `mm` sets, every shown, copied, spoken and TSV text equals today's under `DisplayPrefs(length_unit=…)`, captured from c7b1772 as a golden before the field is removed. New: the `ft_in`, `in_16` and `dms` sets show their forms; work lines are in the full unit; an input's range error is in its choice. | a form in work lines; per-output picks over the set; the range error's unit; area following an inch form |
 | **E-4 CLI and JSON** | `--unit`, `--output-set`, `--output-unit` and the refusals; `--units`, `--fraction` and the hint removed; `result_json` and schema 1; `Result.to_dict` removed, and the about ten test files that use it move to `result_json` or to `Result`'s fields; amendments to ADR-0013 (its "`Result.to_dict()` includes the source of every input") and ADR-0014's `to_dict` mentions; `caddcalc show` lists choices and sets. | **A schema test:** for every built-in × method, every key E5 lists is present with its type, with `entered` only for given inputs, and `form` and `copied` only with a form. **Golden values in the new shape:** the published examples' figures (`test_published_examples`) as `base` and `shown`, and a form's `copied`. **S&R's CLI corpus as a correctness baseline:** 434 sheet-metal invocations, 114 of them `--json`. Its `clidiff` scripts live in a temporary scratchpad, so they're copied into the project's test tooling or regenerated. Its calls are rewritten keeping their meaning (S&R's M1): `--units in` becomes `--output-set in`, and `--units mm` becomes `--output-set mm` plus "mm" on each bare length value, since `--units mm` also read bare lengths in mm (8 of its 106 `--units mm` cases are bare-number `--json` runs). Angles and ratios need nothing; it has no `--fraction` calls. Then every `base` value must equal c7b1772's. `--unit` refuses a comma and a unit outside its form's grammar. | `base` unrounded; `shown.value` unrounded, `text` rounded; `unit_in_text`; a form's full unit; each refusal |
@@ -806,7 +806,7 @@ on Linux, and is reviewed. Each adds an "as built" amendment here with its figur
 * **Tests:**
   * each converter has one input with a picker, and one output with the output picker
     (Decimal to fraction: a fineness input and two rows)
-  * 3/16 in → 0.1875 in, and 4.7625 mm
+  * 3/16 in → 0.1875 in, and 4.7625 mm to 1e-15 (E3, as amended)
   * 0.1875 in → 3/16" with an error of 0
   * an angle in DMS → rad
   * Length's need at the target is under 736 px
@@ -1076,4 +1076,42 @@ third, the domain settings' default choices, goes with U2b):
   0.5 s.
 * Thirteen mutants, one for each of these guards, are each killed; without its bound,
   `1e99999999` outlasts a 60 s timeout.
+
+### 2026-10-19: as built, the cloud review's fixes at stop 1
+
+The cloud review of 6bc88ec asked for changes (2 High, 2 Medium); its H1 and M2 were
+UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
+* **H1, the window's half:** a pick or a step shows the fields in their choices in a
+  `finally`, so a picker and its field's reading never part; typing `1-`, picking mm,
+  then typing `2` runs 2 mm, with nothing raised.
+* **H2:** "Use …" applies its number as typed in the choice the click set, never as an
+  edit judged to end where it began, so `25 mm` pasted into a field already in mm runs
+  25 mm; and `1-3/16"`, `45°` and `44 %` the same, each tested.
+* **M1:** a default with no unit in its text is in the unit its picker starts in, so
+  `default="0.1046", unit="in"` is 0.1046 in; and a default written in a form that reads,
+  `1'-4"`, starts the picker in that form.
+* **Lows:**
+  * **L4:** `parse_quantity`'s feet and inches and DMS read exactly and round once, as a
+    picked field does; 20,000 random texts of each read alike by their bits, or are both
+    refused (inches after feet read an improper mixed number as its sum on both paths).
+  * **L5:** a refusal names the unit as written: `3 μm` names μm, `10 ft-in` names ft-in.
+  * **L6:** a calculator whose every output has its own unit, form or picks has no
+    output sets.
+  * **L7:** unreadable text is announced as "can't be read in", and the follow names
+    only the fields shown, though every follower moves.
+  * **L8:** a pick sets only the fields whose text changes, so the others keep their undo.
+  * **L9:** tests for left-to-right subtraction, one sign in feet and inches, the echo's
+    unit, no echo on a plain decimal, and no stale echo.
+  * **L3 and L10:** documented in ADR-0019's amendment and KI-026.
+* **From the notes:**
+  * The minus sign U+2212 is always minus; only a hyphen joins a mixed number.
+  * DMS takes `-` between its parts (`40-30-15`), as E2 says, while `40 -30` stays
+    refused.
+  * An output set's key and label can't be empty.
+  * A fix writes `30°`, close up.
+  * E3 and E8's "exactly 4.7625" are amended.
+* **Low 1 and Low 2,** the ≈ hint's test and its huge-size disagreement, PR #1's Lows 1
+  and 3, go with E-4, which removes the hint and `--fraction`.
+* Seventeen mutants, one for each of these guards and for each of the review's surviving
+  ones, are each killed.
 

@@ -86,6 +86,8 @@ class _Token:
     value: Fraction = Fraction(0)
     digits: bool = False
     """Whether a number is written in digits alone, as a mixed number's parts are."""
+    hyphen: bool = False
+    """Whether a minus is written as a hyphen-minus, ``-``, which can join a mixed number."""
 
 
 class _NotArithmeticError(InputError):
@@ -188,7 +190,9 @@ def _named(
         return UnitInTextError(text, form.key, form.symbol, text)
     if ending is not None and but is None:
         # In a form's field a mark ending the text is the form's own, as in "30′ 40°".
-        return UnitInTextError(text, None, ending[0].written or ending[0].symbol, "")
+        # The unit is named as written, its last word: "μm" in "3 μm", never the "m"
+        # that ends it.
+        return UnitInTextError(text, None, text.split()[-1], "")
     return None
 
 
@@ -268,7 +272,10 @@ def _tokens(text: str, decimal: str) -> list[_Token]:
         if char.isspace():
             at += 1
         elif char in _OPERATORS or char in "()":
-            tokens.append(_Token(_OPERATORS.get(char, char), at, at + 1))
+            # A minus sign, U+2212, is always minus: only a typed hyphen joins a mixed
+            # number, as AutoCAD's rule has it (ADR-0024 D7).
+            kind = _OPERATORS.get(char, char)
+            tokens.append(_Token(kind, at, at + 1, hyphen=char == "-"))
             at += 1
         else:
             m = _NUMBER.match(written, at)
@@ -348,7 +355,7 @@ def _unfinished(tokens: list[_Token]) -> bool:
         if not all(t.digits for t in tail if t.kind == "number"):
             continue
         if shape[1] == "-":
-            return all(tight(a, b) for a, b in itertools.pairwise(tail))
+            return tail[1].hyphen and all(tight(a, b) for a, b in itertools.pairwise(tail))
         return not tight(tail[0], tail[1]) and (len(tail) == 2 or tight(tail[1], tail[2]))
     return False
 
@@ -367,7 +374,7 @@ def _mixed_size(tokens: list[_Token], i: int) -> int:
 
     if not digits(i) or (i > 0 and kind(i - 1) == "/" and touch(i - 1)):
         return 0
-    if kind(i + 1) == "-" and touch(i) and touch(i + 1):
+    if kind(i + 1) == "-" and tokens[i + 1].hyphen and touch(i) and touch(i + 1):
         fraction = i + 2
     elif digits(i + 1) and not touch(i):
         fraction = i + 1

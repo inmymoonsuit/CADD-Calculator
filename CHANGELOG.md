@@ -408,7 +408,9 @@ All notable changes are recorded here. The format follows
   in the last place that make a typed half-way value a tie are counted in inches, the
   unit it's shown in, not in millimeters, where they were up to four of an inch's.
 - **A fraction or mixed number typed with its unit reads exactly, rounded once:**
-  `3 78/100 mm` is 3.78 mm, not 3.7800000000000002, and `-0` reads as 0.
+  `3 78/100 mm` is 3.78 mm, not 3.7800000000000002, and `-0` reads as 0. Feet and
+  inches, and degrees, minutes and seconds, read exactly too, so a value read on the
+  command line is bit for bit the one a field reads.
 - `tand(-0.0)` and `sind(-0.0)`, and their zeros at multiples of 180°, are signed as IEEE
   754's `tanPi` and `sinPi` sign them: `tand(-0.0)` is -0.0, not 0.0.
 - A label that ends in parentheses takes its symbol inside them: "Across flats
@@ -542,8 +544,10 @@ All notable changes are recorded here. The format follows
   Switching a picker re-reads the number you typed and converts a value you didn't;
   your first switch carries to the calculator's other fields of that kind that show a
   value you didn't type, once the choice settles (Enter, leaving the picker, or a choice
-  in its list). A bend angle is picked in °, ° ′ ″ or rad. The Units box now sets only
-  how results show. Family settings fields read as before (KI-027).
+  in its list). A bend angle is picked in °, ° ′ ″ or rad. Degrees, minutes and seconds
+  take hyphens between their parts (`40-30-15`), and the minus sign `−` never joins a
+  mixed number. For calculator authors, a default with no unit in its text is in the
+  unit its picker starts in. The Units box now sets only how results show. Family settings fields read as before (KI-027).
 - **The command line suggests only names that can be given:** for the right
   triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
   `--method leg_angle`, which takes no side b, it suggests none and names that method's

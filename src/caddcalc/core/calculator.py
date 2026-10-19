@@ -347,6 +347,8 @@ class Calculator(ABC):
             return cls.output_sets
         units = registry()
         shown = list(dict.fromkeys(o.dimension for o in cls.outputs if o.follows_set))
+        if not shown:
+            return ()  # every output has its own unit, form or picks: there's nothing to set
         sets = []
         for key, choices in units.generated_sets():
             written = [_written(choices[d], d) for d in shown]
@@ -621,6 +623,9 @@ def _check_param_choices(owner: str, p: Param) -> None:
 def _check_sets(cls: type[Calculator]) -> None:
     """Check the declared output sets: unique keys, real choices, every dimension covered."""
     _unique(cls.id, "output set key", [s.key for s in cls.output_sets])
+    for unit_set in cls.output_sets:
+        if not unit_set.key.strip() or not unit_set.label.strip():
+            raise SpecError(f"{cls.id}: an output set needs a key and a label")
     shown = {o.dimension for o in cls.outputs if o.follows_set}
     for unit_set in cls.output_sets:
         missing = sorted(d.value for d in shown if d not in unit_set.choices)

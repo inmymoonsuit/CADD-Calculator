@@ -525,3 +525,97 @@ def test_a_bend_angle_is_picked_in_degrees_dms_or_radians() -> None:
     window.select_calculator(BEND)
     assert window.pickers["bend_angle"].choices == ("deg", "dms", "rad")
     window.close()
+
+
+@pytest.mark.parametrize(
+    ("calc_id", "key", "pick_first", "typed", "kept", "base"),
+    [
+        (BEND, "thickness", "mm", "25 mm", "25", 25.0),
+        (BEND, "thickness", None, '1-3/16"', "1-3/16", 1.1875 * INCH),
+        (BEND, "bend_angle", None, "45°", "45", 45.0),
+        ("sheet_metal.v_die_opening", "radius_ratio", None, "44 %", "0.44", 0.44),
+    ],
+)
+def test_the_fix_applies_the_number_when_the_unit_is_already_picked(
+    calc_id: str, key: str, pick_first: str | None, typed: str, kept: str, base: float
+) -> None:
+    """Pasting 25 mm into a field already in mm is the natural paste from an mm drawing."""
+    window = open_window()
+    window.select_calculator(calc_id)
+    if pick_first is not None:
+        pick(window, key, pick_first)
+    type_into(field(window, key), typed)
+    window.unit_fixes[key][2].click()
+    assert field(window, key).text() == kept
+    assert window.result.inputs[key] == pytest.approx(base, rel=1e-15)
+    window.close()
+
+
+def test_a_pick_after_an_unfinished_keystroke_keeps_picker_and_reading_in_step(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import sys
+
+    from PySide6.QtTest import QTest
+
+    raised: list[BaseException] = []
+    monkeypatch.setattr(sys, "excepthook", lambda _t, exc, _tb: raised.append(exc))
+    window = open_window()
+    window.select_calculator(BEND)
+    edit = field(window, "thickness")
+    edit.selectAll()
+    QTest.keyClicks(edit, "1-")
+    pick(window, "thickness", "mm")
+    edit = field(window, "thickness")
+    edit.selectAll()
+    QTest.keyClicks(edit, "2")
+    assert raised == []
+    assert window.pickers["thickness"].choice == "mm"
+    assert window.result.inputs["thickness"] == 2.0
+    window.close()
+
+
+def test_the_echo_names_the_fields_unit_and_goes_with_unreadable_text() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    pick(window, "thickness", "mm")
+    edit = field(window, "thickness")
+    type_into(edit, "1/2")
+    assert edit.echo.text == "= 1/2 mm"
+    type_into(edit, "0.25")
+    assert edit.echo is None, "a plain decimal has none, though it isn't the default"
+    type_into(edit, "1-3/16")
+    type_into(edit, "1-3/16x")
+    assert edit.echo is None and window.result is None, "no echo of text that isn't read"
+    window.close()
+
+
+def test_an_announcement_says_unreadable_text_isnt_read_and_names_shown_fields_only() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(field(window, "thickness"), "abc")
+    pick(window, "thickness", "mm")
+    assert (
+        window.statusBar()
+        .currentMessage()
+        .startswith("Material thickness: abc can't be read in millimeters")
+    )
+    window.select_calculator(RIGHT)
+    window.method_box.setCurrentIndex(window.method_box.findData("legs"))
+    pick(window, "leg_a", "mm")
+    message = window.statusBar().currentMessage()
+    assert message.endswith("Lengths now in millimeters: leg b"), message
+    window.method_box.setCurrentIndex(window.method_box.findData("leg_hypotenuse"))
+    assert window.pickers["hypotenuse"].choice == "mm", "hidden, it followed all the same"
+    window.close()
+
+
+def test_a_pick_keeps_the_undo_of_the_fields_it_didnt_change() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(field(window, "inside_radius"), "0.2")
+    assert field(window, "inside_radius").isUndoAvailable()
+    pick(window, "thickness", "mm")
+    assert window.pickers["inside_radius"].choice == "in", "typed in, so set"
+    assert field(window, "inside_radius").isUndoAvailable()
+    window.close()

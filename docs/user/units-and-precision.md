@@ -29,8 +29,11 @@ no picker.
 * **In feet and inches**, the marks are optional: give whole feet, then the inches,
   under 12, joined by a hyphen or a space, or the inches alone, of any size. One sign,
   at the front: `-10-2`.
-* **In degrees, minutes and seconds**, the parts go in order, separated by spaces or
-  their marks; degrees and minutes are whole, and minutes and seconds are under 60.
+* **In degrees, minutes and seconds**, the parts go in order, separated by spaces,
+  hyphens or their marks, as `40 30 15`, `40-30-15` or `40°30′15″`; degrees and minutes
+  are whole, and minutes and seconds are under 60.
+* **The minus sign `−` is always minus**, so `1−3/16` is thirteen sixteenths; only the
+  hyphen on your keyboard joins a mixed number.
 * **What it reads as** shows at the field's end, in a lighter colour, whenever your
   text isn't a plain number: `1-3/16` shows `= 1 3/16 in`, and `1 - 3/16` shows
   `= 0.8125 in`. If the field is too narrow for both, it's in the field's tooltip, and

@@ -244,7 +244,10 @@ before its work. Scaling the sides by the largest before each formula would lift
 limit for the angles, but not for an area, which is the square of a length, and it would
 put the scale into every step of the shown work; no drawing comes near the limit.
 `test_every_length_outside_the_scale_is_refused_plainly` and
-`test_a_triangle_at_either_end_of_the_scale_keeps_its_digits` check both ends.
+`test_a_triangle_at_either_end_of_the_scale_keeps_its_digits` check both ends. The scale
+bounds lengths only: an angle as tiny as 1e-300°, with a hypotenuse of 1e-70 mm, still
+gives a leg and an area of 0, its sine under the doubles' range (the cloud review of
+PR #2, in the code before it too).
 
 ## Resolved
 

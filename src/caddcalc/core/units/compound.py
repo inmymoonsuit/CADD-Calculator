@@ -25,7 +25,7 @@ from caddcalc.core.errors import InputError, UsageError
 from caddcalc.core.i18n import N_, NP_, _, npgettext, npgettext_shown, pgettext
 from caddcalc.core.units.builtin import INCH_MM, UNITS
 from caddcalc.core.units.model import Dimension, Unit
-from caddcalc.core.units.numbers import comma_error, exact_number, parse_number
+from caddcalc.core.units.numbers import comma_error, exact_number
 
 MINUS = "-"
 """The sign a negative value is written with: an ASCII hyphen-minus (ADR-0020 §4)."""
@@ -123,6 +123,22 @@ def round_half_even(value: float, scale: Fraction, unit: Fraction = Fraction(1))
     if abs(parts - half) <= min(TIE_ULPS * last_place * scale, TIE_CAP):
         parts = half
     return round(parts)
+
+
+def _exact_part(text: str, decimal: str) -> Fraction:
+    """Return a part of a compound value exactly, as ``4 3/16`` inches or ``15.5`` seconds.
+
+    A whole number and an improper fraction, ``4 5/4``, which ``exact_number`` leaves to
+    arithmetic, is read as their sum, as ``parse_number`` reads it.
+    """
+    try:
+        return exact_number(text, decimal)
+    except InputError:
+        number = text.replace(decimal, ".").replace("-", " ")
+        whole, _space, fraction = number.partition(" ")
+        if not fraction:
+            raise
+        return int(whole) + exact_number(fraction.strip(), ".")
 
 
 def _marks(*units: Unit) -> str:
@@ -313,11 +329,13 @@ class FeetInches(CompoundForm):
                     "with their mark, as 1'-4 3/16\""
                 )
             return None
-        inches = parse_number(m["inches"], decimal)
+        inches = _exact_part(m["inches"], decimal)
         if inches >= 12:
             raise InputError(f"{text!r} has {m['inches']} inches; give inches under 12")
-        sign = -1.0 if m["sign"] == "-" else 1.0
-        return sign * (int(m["feet"]) * 12 + inches) * float(INCH_MM)
+        total = int(m["feet"]) * 12 + inches
+        # Exactly in inches, rounded once, then the factor: as a field picked in
+        # feet and inches reads it (read), bit for bit.
+        return float(-total if m["sign"] == "-" else total) * float(INCH_MM)
 
     @override
     def read(self, text: str, decimal: str = ".") -> Fraction:
@@ -339,7 +357,14 @@ class FeetInches(CompoundForm):
             if m is None:
                 continue
             try:
-                inches = exact_number(m["inches"], decimal) if m["inches"] else Fraction(0)
+                if not m["inches"]:
+                    inches = Fraction(0)
+                elif pattern is bare:
+                    inches = exact_number(m["inches"], decimal)
+                else:
+                    # After feet, inches read as the marked form reads them, an improper
+                    # fraction after a whole number as their sum (_exact_part).
+                    inches = _exact_part(m["inches"], decimal)
             except InputError:
                 continue  # an improper fraction after a whole number: the next reading
             feet = int(m["feet"]) if "feet" in m.groupdict() and m["feet"] else 0
@@ -482,13 +507,14 @@ class DegreesMinutesSeconds(CompoundForm):
                 )
             return None
         minutes = int(m["m"] or 0)
-        seconds = parse_number(m["s"], decimal) if m["s"] else 0.0
+        seconds = _exact_part(m["s"], decimal) if m["s"] else Fraction(0)
         if minutes >= 60 or seconds >= 60:
             raise InputError(
                 f"{text!r} has a part of 60 or more; give minutes and seconds under 60"
             )
-        sign = -1.0 if m["sign"] == "-" else 1.0
-        return sign * (int(m["d"] or 0) + minutes / 60 + seconds / 3600)
+        # Exactly, then rounded once, as a field picked in DMS reads it (read).
+        total = int(m["d"] or 0) + Fraction(minutes, 60) + seconds / 3600
+        return float(-total if m["sign"] == "-" else total)
 
     @override
     def read(self, text: str, decimal: str = ".") -> Fraction:
@@ -555,13 +581,15 @@ class DegreesMinutesSeconds(CompoundForm):
 def _dms_picked() -> tuple[re.Pattern[str], tuple[str, str, str]]:
     """A picked field's part of degrees, minutes and seconds, and its marks' groups.
 
-    A part is a number and its mark, if it has one; the groups are in the parts' order.
+    A part is a number and its mark, if it has one, then a space or a hyphen before the
+    next: there's no arithmetic in a form's field, so ``40-30-15`` is 40°30′15″ (ADR-0024
+    E2). The groups are in the parts' order.
     """
     degree = _marks(_builtin("deg")) + "|d"
     minute, second = _marks(_builtin("arcmin")), _marks(_builtin("arcsec"))
     part = re.compile(
-        rf"(?P<number>\d+(?:[.,]\d*)?|[.,]\d+) ?(?:(?P<d>{degree})|(?P<m>{minute})|"
-        rf"(?P<s>{second}))? ?",
+        rf"(?P<number>\d+(?:[.,]\d*)?|[.,]\d+)(?: ?(?:(?P<d>{degree})|(?P<m>{minute})|"
+        rf"(?P<s>{second})))?(?: |-)?",
         re.IGNORECASE,
     )
     return part, ("d", "m", "s")

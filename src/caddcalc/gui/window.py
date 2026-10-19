@@ -102,7 +102,13 @@ from caddcalc.core.formatting import (
 )
 from caddcalc.core.i18n import _
 from caddcalc.core.spec import named
-from caddcalc.core.units import Dimension, UnitInTextError, base_text, parse_quantity_detailed
+from caddcalc.core.units import (
+    CLOSE_UP_SYMBOLS,
+    Dimension,
+    UnitInTextError,
+    base_text,
+    parse_quantity_detailed,
+)
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
 from caddcalc.gui.focus_ring import OUTLINED, FocusRing
@@ -1137,11 +1143,13 @@ class MainWindow(QMainWindow):
         calc = self.calculator
         if calc is None or key not in self.fields:
             return
-        self._finish_field_edits()
         p, _edit = self.fields[key]
-        if choice != self._choice(calc, p):
-            self._switch(calc, p, choice)
-            self._show_choices(calc)
+        try:
+            self._finish_field_edits()
+            if choice != self._choice(calc, p):
+                self._switch(calc, p, choice)
+        finally:
+            self._show_choices(calc)  # the picker shows what the field reads, whatever failed
 
     def _on_picked(self, key: str, choice: str) -> None:
         """Settle a field's unit or form, carry it to the fields that follow, and say so.
@@ -1156,30 +1164,34 @@ class MainWindow(QMainWindow):
         calc = self.calculator
         if calc is None or key not in self.fields:
             return
-        self._finish_field_edits()
         p, _edit = self.fields[key]
-        if choice != self._choice(calc, p):
-            self._switch(calc, p, choice)
-        said = [self._said(calc, p)]
         followers: list[Param] = []
-        if (calc.id, p.dimension) not in self.led_dimensions:
-            self.led_dimensions.add((calc.id, p.dimension))
-            followers = [
-                q
-                for q in calc.params
-                if q.dimension is p.dimension
-                and q.key != key
-                and choice in q.choices
-                and self._choice(calc, q) != choice
-                and not self._typed_in(calc, q)
-            ]
-        for q in followers:
-            self._switch(calc, q, choice)
-        if followers:
-            labels = ", ".join(q.label.lower() for q in followers)
+        try:
+            self._finish_field_edits()
+            if choice != self._choice(calc, p):
+                self._switch(calc, p, choice)
+            if (calc.id, p.dimension) not in self.led_dimensions:
+                self.led_dimensions.add((calc.id, p.dimension))
+                followers = [
+                    q
+                    for q in calc.params
+                    if q.dimension is p.dimension
+                    and q.key != key
+                    and choice in q.choices
+                    and self._choice(calc, q) != choice
+                    and not self._typed_in(calc, q)
+                ]
+            for q in followers:
+                self._switch(calc, q, choice)
+        finally:
+            self._show_choices(calc)  # the pickers show what the fields read, whatever failed
+        said = [self._said(calc, p)]
+        # Every follower moves, the other methods' too, but only the shown ones are named.
+        shown = [q for q in followers if q.key in self.fields]
+        if shown:
+            labels = ", ".join(q.label.lower() for q in shown)
             plural = DIMENSION_PLURALS.get(p.dimension, p.dimension.value.capitalize())
             said.append(f"{plural} now in {choice_name(choice, p.dimension)}: {labels}")
-        self._show_choices(calc)
         message = ". ".join(said)
         self.statusBar().showMessage(message, round(ui_style().result_field.copied_status_ms))
         announce(self.pickers.get(key, self), message)
@@ -1197,6 +1209,8 @@ class MainWindow(QMainWindow):
         if text is None or self._inherits_family_value(calc, p):
             shown = self._shown_text(calc, p)
             return f"{p.label}: shown in {name}, {shown}" if shown else f"{p.label}: in {name}"
+        if (calc.id, p.key) in self.pending_fields:
+            return f"{p.label}: {text} can't be read in {name}"
         return f"{p.label}: {text} now read as {name}"
 
     def _own_text(self, calc: Calculator, p: Param) -> str | None:
@@ -1221,7 +1235,9 @@ class MainWindow(QMainWindow):
             if picker is not None and picker.choice != choice:
                 picker.set_choice(choice)
             pending = self.pending_fields.get((calc.id, key))
-            edit.setText(self._shown_text(calc, p) if pending is None else pending)
+            text = self._shown_text(calc, p) if pending is None else pending
+            if edit.text() != text:  # so a field the pick didn't change keeps its undo
+                edit.setText(text)
             default = p.default_value()
             if default is not None:
                 shown = choice_text(default, choice, p.dimension, self.prefs)
@@ -1254,13 +1270,19 @@ class MainWindow(QMainWindow):
         fix = self._unit_fix(p, edit.text())
         if fix is None or fix.choice is None:
             return
-        self.pending_fields[calc.id, key] = fix.number
         if fix.choice != self._choice(calc, p):
+            self.pending_fields[calc.id, key] = fix.number  # so the pick re-reads it
             self._on_picked(key, fix.choice)
+        # The number is the user's, typed in the choice the click set: kept as typed,
+        # never judged as an edit that ended where it began.
+        self.edit_starts.pop((calc.id, key), None)
+        self.pending_fields.pop((calc.id, key), None)
         p, edit = self.fields[key]
+        self.entries.setdefault(calc.id, {})[key] = FieldEntry(self._read(p, fix.number))
+        if p.shared:
+            self.overrides.setdefault(calc.id, set()).add(key)
         edit.setText(fix.number)
-        self._on_field_edited(key, fix.number)
-        self._finish_field_edit(key)
+        self.recompute()
         edit.setFocus()
 
     def _leave_calculator(self) -> None:
@@ -2006,7 +2028,7 @@ def _unit_fix_text(fix: UnitInTextError) -> str:
         return f"This field takes a plain number, not {fix.shown}. Use {fix.number}?"
     if fix.number == fix.text:
         return f"Units go in the picker. Use {fix.shown}?"
-    return f"Units go in the picker. Use {fix.number} {fix.shown}?"
+    return f"Units go in the picker. Use {_with_unit(fix)}?"
 
 
 def _unit_fix_button(fix: UnitInTextError) -> str:
@@ -2015,7 +2037,13 @@ def _unit_fix_button(fix: UnitInTextError) -> str:
         return f"Use {fix.number}"
     if fix.number == fix.text:
         return f"Use {fix.shown}"
-    return f"Use {fix.number} {fix.shown}"
+    return f"Use {_with_unit(fix)}"
+
+
+def _with_unit(fix: UnitInTextError) -> str:
+    """Write a fix's number and unit as they're written: "25 mm", but "30°" (SP 811 §7.2)."""
+    joined = fix.shown in CLOSE_UP_SYMBOLS
+    return f"{fix.number}{fix.shown}" if joined else f"{fix.number} {fix.shown}"
 
 
 def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayPrefs) -> str:

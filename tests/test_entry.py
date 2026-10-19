@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import random
 import re
+from collections.abc import Callable
 from fractions import Fraction
 
 import pytest
@@ -445,3 +446,62 @@ def test_a_huge_exponent_is_refused_before_its_number_is_built() -> None:
         with pytest.raises(InputError, match="too large a number to calculate with"):
             read(text, "in", L)
         assert time.perf_counter() - started < 0.5, text
+
+
+def test_subtraction_and_division_go_left_to_right() -> None:
+    assert evaluate("2-1-1") == 0 and evaluate("8/4/2") == 1 and evaluate("2-3+4") == 3
+
+
+def test_a_minus_sign_is_always_minus() -> None:
+    """Only a typed hyphen joins a mixed number; U+2212 is the true minus (D7)."""
+    assert evaluate("1−3/16") == Fraction(13, 16)
+    assert evaluate("1-3/16") == Fraction(19, 16)
+    assert evaluate("−1-3/16") == -Fraction(19, 16), "a leading − is a sign"
+
+
+@pytest.mark.parametrize("text", ["--10-2", "+-10-2", "-+10-2", "-−10-2"])
+def test_feet_and_inches_take_one_sign(text: str) -> None:
+    with pytest.raises(InputError, match="isn't feet and inches"):
+        read(text, "ft_in", L)
+
+
+def test_degrees_minutes_and_seconds_take_a_hyphen_between_their_parts() -> None:
+    """There's no arithmetic in a form's field, so - separates the parts (E2)."""
+    assert value("40-30-15", "dms", A) == value("40 30 15", "dms", A)
+    assert value("-40-30", "dms", A) == -40.5
+
+
+@pytest.mark.parametrize("text", ["(1-", "2*1-", "1 - (2-"])
+def test_an_unfinished_expression_is_refused(text: str) -> None:
+    with pytest.raises(InputError):
+        read(text, "in", L)
+
+
+@pytest.mark.parametrize(("text", "named"), [("3 μm", "μm"), ("10 ft-in", "ft-in")])
+def test_a_refused_unit_is_named_as_written(text: str, named: str) -> None:
+    with pytest.raises(UnitInTextError) as refused:
+        read(text, "in", L)
+    assert refused.value.shown == named and f"names a unit, {named}:" in str(refused.value)
+
+
+def test_feet_and_inches_and_dms_with_their_marks_read_alike_in_a_field_and_the_cli() -> None:
+    """Both read exactly and round once, so a script repeats a field bit for bit (E-4)."""
+    rng = random.Random("forms identity")
+    for _ in range(20_000):
+        inches = f"{rng.randrange(12)} {rng.randrange(1, 7)}/{rng.choice([7, 16, 3, 64])}"
+        if rng.random() < 0.5:
+            inches = f"{rng.randrange(12)}.{rng.randrange(10 ** rng.randrange(1, 6))}"
+        length = f"{rng.choice(['', '-'])}{rng.randrange(400)}'-{inches}\""
+        field = _outcome(value, length, "ft_in")
+        assert field == _outcome(parse_quantity, length, L), length
+        seconds = f"{rng.randrange(60)}.{rng.randrange(10 ** rng.randrange(1, 5))}"
+        angle = f"{rng.choice(['', '-'])}{rng.randrange(360)}°{rng.randrange(60)}′{seconds}″"
+        assert value(angle, "dms", A).hex() == parse_quantity(angle, A).hex(), angle
+
+
+def _outcome(reading: Callable[..., float], *args: object) -> str:
+    """A reading's bits, or "refused": 11 3/3 inches is 12, refused by both paths."""
+    try:
+        return reading(*args).hex()
+    except InputError:
+        return "refused"

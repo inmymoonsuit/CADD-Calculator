@@ -47,7 +47,12 @@ amendment of fix round 4).
 four units of the inch a value was typed in, and `-11.976562500000005 in`, three off a
 half, was taken as the tie.
 **Instead:** count them in the shown unit's last place, inches for an inch fraction. A
-sweep of 520,115 typed ties in five units finds none missed either way.
+sweep of 520,115 typed ties in five units finds none missed either way. The window moved
+rather than closed, though: values 3 or more of their own last places from a tie are
+pulled to it on main when typed in in (268), cm (258) and ft (346), and here when typed
+in ft (86), mm (108) and m (108), as `-254.99218750000009 mm` is (the cloud review of
+PR #2; ADR-0019's amendment). Counting in the typed unit would close it, but a value
+shown isn't always one typed.
 
 ## 2026-10-19: A launch height taken from the tallest built-in page
 **Tried:** sizing the window at launch to the tallest built-in calculator page, with

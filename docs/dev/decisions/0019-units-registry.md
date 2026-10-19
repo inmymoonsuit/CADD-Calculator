@@ -440,3 +440,16 @@ six significant figures), and the new messages left unmarked until the sweep.
   1/16, 1/32 and 1/64, are all ties under both; the existing sweeps of metres, foot
   fractions and 20,000 DMS ties pass unchanged. A test pins the example, and the mutant
   that counts in millimeters fails it.
+
+### 2026-10-19: what the shown unit's window moves (PR #2's cloud review)
+
+Counting `TIE_ULPS` in the inch's last place, as the amendment above does, moves the gap
+rather than closing it. The cloud review counted values 3 or more of their own last
+places from a 1/64 tie that the window pulls to it, over every k/128 in up to ±24 in
+typed 11 ways: on main, 268 typed in inches, 258 in cm and 346 in ft; here, none in
+inches or cm, 86 in ft, and 108 each in mm and m, such as `-254.99218750000009 mm`, which
+now shows `-10 1/32"` for the `-10 3/64"` it is nearest. No typed tie is missed either
+way. The window is counted in the shown unit because a value shown isn't always one
+typed: a result has no typed unit. ADR-0024's output sets name the shown unit; whether
+an entered value's typed unit should count instead goes with E-3.
+

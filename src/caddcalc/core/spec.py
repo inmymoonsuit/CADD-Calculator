@@ -14,6 +14,7 @@ from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.units import (
+    CompoundForm,
     Dimension,
     Precision,
     base_text,
@@ -88,9 +89,10 @@ class Param:
 
     @property
     def default_choice(self) -> str | None:
-        """The id its picker starts in: ``unit``, else the unit ``default`` names.
+        """The id its picker starts in: ``unit``, else the unit or form ``default`` names.
 
-        A field with one choice, as a ratio's is, starts in it. ``None`` means none can
+        A field with one choice, as a ratio's is, starts in it, and a default written in
+        a form that reads, as ``1'-4"`` is, starts it in that form. ``None`` means none can
         be resolved, which ``Calculator.validate_spec`` refuses.
         """
         if self.unit:
@@ -99,6 +101,13 @@ class Param:
             return self.choices[0]
         if self.default is None:
             return None
+        for form in registry().compounds_for(self.dimension):
+            try:
+                written = form.reads and form.parse(self.default.strip()) is not None
+            except InputError:
+                written = False
+            if written and form.key in self.choices:
+                return form.key
         try:
             parsed = parse_quantity_detailed(self.default, self.dimension)
         except InputError:
@@ -106,8 +115,20 @@ class Param:
         return parsed.unit.symbol if parsed.explicit_unit else None
 
     def default_value(self) -> float | None:
-        """Return the default in base units, or ``None`` if there is no default."""
-        return None if self.default is None else parse_quantity(self.default, self.dimension)
+        """Return the default in base units, or ``None`` if there is no default.
+
+        A default with no unit in its text is in the unit its picker starts in
+        (``default_choice``), as a number typed in the field would be: ``"0.1046"`` with
+        ``unit="in"`` is 0.1046 in, never 0.1046 mm.
+        """
+        if self.default is None:
+            return None
+        choice = self.default_choice
+        unit = None
+        if choice is not None and choice in self.choices:  # else validate_spec refuses it
+            picked = registry().choice(choice, self.dimension)
+            unit = picked.full_unit if isinstance(picked, CompoundForm) else picked.symbol
+        return parse_quantity(self.default, self.dimension, unit)
 
     def used_by(self, method_key: str) -> bool:
         """Return whether the method ``method_key`` uses this parameter."""

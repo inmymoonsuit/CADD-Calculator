@@ -169,7 +169,7 @@ def test_a_parameter_needs_a_default_choice_it_offers(param: Param, why: str) ->
 def test_a_parameter_resolves_its_default_choice() -> None:
     assert Param("t", "T", "T", L, default="3 mm").default_choice == "mm"
     assert Param("t", "T", "T", L, default="1", unit="ft_in").default_choice == "ft_in"
-    assert Param("t", "T", "T", L, default="1'-4\"").default_choice == "in"
+    assert Param("t", "T", "T", L, default="1'-4\"").default_choice == "ft_in"
     assert Param("k", "K", "K", R, default="0.44").default_choice == ""
     assert Param("n", "N", "N", C, default="6").default_choice == ""
     assert Param("t", "T", "T", L, units=("mm", "m")).choices == ("mm", "m")
@@ -217,3 +217,23 @@ def test_a_declared_set_covers_only_what_follows_a_set() -> None:
     ).validate_spec()
     sets = _with(output_sets=(UnitSet("in_dms", "Inches and DMS", {L: "in", A: "dms"}),))
     assert [s.key for s in sets.unit_sets()] == ["in_dms"]
+
+
+def test_a_bare_default_is_in_the_unit_its_picker_starts_in() -> None:
+    """0.1046 with unit "in" is 0.1046 in, never 0.1046 mm."""
+    assert Param("t", "T", "T", L, default="0.1046", unit="in").default_value() == 0.1046 * 25.4
+    assert Param("t", "T", "T", L, default="1", units=("in",)).default_value() == 25.4
+    assert Param("t", "T", "T", L, default="10", unit="ft_in").default_value() == 10 * 25.4
+    assert Param("t", "T", "T", L, default="3 mm", unit="in").default_value() == 3.0
+
+
+def test_a_calculator_whose_outputs_all_have_their_own_units_has_no_sets() -> None:
+    from caddcalc.calculators.conversions import LengthConverter
+
+    assert LengthConverter.unit_sets() == ()
+
+
+@pytest.mark.parametrize(("key", "label"), [("", "in"), ("in", ""), (" ", "x")])
+def test_an_output_set_needs_a_key_and_a_label(key: str, label: str) -> None:
+    with pytest.raises(SpecError, match="needs a key and a label"):
+        _with(output_sets=(UnitSet(key, label, {L: "in"}),)).validate_spec()
