@@ -322,10 +322,16 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   units, so it scales with Windows' text size as before.
 * **A page taller than that scrolls as a whole** (rule C). At the design's 16 px lines,
   two built-in pages do: the Length converter, as the ruling says, and the right
-  triangle, whose seven fields need about 771 px offscreen, more natively. The fit test
-  names them in a test-local list of long pages, which ADR-0023 replaces with a flag
-  each page declares, and checks that every other page fits with each of its methods,
-  at a font whose lines are the design's.
+  triangle, whose seven fields need about 771 px offscreen and 786 px natively at 9 pt
+  (UI/UX's measurement, relayed by the project manager with the ruling's correction:
+  both pages are on the list). Main's 738 px came from the segment calculator's
+  K-factor page, which needs 738, through the tallest-page term; the right triangle
+  didn't exist on main, so it was never measured against it. Nothing changes for the
+  segment page. The fit test names the two in a test-local list of long pages, which
+  ADR-0023 replaces with a flag each page declares, and checks that every other page
+  fits with each of its methods, at a font whose lines are the design's.
+* **Left for ADR-0023,** after the maintainer decides: a target of 46 lines (736 px),
+  and a redesign of the segment page's A1/A2 row that it would need. Neither is built.
 * **With shorter lines, more pages scroll at launch,** as KI-024 first found: the
   fields' heights are in pixels. Offscreen here at 9 pt, the launch height is 692 px
   (15 px lines; 996 before) or 646 px with DejaVu Sans (14 px lines; 990 before), and the

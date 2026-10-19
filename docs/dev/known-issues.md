@@ -203,7 +203,7 @@ never sized to its content. The fields' heights are in pixels (ADR-0017's tokens
 with a UI font whose lines are shorter than 9 pt Segoe UI's 16 px, a page that fits on
 Windows scrolls as a whole at launch (rule C): offscreen at 14 px lines, the cone, the
 segment, the polygon and the triangles do. At 16 px lines, the Length converter and the
-right triangle do, by design until ADR-0023 decides. `test_no_calculator_page_scrolls_at_the_launch_size`
+right triangle (786 px natively at 9 pt) do, by design until ADR-0023 decides. `test_no_calculator_page_scrolls_at_the_launch_size`
 checks every other page at the design's lines.
 
 The resolution it replaces: The window's launch height was `launch_lines` line spacings, 736 px with 9 pt Segoe UI's
