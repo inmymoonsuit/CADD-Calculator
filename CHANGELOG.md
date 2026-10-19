@@ -555,7 +555,8 @@ All notable changes are recorded here. The format follows
   (`in · ° · in²` on the right triangle), and sets the fields, Copy, Copy all, speech
   and the work together. Until you choose one, it follows your length inputs while they
   share a unit; once chosen, it's yours for the session, and changing the method never
-  moves it. Its accessible name is "Results units". The Inputs list adds each input's
+  moves it. Its accessible name is "Results units", its list names each set ("in 1/16 —
+  inches, nearest 1/16"), the mouse wheel doesn't change it, and it adds no height. The Inputs list adds each input's
   value in the set's units where its picker shows another: `0.1046 in = 2.6568 mm`. A
   result with its own picker (`Output.picks`) has it in its row. A family settings page
   now shows and reads in inches, degrees and ksi until its fields get pickers (KI-027).

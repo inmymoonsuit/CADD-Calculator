@@ -16,9 +16,7 @@ from itertools import pairwise
 from typing import Any, Concatenate, cast, override
 
 from PySide6.QtCore import (
-    QEvent,
     QModelIndex,
-    QObject,
     QPersistentModelIndex,
     Qt,
     QTimer,
@@ -136,7 +134,13 @@ from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPane
 from caddcalc.gui.style_tokens import Rect, Size
 from caddcalc.gui.text_units import line_spacing, text_unit
 from caddcalc.gui.ui_style import secondary_text, ui_style
-from caddcalc.gui.unit_picker import EchoField, UnitPicker, choice_name, picker_text_width
+from caddcalc.gui.unit_picker import (
+    EchoField,
+    UnitPicker,
+    WheelGuard,
+    choice_name,
+    picker_text_width,
+)
 from caddcalc.gui.welcome import WelcomeScreen
 from caddcalc.gui.window_layout import Margins, chars, fit_window, launch_size
 
@@ -223,19 +227,6 @@ def _slot(method: Callable[..., object], *args: object) -> Callable[..., None]:
             bound(*args, *signal_args)
 
     return call
-
-
-class _WheelGuard(QObject):
-    """Ignores the mouse wheel on the widgets it watches, such as a choice's boxes.
-
-    A wheel turned over a choice box would change the choice, and with it the values it
-    derives, without a click, even while another field has the focus (review M1). The
-    boxes still change by click and by keyboard.
-    """
-
-    @override
-    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        return event.type() == QEvent.Type.Wheel
 
 
 class _MethodItems(QStyledItemDelegate):
@@ -387,7 +378,7 @@ class MainWindow(QMainWindow):
         """The group picked for a choice with no option chosen yet, by (domain id, key)."""
         self.domain_notices: list[str] = []
         """Choices the last change cleared, announced on the settings page until the next."""
-        self._wheel_guard = _WheelGuard(self)
+        self._wheel_guard = WheelGuard(self)
         self.facts_label: QLabel | None = None
         """What the domain tells about its selections, when it tells anything."""
         self.start_rows: dict[str, QHBoxLayout] = {}

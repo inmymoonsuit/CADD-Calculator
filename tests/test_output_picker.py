@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from caddcalc.calculators import default_registry
 from caddcalc.core import Calculator, Dimension, Method, Output, Param, Registry, Verification
 from tests.qt_helpers import open_window, pick, settle, show_in
 
@@ -231,4 +232,110 @@ def test_at_the_least_width_the_picker_goes_under_the_title_and_nothing_clips() 
             > title.mapTo(window, title.rect().bottomLeft()).y()
         )
     assert [w for w in _clipped(window) if w in (picker, title, window.results.show_in)] == []
+    window.close()
+
+
+@pytest.mark.parametrize("calc_id", [c.id for c in default_registry(load_plugins=False)])
+def test_the_header_keeps_its_height_without_the_picker(calc_id: str) -> None:
+    """The picker fits the title's and Copy all's row, so no page grows (UI/UX's M1)."""
+    window = open_window()
+    window.select_calculator(calc_id)
+    window.resize(1400, 900)
+    window.show()
+    settle(window)
+    panel = window.results
+    line = max(panel.title.sizeHint().height(), panel.copy_all_button.sizeHint().height())
+    assert not panel.header.stacked
+    assert panel.header.height() == line
+    picker = panel.set_picker
+    assert picker.height() <= line
+    assert picker.height() >= picker.fontMetrics().height(), "its text still fits"
+    window.close()
+
+
+def _wheel(widget: Any) -> None:
+    from PySide6.QtCore import QPoint, QPointF, Qt
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtWidgets import QApplication
+
+    centre = QPointF(widget.rect().center())
+    event = QWheelEvent(
+        centre,
+        QPointF(widget.mapToGlobal(centre.toPoint())),
+        QPoint(0, 0),
+        QPoint(0, -120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+    QApplication.sendEvent(widget, event)
+
+
+def test_the_wheel_never_changes_the_results_units() -> None:
+    """A wheel step over Show in once went from in to in 1/16 (UI/UX's M2)."""
+    window = _mixed_window()
+    window.show()
+    settle(window)
+    _wheel(window.results.set_picker)
+    assert window.results.set_key == "in" and window.results.set_picker.currentIndex() == 0
+    own = window.results.fields["own"].picker
+    assert own is not None
+    _wheel(own)
+    assert own.choice == "in"
+    assert window.results.fields["own"].value.text() == "2.0000"
+    window.close()
+
+
+def test_each_set_is_named_in_its_list_and_said_by_its_name() -> None:
+    """As a field's picker is (Q3): "in 1/16 — inches, nearest 1/16; …"."""
+    from caddcalc.gui.unit_picker import NAME_ROLE
+
+    window = open_window()
+    window.select_calculator(RIGHT)
+    picker = window.results.set_picker
+    index = picker.findData("in_16")
+    assert picker.itemText(index) == "in 1/16 · ° · in²"
+    assert picker.itemData(index, NAME_ROLE) == "inches, nearest 1/16; degrees; square inches"
+    show_in(window, "in_16")
+    assert picker.accessibleDescription() == "inches, nearest 1/16; degrees; square inches"
+    assert picker.toolTip() == picker.accessibleDescription()
+    window.select_calculator(BEND)
+    assert window.results.set_picker.accessibleDescription() == "inches"
+    window.close()
+
+
+def test_show_in_and_its_name_are_translated(tmp_path: Any) -> None:
+    from caddcalc.core import i18n
+    from tests import pseudo_locale
+
+    i18n.use([pseudo_locale.LANGUAGE], directories=[pseudo_locale.write(tmp_path)])
+    try:
+        window = open_window()
+        window.select_calculator(BEND)
+        assert window.results.show_in.text().startswith("⟦")
+        assert window.results.set_picker.accessibleName().startswith("⟦")
+        window.close()
+    finally:
+        i18n.use([])
+
+
+def test_a_picker_taller_than_the_row_doesn_t_grow_the_header() -> None:
+    """Natively a picker is 26 px, a field's height, and the row 24 (UI/UX's M1).
+
+    Padding it here makes it taller than the row offscreen too, as it is natively.
+    """
+    window = open_window()
+    window.select_calculator("sheet_metal.segment_flat_length")
+    panel = window.results
+    window.resize(1400, 900)
+    window.show()
+    settle(window)
+    before = panel.header.height()
+    panel.set_picker.setStyleSheet("QComboBox { padding: 6px; }")
+    from PySide6.QtWidgets import QComboBox
+
+    assert QComboBox.sizeHint(panel.set_picker).height() > before, "it is taller"
+    settle(window)
+    assert panel.header.height() == before
     window.close()

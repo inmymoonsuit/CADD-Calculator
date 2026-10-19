@@ -1246,3 +1246,24 @@ UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
   list is open rather than the focus reason; the native check is UI/UX's.
 * Four mutants, one for each guard, are each killed. The re-review's Lows 1–5 are
   follow-ups, for U2b or later.
+
+### 2026-10-19: UI/UX's native review at stop 2
+
+* **M1:** "Show in:" made the header 2 px taller natively, since the picker is a field's
+  26 px and the row was the title's and Copy all's 24. Every page with sets grew by 2 px,
+  so the segment's K-factor page, at 740, scrolled at the 738 px launch, and the picker
+  moved 12 px between its methods. The output picker is now as tall as the row is
+  without it, at most (`result_fields._SetPicker`), so the header keeps its U1 height;
+  `launch_lines` is unchanged, as the layout contract says. Offscreen, a test pads the
+  picker taller than the row, as it is natively, and the header doesn't grow. The native
+  re-measure is UI/UX's.
+* **M2:** the wheel over Show in changed the results' units. It and each output's own
+  picker are now on the wheel guard (`unit_picker.WheelGuard`, moved from the window), as
+  the input pickers are.
+* **L1:** "Show in:" (in the "results header" context) and "Results units" are marked
+  for translation and in the catalogs.
+* **L2:** the open list shows each set as "label — name", and the picker is said by the
+  set's name and shows it as its tooltip, as a field's picker is (Q3). The name joins
+  its choices' names for what the calculator shows, translated where shown: "in 1/16 · °
+  · in² — inches, nearest 1/16; degrees; square inches".
+* Five mutants, one for each, are each killed.

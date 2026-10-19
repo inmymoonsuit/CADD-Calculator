@@ -146,12 +146,24 @@ msgstr ""
 msgid "Regular polygon"
 msgstr ""
 
+#. the output picker's accessible name, said by a screen reader (ADR-0024 §5).
+#: src/caddcalc/gui/result_fields.py
+msgid "Results units"
+msgstr ""
+
 #: src/caddcalc/calculators/geometry/triangles.py
 msgid "Right triangle"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/domain.py
 msgid "Sheet Metal"
+msgstr ""
+
+#. the label before the output picker, "Show in: [in]", in the
+#. results' header.
+#: src/caddcalc/gui/result_fields.py
+msgctxt "results header"
+msgid "Show in:"
 msgstr ""
 
 #: src/caddcalc/calculators/geometry/shapes.py

@@ -13,7 +13,7 @@ import math
 from collections.abc import Iterable, Sequence
 from typing import override
 
-from PySide6.QtCore import QEvent, QModelIndex, QPersistentModelIndex, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QModelIndex, QObject, QPersistentModelIndex, QSize, Qt, Signal
 from PySide6.QtGui import QFocusEvent, QFontMetricsF, QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QComboBox,
@@ -55,7 +55,20 @@ def choice_name(choice: str, dimension: Dimension) -> str:
     return npgettext_shown(NAME_CONTEXT, picked.name, picked.spoken_plural, "2")
 
 
-class _ChoiceItems(QStyledItemDelegate):
+class WheelGuard(QObject):
+    """Ignores the mouse wheel on the widgets it watches, such as a choice's boxes.
+
+    A wheel turned over a choice box would change the choice, and with it the values it
+    derives or the units the results show in, without a click, even while another field
+    has the focus (review M1). The boxes still change by click and by keyboard.
+    """
+
+    @override
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        return event.type() == QEvent.Type.Wheel
+
+
+class ChoiceItems(QStyledItemDelegate):
     """Draws a picker's open list as "symbol — name", "mm — millimeters"."""
 
     @override
@@ -93,7 +106,7 @@ class UnitPicker(QComboBox):
     ) -> None:
         super().__init__(parent)
         self.dimension = dimension
-        self.setItemDelegate(_ChoiceItems(self))
+        self.setItemDelegate(ChoiceItems(self))
         for choice in choices:
             self.addItem(choice_symbol(choice, dimension))
             index = self.count() - 1

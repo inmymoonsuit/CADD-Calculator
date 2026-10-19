@@ -23,6 +23,10 @@ result is shown in. Its choices are sets, one per length unit: `in`, `in 1/16`, 
 in²` and the like, since areas are the square of the length unit, and stresses follow
 the system, ksi beside inches and MPa beside metric units. Angles are in degrees.
 
+The open list names each set, as `in 1/16 · ° · in² — inches, nearest 1/16; degrees;
+square inches`, and a screen reader says the chosen set's name. The mouse wheel never
+changes it; click it, or use the keyboard.
+
 * **Until you choose a set, it follows your inputs:** while every length input's picker
   shows the same unit, the results show in it. Pick mm for the thickness, and the other
   lengths and the results follow. Once you choose a set, it's yours for the session, on

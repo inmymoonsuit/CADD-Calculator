@@ -54,7 +54,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from caddcalc.core import Calculator, Output, Result, UnitSet
+from caddcalc.core import Calculator, Dimension, Output, Result, UnitSet
 from caddcalc.core.formatting import (
     DISCLAIMER,
     CopyForm,
@@ -68,7 +68,7 @@ from caddcalc.core.formatting import (
     results_tsv,
     spoken_value,
 )
-from caddcalc.core.i18n import _
+from caddcalc.core.i18n import N_, _, pgettext
 from caddcalc.gui.icons import current_scheme, icon, role_color
 from caddcalc.gui.name_tips import tip_text
 from caddcalc.gui.outlines import Outline, strongest
@@ -76,7 +76,14 @@ from caddcalc.gui.painting import frame_within, on_device_pixels, stroke
 from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.text_units import text_unit
 from caddcalc.gui.ui_style import ResultFieldTokens, secondary_text, ui_style
-from caddcalc.gui.unit_picker import UnitPicker
+from caddcalc.gui.unit_picker import (
+    NAME_ROLE,
+    ChoiceItems,
+    UnitPicker,
+    WheelGuard,
+    choice_name,
+    choice_symbol,
+)
 from caddcalc.gui.window_layout import chars
 
 NO_VALUE = "—"
@@ -85,9 +92,8 @@ NO_VALUE_TIP = "No value to copy"
 NO_VALUE_SPOKEN = "no value"
 """What a screen reader says in place of a value while there's none."""
 TITLE = "Results"
-SHOW_IN = "Show in:"
-RESULTS_UNITS = "Results units"
-"""The output picker's accessible name (ADR-0024 §5)."""
+# Translators: the output picker's accessible name, said by a screen reader (ADR-0024 §5).
+RESULTS_UNITS = N_("Results units")
 SET_ROLE = Qt.ItemDataRole.UserRole
 """The item data that holds an output set's key."""
 FIELD_NAME = "{label}, {symbol}: {value}"
@@ -532,12 +538,19 @@ class ResultsPanel(QWidget):
         self.copy_all_button.setToolTip(COPY_ALL_TIP.format(keys=keys))
         self.copy_all_button.clicked.connect(self.copy_all)
         self.copy_all_state = _CopiedState(self.copy_all_button, self.tokens)
-        self.show_in = QLabel(SHOW_IN, self)
-        self.set_picker = QComboBox(self)
-        self.set_picker.setAccessibleName(RESULTS_UNITS)
+        # Translators: the label before the output picker, "Show in: [in]", in the
+        # results' header.
+        self.show_in = QLabel(pgettext("results header", "Show in:"), self)
+        self.set_picker = _SetPicker(self._header_line, self)
+        self.set_picker.setAccessibleName(_(RESULTS_UNITS))
         self.set_picker.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.set_picker.setItemDelegate(ChoiceItems(self.set_picker))
         self.show_in.setBuddy(self.set_picker)
         self.set_picker.activated.connect(self._on_set_activated)
+        self.set_picker.currentIndexChanged.connect(self._name_set)
+        # A wheel over a picker would change the units without a click (UI/UX's M2).
+        self._wheel_guard = WheelGuard(self)
+        self.set_picker.installEventFilter(self._wheel_guard)
         controls = QWidget(self)
         row = QHBoxLayout(controls)
         row.setContentsMargins(0, 0, 0, 0)
@@ -571,6 +584,10 @@ class ResultsPanel(QWidget):
         self.setMaximumWidth(chars(cap, text_unit(self.font())))
         self.restyle()
         self._sync_copy_all()
+
+    def _header_line(self) -> int:
+        """The header row's height without the picker: the title's and Copy all's."""
+        return max(self.title.sizeHint().height(), self.copy_all_button.sizeHint().height())
 
     # Its height is its height at its width, as the disclaimer wraps; Qt's own hint takes
     # the disclaimer at a guessed width, which the page's fit would then wrongly trust.
@@ -609,7 +626,9 @@ class ResultsPanel(QWidget):
             self._column.addWidget(field)
             field.copied.connect(self._announce)
             field.picked.connect(lambda choice, key=key: self.output_picked.emit(key, choice))
-        self._offer_sets(calc.unit_sets())
+            if field.picker is not None:
+                field.picker.installEventFilter(self._wheel_guard)
+        self._offer_sets(calc)
         self._align()
         self._sync_copy_all()
         self.updateGeometry()
@@ -649,12 +668,28 @@ class ResultsPanel(QWidget):
         if picker is not None and choice in picker.choices:
             picker.set_choice(choice)
 
-    def _offer_sets(self, sets: tuple[UnitSet, ...]) -> None:
+    def _offer_sets(self, calc: Calculator) -> None:
+        """Offer ``calc``'s output sets, each by its label, and named in its list (Q3)."""
+        sets = calc.unit_sets()
+        shown = list(dict.fromkeys(o.dimension for o in calc.outputs if o.follows_set))
+        self.set_picker.blockSignals(True)
         self.set_picker.clear()
         for unit_set in sets:
+            name = _set_name(unit_set, shown)
             self.set_picker.addItem(unit_set.label, unit_set.key)
+            index = self.set_picker.count() - 1
+            self.set_picker.setItemData(index, name, NAME_ROLE)
+            self.set_picker.setItemData(index, name, Qt.ItemDataRole.ToolTipRole)
+        self.set_picker.blockSignals(False)
+        self._name_set()
         self.show_in.setVisible(bool(sets))
         self.set_picker.setVisible(bool(sets))
+
+    def _name_set(self, *_args: object) -> None:
+        """Say the set by its name, and show it as the tooltip, as a field's picker does."""
+        name = str(self.set_picker.currentData(NAME_ROLE) or "")
+        self.set_picker.setAccessibleDescription(name)
+        self.set_picker.setToolTip(name)
 
     def _on_set_activated(self, _index: int) -> None:
         self.set_picked.emit(self.set_key)
@@ -726,6 +761,43 @@ class ResultsPanel(QWidget):
             field.symbol.setFixedWidth(symbol)
             field.unit.setFixedWidth(math.ceil(unit))
             field.value.setFixedWidth(math.ceil(value))
+
+
+class _SetPicker(QComboBox):
+    """The output picker, as tall as the header's row is without it, at most.
+
+    A picker is a field's height, taller than the title and Copy all, so the header, and
+    every page with it, would grow by the difference, and a page that fit at launch would
+    scroll (UI/UX's M1 at stop 2). Its text still has a line's height.
+    """
+
+    def __init__(self, line: Callable[[], int], parent: QWidget) -> None:
+        super().__init__(parent)
+        self._line = line
+
+    @override
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        return QSize(hint.width(), min(hint.height(), self._line()))
+
+    @override
+    def minimumSizeHint(self) -> QSize:
+        hint = super().minimumSizeHint()
+        return QSize(hint.width(), min(hint.height(), self._line()))
+
+
+def _set_name(unit_set: UnitSet, dimensions: list[Dimension]) -> str:
+    """Return an output set's name, from its choices' names for the dimensions shown.
+
+    For example "inches, nearest 1/16; degrees; square inches", translated where it's
+    shown, as each choice's name is.
+    """
+    names = [
+        choice_name(unit_set.choices[d], d)
+        for d in dimensions
+        if d in unit_set.choices and choice_symbol(unit_set.choices[d], d)
+    ]
+    return "; ".join(names)
 
 
 def _least(label: QLabel) -> int:
