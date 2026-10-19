@@ -7,6 +7,46 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- **The Conversions family (ADR-0018 §3),** after Geometry: Length, Angle, Area, and
+  Stress and pressure. Type one value in any unit of its kind and read it in every unit
+  at once, each row in its own unit whatever the unit system, to 6 significant figures,
+  with its own Copy button. Length also shows feet and inches, and the nearest 1/16,
+  1/32 and 1/64 inch, each with its error; Angle shows degrees, minutes and seconds. The
+  factors are the exact definitions (1 in = 25.4 mm, 1 ft² = 92 903.04 mm²), and each
+  converter is verified against NIST SP 811's Appendix B.8. See the user guide's
+  [Conversions](docs/user/calculators/conversions.md).
+- `core.units.convert` converts an exact amount between units from their exact
+  definitions: 1 psi is 6.894757293168361 kPa, rounded once. An output with a fixed unit
+  may give its own precision (`Output.precision`), as the converters' error rows do.
+- **The Geometry family (ADR-0018 §2),** listed first: Circle, Rectangle, Triangle (three
+  sides), Right triangle, Regular polygon, and Arc and sector. Each gives every property
+  of its shape at once, cites *Machinery's Handbook* (31st ed.), and points students to
+  the *Pocket Companion* (32nd ed.). Input that describes no shape is refused, such as a
+  flat triangle or a hypotenuse no longer than its leg. Triangle angles all come from the
+  law of cosines, a deliberate departure from the Handbook's three-sides procedure, and
+  the formulas are arranged to keep their digits for needle-thin triangles and small
+  arcs. See the user guide's [Geometry calculators](docs/user/calculators/geometry.md).
+- `Context.given` reports an input as an output, unchanged, for a method that takes as
+  input what another method gives, such as a circle's diameter.
+- **Feet and inches (ADR-0019 U3; KI-009 resolved).** Type a length as `1'-4 3/16"`,
+  `1'-4-3/16"`, `1'4-3/16"`, `1' 4 3/16"`, `1′ 4 3/16″` or `1 ft 4 3/16 in`. A result in
+  feet and inches shows `1'-4 3/16"`, copies `1'4-3/16"`, and is read aloud as "1 foot 4
+  and 3 sixteenths inches"; rounding carries, so 1'-11 63/64" shows as 2'-0".
+- **Degrees, minutes and seconds.** Type an angle as `40°30′15″`, `40°30'15"` or
+  `40d30'15.5"`. A result in this form shows `40°30′15.00″` and copies `40d30'15.00"`;
+  29.99999999° reads 30°0′0.00″, and zero never reads -0°. In an angle, `′` and `″` (and
+  `'` and `"`) are minutes and seconds, so `30′` is half a degree; elsewhere they're still
+  feet and inches. An output can be shown in either form (`Output.form`).
+- **Areas (ADR-0018 §3, ADR-0019).** A new kind of quantity, the area, in in², ft², mm²,
+  cm² and m², each the exact square of its length unit, so 1 ft² is 92 903.04 mm²
+  exactly. Type `3 in²`, `3 in^2`, `3 in2`, `3 sq in` or `3 square inches`; it's always
+  written `in²`. Areas show in the square of your length unit, to 6 significant figures
+  (`6451.60 mm²`, `10.0000 in²`), and JSON gives them in mm², with `"dimension":
+  "area"`. Messages that list the base units now end in "mm²".
+- **Results in a fixed unit.** A calculator's output may be shown in one unit always,
+  whatever the unit system, to 6 significant figures (`Output.unit`), as the coming unit
+  converters' rows are. Copying, Copy all, the document and the command line all show it
+  so.
 - **Numbers in your regional format (ADR-0020 §4).** The desktop app shows numbers with
   your regional format's decimal mark, such as `0,3119`, and takes it when you type, with
   "." always accepted too. Digits are never grouped, and a comma that isn't your mark is
@@ -347,6 +387,50 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A right triangle's hypotenuse equal to its leg is refused in any units:** `a=39 in`
+  with `c=990.6 mm` gave a leg of 0 and an angle of 90°.
+- **A half-way value typed in meters or as a fraction of a foot takes the even
+  fraction:** `0.12779375 m` is 5" and `317/384 ft` 9 7/8" to the 1/16, and
+  `1°35′3.405″` is `3.40″`.
+- An angle within about 6e-11° of 90° is refused saying it counts as 90°, a count too
+  large for the computer to hold exactly (2⁵³ and up) is refused, and `tand(180)` is
+  exactly 0.
+- **A triangle's small or nearly straight angle keeps its digits:** every angle is
+  Kahan's half-angle formula, so sides 10, 10 and 1e-7 give C = 5.73e-7°, not 0, and
+  Copy full precision and JSON give the true angle (ADR-0018, amendments).
+- **A stress too large for its kPa or psi row is refused,** never shown as `inf`; a
+  number too large to calculate with, such as `1e308 ft`, is refused as too large, not
+  as "not a finite number".
+- **The `(≈ …")` beside an inch value rounds as every inch fraction does,** so it
+  agrees with feet and inches and the nearest 1/16, 1/32 and 1/64 inch on a tie: 7/32 in
+  is 1/4" in each. An error row has no `(≈ …")`.
+- **The polygon's number of sides is at most 1 000 000,** refused plainly past that,
+  where 1e300 failed with internal text.
+- **A whole circle's chord is exactly 0,** not 2.4e-15 in: `sind` is exactly 0 at a
+  whole multiple of 180°, and `cosd` at an odd multiple of 90° (ADR-0004, amendments).
+- **A right triangle's angle within about 6e-11° of 90° is refused in both angle
+  methods,** as 90° is; the hypotenuse-and-angle method gave a leg b of 8.7e-13 mm for
+  c = 1 mm.
+- **The Length converter's error is exactly 0** for a value that is the fraction, typed
+  in millimeters too, such as `411.1625 mm`; Copy full precision gave -2.2e-15.
+- The Geometry calculators' *Machinery's Handbook* locators name "Polygons" (pp. 81–82)
+  and "Solution of Oblique Triangles" (p. 101), and the arc points students to the
+  *Pocket Companion*'s "Segments of Circles" too.
+- **A flat triangle typed in decimals is refused** (ADR-0018, amendments): sides 0.1,
+  0.2 and 0.3 in made a "triangle", since 0.1 + 0.2 is a hair over 0.3 in the computer's
+  arithmetic. A triangle within 4 machine epsilons of its longest side of flat is flat.
+- **The polygon's number of sides is a count** (KI-025 resolved): it shows as `6`, not
+  `6.0000`, everywhere, JSON included, where it's an integer and its dimension `count`;
+  and `600 %` or `6 in` is refused, where `600 %` read as 6 sides.
+- **A value half-way between two fractions takes the even one** (ADR-0019, amendments):
+  3/32 in showed as 1/16" and 7/32 in as 3/16", since a typed 3/32 lands a hair under
+  the half; they now show 1/8" and 1/4", in feet and inches and the nearest fractions.
+- **The command line refuses a name that could be a result,** such as the right
+  triangle's `B=30`, which it read as the side `b`; the message names both.
+- A result's value or unit column could be a pixel narrower than its widest label asked
+  for in some fonts, cutting the label's last pixel; on Linux with DejaVu Sans, the
+  Angle converter's degrees, minutes and seconds lost one. Each column now takes its
+  labels' own least widths into account (ADR-0017, amendments).
 - A method whose calculation failed unexpectedly, such as a plugin's bug, left the
   previous method's results on screen under the new method's name. Now its result fields
   go blank and the error shows in the work, the command line exits with the error, and
@@ -419,6 +503,61 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The command line suggests only names that can be given:** for the right
+  triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?".
+- A result's help reaches the keyboard: screen readers say it after the copy button's
+  value. An error's work line shows its sign, `+0.0025 in`, as its row does.
+- **Speech, in words a drafter says:** "1 foot and a quarter inch", "a half inch", "1
+  foot and 3 sixteenths of an inch". Spoken parts are joined by CLDR's list patterns, so
+  a translation can put its "and" before the last part only.
+- **A comma in feet and inches or DMS says why it's refused,** quoting the whole value:
+  `"90°30,5'" has a comma, which isn't a decimal mark here …`. `3 ft.` is "not a number"
+  again, not "isn't feet and inches".
+- "Copy full precision" on a feet-and-inches or DMS row says the unit it copies in:
+  "Copy full precision, in inches".
+- A label that names its symbol isn't followed by it again: "Side a", "Angle A (opposite
+  a) must be less than 90°", not "Side a (a)".
+- The command line's label column is as wide as its longest label.
+- A value shown to significant figures takes an exponent outside 10⁻⁶ to 10¹⁶:
+  `1.00000e+300`, not 301 digits.
+- The odd polygon's note says how the caliper is held: from a flat to the opposite
+  corner. The converters' note says how a row is converted: from the typed value,
+  through each unit's factor.
+- **The command line refuses an input it would lose:** one given twice, or one the
+  chosen method doesn't use, such as `A=30` for the right triangle's two-legs method, is
+  refused, exit 2, naming the method's inputs. They were silently overwritten or dropped.
+  Every valid sheet-metal command line runs as before.
+- **Plugin families are listed after the built-ins, sorted by name,** whatever order the
+  installed packages are found in.
+- `get_unit` with a dimension that has neither unit raises `UsageError` for a mark the
+  foot and the minute of arc share: `get_unit("'", Dimension.RATIO)` gave the foot before
+  the minute and second of arc were added. With no dimension, `'` and `"` are still the
+  foot and inch.
+- For calculator authors: an output is given its value once (`Context.given`, `calc`
+  and `record` raise `SpecError` for a second), and an output in a compound form can't
+  give its own `precision`.
+- **The Length converter's errors show their sign,** `+0.002500 in`, and the error
+  row's tooltip says it's the fraction less the value (`Output.signed`; a field's
+  label shows its output's help as a tooltip).
+- **Screen readers hear every negative as "minus …"** and a shown plus sign as "plus
+  …", and one part of an inch as "1 and a quarter inches" or "1 and a half inches".
+- "Copy with unit" isn't offered for feet and inches or degrees, minutes and seconds,
+  whose copy names its units already.
+- **The disclaimer is one line for every family,** in the maintainer's words, marked for
+  translation: "Verify results and test according to your organization's policies or
+  industry best practice before manufacturing." It's shown under the results, after the
+  command line's results, and in About. The maintainer chose it: "Sounds like the best
+  wording so far. I like it" (ADR-0020, amendments).
+- **The window opens at one height whatever calculator it shows,** 738 px with
+  Windows' 9 pt text and in proportion at other text sizes. A page taller than the
+  window, such as the Length converter or the right triangle, scrolls as a whole; the
+  window doesn't grow to fit it (ADR-0021, amendments).
+- **Families are listed in their declared order,** general tools first: Geometry, then
+  Conversions, then Sheet Metal, with a plugin's families after the built-ins, sorted by
+  name. They were all sorted by name.
+- **The command line reads an input's exact key or symbol first,** then in any case, so
+  `a=3` is a side and `A=30` an angle in the same calculator. A name that matches two
+  inputs only in different cases is refused, naming both.
 - **The course formula is named for what it does: "Fixed K-factor (≈ 0.41)"**, the
   neutral-axis arc with K fixed at about 0.408 and π/2 rounded to 1.57 (ADR-0010,
   amendments). Its key is still `course`, so saved command lines and JSON keep working,
@@ -434,9 +573,6 @@ All notable changes are recorded here. The format follows
 - A method's status says what its verification covers, and its tooltip names the source,
   or says why the method isn't verified there. The status keeps one width, so changing
   the method no longer shifts the row.
-- The window opens tall enough for every built-in calculator with any of its methods.
-  Choosing the K-factor in Flat length of a formed segment no longer brings a scroll bar,
-  which moved the Units box; on Windows at 9 pt the window opens 2 px taller, at 738 px.
 - Citations of *Machinery's Handbook* move from the 29th edition to the 31st (2020): the
   course formula (p. 1421), the angle rule and its worked example (p. 1421, Fig. 13), and
   the 41.82 steel basis (Table 2, p. 2706), so the gauge table is version 3. The
@@ -444,10 +580,8 @@ All notable changes are recorded here. The format follows
 - **The window and page layout (ADR-0021).** The window opens centred on the welcome
   card's screen, sized to fit it, and in Windows follows the user's text size, read at
   startup: every size is in text units, so larger text makes the whole layout larger in
-  proportion. The window opens tall enough for the tallest built-in calculator page,
-  so none scrolls at launch, even with a font of shorter lines than Windows'. The
-  page is capped at a comfortable width, left-aligned beside the list, with plain
-  background beyond it; the list can't be dragged shut.
+  proportion. The page is capped at a comfortable width, left-aligned beside the list,
+  with plain background beyond it; the list can't be dragged shut.
 - The disclaimer moves from the status bar to the last line under the results, wrapped,
   never cut off; the status bar keeps passing messages such as "Copied". The method box
   shows the method's name, with its status beside it, or under it when narrow; the open

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, override
 
 import pytest
 
+from caddcalc.calculators import BUILTIN_CALCULATORS
 from caddcalc.gui.style_tokens import Rect, Size
 from caddcalc.gui.ui_style import ui_style
 from caddcalc.gui.window_layout import Margins, ch, chars, fit_window, launch_size
@@ -45,13 +47,16 @@ def test_the_launch_size_fits_each_work_area_centred(
     assert abs(left - right) <= 1 and abs(top - bottom) <= 1, "centred"
 
 
-def test_the_launch_height_covers_the_tallest_calculator_page() -> None:
-    """``launch_lines`` is the floor; a taller calculator page raises it (KI-024)."""
+def test_the_launch_height_is_a_fixed_number_of_lines() -> None:
+    """The window is never sized to its content (ADR-0021, amendments; KI-024).
+
+    ``launch_lines`` gives 738 px at 9 pt Segoe UI, whose lines are 16 px, and the same
+    number of lines in any other font.
+    """
     layout = ui_style().layout
-    assert launch_size(layout, 5.5, 16, 5).height == 736
-    assert launch_size(layout, 5.5, 16, 5, pages=726).height == 736, "a shorter page"
-    assert launch_size(layout, 5.5, 16, 5, pages=738).height == 738, "Windows at 9 pt"
-    assert launch_size(layout, 5.5, 14, 5, pages=672).height == 672, "14 px lines"
+    assert launch_size(layout, 5.5, 16, 5).height == 738, "Windows at 9 pt"
+    assert launch_size(layout, 5.5, 14, 5).height == 646, "14 px lines"
+    assert launch_size(layout, 5.5, 20, 5).height == 923, "125% text"
 
 
 def test_the_launch_size_never_goes_below_the_least_window() -> None:
@@ -96,8 +101,7 @@ def test_the_window_opens_at_its_launch_size_in_text_units(qt_window: Any) -> No
     expected = chars(layout.list_width_chars, unit) - 1 + handle + cap
     assert abs(launch.width - (layout.list_width_chars * unit + handle + cap)) <= 1
     assert launch.width >= expected
-    floor = layout.launch_lines * line_spacing(qt_window.font())
-    assert launch.height == max(floor, qt_window.launch_pages)
+    assert launch.height == math.ceil(layout.launch_lines * line_spacing(qt_window.font()))
     assert (qt_window.width(), qt_window.height()) == (launch.width, launch.height)
 
 
@@ -156,8 +160,7 @@ def test_a_larger_base_font_scales_the_whole_layout(qt: Any) -> None:
     """Windows' text size at 125% makes everything larger in proportion (ADR-0021 §2).
 
     The text-unit sizes grow in proportion: the width, the page's cap, and the launch
-    height's floor in lines. Where the tallest calculator page sets the height, it grows
-    less, as the fields' heights are in pixels, but never shrinks.
+    height in lines.
     """
     from caddcalc.gui.text_units import line_spacing, scaled_font
 
@@ -173,8 +176,9 @@ def test_a_larger_base_font_scales_the_whole_layout(qt: Any) -> None:
     try:
         larger = open_window()
         grown = larger.launch_size()
-        assert grown.width > normal.width * 1.15 and grown.height >= normal.height
-        assert lines * line_spacing(larger.font()) > normal_floor * 1.15
+        assert grown.width > normal.width * 1.15
+        assert grown.height == math.ceil(lines * line_spacing(larger.font()))
+        assert grown.height > normal_floor * 1.15
         assert larger.page_scroll.maximumWidth() > normal_cap * 1.15
         larger.close()
     finally:
@@ -471,47 +475,10 @@ DESIGN_LINE = 16
 
 
 @pytest.mark.usefixtures("qt")
-def test_each_calculator_page_is_measured_at_its_shown_height(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Laid out hidden, each page and method measures what it needs once shown.
-
-    That's ``pages.lay_out``'s two passes, for each of a calculator's methods. The results
-    panel's height follows its own width, which a hidden page doesn't have until it's
-    laid out once; a single pass overstates the first page measured.
-    """
-    from caddcalc.gui import window as window_module
-
-    fit_height = window_module.fit_height
-    measured: list[int] = []
-
-    def spy(page: Any, width: int, document: Any = None) -> int:
-        height: int = fit_height(page, width, document)
-        measured.append(height)
-        return height
-
-    monkeypatch.setattr(window_module, "fit_height", spy)
-    window = open_window()
-    monkeypatch.setattr(window_module, "fit_height", fit_height)
-    pages = [(calc.id, index) for calc in window.registry for index in range(len(calc.methods))]
-    assert len(measured) == len(pages)
-    window.show()
-    for (calc_id, index), height in zip(pages, measured, strict=True):
-        window.select_calculator(calc_id)
-        window.method_box.setCurrentIndex(index)
-        settle(window)
-        view = window.page_scroll.viewport()
-        shown = fit_height(window.page_scroll.widget(), view.width(), window.output)
-        assert shown == height, (calc_id, window.method_key)
-    window.close()
-
-
-@pytest.mark.usefixtures("qt")
 def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch) -> None:
     """Building the window opens built-in pages only, and opens on a built-in one.
 
-    A plugin's page runs the plugin's code, so a broken plugin fails only when chosen,
-    though its family sorts first ("Acme Tools") and the launch size is measured
+    A plugin's page runs the plugin's code, so a broken plugin fails only when chosen
     (ADR-0019, ADR-0021 §3).
     """
     from caddcalc.calculators import default_registry
@@ -552,142 +519,80 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.usefixtures("qt")
-def test_a_page_that_fails_to_measure_leaves_the_window_working(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The measure's isolation boundary: a page that fails to show is left out of it.
+def test_the_window_opens_on_a_builtin_even_below_a_plugins_calculator() -> None:
+    """A plugin's calculator in a built-in family, sorted above every built-in one."""
+    from caddcalc.calculators import default_registry
+    from caddcalc.gui.window import ID_ROLE
+    from tests.test_domains import _AcmeWidget
 
-    A compute's error is shown on its page instead, and measured so
-    (test_unexpected_errors.py); a page whose form can't be built is left out.
-    """
-    from caddcalc.gui.window import MainWindow
+    class Aardvark(_AcmeWidget):
+        id = "geometry.aardvark"
+        name = "Aardvark"
+        domain = "geometry"
 
-    rebuild = MainWindow._rebuild_form
-
-    def failing(window: MainWindow) -> None:
-        calc = window.calculator
-        if calc is not None and calc.id == "sheet_metal.v_die_opening":
-            raise ZeroDivisionError("its form's own error")
-        rebuild(window)
-
-    monkeypatch.setattr(MainWindow, "_rebuild_form", failing)
-    with pytest.warns(UserWarning, match=r"leaves out .*\(sheet_metal\.v_die_opening\)"):
-        window = open_window()
-    window.select_calculator("sheet_metal.bend_allowance")
-    window.show()
-    settle(window)
-    assert window.results.fields["bend_allowance"].value.text() not in ("", "—")
+    registry = default_registry(load_plugins=False)
+    registry.register(Aardvark)
+    window = open_window(registry)
+    family = window.tree.topLevelItem(0)
+    assert family.child(0).data(0, ID_ROLE) == "geometry.aardvark", "it sorts first"
+    assert window.calculator is not None
+    assert window.calculator.id == family.child(1).data(0, ID_ROLE) == "geometry.arc_sector"
     window.close()
 
 
-@pytest.mark.usefixtures("qt")
-def test_a_method_that_fails_to_measure_leaves_out_its_own_page_only(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Each method is its own isolation boundary (S&R's note on 1f5cec9).
-
-    The V-die's 8·T page failing to show leaves out that page, with one warning that
-    names it, and its percentage rule is still measured.
-    """
-    import warnings
-
-    from caddcalc.gui import window as window_module
-    from caddcalc.gui.window import MainWindow
-
-    rebuild = MainWindow._rebuild_form
-
-    def failing_eight_t(window: MainWindow) -> None:
-        if window.calculator is not None and window.method_key == "eight_t":
-            raise ZeroDivisionError("the 8·T page's own error")
-        rebuild(window)
-
-    fit_height = window_module.fit_height
-    measured: list[tuple[str, str]] = []
-
-    def spy(page: Any, width: int, document: Any = None) -> int:
-        shell = page.window()
-        measured.append((shell.calculator.id, shell.method_key))
-        height: int = fit_height(page, width, document)
-        return height
-
-    monkeypatch.setattr(MainWindow, "_rebuild_form", failing_eight_t)
-    monkeypatch.setattr(window_module, "fit_height", spy)
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        window = open_window()
-    monkeypatch.setattr(window_module, "fit_height", fit_height)
-    left_out = [str(w.message) for w in caught if "leaves out" in str(w.message)]
-    assert len(left_out) == 1, left_out
-    assert "(sheet_metal.v_die_opening) with its method" in left_out[0]
-    assert "(eight_t)" in left_out[0]
-    assert ("sheet_metal.v_die_opening", "radius_ratio") in measured
-    assert ("sheet_metal.v_die_opening", "eight_t") not in measured
-    window.close()
+LONG_PAGES = {"conversions.length", "geometry.right_triangle"}
+"""Pages taller than the launch height at 9 pt, which scroll as a whole (rule C; KI-024)
+until ADR-0023's layout contract replaces this list with a flag each page declares."""
 
 
-@pytest.mark.usefixtures("qt")
-def test_the_measure_opens_each_further_method_once_directly(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The measure calls the method handler itself, once per further method (S&R's H2).
+def test_every_long_page_is_a_builtin_calculator() -> None:
+    """A renamed or removed calculator can't leave a stale exemption behind."""
+    from caddcalc.calculators import BUILTIN_CALCULATORS
 
-    It sets each method after a calculator's first with the box's signal blocked.
-    Without the blocker, the signal would call the handler a second time, from where its
-    errors go to sys.excepthook.
-    """
-    from caddcalc.gui.window import MainWindow, builtin_ids
-
-    calls: list[int] = []
-    handler = MainWindow._on_method_changed
-
-    def spy(window: MainWindow, index: int) -> None:
-        calls.append(index)
-        handler(window, index)
-
-    monkeypatch.setattr(MainWindow, "_on_method_changed", spy)
-    window = open_window()
-    further = [
-        i for c in window.registry if c.id in builtin_ids() for i in range(1, len(c.methods))
-    ]
-    assert calls == further
-    window.close()
+    assert LONG_PAGES.issubset({c.id for c in BUILTIN_CALCULATORS})
 
 
-@pytest.mark.parametrize("shorter", [False, True], ids=["platform-font", "shorter-lines"])
-@pytest.mark.parametrize("calc_id", CALCULATORS)
-def test_no_calculator_page_scrolls_at_the_launch_size(
-    qt: Any, calc_id: str, shorter: bool
-) -> None:
-    """Every calculator page fits the launch size, with each method, whatever the font.
+def _design_font(app: Any) -> Any:
+    """The app's font at the size whose lines are the design's, 9 pt Segoe UI's 16 px."""
+    from caddcalc.gui.text_units import line_spacing
 
-    KI-024. The fields' heights are in pixels, so with lines shorter than the design's,
-    ``launch_lines`` alone would give a window shorter than the pages need. The launch
-    height covers the tallest calculator page instead, over every method: one with more
-    inputs, as the K-factor's K, makes a taller page. So changing the method never brings
-    a scroll bar, which would narrow the page and move the Units box (UI/UX's M1).
+    base = app.font()
+    for tenths in range(40, 300):
+        font = app.font()
+        font.setPointSizeF(tenths / 10)
+        if line_spacing(font) == DESIGN_LINE:
+            return font
+    pytest.fail(f"no size of {base.family()} has {DESIGN_LINE} px lines")
+
+
+@pytest.mark.parametrize("calc_id", [c.id for c in BUILTIN_CALCULATORS])
+def test_no_calculator_page_scrolls_at_the_launch_size(qt: Any, calc_id: str) -> None:
+    """At the design's lines, every page fits the launch size but the long ones.
+
+    It fits with each of its methods; a long page scrolls as a whole, rule C (ADR-0021,
+    amendments). The fields' heights are in pixels, so with lines shorter than
+    the design's a page may scroll at launch (KI-024): the window is never sized to its
+    content. A page that fits never shows a scroll bar when its method changes, which
+    would narrow it and move the Units box (UI/UX's M1).
     """
     from caddcalc.gui.text_units import line_spacing
 
     app = qt.QApplication.instance()
     base = app.font()
-    if shorter:
-        font = qt.QApplication.font()
-        font.setPointSizeF(base.pointSizeF() * 0.75)
-        app.setFont(font)
+    app.setFont(_design_font(app))
     try:
         window = open_window()
-        if shorter:
-            assert line_spacing(window.font()) < DESIGN_LINE
+        assert line_spacing(window.font()) == DESIGN_LINE
         window.select_calculator(calc_id)
         window.show()
-        units = set()
+        units, scrolls = set(), set()
         for index in range(window.method_box.count()):
             window.method_box.setCurrentIndex(index)
             settle(window)
-            method = window.method_key
-            assert window.page_scroll.verticalScrollBar().maximum() == 0, method
-            assert not window.output.full, method
+            scrolls.add(window.page_scroll.verticalScrollBar().maximum() > 0)
             units.add(window.units_box.mapTo(window, window.units_box.rect().topLeft()).x())
+        long = calc_id in LONG_PAGES
+        assert scrolls == {long}, "a long page scrolls; any other fits, with every method"
         assert len(units) == 1, units
         window.close()
     finally:

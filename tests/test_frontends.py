@@ -200,3 +200,107 @@ def test_an_explicit_registry_is_kept_even_with_no_calculators() -> None:
         window.tree.topLevelItem(i).text(0) for i in range(window.tree.topLevelItemCount())
     ] == ["Acme Tools"]
     window.close()
+
+
+def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
+    """A side ``a`` and an angle ``A`` both read; only a name that's both in any case fails."""
+    from caddcalc.calculators.geometry import RightTriangle
+    from caddcalc.cli import parse_inputs
+    from caddcalc.core import (
+        Calculator,
+        Dimension,
+        InputError,
+        Method,
+        Output,
+        Param,
+        Verification,
+    )
+
+    calc = RightTriangle()
+    values = parse_inputs(calc, ["a=3", "A=30"], "in", "leg_angle")
+    assert values == {"leg_a": pytest.approx(76.2), "angle_a": 30}
+    values = parse_inputs(calc, ["C=5", "LEG_A=4"], "in", "leg_hypotenuse")
+    assert values == {"hypotenuse": pytest.approx(127), "leg_a": pytest.approx(101.6)}
+
+    class Twins(Calculator):
+        id = "test.twins"
+        name = "Twins"
+        domain = "test"
+        summary = "Two inputs named alike but for case."
+        params = (
+            Param("first", "aB", "First", Dimension.LENGTH, default="1 in"),
+            Param("second", "Ab", "Second", Dimension.LENGTH, default="1 in"),
+        )
+        outputs = (Output("same", "Y", "Same", Dimension.LENGTH),)
+        methods = (Method("only", "Only", "Y", Verification.UNVERIFIED),)
+
+        def compute(self, ctx: Any) -> None:
+            ctx.calc("Y", "aB", label="Same", dimension=Dimension.LENGTH, output="same")
+
+    with pytest.raises(InputError, match=r"'ab' for test\.twins could be aB/first, Ab/second"):
+        parse_inputs(Twins(), ["ab=1"], "in")
+    assert parse_inputs(Twins(), ["Ab=1"], "in") == {"second": pytest.approx(25.4)}
+
+
+@pytest.mark.parametrize("calc_id", ["geometry.right_triangle", "geometry.triangle"])
+def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_id: str) -> None:
+    """``B`` is the angle opposite b, a result: it's never read as the side ``b``."""
+    from caddcalc.calculators import default_registry
+    from caddcalc.cli import parse_inputs
+    from caddcalc.core import InputError
+
+    calc = default_registry(load_plugins=False).get(calc_id)
+    message = rf"'B' for {calc_id} isn't one: as written it's a result, angle_b. Did you mean b/"
+    with pytest.raises(InputError, match=message) as refused:
+        parse_inputs(calc, ["B=30"], "in")
+    assert "B/angle_b" not in str(refused.value), "a result is never offered as an input"
+    (key,) = parse_inputs(calc, ["b=30"], "in")
+    assert next(p for p in calc.params if p.key == key).symbol == "b"
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (
+            ["a=3", "A=30"],
+            "Method 'legs' of geometry.right_triangle doesn't use A=30; "
+            "its inputs are a/leg_a, b/leg_b",
+        ),
+        (
+            ["a=3", "c=5", "--method", "leg_angle"],
+            "Method 'leg_angle' of geometry.right_triangle doesn't use c=5; "
+            "its inputs are a/leg_a, A/angle_a",
+        ),
+        (["a=3", "b=4", "b=5"], "Input b/leg_b is given twice, as 'b=4' and 'b=5'; give it once"),
+        (["a=3", "leg_a=4"], "Input a/leg_a is given twice, as 'a=3' and 'leg_a=4'"),
+    ],
+)
+def test_the_cli_refuses_an_input_it_would_lose(
+    args: list[str], message: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An input the method doesn't use, or one given twice, was dropped or overwritten."""
+    from caddcalc.cli import main
+
+    assert main(["run", "geometry.right_triangle", *args]) == 2
+    err = capsys.readouterr().err
+    assert message in err and err.count("\n") == 1, err
+    assert main(["run", "geometry.right_triangle", "a=3", "A=30", "--method", "leg_angle"]) == 0
+
+
+def test_the_cli_label_column_fits_its_longest_label(capsys: pytest.CaptureFixture[str]) -> None:
+    """The longest label, "Across corners (circumscribed circle)", is past the least 32."""
+    from caddcalc.cli import LABEL_WIDTH, main
+
+    def results(out: str) -> list[str]:
+        lines = out.splitlines()
+        first = lines.index("Results") + 1
+        return lines[first : lines.index("", first)]
+
+    # Each row is "  " + symbol padded to 6 + " " + label padded to the width + " " + value.
+    assert main(["run", "geometry.regular_polygon", "N=6", "a=1in"]) == 0
+    start = 10 + len("Across corners (circumscribed circle)")
+    rows = results(capsys.readouterr().out)
+    assert all(row[start - 1] == " " != row[start] for row in rows), rows
+    assert main(["run", "sheet_metal.bend_allowance", "--method", "course"]) == 0
+    rows = results(capsys.readouterr().out)
+    assert all(row[10 + LABEL_WIDTH - 1] == " " != row[10 + LABEL_WIDTH] for row in rows), rows

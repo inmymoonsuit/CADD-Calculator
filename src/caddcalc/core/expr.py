@@ -25,10 +25,39 @@ from functools import lru_cache
 from caddcalc.core.errors import CalculationError, SpecError, UsageError
 
 
+def _sind(deg: float) -> float:
+    """Sine of an angle in degrees, exactly 0 at a whole multiple of 180°.
+
+    π/180 is rounded, so ``sin(radians(180))`` is 1.2e-16, not 0; a chord of a whole
+    circle would be a few units in the last place long. The multiple is found exactly,
+    as IEEE 754's ``sinPi`` does (IEEE 754-2019, §9.2).
+    """
+    if math.fmod(deg, 180.0) == 0.0:
+        return 0.0
+    return math.sin(math.radians(deg))
+
+
+def _cosd(deg: float) -> float:
+    """Cosine of an angle in degrees, exactly 0 at an odd multiple of 90° (``_sind``)."""
+    if abs(math.fmod(deg, 180.0)) == 90.0:
+        return 0.0
+    return math.cos(math.radians(deg))
+
+
+def tan_is_undefined(deg: float) -> bool:
+    """Return whether an angle in degrees is too near an odd multiple of 90° for a tangent."""
+    return abs(math.cos(math.radians(deg))) < 1e-12
+
+
 def _tand(deg: float) -> float:
-    """Tangent of an angle in degrees, refusing angles where it is undefined."""
-    if abs(math.cos(math.radians(deg))) < 1e-12:
+    """Tangent of an angle in degrees, refusing angles where it is undefined.
+
+    It's exactly 0 at a whole multiple of 180°, as ``_sind`` is.
+    """
+    if tan_is_undefined(deg):
         raise ValueError(f"tan is undefined at {deg:g}°")
+    if math.fmod(deg, 180.0) == 0.0:
+        return 0.0  # as sind is (_sind)
     return math.tan(math.radians(deg))
 
 
@@ -37,8 +66,8 @@ FUNCTIONS: dict[str, Callable[..., float]] = {
     "abs": abs,
     "min": min,
     "max": max,
-    "sind": lambda deg: math.sin(math.radians(deg)),
-    "cosd": lambda deg: math.cos(math.radians(deg)),
+    "sind": _sind,
+    "cosd": _cosd,
     "tand": _tand,
     "asind": lambda x: math.degrees(math.asin(x)),
     "acosd": lambda x: math.degrees(math.acos(x)),

@@ -14,11 +14,14 @@ from decimal import Decimal, localcontext
 from fractions import Fraction
 
 from caddcalc.core.citations import License, Publication, PublicationKind, cite
+from caddcalc.core.errors import SpecError
 from caddcalc.core.i18n import NP_
 from caddcalc.core.units.model import (
+    Derivation,
     Dimension,
     DimensionSpec,
     Exact,
+    Precision,
     Unit,
     UnitSystem,
 )
@@ -93,7 +96,8 @@ def _unit(
     Its ``names``, singular and plural, are US English, the source language, marked with
     ``NP_`` in the "unit" context; they're translated where they're shown (ADR-0019 U5).
     """
-    source = cite(f"sp811_{symbol or 'one'}", SP_811, locator)
+    unnamed = "one" if dimension is Dimension.RATIO else dimension.value
+    source = cite(f"sp811_{symbol or unnamed}", SP_811, locator)
     name, plural = names
     return Unit(
         symbol,
@@ -111,7 +115,14 @@ def _unit(
     )
 
 
-LENGTH, ANGLE, RATIO, STRESS = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO, Dimension.STRESS
+LENGTH, ANGLE, RATIO, STRESS, AREA, COUNT = (
+    Dimension.LENGTH,
+    Dimension.ANGLE,
+    Dimension.RATIO,
+    Dimension.STRESS,
+    Dimension.AREA,
+    Dimension.COUNT,
+)
 SI, ACCEPTED, US, NONE = (
     UnitSystem.SI,
     UnitSystem.ACCEPTED,
@@ -120,13 +131,60 @@ SI, ACCEPTED, US, NONE = (
 )
 
 DIMENSIONS = (
-    DimensionSpec(LENGTH, "a length", "mm", 4, follows_length=True),
-    DimensionSpec(ANGLE, "an angle", "deg", 2),
-    DimensionSpec(RATIO, "a ratio", "", 4),
-    DimensionSpec(STRESS, "a stress", "MPa", 1, shown_with={US: "ksi"}),
+    DimensionSpec(LENGTH, "a length", "mm", Precision(4), follows_length=True),
+    DimensionSpec(ANGLE, "an angle", "deg", Precision(2)),
+    DimensionSpec(RATIO, "a ratio", "", Precision(4)),
+    DimensionSpec(STRESS, "a stress", "MPa", Precision(1), shown_with={US: "ksi"}),
+    DimensionSpec(
+        AREA,
+        "an area",
+        "mm²",
+        Precision(6, significant=True),
+        follows_length=True,
+        derivation=Derivation(LENGTH, 2),
+    ),
+    DimensionSpec(COUNT, "a count", "", Precision(0)),
 )
 """Every dimension. A stress follows the length choice: ksi beside inches or feet, MPa
-otherwise (ADR-0005, amendments). An angle shows in degrees, a ratio as a number."""
+otherwise (ADR-0005, amendments). An area is the square of the length choice, in² beside
+inches (ADR-0018 §3), to six significant figures. An angle shows in degrees, a ratio as a
+number, and a count as a whole number, with no decimals."""
+
+
+def _square(
+    root: Unit,
+    symbol: str,
+    names: tuple[str, str],
+    locator: str,
+    *,
+    aliases: tuple[str, ...],
+) -> Unit:
+    """Declare the square of the length unit ``root``, in exact arithmetic (ADR-0019 §2).
+
+    Its factor is ``root``'s exact factor squared, so the square foot is 92 903.04 mm²
+    exactly, which ``304.8**2`` misses by a unit in the last place. ``symbol`` is how SP
+    811 writes it, in² (§6.1.8 refuses "sq in"), and the forms people type, such as
+    ``in^2``, ``in2`` and ``sq in``, are aliases, read but never written.
+    """
+    if root.exact is None:
+        raise SpecError(f"unit {root.symbol!r} has no exact factor to square")
+    exact = root.exact**2
+    source = cite(f"sp811_{root.symbol}2", SP_811, locator)
+    name, plural = names
+    typed = (f"{root.symbol}^2", f"{root.symbol}2", f"sq {root.symbol}")
+    return Unit(
+        symbol,
+        name,
+        AREA,
+        float(exact),  # the exact definition, rounded once
+        (*typed, *aliases),
+        plural,
+        exact=exact,
+        system=root.system,
+        sources=(source, *root.sources[1:]),
+        power_of=root.symbol,
+    )
+
 
 UNITS: tuple[Unit, ...] = (
     _unit(
@@ -198,6 +256,7 @@ UNITS: tuple[Unit, ...] = (
         aliases=("radian", "radians"),
     ),
     _unit("", ("ratio", ""), RATIO, Fraction(1), NONE, "§7.10 (the unit one)"),
+    _unit("", ("count", ""), COUNT, Fraction(1), NONE, "§7.10 (the unit one)"),
     _unit(
         "%",
         NP_("unit", "percent", "percent"),
@@ -254,5 +313,82 @@ UNITS: tuple[Unit, ...] = (
         "acceleration of free fall, standard; kip (1 kip = 1000 lbf)",
         primary=True,
     ),
+    _unit(
+        "arcmin",
+        NP_("unit", "minute", "minutes"),
+        ANGLE,
+        Fraction(1, 60),
+        ACCEPTED,
+        "Table 6 (minute), §7.2",
+        aliases=("′", "'", "arcminute", "arcminutes", "minute", "minutes"),
+        written="′",
+        close_up=True,
+    ),
+    _unit(
+        "arcsec",
+        NP_("unit", "second", "seconds"),
+        ANGLE,
+        Fraction(1, 3600),
+        ACCEPTED,
+        "Table 6 (second), §7.2",
+        aliases=("″", '"', "arcsecond", "arcseconds", "second", "seconds"),
+        written="″",
+        close_up=True,
+    ),
 )
-"""The built-in units, in the order they've always been listed."""
+"""The built-in units, in the order they've always been listed, then the minute and second
+of arc, which share ′ and ″ with the foot and inch (SP 811 Table 6): a unit of the
+expected dimension wins (ADR-0019 §3). The squares follow."""
+
+_ROOTS = {unit.symbol: unit for unit in UNITS}
+
+SQUARES: tuple[Unit, ...] = (
+    _square(
+        _ROOTS["mm"],
+        "mm²",
+        NP_("unit", "square millimeter", "square millimeters"),
+        "Table 2 (area: square meter) and Table 5 (milli)",
+        aliases=(
+            "square millimeter",
+            "square millimeters",
+            "square millimetre",
+            "square millimetres",
+        ),
+    ),
+    _square(
+        _ROOTS["cm"],
+        "cm²",
+        NP_("unit", "square centimeter", "square centimeters"),
+        "Table 2 (area: square meter) and Table 5 (centi)",
+        aliases=(
+            "square centimeter",
+            "square centimeters",
+            "square centimetre",
+            "square centimetres",
+        ),
+    ),
+    _square(
+        _ROOTS["m"],
+        "m²",
+        NP_("unit", "square meter", "square meters"),
+        "Table 2 (area: square meter)",
+        aliases=("square meter", "square meters", "square metre", "square metres"),
+    ),
+    _square(
+        _ROOTS["in"],
+        "in²",
+        NP_("unit", "square inch", "square inches"),
+        "Appendix B.8 (square inch to square meter)",
+        aliases=("square inch", "square inches"),
+    ),
+    _square(
+        _ROOTS["ft"],
+        "ft²",
+        NP_("unit", "square foot", "square feet"),
+        "Appendix B.8 (square foot to square meter)",
+        aliases=("square foot", "square feet"),
+    ),
+)
+"""The squares of the length units, generated from them (ADR-0018 §3, ADR-0019 §2)."""
+
+UNITS += SQUARES

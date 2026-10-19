@@ -605,3 +605,52 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **The whole recalculation is the boundary,** reading the fields included: their state
   comes from the family's values, which a plugin's code may derive (ADR-0006,
   amendments).
+
+### 2026-10-19: a column is as wide as its labels ask (Linux CI, ADR-0018's m2)
+
+* **What failed.** On GitHub's ubuntu-24.04 runners, whose default sans is DejaVu Sans,
+  the Angle converter's DMS value, `1°0′0.00″`, was set 97 px wide where its label asked
+  for 98, and the least-size clipping test caught it. The value and unit columns were
+  sized from each text's fractional width (`QFontMetricsF`), rounded up; a label's own
+  hint counts its glyphs in whole pixels, which for °, ′ and ″ in DejaVu Sans came to a
+  pixel more. Fonts whose advances round the other way, as this project's other Linux
+  runs had, never showed it.
+* **The rule now.** Each column is at least as wide as its widest label's own least width
+  (`minimumSizeHint`), padding included, as well as its text's fractional width, rounded
+  up. The symbol column already took its labels' hints. A test raises a label's least
+  width with an indent, which every font shows, and fails without the rule.
+* **What it changes:** a column may be a pixel wider in some fonts; the launch height is
+  unchanged (996 px offscreen here, 990 px with DejaVu Sans).
+
+### 2026-10-19: a field's help, signs, and the copy menu (ADR-0018, fix round 2)
+
+* **A field's label has its output's help as its tooltip** (UI/UX's L1), and the field
+  has it as its accessible description, so the error rows say which way they run: "The
+  nearest fraction less the value: positive where the fraction is longer than the
+  value." Once the label elides, the tooltip starts with the whole label in bold, as a
+  list row's does (`name_tips.tip_text`).
+* **A signed output** (`Output.signed`) shows a plus sign above zero, `+0.002500 in`,
+  and copies it as shown; zero, as shown, has none, and Copy full precision gives the
+  plain number. Only the Length converter's error rows are signed.
+* **A sign is spoken in words** (UI/UX's L3): every negative is "minus …", by the
+  template the compound forms use, and a shown plus sign is "plus …".
+* **"Copy with unit" isn't offered for a compound form** (UI/UX's L2): feet and inches,
+  and degrees, minutes and seconds, name their units, so it would copy what "Copy value"
+  does.
+
+### 2026-10-19: a compound form's full precision, and labels (fix round 3)
+
+* **A compound row's "Copy full precision" names its unit:** "Copy full precision, in
+  inches" for feet and inches, "in degrees" for degrees, minutes and seconds, since it
+  copies a decimal in the form's own unit whatever the unit system (0804466 Minor 1). A
+  test copies it under both unit systems.
+* **A field's label names its symbol once:** "Side a", not "Side a (a)", and "Angle A
+  (opposite a)", not "… (A)" (`spec.named`); range and missing-input messages use the
+  same rule. No sheet-metal label holds its symbol, so none of theirs changes.
+
+### 2026-10-19: the help reaches the keyboard (fix round 4)
+
+* **The copy button's accessible description carries the output's help** (the cloud
+  review's Low 3): Tab reaches the button, not the label whose tooltip has the help, so
+  a screen reader says "E16: plus 0.002500 inches. The nearest fraction less the value
+  …". Every output with help gets it, the sheet-metal ones included.

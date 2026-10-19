@@ -15,11 +15,16 @@ This is the short version. The *why* is in the [ADRs](decisions/README.md).
 │               TruncatedConeLayout                                        │
 │               gauge choice: gauges.py and data/gauges.toml (ADR-0014)    │
 │               materials: materials.py and data/materials.toml            │
-│  (future)   tolerancing, fasteners, structural, geometry, ...            │
+│  geometry:  Circle, Rectangle, Triangle, RightTriangle, RegularPolygon,  │
+│             ArcSector                                                    │
+│  conversions: LengthConverter, AngleConverter, AreaConverter,            │
+│               StressConverter                                            │
+│  (future)   tolerancing, fasteners, structural, ...                      │
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    ▼
 ┌───────────────────── caddcalc.core  (stdlib only) ───────────────────────┐
-│  units/         the units registry (ADR-0019): declarations, parsing     │
+│  units/         the units registry (ADR-0019): declarations, parsing,    │
+│                 compound forms (feet and inches; degrees, min, sec)      │
 │  citations.py   Publication, Source, License: what the app cites         │
 │  expr.py        safe formula evaluator (float and exact) + rendering     │
 │  spec.py        Param, Output, Method, Verification, OutOfRangeError     │

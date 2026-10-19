@@ -51,12 +51,10 @@
 1. The preferred content size, in text units:
    * width: `ceil(list_width_chars · ch + handle + page_max_chars · ch)` (1100 at 9 pt:
      280.5 + 5 + 814 = 1099.5, rounded up)
-   * height: `launch_lines · line spacing` (736 at 9 pt; 720 as first approved, see Amendments),
-     or the height the tallest built-in calculator page needs at the launch width, with
-     any of its methods and the window's bars, if that's more (KI-024, see Amendments).
-     Plugin pages aren't
-     measured, so no plugin code runs before it's chosen; settings pages don't count,
-     having no results to keep in view, so they may scroll.
+   * height: `launch_lines · line spacing` (738 at 9 pt; 720 as first approved, then 736,
+     see Amendments). The window is never sized to its content: a page taller than that
+     scrolls as a whole (rule C). The term for the tallest page (KI-024) is removed, by
+     the interim amendment, pending ADR-0023.
 2. Fit it to the available geometry of the screen the welcome card is on (or the primary
    screen), less the platform frame (from the native window, before it's shown) and
    `screen_margin` on each side. The welcome card is to be checked to be centred on that
@@ -148,7 +146,7 @@ to.
 | `list_min_chars` | 24 | The list's least width (132 px at 9 pt) |
 | `page_max_chars` | 148 | The page's widest, scroll bar included (814 px at 9 pt) |
 | `panel_max_chars` | 148 | Replaces `panel_max_width`: the results panel's widest |
-| `launch_lines` | 46 | The launch content height's floor, in line spacings (736 px at 9 pt; 45 as first approved, see Amendments); the tallest calculator page can raise it |
+| `launch_lines` | 46.125 | The launch content height, in line spacings: 738 px at 9 pt (45 as first approved, then 46; see Amendments). Nothing raises it |
 | `screen_margin` | 16 | The least space between the frame and the screen's work area |
 | `method_min_chars` | measured | The method box's least width: the longest method name, computed from the registry when the window is built, not typed in |
 | `right_pane_min_chars` | 58 | Future: a docked right pane's least width |
@@ -308,3 +306,41 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   calculator's K-factor page with the window's bars, two more than `launch_lines`' 736.
   The window's build lays out twice as many pages, and took 777–814 ms against 740–769 ms
   before, over six launches each, natively; it runs hidden, after the card's first paint.
+
+### 2026-10-19: the launch height is fixed in lines again (interim, pending ADR-0023)
+
+* **The maintainer's ruling,** on 2026-10-18, after ADR-0018's Length converter grew the
+  launch height: "PR #1 keeps main's launch height (738 px), no growth, and the Length
+  converter scrolls until the layout contract decides." The maintainer has asked UI/UX
+  for that contract, ADR-0023, one of whose rules is that the window is never sized to
+  its content.
+* **The rule until then.** §3.1's height is `launch_lines` line spacings and nothing
+  else: the term for the tallest built-in page, added for KI-024 and widened to every
+  method (the two amendments above), is removed, and so is the measure that took it,
+  with its isolation boundary. `launch_lines` is 46.125, main's launch height at 9 pt
+  Segoe UI, 738 px of 16 px lines, which UI/UX measured natively; it's a token, in text
+  units, so it scales with Windows' text size as before.
+* **A page taller than that scrolls as a whole** (rule C). At the design's 16 px lines,
+  two built-in pages do: the Length converter, as the ruling says, and the right
+  triangle, whose seven fields need about 771 px offscreen and 786 px natively at 9 pt.
+  The maintainer approved both as declared long pages on 2026-10-19, in ADR-0023's C2
+  ("Approved"). Main's 738 px came from the segment calculator's
+  K-factor page, which needs 738, through the tallest-page term; the right triangle
+  didn't exist on main, so it was never measured against it. Nothing changes for the
+  segment page. The fit test names the two in a test-local list of long pages, which
+  ADR-0023 replaces with a flag each page declares, and checks that every other page
+  fits with each of its methods, at a font whose lines are the design's.
+* **Left for ADR-0023,** after the maintainer decides: a target of 46 lines (736 px),
+  and a redesign of the segment page's A1/A2 row that it would need. Neither is built.
+* **With shorter lines, more pages scroll at launch,** as KI-024 first found: the
+  fields' heights are in pixels. Offscreen here at 9 pt, the launch height is 692 px
+  with Inter's 15 px lines (996 before), where the cone and the segment's K-factor page
+  scroll as well, or 646 px with DejaVu Sans' 14 px lines (990 before), where the cone,
+  the segment, the triangle and the polygon do. KI-024 lists them.
+* **The Units box stays put as the method changes only at 16 px lines, for now.** At
+  15 px lines the segment's course page fits and its K-factor page scrolls, so choosing
+  the K-factor moves the Units box 14 px; at 14 px lines both scroll, and it doesn't
+  move. The M1 promise of the amendment above holds at the design's lines; ADR-0023's
+  slice 1, paired rows, makes it hold at shorter ones (KI-024).
+* **The window still opens on the first built-in calculator,** and opens no other page
+  while it's built, so no plugin's code runs before its calculator is chosen.

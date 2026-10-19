@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
@@ -12,7 +13,8 @@ from caddcalc.core.errors import InputError, SpecError
 from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import Dimension, base_text, parse_quantity
+from caddcalc.core.units import Dimension, Precision, base_text, parse_quantity
+from caddcalc.core.units.model import COUNT_LIMIT
 
 
 class Verification(Enum):
@@ -26,6 +28,18 @@ class Verification(Enum):
     """No published worked example has been checked yet."""
     VERIFIED = "verified"
     """Checked against at least one cited published source, with a worked example as a test."""
+
+
+def named(label: str, symbol: str) -> str:
+    """Return a label with its symbol, ``Thickness (T)``, or the label alone if it has it.
+
+    "Side a" and "Angle A (opposite a)" name their symbols already, so a message or a
+    field says "Side a", not "Side a (a)". A symbol inside a word, such as K in
+    "K-factor", isn't named by it.
+    """
+    if re.search(rf"(?<![\w-]){re.escape(symbol)}(?![\w-])", label):
+        return label
+    return f"{label} ({symbol})"
 
 
 @dataclass(frozen=True)
@@ -59,24 +73,33 @@ class Param:
         """Return whether the method ``method_key`` uses this parameter."""
         return not self.methods or method_key in self.methods
 
+    @property
+    def named(self) -> str:
+        """The label with its symbol, as messages and fields name the input (``named``)."""
+        return named(self.label, self.symbol)
+
     def check(self, value: float, source: InputSource = EXPLICIT) -> None:
-        """Check that ``value`` is finite and within the allowed range.
+        """Check that ``value`` is finite, within the allowed range, and whole for a count.
 
         Args:
             value: The value, in base units.
             source: Where the value came from, so an error can say so.
 
         Raises:
-            InputError: The value is not finite.
+            InputError: The value is not finite, or a count's isn't whole.
             OutOfRangeError: The value is out of range.
         """
         if not math.isfinite(value):
-            raise InputError(f"{self.label} ({self.symbol}) must be a finite number")
+            raise InputError(f"{self.named} must be a finite number")
         lo, hi = self.minimum, self.maximum
         if lo is not None and (value < lo or (value == lo and not self.min_inclusive)):
             raise OutOfRangeError(self, value, bound=lo, above=False, source=source)
         if hi is not None and (value > hi or (value == hi and not self.max_inclusive)):
             raise OutOfRangeError(self, value, bound=hi, above=True, source=source)
+        if self.dimension is Dimension.COUNT and not value.is_integer():
+            raise InputError(f"{self.named} must be a whole number")
+        if self.dimension is Dimension.COUNT and abs(value) >= COUNT_LIMIT:
+            raise InputError(f"{self.named} must be under 2^53, to be held exactly")
 
 
 _RELATION = {
@@ -124,10 +147,10 @@ class OutOfRangeError(InputError):
         need = f"{self.relation} {show(self.bound)}"
         if self.source.kind in (SourceKind.DOMAIN, SourceKind.DERIVED):
             return (
-                f"{p.label} ({p.symbol}) from {self.source.label} is {show(self.value)}, "
+                f"{p.named} from {self.source.label} is {show(self.value)}, "
                 f"but this calculator needs {need}. Override it in this calculator."
             )
-        return f"{p.label} ({p.symbol}) must be {need}"
+        return f"{p.named} must be {need}"
 
 
 @dataclass(frozen=True)
@@ -139,6 +162,24 @@ class Output:
     label: str
     dimension: Dimension
     help: str = ""
+    unit: str = ""
+    """The key symbol of a unit it's always shown in, whatever the display preferences,
+    e.g. ``"mm"`` for a converter's millimetre row (ADR-0018 §3); empty to follow them.
+    It's shown with ``precision`` if it gives one, else the registry's precision for that
+    unit (``precision_for``)."""
+    precision: Precision | None = None
+    """The precision a fixed-unit output is shown with, where the unit's own doesn't suit
+    it, such as an error shown to fixed decimals; ``None`` for the registry's. Only an
+    output with a ``unit`` may give one: a form has its own fineness."""
+    form: str = ""
+    """The key of a compound form it's always shown in, e.g. ``"ft_in"`` for feet and
+    inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.
+    An output gives a unit or a form, not both."""
+    signed: bool = False
+    """Whether it's a difference whose direction matters, such as an error: a value shown
+    above zero gets a plus sign, as ``+0.002500 in``, in its row and its work line, and it
+    takes no inch fraction hint. A compound form writes its own sign, so an output in one
+    can't be signed."""
 
 
 @dataclass(frozen=True)

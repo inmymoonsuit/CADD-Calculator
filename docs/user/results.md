@@ -33,9 +33,12 @@ button.
   in the drawing's units. The button shows a check for a moment, and the
   status bar says what was copied.
 * **Other forms:** right-click a field, or press the Menu key on its copy button, for:
-  * **Copy with unit:** `0.3119 in`
+  * **Copy with unit:** `0.3119 in`; not offered for feet and inches or degrees, minutes
+    and seconds, whose copy names its units already
   * **Copy full precision:** the value to 10 significant digits, without the display
-    rounding, in the display unit, such as `0.311864`
+    rounding, in the display unit, such as `0.311864`; for feet and inches, a decimal in
+    inches, and for degrees, minutes and seconds, in degrees, as the item says ("Copy
+    full precision, in inches")
   * **Copy fraction** (not in the desktop app yet, which has no fraction setting):
     `5/16"`, or `1-5/16"`. The inch mark keeps a spreadsheet from reading it as a date.
 * **Copy all:** the button beside the Results title copies every result as rows for a
@@ -63,7 +66,11 @@ format. Where your mark isn't ".", the menu also copies the number exactly as sh
   you can see both.
 * Screen readers hear each result in full, such as "Bend allowance, BA: 0.3119 inches",
   and its copy button as "Copy Bend allowance", with the value. They're told what each
-  copy put on the clipboard, and the status bar shows it for a few seconds.
+  copy put on the clipboard, and the status bar shows it for a few seconds. A sign is
+  said in words, "minus 0.3119 inches", and a fraction as it's spoken, "1 and a quarter
+  inches".
+* Where a result has a note on what it means, such as which way an error runs, its label's
+  tooltip gives it, and screen readers hear it as the field's description.
 
 ## When the window is short
 

@@ -14,6 +14,7 @@ from fractions import Fraction
 from types import MappingProxyType
 
 from caddcalc.core.citations import Source
+from caddcalc.core.errors import SpecError
 from caddcalc.core.i18n import npgettext_shown
 from caddcalc.core.reference import Reference
 
@@ -29,6 +30,9 @@ class Dimension(Enum):
     ANGLE = "angle"
     RATIO = "ratio"
     STRESS = "stress"
+    AREA = "area"
+    COUNT = "count"
+    """How many of something, such as a polygon's sides: always a whole number."""
 
     @property
     def with_article(self) -> str:
@@ -94,6 +98,10 @@ class Unit:
     case_sensitive: bool = False
     """Whether its symbol and aliases match only in their own case, as a future ``Mm``
     beside ``mm`` would need to; units match in any case otherwise."""
+    power_of: str = ""
+    """The key symbol of the unit this one is a power of, e.g. ``"in"`` for in², in a
+    dimension declared as a power of another (``DimensionSpec.derivation``). Its factor
+    is then that unit's exact factor to the power, which the registry checks."""
 
     def __post_init__(self) -> None:
         if not self.written:
@@ -121,6 +129,40 @@ class Unit:
         return npgettext_shown(NAME_CONTEXT, self.name, self.spoken_plural, shown)
 
 
+COUNT_LIMIT = 2**53
+"""The first whole number a double can't tell from its neighbour, 2⁵³ + 1 reading as 2⁵³:
+a count must be under it to be held exactly."""
+
+
+@dataclass(frozen=True)
+class Precision:
+    """How many digits a value is shown with: decimal places, or significant figures.
+
+    Raises:
+        SpecError: ``digits`` is negative, or zero significant figures.
+    """
+
+    digits: int
+    significant: bool = False
+    """Whether ``digits`` counts significant figures, rather than decimal places."""
+
+    def __post_init__(self) -> None:
+        least = 1 if self.significant else 0
+        if isinstance(self.digits, bool) or not isinstance(self.digits, int) or self.digits < least:
+            need = (
+                "at least 1 significant figure" if self.significant else "0 or more decimal places"
+            )
+            raise SpecError(f"A precision needs {need}, not {self.digits!r}")
+
+
+@dataclass(frozen=True)
+class Derivation:
+    """A dimension that is a power of another, as an area is a length squared."""
+
+    of: Dimension
+    power: int
+
+
 @dataclass(frozen=True)
 class DimensionSpec:
     """A dimension's declaration: its base unit, how it's shown, and its precision."""
@@ -130,13 +172,22 @@ class DimensionSpec:
     """Its name with its indefinite article, e.g. ``"an angle"``."""
     base: str
     """Its base unit's key symbol: every calculation runs in it (ADR-0005)."""
-    decimals: int
-    """The decimal places it's shown with when no preference says otherwise."""
+    precision: Precision
+    """The precision it's shown with when no preference says otherwise: decimal places,
+    or, for an area, significant figures, since one area may be 6451.60 mm² and another
+    10.0000 in²."""
     follows_length: bool = False
-    """Shown in the length unit the user chose; only LENGTH is."""
+    """Shown in the length unit the user chose, or, for a power of a length, in that
+    unit's power: a length in inches, an area in square inches."""
     shown_with: Mapping[UnitSystem, str] = field(default_factory=dict)
     """The unit it's shown in, by the system of the length unit the user chose; the base
     unit for any other system. Stress shows ksi beside inch-pound lengths."""
+    derivation: Derivation | None = None
+    """What it's a power of, if anything: an area is a length squared, so its squares are
+    generated from the lengths, and it's shown in the square of the length unit chosen."""
+    fixed: Precision = Precision(6, significant=True)
+    """The precision a value is shown with in a unit an output fixes, whatever the
+    preferences, as a converter's rows are (ADR-0018 §3)."""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "shown_with", MappingProxyType(dict(self.shown_with)))

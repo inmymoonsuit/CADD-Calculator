@@ -78,10 +78,11 @@ nothing in the packaged app, while the window showed the previous method's resul
   application closes down, when windows are going (KI-019), and never a second box while
   one shows. `main()` installs it and puts the previous hook back however it ends; a
   smoke test leaves the default hook, so it never blocks.
-* **The launch measure** opens each further method directly, not through the method
-  box's signal, so a page that fails to show is left out with a warning (ADR-0021,
-  amendments). A compute's error no longer reaches it: the page shows the error, and is
-  measured so.
+* **The launch measure** opened each further method directly, not through the method
+  box's signal, so a page that failed to show was left out with a warning (ADR-0021,
+  amendments). The measure was removed on 2026-10-19, with the tallest-page term it
+  served (ADR-0021's amendment of that date; the engineering log), so no calculator's
+  page runs before it's chosen.
 
 ### 2026-10-18: a plugin family's code too (Support & Review's review of a1f0735)
 

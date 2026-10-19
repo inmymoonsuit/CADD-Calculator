@@ -6,7 +6,6 @@ import functools
 import math
 import sys
 import traceback
-import warnings
 import weakref
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
@@ -21,7 +20,6 @@ from PySide6.QtCore import (
     QModelIndex,
     QObject,
     QPersistentModelIndex,
-    QSignalBlocker,
     Qt,
     QTimer,
     QUrl,
@@ -100,6 +98,7 @@ from caddcalc.core.formatting import (
     value_parts,
 )
 from caddcalc.core.i18n import _
+from caddcalc.core.spec import named
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
@@ -120,8 +119,6 @@ from caddcalc.gui.pages import (
     PageScrollArea,
     PageStack,
     PageWidget,
-    fit_height,
-    lay_out,
 )
 from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.regional import number_symbols
@@ -377,16 +374,14 @@ class MainWindow(QMainWindow):
         """
 
         self.setWindowTitle(PRODUCT_NAME)
-        self.launch_pages = 0
-        """The window height the tallest calculator page needs at its launch width."""
         if build:
             self.build()
 
     def build(self) -> None:
         """Build the window's contents: the list, the pages, and the menus.
 
-        It loads the registry, plugins included, when none was given, measures the launch
-        height, and opens the first built-in calculator. Building twice does nothing.
+        It loads the registry, plugins included, when none was given, takes its launch
+        size, and opens the first built-in calculator. Building twice does nothing.
         """
         if self.built:
             return
@@ -413,12 +408,8 @@ class MainWindow(QMainWindow):
         self.addAction(self.copy_all_action)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
-        # The launch height covers the tallest built-in calculator page, measured once,
-        # here, while the welcome screen shows (ADR-0021 §3, amendments).
-        self.launch_pages = self._tallest_calculator_page()
-        launch = self.launch_size()
-        self.resize(round(launch.width), round(launch.height))
-        # It opens on the first built-in calculator, though a plugin's family sorts first.
+        # It opens on the first built-in calculator: a plugin's calculator in a built-in
+        # family can sort above it, and its code runs only once it's chosen.
         items = list(self._calculator_items())
         first = next((i for i in items if i.data(0, ID_ROLE) in builtin_ids()), None)
         first = first or next(iter(items), None)
@@ -588,62 +579,13 @@ class MainWindow(QMainWindow):
         """Return the window's preferred content size, in its font's text units.
 
         That's the list at its launch width, its handle, and a page at its cap, by
-        ``launch_lines`` line spacings, or the tallest calculator page's height, with any
-        of its methods, if that's more. ADR-0021 §3 and its amendments give the sizes.
+        ``launch_lines`` line spacings: never sized to the pages, so a taller page scrolls
+        as a whole (ADR-0021 §3, amendments; KI-024).
         """
         font = self.font()
         handle = self.splitter.handleWidth()
         layout = ui_style().layout
-        return launch_size(layout, text_unit(font), line_spacing(font), handle, self.launch_pages)
-
-    def _tallest_calculator_page(self) -> int:
-        """Return the window height the tallest built-in calculator page needs to launch.
-
-        Each built-in calculator's page is laid out, hidden, at the page's cap, with each
-        of its methods, since one with more inputs, as the K-factor's K, is taller: so
-        changing the method never brings a scroll bar, which would narrow the page and
-        move the row's controls. Each is measured with its document at its least: the
-        height it fits in without scrolling. The window's bars are added as its layout
-        places them. A plugin's page isn't opened, as that would run its code before it's
-        chosen; a taller one scrolls as a whole (rule C). Nor does a family's settings
-        page count: it has no results to keep in view, so it may scroll (ADR-0021 §3).
-
-        A page that fails to show is left out, with a warning: it's measured here only for
-        the launch size, and would otherwise fail only when chosen.
-        """
-        page, width = self.page_scroll.widget(), self.page_scroll.maximumWidth()
-        if page is None:
-            return 0
-        tallest = 0
-        for calc in self.registry:
-            if calc.id not in builtin_ids():
-                continue
-            for index, method in enumerate(calc.methods):
-                # An isolation boundary, as a safety net: an error measuring one page
-                # mustn't stop the window, or every other calculator.
-                try:
-                    if index == 0:
-                        self.select_calculator(calc.id)  # opens on its first method
-                    else:
-                        # Directly, not through the box's signal: an error raised in a
-                        # slot goes to sys.excepthook, past this boundary.
-                        with QSignalBlocker(self.method_box):
-                            self.method_box.setCurrentIndex(index)
-                        self._on_method_changed(index)
-                    lay_out(page, width)
-                    tallest = max(tallest, fit_height(page, width, self.output))
-                except Exception as exc:  # noqa: BLE001
-                    warnings.warn(
-                        f"The launch size leaves out {calc.name} ({calc.id}) with its method "
-                        f"{method.label} ({method.key}), whose page failed to show: {exc!r}",
-                        stacklevel=2,
-                    )
-        window_layout = self.layout()
-        if window_layout is not None:
-            window_layout.activate()  # the bars, at the heights the window gives them
-        central = self.centralWidget()
-        bars = self.height() - central.height() if central is not None else 0
-        return tallest + bars
+        return launch_size(layout, text_unit(font), line_spacing(font), handle)
 
     def fit_to_screen(self, screen: QScreen | None = None) -> None:
         """Give the window its launch size, fitted to ``screen``, and centre it there.
@@ -936,7 +878,7 @@ class MainWindow(QMainWindow):
                 row.addWidget(note)
                 self.inherit_boxes[p.key] = box
                 self.override_notes[p.key] = note
-            self.form.addRow(f"{p.label} ({p.symbol})", row)
+            self.form.addRow(p.named, row)
             self.fields[p.key] = (p, edit)
 
     def _chain_tabs(self) -> None:
@@ -1386,7 +1328,7 @@ class MainWindow(QMainWindow):
             row.addLayout(starts)
             row.addWidget(about)
             self.start_rows[setting.key] = starts
-            self.settings_form.addRow(f"{setting.label} ({setting.symbol})", row)
+            self.settings_form.addRow(named(setting.label, setting.symbol), row)
             self.setting_fields[setting.key] = (setting, edit)
             self.setting_abouts[setting.key] = about
         for choice in domain.choices:
@@ -1657,7 +1599,7 @@ class MainWindow(QMainWindow):
             message = describe_error(exc, self.prefs)
             if isinstance(exc, OutOfRangeError):  # a range error already names the setting
                 return message
-            return f"{setting.label} ({setting.symbol}): {message}"
+            return f"{named(setting.label, setting.symbol)}: {message}"
         return None
 
     def _on_setting_edited(self, key: str, text: str) -> None:

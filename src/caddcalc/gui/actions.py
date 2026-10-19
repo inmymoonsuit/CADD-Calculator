@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication, QMenuBar, QMessageBox
 
 from caddcalc import __version__
 from caddcalc.core.formatting import DISCLAIMER
+from caddcalc.core.i18n import _
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
 
 GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
@@ -31,7 +32,7 @@ def about_html(branding: Branding) -> str:
         f"<h3>{escape(PRODUCT_NAME)} {escape(__version__)}</h3>"
         + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
         + "<p>Licensed under the Apache License, Version 2.0. See LICENSE.md.</p>"
-        f"<p>{escape(DISCLAIMER)}</p>"
+        f"<p>{escape(_(DISCLAIMER))}</p>"
         '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
         "github.com/inmymoonsuit/CADD-Calculator</a></p>"
         '<p>Icons: <a href="https://tabler.io/icons">Tabler Icons</a>, MIT License. '

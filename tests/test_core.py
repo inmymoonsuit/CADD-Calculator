@@ -91,7 +91,7 @@ def test_parse_quantity_rejects(text: str) -> None:
 @pytest.mark.parametrize("dimension", list(Dimension))
 def test_every_dimension_has_its_units_and_wording(dimension: Dimension) -> None:
     """A new Dimension needs an entry in every unit table, or display fails at run time."""
-    assert get_unit(BASE_UNITS[dimension]).dimension is dimension
+    assert get_unit(BASE_UNITS[dimension], dimension).dimension is dimension
     assert units_for(dimension)
     for unit in ("in", "mm"):
         assert display_unit(dimension, DisplayPrefs(length_unit=unit)).dimension is dimension
@@ -539,7 +539,7 @@ def test_parameter_symbols_must_be_usable_in_formulas(symbol: str) -> None:
         (
             "5 in",
             "'length' has a bad default '5 in' (= 127 mm), which must be at most 10 mm. "
-            "Minimum and maximum are in base units (mm, deg, ratio, MPa).",
+            "Minimum and maximum are in base units (mm, deg, ratio, MPa, mm², count).",
         ),
         ("-1 in", "bad default '-1 in' (= -25.4 mm), which must be at least 0 mm."),
         ("abc", "bad default 'abc': Cannot read a value from 'abc'"),
@@ -672,6 +672,25 @@ def test_expr_allows_long_flat_sums() -> None:
 def test_expr_tan_at_90_degrees_is_an_error_not_a_huge_number() -> None:
     with pytest.raises(CalculationError, match="undefined"):
         expr.evaluate("tand(x)", {"x": 90.0})
+
+
+def test_expr_sine_and_cosine_are_exactly_0_where_they_are_0() -> None:
+    """π/180 is rounded, so sin(radians(180)) is 1.2e-16; sind(180) is 0, as sinPi(1) is."""
+    for k in range(-8, 9):
+        assert expr.evaluate("sind(x)", {"x": 180.0 * k}) == 0.0, k
+        assert expr.evaluate("cosd(x)", {"x": 90.0 + 180.0 * k}) == 0.0, k
+    assert math.sin(math.radians(180)) != 0, "the case it's for"
+    for deg in (0.5, 30.0, 45.0, 89.99999999, 179.99999999, 1e6 + 0.5):
+        assert expr.evaluate("sind(x)", {"x": deg}) == math.sin(math.radians(deg)), deg
+        assert expr.evaluate("cosd(x)", {"x": deg}) == math.cos(math.radians(deg)), deg
+    assert (
+        expr.evaluate("sind(x)", {"x": 90.0}) == 1.0
+        and expr.evaluate("cosd(x)", {"x": 180.0}) == -1.0
+    )
+    for k in range(-8, 9):
+        assert expr.evaluate("tand(x)", {"x": 180.0 * k}) == 0.0, k
+    assert math.tan(math.radians(180)) != 0, "the case it's for"
+    assert expr.evaluate("tand(x)", {"x": 45.0}) == math.tan(math.radians(45))
 
 
 def test_expr_evaluates_exactly_with_exact_inputs() -> None:

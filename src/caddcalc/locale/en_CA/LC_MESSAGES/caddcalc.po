@@ -17,6 +17,16 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
+#: src/caddcalc/calculators/conversions/converters.py
+msgid ""
+"A length in inches, feet, millimeters, centimeters, meters, and feet and inches, and to the "
+"nearest 1/16, 1/32, and 1/64 inch, each with its error."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "A stress or pressure in psi, ksi, kPa, and MPa."
+msgstr ""
+
 #: src/caddcalc/gui/welcome.py
 msgctxt "button"
 msgid "About"
@@ -25,6 +35,36 @@ msgstr ""
 #: src/caddcalc/gui/welcome.py
 #, python-brace-format
 msgid "About {product}: version, license, and terms"
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "An angle in degrees, radians, and degrees, minutes, and seconds."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "An area in square inches, square feet, square millimeters, square centimeters, and square meters."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Angle"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Arc and sector"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Arc length, chord, sagitta (rise), and sector area, from the radius and the included angle."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Area"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/domain.py
+msgid ""
+"Areas, perimeters, and angles of plane figures: circles, rectangles, triangles, regular polygons,"
+" and arcs."
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/bends.py
@@ -39,6 +79,14 @@ msgstr ""
 msgid "Bends, flat patterns, press-brake tooling, and developments of sheet-metal parts."
 msgstr ""
 
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Circle"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Circumference, area, radius, and diameter of a circle."
+msgstr ""
+
 #: src/caddcalc/gui/welcome.py
 msgctxt "button"
 msgid "Close"
@@ -46,6 +94,10 @@ msgstr ""
 
 #: src/caddcalc/gui/welcome.py
 msgid "Close (Esc)"
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/domain.py
+msgid "Conversions"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/bends.py
@@ -56,16 +108,66 @@ msgstr ""
 msgid "Flat-pattern length of one segment, dimensioned to the outside, with a bend at one or both ends."
 msgstr ""
 
+#: src/caddcalc/calculators/geometry/domain.py
+msgid "Geometry"
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/cone.py
 msgid "Inside radius, outside radius, and sweep angle of the flat pattern for a cone frustum."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid ""
+"Legs, hypotenuse, acute angles, area, and perimeter of a right triangle, from any two of its "
+"sides, or a side and an acute angle."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Length"
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/domain.py
+msgid "One value in every unit of its kind at once: lengths, angles, areas, and stresses."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Perimeter, area, and diagonal of a rectangle."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid "Perimeter, area, and the three angles of a triangle, from its three sides."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Rectangle"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Regular polygon"
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid "Right triangle"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/domain.py
 msgid "Sheet Metal"
 msgstr ""
 
+#: src/caddcalc/calculators/geometry/shapes.py
+msgid "Side, across flats, across corners, perimeter, and area of a regular polygon."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Stress and pressure"
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "Suggested female (V) die opening for air bending on a press brake."
+msgstr ""
+
+#: src/caddcalc/calculators/geometry/triangles.py
+msgid "Triangle (three sides)"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/cone.py
@@ -74,6 +176,14 @@ msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "V-die opening (air bending)"
+msgstr ""
+
+#. shown under every calculator's results, after the command line's results,
+#. and in About.
+#: src/caddcalc/core/formatting.py
+msgid ""
+"Verify results and test according to your organization's policies or industry best practice "
+"before manufacturing."
 msgstr ""
 
 #. the welcome card's version line. It sits in a small corner of the
@@ -86,6 +196,36 @@ msgstr ""
 #: src/caddcalc/gui/welcome.py
 #, python-brace-format
 msgid "Welcome to {product}"
+msgstr ""
+
+#. 1/2 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a half inch"
+msgstr ""
+
+#. 1/4 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a quarter inch"
+msgstr ""
+
+#. 1/16 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a sixteenth inch"
+msgstr ""
+
+#. 1/64 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a sixty-fourth inch"
+msgstr ""
+
+#. 1/32 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a thirty-second inch"
+msgstr ""
+
+#. 1/8 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "an eighth inch"
 msgstr ""
 
 #: src/caddcalc/core/units/builtin.py
@@ -102,6 +242,13 @@ msgid_plural "degrees"
 msgstr[0] ""
 msgstr[1] ""
 
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "eighth"
+msgid_plural "eighths"
+msgstr[0] ""
+msgstr[1] ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "foot"
@@ -113,6 +260,13 @@ msgstr[1] ""
 msgctxt "unit"
 msgid "gigapascal"
 msgid_plural "gigapascals"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "half"
+msgid_plural "halves"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -158,6 +312,19 @@ msgid_plural "millimeters"
 msgstr[0] ""
 msgstr[1] ""
 
+#. a negative value, spoken, e.g. "minus 1 foot 4 inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "minus {value}"
+msgstr ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "minute"
+msgid_plural "minutes"
+msgstr[0] ""
+msgstr[1] ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "percent"
@@ -165,10 +332,24 @@ msgid_plural "percent"
 msgstr[0] "percent"
 msgstr[1] "percent"
 
+#. a value shown with its plus sign, spoken, e.g. "plus 0.0025 inches", as an
+#. error is, so its direction is heard as it's seen.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "plus {value}"
+msgstr ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "pound per square inch"
 msgid_plural "pounds per square inch"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "quarter"
+msgid_plural "quarters"
 msgstr[0] ""
 msgstr[1] ""
 
@@ -178,4 +359,175 @@ msgid "radian"
 msgid_plural "radians"
 msgstr[0] ""
 msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "second"
+msgid_plural "seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "sixteenth"
+msgid_plural "sixteenths"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "sixty-fourth"
+msgid_plural "sixty-fourths"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square centimeter"
+msgid_plural "square centimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square foot"
+msgid_plural "square feet"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square inch"
+msgid_plural "square inches"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square meter"
+msgid_plural "square meters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/builtin.py
+msgctxt "unit"
+msgid "square millimeter"
+msgid_plural "square millimeters"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/caddcalc/core/units/compound.py
+msgctxt "fraction"
+msgid "thirty-second"
+msgid_plural "thirty-seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#. feet and a fraction of an inch under one, said together, e.g. "1 foot" and
+#. "a quarter inch" as "1 foot and a quarter inch".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{feet} and {fraction}"
+msgstr ""
+
+#. the last two of three or more spoken measures of one value, e.g. "30
+#. minutes 15 seconds" in "40 degrees 30 minutes 15 seconds": CLDR's "end" pattern.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, end"
+msgid "{first} {second}"
+msgstr ""
+
+#. a spoken measure before the last two, CLDR's "middle" pattern.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, middle"
+msgid "{first} {second}"
+msgstr ""
+
+#. the first of three or more spoken measures and the rest, e.g. "40
+#. degrees" and "30 minutes 15 seconds": CLDR's "start" pattern.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, start"
+msgid "{first} {second}"
+msgstr ""
+
+#. two spoken measures of one value, e.g. "1 foot 4 inches" or "40
+#. degrees 30 minutes": CLDR's unit list pattern for two.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, two"
+msgid "{first} {second}"
+msgstr ""
+
+#. whole inches and 1/2 inch, spoken, e.g. "1 and a half inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a half inches"
+msgstr ""
+
+#. whole inches and 1/4 inch, spoken, e.g. "1 and a quarter inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a quarter inches"
+msgstr ""
+
+#. whole inches and 1/16 inch, spoken, e.g. "1 and a sixteenth inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a sixteenth inches"
+msgstr ""
+
+#. whole inches and 1/64 inch, spoken, e.g. "1 and a sixty-fourth inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a sixty-fourth inches"
+msgstr ""
+
+#. whole inches and 1/32 inch, spoken, e.g. "1 and a thirty-second inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a thirty-second inches"
+msgstr ""
+
+#. whole inches and 1/8 inch, spoken, e.g. "1 and an eighth inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and an eighth inches"
+msgstr ""
+
+#. a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
+#. is the fraction's denominator as a word, such as "sixteenths".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and {numerator} {part} inches"
+msgstr ""
+
+#. a number and its unit, spoken, e.g. "4 inches" or "30 minutes".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{number} {unit}"
+msgstr ""
+
+#. a fraction of an inch, spoken, e.g. "3 sixteenths of an inch".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{numerator} {part} of an inch"
+msgstr ""
+
+#~ msgid ""
+#~ "Results are for drafting and education. Verify them"
+#~ " against your shop's tooling, material data, and "
+#~ "a test part before manufacturing."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Verify results and test according to your "
+#~ "organization policies or using industry best-practice "
+#~ "before manufacturing."
+#~ msgstr ""
+
+#~ msgid "{first} {second}"
+#~ msgstr ""
 

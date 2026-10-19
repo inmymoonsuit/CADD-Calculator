@@ -1,10 +1,13 @@
 # CADD Calculator: user guide
 
-CADD Calculator answers the numeric questions that come up while drafting: how long to
-cut a part so it bends to the right size, what V-die to use, and how to lay out a cone.
+CADD Calculator answers the numeric questions that come up while drafting: the area or
+angles of a shape, a length in inches and millimeters, how long to cut a part so it bends to the right size, what V-die to
+use, and how to lay out a cone.
 Every answer shows its work.
 
 * [Getting started](getting-started.md): install it and run your first calculation
+* [Geometry calculators](calculators/geometry.md): circles, rectangles, triangles, polygons, arcs
+* [Conversions](calculators/conversions.md): a length, angle, area, or stress in every unit at once
 * [Sheet-metal calculators](calculators/sheet-metal.md): what each one computes, and the formulas
 * [Results and copying](results.md): the result fields, copying values, the keyboard
 * [Units and precision](units-and-precision.md): typing fractions and mm, rounding
@@ -42,6 +45,9 @@ Each result shows:
 
 ## Disclaimer
 
-Results are for drafting and education. Real parts depend on tooling, material lot,
-grain direction, temper, and bending method. Verify against your shop's data and test
-bends before manufacturing. The software comes with no warranty.
+Verify results and test according to your organization's policies or industry best
+practice before manufacturing.
+
+Results are for drafting and education, and the software comes with no warranty. A
+bent part also depends on the material lot, grain direction, temper, and bending method,
+which is why a test bend is the usual practice.

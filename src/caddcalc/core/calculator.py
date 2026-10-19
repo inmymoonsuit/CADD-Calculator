@@ -18,7 +18,14 @@ from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.spec import Method, OutOfRangeError, Output, Param
 from caddcalc.core.steps import Step
-from caddcalc.core.units import BASE_UNITS, Dimension, base_text, base_unit_names
+from caddcalc.core.units import (
+    BASE_UNITS,
+    Dimension,
+    base_text,
+    base_unit_names,
+    get_unit,
+    registry,
+)
 
 _ID = re.compile(r"[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+")
 
@@ -47,7 +54,8 @@ class Result:
         """A JSON-serialisable form. Values are in base units, and each one names its unit."""
 
         def q(value: float, dim: Dimension) -> dict[str, Any]:
-            return {"value": value, "unit": BASE_UNITS[dim], "dimension": dim.value}
+            number = int(value) if dim is Dimension.COUNT else value  # a count is whole
+            return {"value": number, "unit": BASE_UNITS[dim], "dimension": dim.value}
 
         return {
             "calculator": self.calculator_id,
@@ -125,7 +133,12 @@ class Context:
         dimension: Dimension,
         output: str | None = None,
     ) -> float:
-        """Evaluate ``expression``, record it as a step, and optionally store it as an output."""
+        """Evaluate ``expression``, record it as a step, and optionally store it as an output.
+
+        Raises:
+            SpecError: ``output`` has a value already, which would hide the first and its
+                work.
+        """
         values = {name: v for name, (v, _dim) in self.symbols.items()}
         result = expr.evaluate(expression, values)
         return self._record(Step(symbol, label, dimension, result, expression), output)
@@ -142,6 +155,32 @@ class Context:
     ) -> float:
         """Record a value computed in Python (e.g. a table lookup), with a note explaining it."""
         return self._record(Step(symbol, label, dimension, value, None, note), output)
+
+    def given(self, symbol: str, *, output: str) -> float:
+        """Report the input ``symbol`` as the output ``output``, unchanged, and return it.
+
+        For an output that a method takes as an input, such as a circle's diameter in its
+        diameter method: it's shown with the results, and adds no work, since the inputs
+        show it already.
+
+        Raises:
+            SpecError: ``symbol`` isn't an input of this run, ``output`` isn't an output
+                of the calculator, the two measure different things, or the output has a
+                value already.
+        """
+        param = next((p for p in self.calculator.params if p.symbol == symbol), None)
+        if param is None or param.key not in self.inputs:
+            raise SpecError(f"{self.calculator.id}: {symbol!r} isn't an input of this run")
+        declared = next((o for o in self.calculator.outputs if o.key == output), None)
+        if declared is None:
+            raise SpecError(f"{self.calculator.id}: {output!r} isn't an output")
+        if declared.dimension is not param.dimension:
+            raise SpecError(
+                f"{self.calculator.id}: input {symbol!r} isn't {declared.dimension.with_article}"
+            )
+        self._claim(output)
+        self.outputs[output] = self.inputs[param.key]
+        return self.outputs[output]
 
     def note(
         self,
@@ -211,11 +250,20 @@ class Context:
     def _record(self, step: Step, output: str | None) -> float:
         if step.symbol in self.symbols:
             raise SpecError(f"{self.calculator.id}: symbol {step.symbol!r} is defined twice")
+        if output is not None:
+            self._claim(output)
+            if any(o.key == output and o.signed for o in self.calculator.outputs):
+                step = replace(step, signed=True)  # its work line shows the sign too
         self.symbols[step.symbol] = (step.value, step.dimension)
         self.steps.append(step)
         if output is not None:
             self.outputs[output] = step.value
         return step.value
+
+    def _claim(self, output: str) -> None:
+        """Check ``output`` has no value yet: a second would hide the first and its work."""
+        if output in self.outputs:
+            raise SpecError(f"{self.calculator.id}: output {output!r} is given a value twice")
 
 
 class ResultCheck(Protocol):
@@ -472,6 +520,8 @@ class Calculator(ABC):
         _unique(cls.id, "parameter key", [p.key for p in cls.params])
         _unique(cls.id, "parameter symbol", [p.symbol for p in cls.params])
         _unique(cls.id, "output key", [o.key for o in cls.outputs])
+        for o in cls.outputs:
+            _check_output_unit(cls.id, o)
         for p in cls.params:
             if not expr.is_usable_symbol(p.symbol):
                 raise SpecError(
@@ -494,6 +544,46 @@ class Calculator(ABC):
                     raise SpecError(
                         f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
+
+
+def _check_output_unit(owner: str, output: Output) -> None:
+    """Check that an output's fixed unit or form, if it names one, is of its dimension."""
+    if output.form:
+        if output.unit:
+            raise SpecError(f"{owner}: output {output.key!r} gives a unit and a form; give one")
+        try:
+            form = registry().compound(output.form)
+        except UsageError as exc:
+            raise SpecError(f"{owner}: output {output.key!r} has a bad form: {exc}") from None
+        if form.dimension is not output.dimension:
+            raise SpecError(
+                f"{owner}: output {output.key!r}'s form {output.form!r} doesn't write "
+                f"{output.dimension.with_article}"
+            )
+        if output.precision is not None:
+            raise SpecError(
+                f"{owner}: output {output.key!r} gives a precision and a form; a form has "
+                "its own fineness"
+            )
+        if output.signed:
+            raise SpecError(
+                f"{owner}: output {output.key!r} is signed and in a form; a form writes its "
+                "own sign"
+            )
+        return
+    if not output.unit:
+        if output.precision is not None:
+            raise SpecError(f"{owner}: output {output.key!r} gives a precision but no unit")
+        return
+    try:
+        unit = get_unit(output.unit, output.dimension)
+    except (InputError, UsageError) as exc:
+        raise SpecError(f"{owner}: output {output.key!r} has a bad unit: {exc}") from None
+    if unit.dimension is not output.dimension or unit.symbol != output.unit:
+        raise SpecError(
+            f"{owner}: output {output.key!r} names {output.unit!r}, which isn't the key "
+            f"symbol of {output.dimension.with_article} unit"
+        )
 
 
 def _resolve(
@@ -519,7 +609,7 @@ def _resolve(
         return derived.value, derived.source
     default = p.default_value()
     if default is None:
-        raise InputError(f"Missing input: {p.label} ({p.symbol})")
+        raise InputError(f"Missing input: {p.named}")
     return default, DEFAULT
 
 

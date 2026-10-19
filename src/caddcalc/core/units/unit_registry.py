@@ -17,11 +17,13 @@ from importlib import metadata
 
 from caddcalc.core.errors import InputError, SpecError, UsageError
 from caddcalc.core.plugins import EntryPointSource, PluginError, load_group
-from caddcalc.core.units import builtin
+from caddcalc.core.units import builtin, compound
+from caddcalc.core.units.compound import CompoundForm
 from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
     Dimension,
     DimensionSpec,
+    Precision,
     Unit,
     UnitSystem,
 )
@@ -56,6 +58,7 @@ class UnitRegistry:
         """Every name's length, longest first."""
         self._reserved: dict[str, Unit] = {}
         """The built-ins' names, casefolded: no later unit takes one, in any dimension."""
+        self._compounds: dict[str, CompoundForm] = {}
 
     @property
     def frozen(self) -> bool:
@@ -115,6 +118,7 @@ class UnitRegistry:
             raise SpecError(f"{where}: it must read back the symbol it's written with")
         if unit.close_up and unit.written not in CLOSE_UP_SYMBOLS:
             raise SpecError(f"{where}: only °, ′, and ″ are written close up (SP 811 §7.2)")
+        self._check_power(unit, spec, where)
         if any(not alias for alias in unit.aliases):
             raise SpecError(f"{where}: an alias is empty")
         for key in unit.keys:
@@ -126,7 +130,10 @@ class UnitRegistry:
                     f"{where}: {key!r} is the built-in unit {built_in.symbol!r} "
                     f"({built_in.name}), in any dimension"
                 )
-        if any(u.symbol == unit.symbol for u in self._units):
+        # An unnamed unit is its dimension's one, as a ratio's or a count's is, so "" is
+        # taken only within a dimension.
+        holders = [u for u in self._units if u.symbol == unit.symbol]
+        if any(unit.symbol or u.dimension is unit.dimension for u in holders):
             raise SpecError(f"{where}: the symbol {unit.symbol!r} is taken")
         for other in self.units_for(unit.dimension):
             for key in unit.keys:
@@ -137,6 +144,60 @@ class UnitRegistry:
                             f"{where}: {key!r} is already {taken!r}, unit {other.symbol!r} "
                             f"({other.name})"
                         )
+
+    def _check_power(self, unit: Unit, spec: DimensionSpec, where: str) -> None:
+        """Check a unit declared as a power of another, such as in², against its root."""
+        if not unit.power_of:
+            return
+        derivation = spec.derivation
+        if derivation is None:
+            raise SpecError(f"{where}: {unit.dimension.value} isn't a power of a dimension")
+        root = next((u for u in self.units_for(derivation.of) if u.symbol == unit.power_of), None)
+        if root is None or root.exact is None:
+            raise SpecError(
+                f"{where}: it's a power of {unit.power_of!r}, which isn't "
+                f"{self._dimensions[derivation.of].article} unit registered before it"
+            )
+        if unit.exact != root.exact**derivation.power:
+            raise SpecError(
+                f"{where}: its factor must be {root.symbol!r}'s exact factor to the power "
+                f"{derivation.power}"
+            )
+
+    def register_compound(self, form: CompoundForm) -> None:
+        """Add a compound form, such as feet and inches, for its dimension (ADR-0019 §2).
+
+        Raises:
+            UsageError: The registry is frozen.
+            SpecError: Its key is taken, or its full-precision unit isn't a unit of its
+                dimension.
+        """
+        if self._frozen:
+            raise UsageError(f"The units registry is frozen; {form.key!r} came too late")
+        if form.key in self._compounds:
+            raise SpecError(f"compound form {form.key!r}: the key is taken")
+        if not any(u.symbol == form.full_unit for u in self.units_for(form.dimension)):
+            raise SpecError(
+                f"compound form {form.key!r}: {form.full_unit!r} isn't "
+                f"{self._dimensions[form.dimension].article} unit"
+            )
+        self._compounds[form.key] = form
+
+    def compounds_for(self, dimension: Dimension) -> tuple[CompoundForm, ...]:
+        """Return the compound forms of ``dimension``, which the parser tries first."""
+        return tuple(f for f in self._compounds.values() if f.dimension is dimension)
+
+    def compound(self, key: str) -> CompoundForm:
+        """Return the compound form ``key`` names, e.g. ``"ft_in"``.
+
+        Raises:
+            UsageError: No compound form has that key.
+        """
+        try:
+            return self._compounds[key]
+        except KeyError:
+            known = ", ".join(self._compounds)
+            raise UsageError(f"No compound form {key!r}; there's {known}") from None
 
     @property
     def units(self) -> tuple[Unit, ...]:
@@ -159,19 +220,25 @@ class UnitRegistry:
             dimension: The dimension it's expected to be of. A unit of that dimension wins
                 where units of several share the name; with none of that dimension, the
                 unit of whatever dimension has it is returned, so the caller can say it
-                measures the wrong thing.
+                measures the wrong thing. With none given, a length wins, so ``'`` is
+                the foot, not the minute of arc.
 
         Raises:
             InputError: No unit has that name.
-            UsageError: Units of several dimensions have it, and none is of ``dimension``.
+            UsageError: Units of several dimensions have it, and none is of ``dimension``
+                (or, with none given, a length).
         """
         key = text.strip()
         if key:
             named = [u for u in self._by_name.get(key.casefold(), ()) if _names(u, key)]
         else:
-            named = [u for u in self._units if not u.symbol]  # "" is the unnamed ratio
-        own = [u for u in named if u.dimension is dimension]
-        found = own or named
+            named = [u for u in self._units if not u.symbol]
+        # With no dimension given, a length, so ' and " are the foot and inch, which
+        # callers of the public lookups expect (ADR-0019, amendments).
+        own = [u for u in named if u.dimension is (dimension or Dimension.LENGTH)]
+        # A bare number where the dimension has no unnamed unit is the ratio's, so the
+        # caller says it measures the wrong thing (ADR-0019, amendments).
+        found = own or (named if key else [u for u in named if u.dimension is Dimension.RATIO])
         if not found:
             raise InputError(f"Unknown unit {text!r}")
         if len(found) > 1:
@@ -186,10 +253,24 @@ class UnitRegistry:
     def shown_unit(self, dimension: Dimension, length: Unit) -> Unit:
         """Return the unit ``dimension`` is shown in, beside the length unit ``length``."""
         spec = self._dimensions[dimension]
-        if spec.follows_length:
+        if spec.follows_length and spec.derivation is None:
             return length
+        if spec.follows_length:
+            # The power of the chosen length, or the base unit where it has none declared.
+            power = next(
+                (u for u in self.units_for(dimension) if u.power_of == length.symbol), None
+            )
+            return power or self.find(spec.base, dimension)
         system = length.system or UnitSystem.NONE
         return self.find(spec.shown_with.get(system, spec.base), dimension)
+
+    def precision_for(self, unit: Unit) -> Precision:
+        """Return the precision a value is shown with in ``unit`` when an output fixes it.
+
+        That's its dimension's declared one, whatever the display preferences (ADR-0018
+        §3): a converter's millimetre row reads the same when the app shows inches.
+        """
+        return self._dimensions[unit.dimension].fixed
 
     def ending(self, text: str, dimension: Dimension) -> tuple[Unit, int] | None:
         """Return the unit whose symbol or alias ends ``text``, and that name's length.
@@ -235,6 +316,8 @@ def build_registry(
     built = UnitRegistry(builtin.DIMENSIONS)
     for unit in builtin.UNITS:
         built.register(unit)
+    for form in compound.FORMS:
+        built.register_compound(form)
     built.reserve()
     if load_plugins:
         built.plugin_errors += load_group(entry_points, ENTRY_POINT_GROUP, Unit, _registrar(built))

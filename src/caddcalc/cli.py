@@ -190,32 +190,81 @@ def _cmd_show(args: argparse.Namespace) -> int:
 
 
 def _resolve_param(calc: Calculator, name: str) -> Param:
-    matches = [p for p in calc.params if name.lower() in (p.key.lower(), p.symbol.lower())]
-    if len(matches) != 1:
+    """Return the input ``name`` names: by its exact key or symbol, else in any case.
+
+    An exact match comes first, so ``a`` and ``A`` can be a side and an angle. A name
+    matched in any case must match one symbol only, among the results too: ``B`` for a
+    triangle is its angle, a result, and never its side ``b``.
+
+    Raises:
+        InputError: No input has the name, or, in any case, several inputs or results do.
+    """
+    exact = [p for p in calc.params if name in (p.key, p.symbol)]
+    if len(exact) == 1:
+        return exact[0]
+    folded = name.casefold()
+    matches = [p for p in calc.params if folded in (p.key.casefold(), p.symbol.casefold())]
+    symbols = {p.symbol for p in matches}
+    results = [
+        o
+        for o in calc.outputs
+        if folded in (o.key.casefold(), o.symbol.casefold()) and o.symbol not in symbols
+    ]
+    if len(matches) > 1:
+        names = ", ".join(f"{p.symbol}/{p.key}" for p in matches)
+        raise InputError(f"Input {name!r} for {calc.id} could be {names}; give one exactly")
+    if matches and results:
+        # Only what can be given is offered: the result is named, not suggested.
+        (p,) = matches
+        raise InputError(
+            f"Input {name!r} for {calc.id} isn't one: as written it's a result, "
+            f"{results[0].key}. Did you mean {p.symbol}/{p.key}? Give it exactly"
+        )
+    if not matches:
         options = ", ".join(f"{p.symbol}/{p.key}" for p in calc.params)
         raise InputError(f"Unknown input {name!r} for {calc.id}. Inputs: {options}")
     return matches[0]
 
 
-def parse_inputs(calc: Calculator, items: Sequence[str], length_unit: str) -> dict[str, float]:
+def parse_inputs(
+    calc: Calculator, items: Sequence[str], length_unit: str, method: str | None = None
+) -> dict[str, float]:
     """Parse ``NAME=VALUE`` arguments into base-unit values keyed by parameter key.
 
     Args:
         calc: The calculator the inputs belong to.
         items: Arguments such as ``T=0.1046`` or ``thickness=3mm``.
         length_unit: The unit for lengths typed without one.
+        method: The method the inputs are for; ``None`` for the calculator's first.
 
     Raises:
-        InputError: An argument is malformed, names an unknown input, or has a bad value.
+        InputError: An argument is malformed, names an unknown input, has a bad value, or
+            gives an input twice or one the method doesn't use, which would be lost.
     """
     values: dict[str, float] = {}
+    given: dict[str, str] = {}
     for item in items:
         name, sep, text = item.partition("=")
         if not sep:
             raise InputError(f"Expected NAME=VALUE, got {item!r}")
         p = _resolve_param(calc, name.strip())
+        if p.key in given:
+            raise InputError(
+                f"Input {p.symbol}/{p.key} is given twice, as {given[p.key]!r} and {item!r}; "
+                "give it once"
+            )
+        given[p.key] = item
         default_unit = entry_unit(p.dimension, DisplayPrefs(length_unit=length_unit))
         values[p.key] = parse_quantity(text, p.dimension, default_unit)
+    chosen = calc.get_method(method)
+    used = calc.params_for(chosen.key)
+    unused = [given[key] for key in values if key not in {p.key for p in used}]
+    if unused:
+        inputs = ", ".join(f"{p.symbol}/{p.key}" for p in used)
+        raise InputError(
+            f"Method {chosen.key!r} of {calc.id} doesn't use {', '.join(unused)}; "
+            f"its inputs are {inputs}"
+        )
     return values
 
 
@@ -225,7 +274,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
         length_unit=args.units, decimals=args.decimals, fraction_denominator=args.fraction
     )
     try:
-        result = calc.run(parse_inputs(calc, args.inputs, args.units), method=args.method)
+        inputs = parse_inputs(calc, args.inputs, args.units, args.method)
+        result = calc.run(inputs, method=args.method)
     except CaddCalcError as exc:
         _write_cause(exc)
         return _fail(describe_error(exc, prefs))
@@ -236,16 +286,24 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+LABEL_WIDTH = 32
+"""The least width of the results' label column, in characters."""
+
+
 def format_result(
     calc: Calculator, result: Result, prefs: DisplayPrefs, *, show_work: bool = True
 ) -> str:
     """Render a result as plain text: inputs, work, results, notes, and status."""
     method = calc.get_method(result.method)
+    params = calc.params_for(result.method)
+    # The label column is as wide as its longest label, and at least LABEL_WIDTH.
+    labels = [p.label for p in params] + [o.label for o in calc.outputs]
+    width = max(LABEL_WIDTH, *(len(label) for label in labels))
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
-    for p in calc.params_for(result.method):
+    for p in params:
         value = format_value(result.inputs[p.key], p.dimension, prefs)
         source = describe_source(result.source_of(p.key))
-        lines.append(f"  {p.symbol:<6} {p.label:<32} {value}  ({source})")
+        lines.append(f"  {p.symbol:<6} {p.label:<{width}} {value}  ({source})")
     if show_work:
         lines += ["", "Work"]
         for step in result.steps:
@@ -260,13 +318,13 @@ def format_result(
     lines += ["", "Results"]
     for o in calc.outputs:
         value = format_output(o, result.outputs[o.key], prefs)
-        lines.append(f"  {o.symbol:<6} {o.label:<32} {value}")
+        lines.append(f"  {o.symbol:<6} {o.label:<{width}} {value}")
     if result.notes:
         lines += ["", "Notes"]
         for note in result.notes:
             first, *rest = describe_note(note, prefs).lines
             lines += [f"  ! {first}", *(f"      {line}" for line in rest)]
-    lines += ["", f"Method status: {method.status}. {DISCLAIMER}"]
+    lines += ["", f"Method status: {method.status}. {_(DISCLAIMER)}"]
     return "\n".join(lines)
 
 

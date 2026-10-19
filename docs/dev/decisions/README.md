@@ -30,7 +30,10 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0015](0015-welcome-screen.md) | A welcome screen composed from branding-pack parts | Accepted (built) |
 | [0016](0016-welcome-style-system.md) | A style system for the welcome screen | Accepted |
 | [0017](0017-result-fields.md) | Result fields: one boxed, copyable component for every calculator | Accepted; built |
-| [0018](0018-geometry-and-conversions.md) | Geometry and Conversions families | Accepted (not built; after 0019) |
+| [0018](0018-geometry-and-conversions.md) | Geometry and Conversions families | Accepted; built (m1, m2) |
 | [0019](0019-units-registry.md) | A units registry, the one source of unit knowledge | Accepted (its behaviour-neutral first step built, u1 and u1b; U5's spellings in i3) |
 | [0020](0020-localization.md) | Localization, starting with a skeleton | Accepted (its skeleton being built: i1 to i4) |
 | [0021](0021-window-and-page-layout.md) | Window and page layout, in text units | Accepted; built |
+| 0022 | Distribution and signing | Accepted; not yet filed |
+| 0023 | The layout contract | Accepted; not yet built |
+| 0024 | Units on fields | Proposed |

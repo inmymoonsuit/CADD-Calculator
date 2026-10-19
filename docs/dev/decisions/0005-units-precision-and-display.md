@@ -88,3 +88,26 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
   in their base units. A stress field labelled ksi would have read "36" as 36 MPa.
 * `unit_suffix` names the display unit for every dimension but angle, which keeps its
   "°".
+
+### 2026-10-18: an area dimension (ADR-0018 §3; ADR-0019, u2)
+
+* **`Dimension.AREA`**, base unit the square millimetre, with mm², cm², m², in² and ft²,
+  each generated from its length unit in exact arithmetic. It shows in the square of the
+  length preference, to 6 significant figures (4 decimals as first built), and never
+  with an inch fraction. ADR-0019's u2 amendment has the details.
+
+### 2026-10-18: feet and inches, and degrees, minutes and seconds (ADR-0019, u3)
+
+* Feet-and-inches input (`3'-4 1/2"`) is built, as a compound form of a length, and so
+  is degrees, minutes and seconds for an angle, with the minute and second of arc as
+  units (SP 811 Table 6). KI-009 is resolved. ADR-0019's u3 amendment has the details.
+
+### 2026-10-19: a count dimension (UI/UX's M2; KI-025)
+
+* **`Dimension.COUNT`**, for a number of things, such as a polygon's sides. Its one unit
+  is unnamed, as the ratio's is, and it's shown with no decimals (`Precision(0)`), in
+  the inputs, the work, Copy and the command line; JSON gives it as an integer. A count
+  that isn't whole is refused, by the parser and by `Param.check`, and a unit or a
+  percent on one is refused as measuring something else. A ratio stays the dimension of
+  a factor such as the K-factor. ADR-0019's amendment of the same date has the registry's
+  side.

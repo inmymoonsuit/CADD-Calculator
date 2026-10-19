@@ -62,10 +62,13 @@ from caddcalc.core.formatting import (
     copy_output,
     decimal_separator,
     output_parts,
+    output_unit,
     results_tsv,
     spoken_value,
 )
+from caddcalc.core.i18n import _
 from caddcalc.gui.icons import current_scheme, icon, role_color
+from caddcalc.gui.name_tips import tip_text
 from caddcalc.gui.outlines import Outline, strongest
 from caddcalc.gui.painting import frame_within, on_device_pixels, stroke
 from caddcalc.gui.text_units import text_unit
@@ -103,6 +106,11 @@ shown, and the number as shown, e.g. "Copy 0,3119", only where the decimal mark 
 (ADR-0020 §4): "Copy value" writes "." for CAD. Where it isn't, every item is named by
 what it copies, such as "Copy 0.3119" and "Copy 0.3119 in"."""
 
+FULL_IN = "Copy full precision, in {unit}"
+"""The full-precision item of a compound form's menu, which names the unit it copies in,
+as feet and inches copy in inches; "Copy {number}, in {unit}" where both marks are on
+offer."""
+
 
 def _announce(widget: QWidget, message: str) -> None:
     """Tell screen readers ``message``, politely, as the status bar shows it (R4)."""
@@ -112,11 +120,15 @@ def _announce(widget: QWidget, message: str) -> None:
 
 
 class _ElidedLabel(QLabel):
-    """A label that elides its text to its width, and offers the whole text as a tooltip."""
+    """A label that elides its text to its width, with its help as its tooltip.
 
-    def __init__(self, text: str, parent: QWidget) -> None:
+    Once the text elides, the tooltip starts with the whole text, as a list row's does.
+    """
+
+    def __init__(self, text: str, parent: QWidget, help_text: str = "") -> None:
         super().__init__(parent)
         self.full_text = text
+        self.help_text = help_text
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self._elide()
 
@@ -125,7 +137,10 @@ class _ElidedLabel(QLabel):
             self.full_text, Qt.TextElideMode.ElideRight, self.width()
         )
         self.setText(shown)
-        self.setToolTip("" if shown == self.full_text else self.full_text)
+        if shown != self.full_text:
+            self.setToolTip(tip_text(self.full_text, self.help_text))
+        else:
+            self.setToolTip(self.help_text)
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:
@@ -239,7 +254,8 @@ class ResultField(QWidget):
         bold = QFont(self.symbol.font())
         bold.setBold(True)
         self.symbol.setFont(bold)
-        self.label = _ElidedLabel(output.label, self)
+        self.label = _ElidedLabel(output.label, self, output.help)
+        self.setAccessibleDescription(output.help)
         self.value = QLabel(NO_VALUE, self)
         self.value.setFont(self._value_font())
         self.value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -303,8 +319,13 @@ class ResultField(QWidget):
         self.setAccessibleName(
             FIELD_NAME.format(label=self.output.label, symbol=symbol, value=spoken)
         )
-        # Said after the button's name, "Copy Bend allowance", so not the label again.
-        self.copy_button.setAccessibleDescription(VALUE_SPOKEN.format(symbol=symbol, value=spoken))
+        # Said after the button's name, "Copy Bend allowance", so not the label again. The
+        # button is what Tab reaches, so it carries the output's help too: the label's
+        # tooltip is the mouse's only.
+        described = VALUE_SPOKEN.format(symbol=symbol, value=spoken)
+        if self.output.help:
+            described = f"{described}. {self.output.help}"
+        self.copy_button.setAccessibleDescription(described)
         self.update()
 
     def copy(self, form: CopyForm = CopyForm.VALUE) -> str | None:
@@ -335,6 +356,8 @@ class ResultField(QWidget):
                 continue
             if form is CopyForm.SHOWN and (point or self.parts is None):
                 continue
+            if form is CopyForm.WITH_UNIT and self.parts is not None and self.parts.compound:
+                continue  # a compound form names its own units, so it'd copy the same
             if point or self.amount is None:
                 number = "" if self.parts is None else self.parts.number
                 label = text.format(number=number)
@@ -343,6 +366,10 @@ class ResultField(QWidget):
                 # "Copy 0.3119" beside "Copy 0,3119" (UI/UX's i4 review).
                 copied = copy_output(self.output, self.amount, self.prefs, form)
                 label = MENU[CopyForm.SHOWN].format(number=copied)
+            if form is CopyForm.FULL and self.parts is not None and self.parts.compound:
+                # A compound form's full precision is a decimal in the form's own unit.
+                unit = output_unit(self.output, self.prefs).spoken("2")  # its plural
+                label = FULL_IN.format(unit=unit) if point else f"{label}, in {unit}"
             action = menu.addAction(label)
             action.setEnabled(self.parts is not None)
             action.triggered.connect(_copier(self, form))
@@ -488,7 +515,7 @@ class ResultsPanel(QWidget):
         self._column = QVBoxLayout()
         self._column.setSpacing(round(self.tokens.stack_gap))
         column.addLayout(self._column)
-        self.disclaimer = QLabel(DISCLAIMER, self)
+        self.disclaimer = QLabel(_(DISCLAIMER), self)
         self.disclaimer.setWordWrap(True)
         notice = QHBoxLayout()
         notice.setContentsMargins(ring, 0, ring, 0)
@@ -593,16 +620,24 @@ class ResultsPanel(QWidget):
         if not fields:
             return
         symbol = max(f.symbol.sizeHint().width() for f in fields)
-        unit = max(QFontMetricsF(f.unit.font()).horizontalAdvance(f.unit.text()) for f in fields)
+        # Each column is at least as wide as its widest label asks to be: a label's own
+        # hint counts each glyph in whole pixels, which can be a pixel more than the
+        # fractional width of its text, as for ″ in DejaVu Sans.
+        unit = max(
+            max(QFontMetricsF(f.unit.font()).horizontalAdvance(f.unit.text()), _least(f.unit))
+            for f in fields
+        )
         metrics = QFontMetricsF(fields[0].value.font())
         point = decimal_separator(self.prefs)
         tails = [_tail(f.parts, metrics, point) for f in fields]
         most = max(tails) if self.tokens.decimal_align else 0.0
         widths = []
         for field, tail in zip(fields, tails, strict=True):
-            pad = most - tail if self.tokens.decimal_align else 0.0
+            aligned = self.tokens.decimal_align and not _flush(field.parts, point)
+            pad = most - tail if aligned else 0.0
             field.value.setContentsMargins(0, 0, round(pad), 0)
-            widths.append(metrics.horizontalAdvance(field.value.text()) + round(pad))
+            advance = metrics.horizontalAdvance(field.value.text()) + round(pad)
+            widths.append(max(advance, _least(field.value)))
         value = max(widths)
         # Up, not to the nearest: a column a fraction of a pixel narrower than its text
         # cuts off the text's last pixel.
@@ -610,6 +645,21 @@ class ResultsPanel(QWidget):
             field.symbol.setFixedWidth(symbol)
             field.unit.setFixedWidth(math.ceil(unit))
             field.value.setFixedWidth(math.ceil(value))
+
+
+def _least(label: QLabel) -> int:
+    """Return the least width ``label`` asks for, its contents margins included."""
+    return label.minimumSizeHint().width()
+
+
+def _flush(parts: ValueParts | None, point: str) -> bool:
+    """Whether a value is set flush right, rather than aligned on a decimal point.
+
+    A compound form with no point to align on, such as ``1'-4 3/16"``, isn't a decimal
+    number, so padding it as one would leave it short of the column's edge. One with a
+    point, as degrees, minutes and seconds has in its seconds, aligns on it.
+    """
+    return parts is not None and parts.compound is not None and point not in parts.number
 
 
 def _tail(parts: ValueParts | None, metrics: QFontMetricsF, point: str) -> float:
@@ -622,11 +672,14 @@ def _tail(parts: ValueParts | None, metrics: QFontMetricsF, point: str) -> float
     if parts is None:
         return 0.0
     places = _decimals(parts.number, point)
-    tail = metrics.horizontalAdvance(point + "0" * places) if places else 0.0
+    tail = metrics.horizontalAdvance(point + places) if places else 0.0
     return tail + (metrics.horizontalAdvance(parts.unit) if parts.unit_close_up else 0.0)
 
 
-def _decimals(number: str, point: str) -> int:
-    """Return how many decimal places ``number`` is shown with, after ``point``."""
+def _decimals(number: str, point: str) -> str:
+    """Return what ``number`` shows after ``point``: its decimals, and any mark after them.
+
+    A compound form, such as ``40°30′15.00″``, ends in a mark after its seconds' decimals.
+    """
     _whole, found, places = number.partition(point)
-    return len(places) if found else 0
+    return places if found else ""

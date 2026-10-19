@@ -208,7 +208,7 @@ than the page.
 | `layout.list_min_chars` | 24 | The list's least width (132 px); it never collapses |
 | `layout.page_max_chars` | 148 | The page's widest, its scroll bar included (814 px at 9 pt) |
 | `layout.panel_max_chars` | 148 | The results panel's widest: the page's, so the panel fills it |
-| `layout.launch_lines` | 46 | The launch content height's floor, in line spacings (736 px at 9 pt); the tallest calculator page can raise it |
+| `layout.launch_lines` | 46.125 | The launch content height, in line spacings: 738 px at 9 pt, main's launch height. The window is never sized to its content; a taller page scrolls (ADR-0021, interim amendment) |
 | `layout.screen_margin` | 16 | Pixels between the window's frame and the screen's work area, at least |
 | `layout.right_pane_min_chars` | 58 | A future right-hand pane's least width (ADR-0021 §5); unused until one exists |
 | `layout.right_pane_default_chars` | 64 | That pane's width when it opens; unused until one exists |

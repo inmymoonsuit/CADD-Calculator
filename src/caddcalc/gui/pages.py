@@ -97,22 +97,6 @@ def fit_height(page: QWidget, width: int, document: PageDocument | None = None) 
     return needed - document.sizeHint().height() + document.least
 
 
-def lay_out(page: QWidget, width: int) -> None:
-    """Lay ``page`` out at ``width`` while it's hidden, so its height at that width holds.
-
-    A hidden widget is laid out only when it shows, and a part whose height follows its
-    own width, such as the results panel, needs that width first. So the page is given
-    the width, and each layout in it is run from the page down, twice: the second pass
-    sees the widths the first one gave.
-    """
-    for _ in range(2):
-        page.resize(width, max(page.height(), _needed_height(page, width)))
-        for widget in (page, *page.findChildren(QWidget)):
-            layout = widget.layout()
-            if layout is not None:
-                layout.activate()
-
-
 def _needed_height(page: QWidget, width: int) -> int:
     """The height ``page`` needs at ``width``.
 

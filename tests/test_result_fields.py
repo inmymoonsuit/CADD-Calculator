@@ -190,6 +190,28 @@ def test_a_column_is_never_narrower_than_its_text() -> None:
     window.close()
 
 
+def test_a_column_is_never_narrower_than_its_labels_own_least_width() -> None:
+    """A column is as wide as its labels' own least widths, not only their text's.
+
+    A label's own hint counts each glyph in whole pixels, which can exceed its text's
+    fractional width: on Linux CI, DejaVu Sans's ″ cut the DMS value by a pixel. An
+    indent raises a label's least width the same way, without changing its text, so
+    every font shows it.
+    """
+    window = open_window()
+    window.select_calculator("conversions.angle")
+    window.show()
+    panel = window.results
+    for field in panel.fields.values():
+        field.value.setIndent(9)
+        field.unit.setIndent(9)
+    panel._align()
+    for field in panel.fields.values():
+        for label in (field.value, field.unit):
+            assert label.width() >= label.minimumSizeHint().width(), label.text()
+    window.close()
+
+
 LIST_PX = 280
 """The list's width in these tests: its launch width at 9 pt Segoe UI. The layout is in
 text units (ADR-0021), and offscreen fonts differ by platform (Windows' offscreen font is
@@ -632,4 +654,28 @@ def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
     html = result_html(window.calculator, replace(result, notes=(note,)), window.prefs, scheme)
     assert "<small>" not in html
     assert f"color:{color}'>default<" in html and f"color:{color}'>Sources: Shop handbook<" in html
+    window.close()
+
+
+def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
+    """The label's tooltip is the output's help, the user guide's sentence (UI/UX's L1)."""
+    from caddcalc.gui.name_tips import tip_text
+
+    window = open_window()
+    window.show()
+    window.select_calculator("conversions.length")
+    settle(window)
+    _param, value = window.fields["value"]
+    type_into(value, "0.31 in")
+    field = window.results.fields["error_16"]
+    help_text = "The nearest fraction less the value: positive where the fraction is longer"
+    assert field.output.help.startswith(help_text)
+    assert field.value.text() == "+0.002500" and field.unit.text() == "in"
+    assert field.label.toolTip() == field.output.help == field.accessibleDescription()
+    assert "plus 0.002500 inches" in field.accessibleName()
+    description = field.copy_button.accessibleDescription()
+    assert description == f"E16: plus 0.002500 inches. {field.output.help}", "Tab reaches it"
+    assert "Copy with unit" in [a.text() for a in field.context_menu().actions()]
+    field.label.resize(8, field.label.height())
+    assert field.label.toolTip() == tip_text(field.output.label, field.output.help), "elided"
     window.close()

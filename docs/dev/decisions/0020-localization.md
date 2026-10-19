@@ -428,3 +428,58 @@ together.
   large R/T" had no source. The help, the user guide, the glossary and the string
   sweep's table agree. The help texts aren't marked for translation yet, so no catalog
   changed.
+
+### 2026-10-18: text not yet marked, for the sweep
+
+New user-facing text is marked from the start (CONTRIBUTING, "Translating"). These are
+the exceptions left for the string sweep (§6), each because the text around it isn't
+marked yet either:
+
+* **The parser's messages** (`core/units/numbers.py`, `parsing.py`, `compound.py`): a
+  number that can't be read, a comma that isn't the mark, an unknown unit, a value of the
+  wrong dimension, and, since ADR-0019's u3, feet and inches or degrees, minutes and
+  seconds whose parts don't fit ("isn't feet and inches …", "has 13 inches; give inches
+  under 12", "isn't degrees, minutes and seconds …", "has a part of 60 or more …"). They
+  reach the user through `describe_error`, which will translate them by template.
+* **Calculator labels, help, notes and errors** that the sweep covers calculator by
+  calculator, as §6 says: the sheet-metal calculators', and the Geometry calculators'
+  (ADR-0018's m1), whose names and summaries are marked.
+
+Spoken forms, unit names and the fractions' words are marked (ADR-0019, u3 and u3b).
+
+### 2026-10-19: the disclaimer and new spoken forms are marked (ADR-0018, fix round 2)
+
+* **The disclaimer** is one line for every family (Support & Review's Note 5), marked
+  for translation and translated where it's shown: under the results, after the command
+  line's results, and in About. It said "test bends", which only Sheet Metal makes; it
+  now says "a test part". The user guide's disclaimer keeps the bending detail.
+* **Spoken forms:** "plus {value}", and whole inches and one part of an inch said as a
+  whole phrase per part, "{inches} and a half inches" to "{inches} and a sixty-fourth
+  inches" (UI/UX's L4), so a language can give each part its own article or form. More
+  than one part stays "{inches} and {numerator} {part} inches".
+* **Left for the sweep,** with the parser's messages: a count that isn't whole ("isn't a
+  whole number, and a count is", "must be a whole number"), and the command line's
+  "could be …; give one exactly".
+
+### 2026-10-19: list patterns, and new text left for the sweep (fix round 3)
+
+* **Marked:** CLDR's four unit-list patterns, in their contexts; the phrases for one
+  part of an inch alone and for feet and a fraction ("{feet} and {fraction}"); and the
+  plain value's measure, now `MEASURE_SPOKEN` (ADR-0019's amendment of this date).
+* **Left for the sweep,** with the parser's messages: the command line's "given twice"
+  and "doesn't use … its inputs are …"; "too large to calculate with" and a converter's
+  "too large to show in …"; and the menu's "Copy full precision, in {unit}", with the
+  rest of the result fields' text.
+
+### 2026-10-19: the disclaimer, in the maintainer's words (fix round 4)
+
+The maintainer ruled on round 2's change of the disclaimer, 2026-10-19: "Let's go with
+one generic disclaimer/instruction. Maybe: 'Verify results and test according to your
+organization policies or using industry best-practice before manufacturing.'" Lightly
+edited for grammar with their agreement, it's "Verify results and test according to
+your organization's policies or industry best practice before manufacturing.", of which
+they said: "Sounds like the best wording so far. I like it". That is now the disclaimer,
+for every family, Sheet Metal included, word for word, wherever it's shown: under the
+results, after the command line's results, and in About. It's marked for translation;
+the British catalog spells it "organisation's", and en_CA keeps the source's
+"organization's".

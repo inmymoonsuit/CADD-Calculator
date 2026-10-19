@@ -75,10 +75,10 @@ def test_derived_factors_equal_their_definitions() -> None:
     assert float(radian) == 180 / math.pi
 
 
-def test_symbols_keep_their_case_and_the_degree_alone_is_close_up() -> None:
-    """SP 811 §6.1.2 and §7.2: lower case but Pa's P and the M and G prefixes; ° close up."""
+def test_symbols_keep_their_case_and_only_degrees_minutes_seconds_are_close_up() -> None:
+    """SP 811 §6.1.2 and §7.2: lower case but Pa's P and the M and G prefixes; ° ′ ″ close up."""
     assert {u.symbol for u in UNITS if u.symbol != u.symbol.lower()} == {"MPa", "kPa", "GPa"}
-    assert {u.written for u in UNITS if u.close_up} == {"°"}
+    assert {u.written for u in UNITS if u.close_up} == {"°", "′", "″"}
     assert get_unit("%").close_up is False, "the percent sign is spaced (§7.10.2)"
     assert {u.symbol for u in UNITS if u.fractions} == {"in"}
 
@@ -145,6 +145,19 @@ def test_registration_refuses_a_unit_that_breaks_a_rule(
         _fresh().register(_yard(**changes))
 
 
+@pytest.mark.parametrize("dimension", [Dimension.RATIO, Dimension.COUNT])
+def test_each_unitless_dimension_has_one_unnamed_unit(dimension: Dimension) -> None:
+    """A bare number is its dimension's unnamed unit, and the ratio's for any other."""
+    test = UnitRegistry(builtin.DIMENSIONS)
+    for unit in builtin.UNITS:
+        test.register(unit)
+    assert [u.dimension for u in test.units if not u.symbol] == [Dimension.RATIO, Dimension.COUNT]
+    assert test.find("", dimension).dimension is dimension
+    assert test.find("").dimension is test.find("", Dimension.LENGTH).dimension is Dimension.RATIO
+    with pytest.raises(SpecError, match="the symbol '' is taken"):
+        test.register(_yard(symbol="", aliases=("twice",), dimension=dimension))
+
+
 def test_case_sensitive_units_may_differ_only_in_case() -> None:
     """A future Mm beside mm: both must declare themselves case-sensitive."""
     test = UnitRegistry(builtin.DIMENSIONS)
@@ -159,26 +172,27 @@ def test_case_sensitive_units_may_differ_only_in_case() -> None:
 
 
 def test_names_are_unique_within_a_dimension_and_the_parser_knows_which() -> None:
-    """′ is the foot for a length and could be the minute for an angle (SP 811 Table 6)."""
-    minute = Unit(
-        "arcmin",
-        "minute",
-        A,
-        float(Fraction(1, 60)),
-        ("′", "'"),
-        "minutes",
-        exact=Fraction(1, 60),
-        system=UnitSystem.ACCEPTED,
-        sources=get_unit("deg").sources,
-        written="′",
-        close_up=True,
-    )
+    """′ is the foot for a length and the minute for an angle (SP 811 Table 6)."""
     test = _fresh()
-    test.register(minute)
+    minute, second = test.find("arcmin"), test.find("arcsec")
     assert test.find("′", A) is minute and test.find("′", L).symbol == "ft"
-    with pytest.raises(UsageError, match="several dimensions"):
-        test.find("′")
+    assert test.find('"', A) is second and test.find('"', L).symbol == "in"
+    assert test.find("′").symbol == "ft", "with no dimension given, a length (S&R's u3 L1)"
     assert test.ending("30′", A) == (minute, 1) and test.ending("30′", L)[0].symbol == "ft"
+    assert (minute.exact, second.exact) == (Fraction(1, 60), Fraction(1, 3600))
+    assert (minute.written, second.written, minute.close_up) == ("′", "″", True)
+
+
+@pytest.mark.parametrize(("mark", "symbol"), [("'", "ft"), ("′", "ft"), ('"', "in"), ("″", "in")])
+def test_a_lookup_with_no_dimension_still_finds_the_foot_and_inch(mark: str, symbol: str) -> None:
+    """S&R's u3 L1: get_unit, to_base and from_base are public, and read them as before."""
+    from caddcalc.core.units import from_base, to_base
+
+    unit = get_unit(mark)
+    assert unit.symbol == symbol and unit.dimension is L
+    assert to_base(2, mark) == 2 * unit.factor
+    assert from_base(unit.factor, mark) == 1
+    assert get_unit(mark, A).symbol == {"ft": "arcmin", "in": "arcsec"}[symbol]
 
 
 def test_a_frozen_registry_takes_no_more() -> None:
@@ -293,6 +307,27 @@ def test_the_british_spellings_are_reserved_like_every_built_in_name(spelling: s
     assert error.message.endswith("in any dimension")
 
 
+def test_a_name_two_units_share_with_no_length_needs_a_dimension() -> None:
+    """With no length among them, a shared name needs the dimension it's expected in."""
+    test = _fresh()
+    test.register(
+        Unit(
+            "pt",
+            "part",
+            Dimension.RATIO,
+            1.0,
+            ("rad",),
+            "parts",
+            exact=Fraction(1),
+            system=UnitSystem.NONE,
+            sources=get_unit("deg").sources,
+        )
+    )
+    with pytest.raises(UsageError, match="several dimensions"):
+        test.find("rad")
+    assert test.find("rad", A).symbol == "rad" and test.find("rad", Dimension.RATIO).symbol == "pt"
+
+
 def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -314,8 +349,7 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     clear_registry()
     try:
         assert registry() is forced
-        with pytest.raises(UsageError, match="several dimensions"):
-            get_unit("in")
+        assert get_unit("in").name == "inch", "with no dimension given, a length"
         assert get_unit("in", L).name == "inch" and get_unit("in", A).name == "incline"
         assert format_value(25.4, L, DisplayPrefs()) == "1.0000 in"
         parsed = parse_quantity_detailed("3", L, "in")
@@ -337,3 +371,24 @@ def test_a_two_word_unit_reads_however_its_words_are_spaced(typed: str) -> None:
     from caddcalc.core.units import Dimension, parse_quantity
 
     assert parse_quantity(typed, Dimension.RATIO) == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize(
+    ("mark", "dimension"),
+    [
+        ("'", Dimension.RATIO),
+        ('"', Dimension.STRESS),
+        ("′", Dimension.RATIO),
+        ("″", Dimension.AREA),
+    ],
+)
+def test_a_mark_two_dimensions_share_needs_one_of_them(mark: str, dimension: Dimension) -> None:
+    """With a dimension that has neither, the foot's ' and the minute's are ambiguous.
+
+    It once gave the foot or the inch; it's refused since the minute and second of arc
+    share the marks (the CHANGELOG, Changed). With no dimension, a length wins.
+    """
+    with pytest.raises(UsageError, match="names units of several dimensions"):
+        get_unit(mark, dimension)
+    assert get_unit(mark).dimension is Dimension.LENGTH
+    assert get_unit(mark, Dimension.ANGLE).dimension is Dimension.ANGLE

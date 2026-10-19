@@ -125,11 +125,20 @@ def test_calculators_are_grouped_by_domain_and_sorted_by_name() -> None:
     registry.register_domain(ACME)
     registry.register(_AcmeWidget)
     grouped = registry.by_domain()
-    assert [d.name for d in grouped] == ["Acme Tools", "Sheet Metal"]
+    assert [d.name for d in grouped] == ["Geometry", "Conversions", "Sheet Metal", "Acme Tools"]
     assert [c.id for c in grouped[ACME]] == ["acme.widget"]
-    names = [c.name for c in grouped[registry.domain("sheet_metal")]]
-    assert names == sorted(names)
-    assert [d.id for d in registry.domains()] == ["acme", "sheet_metal"]
+    for domain_id in ("geometry", "conversions", "sheet_metal"):
+        names = [c.name for c in grouped[registry.domain(domain_id)]]
+        assert names == sorted(names)
+    assert [d.id for d in registry.domains()] == ["geometry", "conversions", "sheet_metal", "acme"]
+
+
+def test_the_built_in_families_are_listed_general_tools_first() -> None:
+    """ADR-0018 §1: the order is BUILTIN_DOMAINS', never the names' alphabetical order."""
+    registry = default_registry(load_plugins=False)
+    assert [d.id for d in registry.domains()] == [d.id for d in BUILTIN_DOMAINS]
+    assert BUILTIN_DOMAINS[0].id == "geometry" and BUILTIN_DOMAINS[-1].id == "sheet_metal"
+    assert next(c.domain for c in registry) == "geometry", "iteration follows it too"
 
 
 @pytest.mark.parametrize(
@@ -183,7 +192,7 @@ def test_the_family_settings_doc_lists_who_uses_each_setting() -> None:
         f"{s.label} ({s.symbol})": "; ".join(
             describe_setting_uses(registry.setting_uses("sheet_metal", s.key))
         )
-        for s in BUILTIN_DOMAINS[0].settings
+        for s in default_registry(load_plugins=False).domain("sheet_metal").settings
     }
 
 
@@ -287,13 +296,39 @@ def test_one_bad_item_does_not_drop_the_rest_of_a_plugin() -> None:
     assert [c.id for c in registry.by_domain()[ACME]] == ["acme.gadget", "acme.widget"]
 
 
+def test_plugin_families_follow_the_builtins_sorted_by_name() -> None:
+    """Never in the order the packages are found: that follows the file system."""
+
+    def plugin(domain_id: str, name: str) -> tuple[_FakeEntryPoint, _FakeEntryPoint]:
+        domain = Domain(domain_id, name, f"The {name} plugin.")
+        widget = type(
+            f"{domain_id}_widget",
+            (_AcmeWidget,),
+            {"id": f"{domain_id}.widget", "domain": domain_id},
+        )
+        return _FakeEntryPoint(domain_id, f"{domain_id}:DOMAIN", domain), _FakeEntryPoint(
+            domain_id, f"{domain_id}:Widget", widget
+        )
+
+    found = [plugin("zeta", "Zeta Tools"), plugin("mid", "middle tools"), plugin("alpha", "Alpha")]
+    builtins = [d.id for d in BUILTIN_DOMAINS]
+    for order in (found, found[::-1]):
+        registry = _with_plugins([d for d, _ in order], [c for _, c in order])
+        assert registry.plugin_errors == []
+        assert [d.id for d in registry.domains()] == [*builtins, "alpha", "mid", "zeta"]
+        assert [d.id for d in registry.by_domain()][-3:] == ["alpha", "mid", "zeta"]
+        assert [c.domain for c in registry][-3:] == ["alpha", "mid", "zeta"]
+
+
 def test_a_plugin_cannot_redefine_a_builtin_domain() -> None:
     impostor = Domain("sheet_metal", "Sheet Metal", "Not the built-in one.")
     registry = _with_plugins(domains=[_FakeEntryPoint("impostor", "x:DOMAIN", impostor)])
     assert [e.message for e in registry.plugin_errors] == [
         "a plugin can't redefine built-in domain 'sheet_metal'"
     ]
-    assert registry.domain("sheet_metal") is BUILTIN_DOMAINS[0]
+    assert registry.domain("sheet_metal") is next(
+        d for d in BUILTIN_DOMAINS if d.id == "sheet_metal"
+    )
 
     twice = _with_plugins(
         domains=[_FakeEntryPoint("a", "a:DOMAIN", ACME), _FakeEntryPoint("b", "b:DOMAIN", ACME)]

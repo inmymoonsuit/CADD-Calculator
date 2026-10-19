@@ -17,16 +17,37 @@ from fractions import Fraction
 from caddcalc.core import expr
 from caddcalc.core.calculator import Calculator, Result
 from caddcalc.core.errors import CaddCalcError, UsageError
+from caddcalc.core.i18n import N_, _
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output
 from caddcalc.core.steps import Step
-from caddcalc.core.units import Dimension, TypedValue, Unit, from_base, get_unit, registry
-
-DISCLAIMER = (
-    "Results are for drafting and education. Verify against your shop's tooling, "
-    "material data, and test bends before manufacturing."
+from caddcalc.core.units import (
+    CompoundText,
+    Dimension,
+    Precision,
+    TypedValue,
+    Unit,
+    from_base,
+    get_unit,
+    registry,
 )
+from caddcalc.core.units.compound import (
+    MEASURE_SPOKEN,
+    NEGATIVE_SPOKEN,
+    POSITIVE_SPOKEN,
+    nearest_inches,
+    round_half_even,
+)
+
+# Translators: shown under every calculator's results, after the command line's results,
+# and in About.
+DISCLAIMER = N_(
+    "Verify results and test according to your organization's policies or industry best "
+    "practice before manufacturing."
+)
+"""The one disclaimer for every family, in the maintainer's words (ADR-0020, amendments),
+marked for translation; it's translated where it's shown."""
 
 
 @dataclass(frozen=True)
@@ -73,11 +94,12 @@ class DisplayPrefs:
     symbols: NumberSymbols = POINT
     """How numbers on screen are written: the locale's decimal mark (ADR-0020 §4)."""
 
-    def decimals_for(self, dimension: Dimension) -> int:
-        """Return the decimal places ``dimension`` is shown with.
+    def precision_for(self, dimension: Dimension) -> Precision:
+        """Return the precision ``dimension`` is shown with.
 
-        That's the user's choice for it, or, for a dimension with no choice of its own, the
-        default its declaration gives (ADR-0019 §2).
+        That's the user's choice of decimals for it, or, for a dimension with no choice of
+        its own, the precision its declaration gives (ADR-0019 §2): an area's six
+        significant figures.
         """
         chosen = {
             Dimension.LENGTH: self.decimals,
@@ -85,7 +107,18 @@ class DisplayPrefs:
             Dimension.ANGLE: self.angle_decimals,
             Dimension.STRESS: self.stress_decimals,
         }.get(dimension)
-        return registry().dimension(dimension).decimals if chosen is None else chosen
+        return registry().dimension(dimension).precision if chosen is None else Precision(chosen)
+
+    def decimals_for(self, dimension: Dimension) -> int:
+        """Return the decimal places ``dimension`` is shown with.
+
+        Raises:
+            UsageError: ``dimension`` is shown to significant figures, as an area is.
+        """
+        precision = self.precision_for(dimension)
+        if precision.significant:
+            raise UsageError(f"{dimension.value} is shown to significant figures, not decimals")
+        return precision.digits
 
 
 def unit_suffix(dimension: Dimension, prefs: DisplayPrefs) -> str:
@@ -131,11 +164,6 @@ def entry_unit(dimension: Dimension, prefs: DisplayPrefs) -> str:
     return display_unit(dimension, prefs).symbol
 
 
-def _decimals(dimension: Dimension, prefs: DisplayPrefs) -> int:
-    """Return the decimal places ``dimension`` is shown with (``DisplayPrefs.decimals_for``)."""
-    return prefs.decimals_for(dimension)
-
-
 def display_value(value: float, dimension: Dimension, prefs: DisplayPrefs) -> float:
     """Convert a base-unit value to the display unit, without rounding."""
     return from_base(value, display_unit(dimension, prefs))
@@ -157,6 +185,54 @@ def format_number(value: float, decimals: int, decimal: str = ".") -> str:
     text = f"{value:.{decimals}f}"
     text = "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
     return text.replace(".", decimal)
+
+
+PLAIN_EXPONENTS = (-6, 16)
+"""The decimal exponents ``format_significant`` writes in plain decimals, from 10⁻⁶ up to
+but not including 10¹⁶; outside them it writes an exponent."""
+
+
+def format_significant(value: float, digits: int, decimal: str = ".") -> str:
+    """Return ``value`` to ``digits`` significant figures, as plain decimals.
+
+    It rounds the value's exact binary value, half to even, as ``format_number`` does,
+    so 123.4575, a little under that in binary, is ``123.457`` to six. It keeps trailing
+    zeros, which say how many figures are shown (``25.4000`` to six), and is never a
+    negative zero. A rounding that carries into a new place keeps the count, so 9.999997
+    to six is ``10.0000``. Zero is ``0.00000`` to six. A value of at least 10⁻⁶ and under
+    10¹⁶ is written in plain decimals; one outside that range (``PLAIN_EXPONENTS``) is
+    written with an exponent, as ``1.00000e+300``, not 301 digits.
+
+    Args:
+        value: The number.
+        digits: Its significant figures, at least one.
+        decimal: The decimal mark to write it with.
+    """
+    if not math.isfinite(value):
+        return str(value)
+    exact = Decimal(value)
+    if not exact:
+        return format_number(0.0, digits - 1, decimal)
+
+    def rounded(adjusted: int) -> Decimal:
+        step = Decimal(1).scaleb(adjusted - digits + 1)
+        return exact.quantize(step, rounding=ROUND_HALF_EVEN)
+
+    text = rounded(exact.adjusted())
+    if text.adjusted() > exact.adjusted():  # the rounding carried, as 9.99 to 10.0
+        text = rounded(text.adjusted())
+    if not PLAIN_EXPONENTS[0] <= text.adjusted() < PLAIN_EXPONENTS[1]:
+        mantissa = text.scaleb(-text.adjusted())
+        written = f"{format(mantissa, 'f')}e{text.adjusted():+03d}"
+        return written.replace(".", decimal)
+    return format(text, "f").replace(".", decimal)
+
+
+def format_precise(value: float, precision: Precision, decimal: str = ".") -> str:
+    """Return ``value`` to ``precision``: decimal places, or significant figures."""
+    if precision.significant:
+        return format_significant(value, precision.digits, decimal)
+    return format_number(value, precision.digits, decimal)
 
 
 _DECIMAL_NUMBER = re.compile(r"(?<![\w.])(\d+)\.(\d+)")
@@ -194,6 +270,10 @@ class ValueParts:
     """The unit's symbol, e.g. ``"in"``, ``"ksi"``, or ``"°"``; ``""`` for a ratio."""
     fraction: str | None = None
     """The nearest drafting fraction of an inch length, e.g. ``"5/16"``, when it's shown."""
+    compound: CompoundText | None = None
+    """The value in a compound form, when it's shown in one, e.g. feet and inches. Its
+    ``number`` is then the form as shown, with no unit of its own, and it's copied and
+    spoken as the form writes it."""
 
     @property
     def with_unit(self) -> str:
@@ -214,12 +294,19 @@ def value_parts(value: float, dimension: Dimension, prefs: DisplayPrefs) -> Valu
         dimension: What the value measures.
         prefs: The display unit, decimals, and fraction preference.
     """
-    shown = display_value(value, dimension, prefs)
+    return _parts(value, display_unit(dimension, prefs), prefs.precision_for(dimension), prefs)
+
+
+def _parts(value: float, unit: Unit, precision: Precision, prefs: DisplayPrefs) -> ValueParts:
+    """Return a base-unit value as shown in ``unit``, to ``precision``, in parts."""
+    shown = from_base(value, unit)
     fraction = None
-    if prefs.fraction_denominator and display_unit(dimension, prefs).fractions:
-        fraction = to_fraction(shown, prefs.fraction_denominator)
-    number = format_number(shown, _decimals(dimension, prefs), prefs.symbols.decimal)
-    return ValueParts(number, _shown_unit(dimension, prefs), fraction)
+    if prefs.fraction_denominator and unit.fractions:
+        # Only the inch has fractions. Its hint rounds the base value as the nearest
+        # fraction rows do, so the two never disagree (ADR-0019, amendments).
+        fraction = _fraction_text(nearest_inches(value, prefs.fraction_denominator))
+    number = format_precise(shown, precision, prefs.symbols.decimal)
+    return ValueParts(number, unit.written, fraction)
 
 
 def format_value(
@@ -244,29 +331,70 @@ def _shown(parts: ValueParts) -> str:
     return f'{parts.with_unit}  (≈ {parts.fraction}")'
 
 
-SPOKEN = "{number} {unit}"
-"""How a value and its unit's spoken name are said together."""
-
-
 def spoken_value(parts: ValueParts) -> str:
     """Return a value as a screen reader should say it, e.g. ``"0.3119 inches"``.
 
     The unit is named in full, singular only after a shown ``1`` (``Unit.spoken``); a
-    ratio is only its number.
+    ratio is only its number, and a compound form is said as it says itself, e.g. "1 foot
+    4 inches". A sign is said in words, by the templates compound forms use: "minus 0.3119
+    inches", and "plus 0.0025 inches" where a plus sign is shown.
     """
+    if parts.compound is not None:
+        return parts.compound.spoken
+    number, sign = parts.number, parts.number[:1]
+    if sign in ("-", "+"):
+        number = number[1:]
     unit = registry().written(parts.unit)
-    name = "" if unit is None else unit.spoken(parts.number)
-    return SPOKEN.format(number=parts.number, unit=name) if name else parts.number
+    name = "" if unit is None else unit.spoken(number)
+    said = _(MEASURE_SPOKEN).format(number=number, unit=name) if name else number
+    if sign == "-":
+        return _(NEGATIVE_SPOKEN).format(value=said)
+    return _(POSITIVE_SPOKEN).format(value=said) if sign == "+" else said
+
+
+def output_unit(output: Output, prefs: DisplayPrefs) -> Unit:
+    """Return the unit an output is shown in: its fixed unit, or its dimension's display unit.
+
+    An output in a compound form gives the form's full-precision unit, such as the inch
+    for feet and inches.
+    """
+    if output.form:
+        return get_unit(registry().compound(output.form).full_unit, output.dimension)
+    if output.unit:
+        return get_unit(output.unit, output.dimension)
+    return display_unit(output.dimension, prefs)
 
 
 def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValueParts:
     """Return a calculator output's value as shown, in parts.
 
     Every front end presents outputs through here or ``format_output``, so an output's
-    own presentation, such as a converter row's fixed unit (ADR-0018), will apply in one
-    place. Today it's the output's dimension, as ``value_parts`` shows it.
+    own presentation applies in one place. An output with a fixed unit, as a converter's
+    row has (ADR-0018 §3), is shown in it, whatever the display unit, to its own
+    ``Output.precision`` or else the registry's precision for the unit; one with a
+    compound form, in that form; and any other as ``value_parts`` shows its dimension. A
+    signed output (``Output.signed``) shows a plus sign above zero and no inch fraction.
     """
-    return value_parts(value, output.dimension, prefs)
+    if output.form:
+        written = registry().compound(output.form).text(value, prefs.symbols.decimal)
+        return ValueParts(written.shown, "", None, written)
+    if not output.unit:
+        parts = value_parts(value, output.dimension, prefs)
+    else:
+        unit = output_unit(output, prefs)
+        precision = output.precision or registry().precision_for(unit)
+        parts = _parts(value, unit, precision, prefs)
+    if output.signed:
+        # A difference takes no fraction hint: "(≈ 0")" beside an error says nothing.
+        parts = replace(parts, fraction=None)
+    if output.signed:
+        return replace(parts, number=_plus(parts.number))
+    return parts
+
+
+def _plus(number: str) -> str:
+    """Return a shown number with a plus sign if it's above zero; zero, as shown, has none."""
+    return f"+{number}" if number[:1] != "-" and any(c in "123456789" for c in number) else number
 
 
 def format_output(output: Output, value: float, prefs: DisplayPrefs) -> str:
@@ -320,7 +448,7 @@ def copy_output(output: Output, value: float, prefs: DisplayPrefs, form: CopyFor
     Raises:
         UsageError: ``FRACTION`` for a value shown without one.
     """
-    shown = display_value(value, output.dimension, prefs)
+    shown = from_base(value, output_unit(output, prefs))
     return _copied(output_parts(output, value, _copy_prefs(prefs, form)), shown, form)
 
 
@@ -331,6 +459,8 @@ def _copy_prefs(prefs: DisplayPrefs, form: CopyForm) -> DisplayPrefs:
 
 def _copied(parts: ValueParts, shown: float, form: CopyForm) -> str:
     """Return a shown value's clipboard text in ``form``; ``shown`` is it unrounded."""
+    if parts.compound is not None and form in (CopyForm.VALUE, CopyForm.WITH_UNIT):
+        return parts.compound.copied  # as CAD takes it, e.g. 1'4-3/16"
     if form in (CopyForm.VALUE, CopyForm.SHOWN):
         return parts.number
     if form is CopyForm.WITH_UNIT:
@@ -370,13 +500,17 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     leading apostrophe, which spreadsheets take as "this is text" (OWASP, "CSV
     Injection"). So does one starting with ``"``, which a paste might take as the start of
     a quoted field. A tab or line break, which OWASP also lists, is already a space here.
-    The value cell never gets one: a negative number must paste as a number.
+    The value cell never gets one, a negative number or a signed error's "+0.002500" must
+    paste as a number, unless it's
+    a compound form, such as ``-1'-4"``, which is text.
     """
     rows = []
     for output in calc.outputs:
         parts = output_parts(output, result.outputs[output.key], prefs)
         symbol, label, unit = (_text_cell(t) for t in (output.symbol, output.label, parts.unit))
-        rows.append("\t".join((symbol, label, _cell(parts.number), unit)) + "\n")
+        # A compound value isn't a number, so it's kept from being read as a formula too.
+        value = _cell(parts.number) if parts.compound is None else _text_cell(parts.number)
+        rows.append("\t".join((symbol, label, value, unit)) + "\n")
     return "".join(rows)
 
 
@@ -439,11 +573,23 @@ def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:
 
 
 def to_fraction(value: float, denominator: int = 64) -> str:
-    """Nearest drafting fraction: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``."""
+    """Nearest drafting fraction of ``value`` inches: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``.
+
+    It rounds as every inch fraction does, half to even, with a value within its own last
+    place of a half taken as the half (``core.units.compound.round_half_even``).
+    """
     if not math.isfinite(value):
         return str(value)
-    frac = Fraction(round(abs(value) * denominator), denominator)
-    sign = "-" if value < 0 and frac else ""  # a value that rounds to 0 is never "-0"
+    sign = -1 if value < 0 else 1
+    return _fraction_text(
+        Fraction(sign * round_half_even(value, Fraction(denominator)), denominator)
+    )
+
+
+def _fraction_text(frac: Fraction) -> str:
+    """Write an inch fraction as it's copied, e.g. ``1-1/64``, ``1/2`` or ``-1/4``."""
+    sign = "-" if frac < 0 else ""  # a value that rounds to 0 is never "-0"
+    frac = abs(frac)
     whole, rem = divmod(frac.numerator, frac.denominator)
     if rem == 0:
         return f"{sign}{whole}"
@@ -485,12 +631,15 @@ def _step_lines(
     ``None``.
     """
     value_text = format_value(step.value, step.dimension, prefs)
+    if step.signed:
+        number, space, written = value_text.partition(" ")
+        value_text = _plus(number) + space + written
     if step.expression_unit is not None:
         unit = get_unit(step.expression_unit, step.dimension)
         yielded = step.stated
         if yielded is None:
-            decimals = _decimals(step.dimension, prefs)
-            yielded = f"{format_number(from_base(step.value, unit), decimals)} {unit.symbol}"
+            precision = prefs.precision_for(step.dimension)
+            yielded = f"{format_precise(from_base(step.value, unit), precision)} {unit.symbol}"
         if unit.symbol != display_unit(step.dimension, prefs).symbol:
             value_text = f"{yielded} = {value_text}"
         elif step.stated is not None:
@@ -664,5 +813,7 @@ def _quantity_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> s
     It keeps six significant digits rather than the display decimals, so a bound in a
     message isn't rounded to a value the rejected input seems to satisfy.
     """
-    number = f"{display_value(value, dimension, prefs):g}"
+    shown = display_value(value, dimension, prefs)
+    whole = dimension is Dimension.COUNT and shown.is_integer()
+    number = f"{shown:.0f}" if whole else f"{shown:g}"  # a count is never "1e+06"
     return typeset(number, prefs.symbols) + unit_suffix(dimension, prefs)

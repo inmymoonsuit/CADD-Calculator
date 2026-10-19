@@ -6,11 +6,14 @@ Standard library only. The built-in units are declared, with their citations, in
 here still.
 """
 
+from caddcalc.core.units.compound import CompoundForm, CompoundText
 from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
+    Derivation,
     Dimension,
     DimensionSpec,
     Exact,
+    Precision,
     Unit,
     UnitSystem,
 )
@@ -21,6 +24,7 @@ from caddcalc.core.units.parsing import (
     TypedValue,
     base_text,
     base_unit_names,
+    convert,
     from_base,
     get_unit,
     parse_number,
@@ -42,10 +46,14 @@ __all__ = [
     "CLOSE_UP_SYMBOLS",
     "ENTRY_POINT_GROUP",
     "UNITS",
+    "CompoundForm",
+    "CompoundText",
+    "Derivation",
     "Dimension",
     "DimensionSpec",
     "Exact",
     "ParsedQuantity",
+    "Precision",
     "TypedValue",
     "Unit",
     "UnitRegistry",
@@ -54,6 +62,7 @@ __all__ = [
     "base_unit_names",
     "build_registry",
     "clear_registry",
+    "convert",
     "from_base",
     "get_unit",
     "parse_number",

@@ -75,7 +75,8 @@ def test_a_result_says_its_unit_in_the_language_text_is_shown_in(
     window.method_box.setCurrentIndex(window.method_box.findData("course"))
     window.units_box.setCurrentText("mm")
     field = window.results.fields["bend_allowance"]
-    assert field.accessibleName().endswith(f" {spoken}"), field.accessibleName()
+    # The pseudo-locale marks the measure's template too: "⟦7.9213 ⟦millimeters⟧ …⟧".
+    assert f" {spoken}" in field.accessibleName(), field.accessibleName()
     window.close()
 
 
@@ -86,6 +87,7 @@ def _tooltip(tree: Any, item: Any) -> str:
     from PySide6.QtWidgets import QApplication, QToolTip
 
     at = tree.visualItemRect(item).center()
+    assert tree.itemAt(at) is item, "the pointer rests on the row itself"
     viewport = tree.viewport()
     QApplication.sendEvent(viewport, QHelpEvent(QEvent.Type.ToolTip, at, viewport.mapToGlobal(at)))
     text = QToolTip.text() if QToolTip.isVisible() else ""
@@ -109,14 +111,25 @@ def test_a_list_name_too_long_for_its_row_shows_whole_in_its_tooltip(
     animated = QApplication.isEffectEnabled(Qt.UIEffect.UI_AnimateTooltip)
     QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateTooltip, False)
     window = open_window()
-    window.tree.setMinimumWidth(0)  # below the list's least width, so every name elides
+    # Below the list's least width and size hint, and its column's least width, so every
+    # name elides, a short one such as "Area" too.
+    window.tree.setMinimumWidth(1)
+    window.tree.header().setMinimumSectionSize(1)
     window.resize(2400, 800)
     window.show()
     splitter = window.centralWidget()
     try:
         for row in _rows(window):
             name, summary = row.text(0), row.toolTip(0)
-            splitter.setSizes([90, 2310])
+            splitter.setSizes([1200, 1200])
+            settle(window)
+            # A family's rows are indented; 24 px past the indent leaves room for a few
+            # letters, whatever the platform's indentation and font.
+            indent = window.tree.visualItemRect(row).left()
+            splitter.setSizes([indent + 24, 2400 - indent - 24])
+            settle(window)
+            # The stretched column keeps its width when the list narrows, so it's narrowed too.
+            window.tree.header().resizeSection(0, window.tree.viewport().width())
             settle(window)
             assert _tooltip(window.tree, row) == tip_text(name, summary), name
             splitter.setSizes([1200, 1200])
@@ -217,3 +230,24 @@ def test_the_welcome_cards_version_stays_inside_its_safe_area(
     assert box.x() + box.width() <= math.ceil(area.x + area.width), (box, area)
     assert box.y() + box.height() <= math.ceil(area.y + area.height), (box, area)
     welcome.close()
+
+
+def test_the_disclaimer_is_translated_everywhere_it_is_shown(tmp_path: Path) -> None:
+    """Under the results, in About, and after the command line's results (ADR-0020)."""
+    import html
+
+    from caddcalc.calculators import default_registry
+    from caddcalc.cli import format_result
+    from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs
+    from caddcalc.gui.actions import about_html
+    from caddcalc.gui.branding import Branding
+
+    _in(LANGUAGE, tmp_path)
+    translated = pseudo(DISCLAIMER)
+    assert translated != DISCLAIMER
+    window = open_window()
+    assert window.results.disclaimer.text() == translated
+    window.close()
+    assert html.escape(translated) in about_html(Branding())
+    calc = default_registry(load_plugins=False).get("sheet_metal.bend_allowance")
+    assert format_result(calc, calc.run(), DisplayPrefs()).endswith(f". {translated}")

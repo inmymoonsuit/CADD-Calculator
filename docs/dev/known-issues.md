@@ -84,10 +84,6 @@ In the Rough Draft workbooks, cell D14 on "Non-90 Degree Bend Calculations" says
 90 Degree Bends", but the formula is for two arbitrary angles. Recorded for history only;
 the app doesn't reuse the labels.
 
-### KI-009: No feet-and-inches input (Low)
-
-`parse_quantity` accepts `2'` and `1-1/2"` but not the combined `3'-4 1/2"`.
-
 ### KI-010: GUI is a skeleton (Low)
 
 No saved sessions, printing or export, fraction display toggle, dark-mode polish,
@@ -199,22 +195,53 @@ need checking by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
+### KI-024: With shorter text lines, a page can scroll at launch (Low)
+
+The window's launch height is `launch_lines` line spacings, 738 px with 9 pt Segoe UI's
+16 px lines, and it's never sized to its content (ADR-0021's amendment of 2026-10-19,
+on the maintainer's ruling). The fields' heights are in pixels (ADR-0017's tokens), so
+with a UI font whose lines are shorter, a page that fits on Windows scrolls as a whole
+at launch (rule C). Offscreen:
+
+* **At 15 px lines** (Inter), the right triangle, the Length converter, the cone, and
+  the segment with its K-factor method scroll. The segment's course method fits, so
+  choosing the K-factor brings a scroll bar and moves the Units box 14 px: ADR-0021's
+  promise that the Units box stays put as the method changes (UI/UX's M1) holds at 16 px
+  lines only, for now.
+* **At 14 px lines** (DejaVu Sans), the triangle, the right triangle, the polygon, the
+  Length converter, the cone and the segment, with each of its methods, scroll.
+* **At 16 px lines**, the Length converter and the right triangle scroll, by design:
+  the maintainer approved them as long pages (ADR-0023, C2).
+
+`test_no_calculator_page_scrolls_at_the_launch_size` checks every other page at the
+design's 16 px lines, and that its Units box stays put. ADR-0023's slice 1, paired rows,
+shortens the pages so they fit at shorter lines too.
+
+**History.** An earlier resolution sized the launch window to the tallest built-in page,
+with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 2026-10-19
+superseded that resolution, and the issue is open again. The engineering log records the
+measure that was removed.
+
 ## Resolved
 
-### KI-024: With shorter text lines, the tallest page could scroll at launch (resolved 2026-10-18)
+### KI-025: A count was shown as a ratio, with four decimals (resolved 2026-10-19)
 
-The window's launch height was `launch_lines` line spacings, 736 px with 9 pt Segoe UI's
-16 px lines, but the result fields' heights are in pixels (ADR-0017's tokens). With a UI
-font whose lines are shorter, such as the offscreen platform's 14 px, the launch window
-was shorter while the pages weren't, so the cone and segment pages scrolled as a whole at
-launch (rule C) where on Windows they fit. The launch height now also covers the tallest
-built-in calculator page at the launch width, within the screen, on UI/UX's ruling
-(ADR-0021 §3, amendments). On Windows at 9 pt it was unchanged.
-`test_no_calculator_page_scrolls_at_the_launch_size` runs everywhere, with lines under
-16 px too. Each calculator is now measured with each of its methods (UI/UX's labels
-review, M1): the segment calculator's K-factor page, with its K field, had scrolled at
-launch and moved the Units box. On Windows at 9 pt the launch height is now 738 px, two
-more than `launch_lines`' 736.
+The regular polygon's number of sides, N, was a ratio, the one unitless dimension, so the
+inputs and the work showed it as `6.0000`, though it had to be whole, and `600 %` read as
+6 sides, since a percent is a unit of the ratio. A count is now a dimension of its own,
+`Dimension.COUNT`, with one unnamed unit and no decimals, and N is one (ADR-0005's and
+ADR-0019's amendments of 2026-10-19). It shows as `6` in the inputs, the work, Copy, the
+command line and JSON, where it's an integer; a unit or a percent on it is refused; and
+`Param.check` refuses a count that isn't whole, after its range, in place of the
+calculator's own check. `tests/test_count.py` checks each of these.
+
+### KI-009: No feet-and-inches input (resolved 2026-10-18)
+
+`parse_quantity` accepted `2'` and `1-1/2"` but not the combined `3'-4 1/2"`. Feet and
+inches is now a compound form of a length, read in AutoCAD's report and input forms, the
+spaced and prime forms, and words (`1 ft 4 3/16 in`), and shown `1'-4 3/16"` where an
+output asks for it (ADR-0019 U3, its u3 amendment). `tests/test_compound_forms.py` checks
+each form.
 
 ### KI-023: Three things didn't fit a window at its least size (resolved 2026-10-18)
 

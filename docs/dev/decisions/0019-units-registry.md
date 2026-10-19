@@ -1,7 +1,8 @@
 # ADR-0019: A units registry, the one source of unit knowledge
 
 * **Status:** **Accepted**; the behaviour-neutral refactor (§7's first step) is built, as
-  u1 and u1b, and U5's spellings as i3 (see Amendments). The maintainer asked for this ADR
+  u1 and u1b, U5's spellings as i3, §7's area and fixed-unit outputs as u2, and its compound
+  forms as u3 (see Amendments). The maintainer asked for this ADR
   on 2026-10-17
   ("create a registry of units in our codebase (maybe even a subsystem for units and
   conversions) with definitions and attributes and the ability to add new ones"), decided
@@ -236,3 +237,192 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
   plugin can't take one, in any case or dimension. The identity test holds these four to
   their units, since the old module refused them, and holds every other text to what it
   read before.
+
+### 2026-10-18: the area, and outputs in a fixed unit, as built (u2)
+
+* **`Dimension.AREA`**, base mm², declared as a power of the length
+  (`DimensionSpec.derivation`, `Derivation(LENGTH, 2)`). It's last in the enum, so the
+  old dimensions keep their order, and messages that list the base units end in "mm²".
+* **The squares are generated** in `builtin.py` from their length units: mm², cm², m²,
+  in² and ft², each with its root's exact factor squared, as a `Fraction`, so ft² is
+  92 903.04 mm² exactly (`304.8**2` is 92 903.040 000 000 01). A unit declares its root
+  with `Unit.power_of`, and the registry refuses a square whose factor isn't its root's
+  exact factor to the dimension's power, or whose root isn't a registered unit of the
+  dimension it's a power of. A plugin may add a square the same way.
+* **Key symbols are SP 811's symbols,** "mm²" and "in²", as "MPa" is: they're what JSON
+  writes. The typed forms are aliases, read but never written (SP 811 §6.1.8): "in^2",
+  "in2", "sq in", and the names, in US and British spelling.
+* **Display follows the length choice:** an area shows in the square of the chosen
+  length unit (`follows_length` with a derivation), or in mm² for a plugin's length with
+  no square declared. Areas never show an inch fraction, and they take the registry's 4
+  decimals, as `decimals_for` already allowed for a dimension without a preference.
+  (Superseded by the u3b amendment below: areas show 6 significant figures.)
+* **Citations:** the metric squares cite SP 811's Table 2 (area, the square meter) and
+  their prefix in Table 5; in² and ft² cite Appendix B.8's square inch and square foot,
+  and 24 FR 5348 with their root. They're the two works the units' checklist record
+  already passes; the new locators are listed there for review.
+* **Names** are `NP_("unit", "square inch", "square inches")` pairs; the British catalog
+  writes "square millimetre", "square centimetre" and "square metre", and en_CA reads it.
+* **An output may fix its unit:** `Output.unit` names a key symbol, checked when the
+  calculator is registered (`validate_spec`), and every front end shows the output in it
+  through `formatting.output_parts`, `format_output` and `copy_output`. Its precision is
+  the registry's for that unit (`UnitRegistry.precision_for`), whatever the preferences:
+  each dimension declares one, `DimensionSpec.fixed`, six significant figures for all of
+  them so far. `core.units.Precision` holds decimal places or significant figures, and
+  `formatting.format_significant` writes the latter as plain decimals with their zeros,
+  carrying into a new place without gaining a figure (9.999997 is "10.0000" to six). A
+  fixed inch row still shows the inch fraction when it's preferred.
+* **The identity test** now runs over the old dimensions and units. Two texts it held as
+  refused, "3 m2" and "3 sq in", name a square now: each reads as that area, and
+  elsewhere is refused for being an area. Every other text reads exactly as before.
+
+### 2026-10-18: compound forms, as built (u3)
+
+* **`core/units/compound.py`** holds `CompoundForm`, which reads a text written in it
+  and writes a value as a `CompoundText`: shown, copied and spoken. The registry holds
+  the built-in forms by key, `ft_in` and `dms`, and the parser tries a dimension's forms
+  before its units, and only that dimension's. An output names one with `Output.form`
+  (never with a unit as well), and the result fields, Copy, Copy all, the document and
+  the CLI show it through `formatting.output_parts` with no code of their own.
+  `parse_number` moved to `core/units/numbers.py`, which the forms and the parser both
+  read, so the registry and the parser don't import each other; `units.parsing` still
+  exports it.
+* **The minute and second of arc** are units of the angle, `arcmin` and `arcsec`,
+  written ′ and ″ close up, with `'` and `"` as aliases too (SP 811 Table 6, §7.2). They
+  share those marks with the foot and inch, as §3 allows: in an angle, `30′` is 30
+  minutes, and everywhere else ′ and ″ stay the foot and inch. Angles still show in
+  degrees.
+* **Feet and inches** (U3): shown in AutoCAD's report form, `1'-4 3/16"`, and copied in
+  its input form, `1'4-3/16"`. Both always give the feet and the inches, as `0'-4"` and
+  `2'-0"`, so a row reads the same whatever its value. The value is rounded once, to the
+  nearest 1/16 inch by default (a power of two to 1/64, or whole inches), so it carries:
+  1'-11 63/64" is 2'-0". Spoken: "1 foot 4 and 3 sixteenths inches", "1 foot 4 inches",
+  and "1 foot 3 sixteenths of an inch". Input takes every form U3 lists, with whole
+  feet, inches under 12 with their mark, and one sign at the front. A full-precision
+  copy gives the inches.
+* **Degrees, minutes and seconds:** shown `40°30′15.00″`, to hundredths of a second by
+  default, rounded once so it carries (29.99999999° is 30°0′0.00″), with one sign before
+  the degrees (−0.5° is -0°30′0.00″, in ASCII "-") and never a negative zero. It's copied
+  as AutoCAD takes an angle in degrees, minutes and seconds, `40d30'15.00"`, with "." for
+  the point, which U3's rule implies: CAD's input form. Input takes ° or `d`, ′ or `'`,
+  ″ or `"`, and the units' words, two or three parts in order, whole degrees and
+  minutes, minutes and seconds in [0, 60), and one sign. Spoken: "40 degrees 30 minutes
+  15.00 seconds".
+* **Marked for translation:** the spoken templates, one per sentence, with named fields,
+  and the fractions' words, `NP_("fraction", "sixteenth", "sixteenths")`; the minute
+  and second's names. The new messages for a form that doesn't fit are plain text, as
+  the parser's other messages are, until the string sweep (ADR-0020 §6).
+* **Copy all** keeps a compound value, which isn't a number, from being read as a
+  formula, as it does a text cell, so `-1'-4"` pastes as text.
+* **The identity test:** besides u2's area texts, two kinds of text the old module
+  refused read now, each held to its new reading: an angle ending in ′, ″, `'` or `"`,
+  refused before as a length, reads as minutes or seconds; and `1'4"` is 1 foot 4
+  inches, or in an angle 1 minute 4 seconds. Every other text reads as before.
+
+### 2026-10-18: the reviews' findings on u2 and u3 (u3b)
+
+UI/UX & Design's and Support & Review's reviews of u2 and u3 passed both slices, with
+these fixes. The project manager relayed the maintainer's approval of the five choices
+u3 made, as built: the DMS copy form `40d30'15.00"`, both parts of feet and inches always
+shown, inches of 12 or more refused, the precisions (1/16 inch, hundredths of a second,
+six significant figures), and the new messages left unmarked until the sweep.
+
+* **Feet and inches sit flush right** (UI/UX's M1). Decimal alignment padded them as if
+  they had decimals, 31 px short of the value column's edge. A compound value with no
+  decimal point isn't padded; DMS still aligns on its seconds' point.
+* **Areas show six significant figures** (UI/UX's L1): `6451.60 mm²`, `10.0000 in²`,
+  `0.00645160 m²`, not 4 decimals. A dimension now declares a `Precision`, not a count of
+  decimals (`DimensionSpec.precision`), and `DisplayPrefs.precision_for` gives the user's
+  decimals or that; `decimals_for` refuses a dimension shown to significant figures.
+* **A zero part isn't spoken** (UI/UX's L2): "4 inches", "2 feet", "1 degree 1 minute",
+  and "0 inches" or "0 degrees" for zero. Each part is a measure, `{number} {unit}`, and
+  measures are said together by one translatable pattern, `{first} {second}`, as CLDR's
+  unit list pattern joins them, so a language can order or join them its own way.
+* **A negative is spoken "minus"** (UI/UX's L3), by one template, `minus {value}`:
+  "minus 1 foot 4 and 3 sixteenths inches", "minus 30 minutes".
+* **A lookup with no dimension takes a length** (S&R's L1). `get_unit`, `to_base` and
+  `from_base` are public, and with no dimension `'`, `"`, `′` and `″` gave the foot or the
+  inch before u3; u3 made them raise UsageError, since the minute and second share them.
+  With no dimension given, a length now wins, so they read as before. A name two units
+  share with no length among them still needs its dimension (u1's amendment).
+* **`format_significant`'s docstring** says it rounds the exact binary value, so 123.4575,
+  a little under that in binary, is `123.457` to six; a test holds it (S&R).
+* **The input grammar isn't loosened** (the maintainer, through the PM): the inch mark
+  stays required, so `5'9` and `5'9-1/2` are refused. Typed arithmetic may come later,
+  where a bare hyphen would read as subtraction, and the grammar will be settled in its
+  own decision first.
+
+### 2026-10-19: a count, and the reviews' findings on rounding (fix round 2)
+
+* **A count (UI/UX's M2, KI-025).** `Dimension.COUNT` is declared in `builtin.py` with
+  one unit, unnamed (`""`, named "count"), cited to SP 811 §7.10 as the unit one, as the
+  ratio's is. Each unitless dimension may now have one unnamed unit; any other symbol
+  still names one unit only, and registering a second unit with it is a definition error.
+  `find("")`, the unit of a bare number, takes the asked dimension's unnamed unit, and
+  with none of that dimension the ratio's, as before, so a bare number read with no unit
+  for a length is still "a ratio, but a length is expected". The base units
+  in messages now end in "count".
+* **Half-way values round to even** (S&R's L1). A value typed half-way between two
+  fractions, such as 3/32 in between 1/16 and 1/8, is a double, a little off the half;
+  `round_half_even` in `compound.py` takes a count of the finest part that's within one
+  unit in the last place of the value, so counted, of a half as that half. The
+  tolerance is the value's ulp times the scale, not the quotient's own ulp: the
+  quotient's error is the value's rounding plus the division's, a little over one of its
+  own ulps where the value's is largest. Feet and inches, degrees, minutes and seconds,
+  and the nearest 1/16, 1/32 and 1/64 inch all use it, so 3/32 in shows as 1/8", 7/32 in
+  as 1/4" and 3/128 in as 1/32", typed in inches or in millimeters, either sign. A test
+  rounds every odd 1/32, 1/64 and 1/128 inch to 4 ft both ways.
+
+### 2026-10-19: one rounding rule for every inch fraction (fix round 3, group D)
+
+* The `(≈ …")` hint beside an inch value rounded `value/25.4` on its own (the cloud
+  review's Major 5), so for 7/32 in it said 1/4" beside a nearest 1/16 inch of 3/16". It
+  now takes the base value through `nearest_inches`, which the nearest-fraction rows and
+  feet and inches use, and `formatting.to_fraction`, for a value already in inches,
+  rounds through the same `round_half_even`. A test runs every odd 1/32, 1/64 and 1/128
+  inch to 4 ft, typed in inches and in millimeters, either sign, through all four;
+  half up, half away from zero, and float arithmetic for the count each fail it.
+* **A difference takes no hint:** an `Output.signed` output, such as the Length
+  converter's errors, never shows `(≈ 0")`. A value and its negative show the same
+  error digits, signs apart, which a test checks for every odd 1/128 inch to 4 ft.
+
+### 2026-10-19: speech, messages and long numbers (fix round 3, group F)
+
+* **CLDR's list patterns join spoken measures** (the cloud review's 4a1187f Minor 4).
+  One pattern, `{first} {second}`, joined every part, so a translation of it as
+  `{first} y {second}` said "40 degrees y 30 minutes y 15 seconds". Measures are now
+  joined as CLDR builds a list (Unicode TR35, Part 2, "List Patterns"): a pattern for
+  two, and for three or more, `start(first, end(second, third))`, with a middle pattern
+  between. Each is its own message, in the contexts "unit list, two", "start", "middle"
+  and "end", all `{first} {second}` in English, so a Spanish catalog can give ", " and "y"
+  only before the last. A test compiles such a catalog.
+* **One part of an inch alone** is said as round 2's L4 says one part after whole
+  inches: "a quarter inch", "a half inch", not "1 quarter of an inch". After feet, a
+  fraction under an inch is joined by "and": "1 foot and a quarter inch", "1 foot and 3
+  sixteenths of an inch". Each is a whole phrase marked for translation.
+* **A plain value's measure** is said through `MEASURE_SPOKEN`, the marked template
+  compound forms use; it was an unmarked copy (4a1187f Minor 3).
+* **A comma in a compound form** gets ADR-0020 §4's reason again, for the whole value:
+  `"90°30,5'" has a comma, which isn't a decimal mark here …`, and `1'4,5"` is quoted
+  whole, not as `'4,5'` (0804466 Minor 2). `numbers.comma_error` is the one message.
+* **An attempt at feet and inches** has inches, or a sign, after the foot mark, so
+  `3 ft.` is "not a number", as on main, where it was "isn't feet and inches"; `5'9`
+  and `1'--4"` still get the feet-and-inches message.
+* **`format_significant` writes an exponent outside 10⁻⁶ to 10¹⁶**
+  (`PLAIN_EXPONENTS`): 1e300 is `1.00000e+300`, not 301 digits. Inside the range it's
+  unchanged. `Precision(0, significant=True)` says "at least 1 significant figure".
+
+### 2026-10-19: two units in the last place for a tie (fix round 4, group G)
+
+* One unit in the last place missed ties typed in metres (12 of the cloud review's
+  cases), as fractions of a foot (60), and 99 of 240,000 DMS ties: those are rounded
+  twice on the way in, as typed and into the base unit. `round_half_even` now takes a
+  count within `TIE_ULPS` = 2 units in the last place of a half as the half, so
+  `0.12779375 m` is 5" and `317/384 ft` 9 7/8" to the 1/16, and `1°35′3.405″` is
+  `3.40″`.
+* **Capped below half a count** (`TIE_CAP`, a quarter): where a unit in the last place
+  is bigger than the finest part, as at 2³³°, every count would otherwise be within two
+  of them of a half; 2³³ + 2⁻⁶° is exactly 56.25″ and stays so.
+* Tests sweep every tie to 4 ft typed in metres and as foot fractions, and 20,000 DMS
+  ties; a value three units over a half rounds as itself, and the capped case holds.
+  Mutants of one and four units, and of no cap, each fail them.

@@ -16,6 +16,35 @@ Template:
 
 ---
 
+## 2026-10-19: A launch height taken from the tallest built-in page
+**Tried:** sizing the window at launch to the tallest built-in calculator page, with
+each of its methods, at the launch width (ADR-0021 §3's tallest-page term, added for
+KI-024 and widened to every method on UI/UX's M1), so no page scrolled at launch even
+with a font of shorter lines than Windows'. The window laid out every built-in page
+before it opened, behind an isolation boundary for a page that raised.
+**Outcome:** reverted in PR #1 (`7623cb3`), on the maintainer's ruling (ADR-0021's
+amendment of 2026-10-19).
+**Why:** ADR-0018's Length converter, with twelve rows, made itself the tallest page,
+so the window grew for everyone: offscreen at 9 pt from 765 to 996 px. A window sized to
+its content grows with every long page a family adds, and laying out every page at
+launch ran every calculator's code before it was chosen.
+**Instead:** the launch height is `launch_lines` line spacings, 738 px at 9 pt, and a
+longer page scrolls as a whole (rule C). ADR-0023's layout contract has a page declare
+that it's long; until it's built, the layout test lists the long pages (KI-024).
+
+## 2026-10-18: Converting a converter's rows in exact arithmetic
+**Tried:** showing each fixed-unit row by converting the value's double to the row's unit
+in exact arithmetic and rounding once (`float(Fraction(value) / unit.exact)`), as
+ADR-0019 §2's "converters' exact path" suggested, so a row couldn't round twice.
+**Outcome:** reverted before it was committed (ADR-0018, m2 amendment).
+**Why:** the typed value is already a double, with the parser's rounding in it, so the
+exact conversion of that double is no closer to what was typed: 3 ft shown in feet read
+3.0000000000000004, where plain division gives 3.0. Either way the difference is past the
+row's six figures and the full copy's ten, so no test could tell them apart.
+**Instead:** rows use `from_base`, as every other value does; `core.units.convert` gives
+the exact conversion of an exact amount, for checks. Converting what was typed exactly
+would need the typed text's exact value carried to the calculator, which nothing does.
+
 ## 2026-10-18: Clearing a failed settings page at once
 **Tried:** when a family's code failed on its settings page, removing the form's rows
 (`QFormLayout.removeRow`) straight away, in the boundary that caught the error.
