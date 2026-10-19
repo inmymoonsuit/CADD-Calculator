@@ -29,8 +29,7 @@ uv run caddcalc-gui
   list is too narrow for a name, the tip gives the whole name too. Drag the line between
   the list and the page to widen either.
 * Choose a **Method**. Its status, such as "unverified · reproduces legacy", shows
-  beside it, and its list shows each method's. **Units** (`in` or `mm`) sets the unit
-  the results show in.
+  beside it, and its list shows each method's.
 * Type the inputs. Each input with a unit has a **unit picker** after it: the number is
   read in the unit it shows. You can type fractions, mixed numbers and arithmetic:
   `1/8`, `1-3/16`, `2 × 1 3/16`. Results update as you type, and invalid fields are
@@ -40,12 +39,15 @@ uv run caddcalc-gui
   now in millimeters; switching back is the undo. A value you didn't type, such as a
   default, keeps its size and is shown converted. Your first switch of a length's
   picker on a calculator carries to its other lengths' pickers.
-* Results show in their own fields. Click a field's copy button to copy its value, or
+* Results show in their own fields, in the units the **Show in** picker above them
+  sets, such as `in`, `in 1/16` or `mm`; until you choose, it follows your inputs'
+  units. Click a field's copy button to copy its value, or
   **Copy all** for every result as spreadsheet rows; see
   [Results and copying](results.md) for the other forms and the keyboard.
 * **Load course example** fills a calculator's inputs with the course's example values.
 * Family settings, such as Sheet Metal thickness, fill the fields that share them until
-  you type over them; see [Family settings](calculators/sheet-metal.md#family-settings).
+  you type over them, each with its own unit picker; see
+  [Family settings](calculators/sheet-metal.md#family-settings).
 
 ## The command line
 

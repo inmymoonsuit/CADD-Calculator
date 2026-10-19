@@ -18,14 +18,13 @@ All notable changes are recorded here. The format follows
   (`UnitSet`, `Calculator.output_sets`, generated one per length choice by default); an
   output may have its own picker (`Output.picks`). A parameter whose picker has no
   default unit is refused at registration, a plugin's included.
-- **The Conversions family (ADR-0018 §3),** after Geometry: Length, Angle, Area, and
-  Stress and pressure. Type one value in any unit of its kind and read it in every unit
-  at once, each row in its own unit whatever the unit system, to 6 significant figures,
-  with its own Copy button. Length also shows feet and inches, and the nearest 1/16,
-  1/32 and 1/64 inch, each with its error; Angle shows degrees, minutes and seconds. The
-  factors are the exact definitions (1 in = 25.4 mm, 1 ft² = 92 903.04 mm²), and each
-  converter is verified against NIST SP 811's Appendix B.8. See the user guide's
-  [Conversions](docs/user/calculators/conversions.md).
+- **The Conversions family (ADR-0018 §3, as ADR-0024 §7 splits it),** after Geometry:
+  Length, Fraction to decimal, Decimal to fraction, Angle, Area, and Stress and pressure.
+  Each takes one value and gives it in another unit, picked beside the result, to 6
+  significant figures; Decimal to fraction gives the nearest 1/16, 1/32 or 1/64 inch and
+  its error. The factors are the exact definitions (1 in = 25.4 mm, 1 ft² = 92 903.04
+  mm²), and each converter is verified against NIST SP 811's Appendix B.8. See the user
+  guide's [Conversions](docs/user/calculators/conversions.md).
 - `core.units.convert` converts an exact amount between units from their exact
   definitions: 1 psi is 6.894757293168361 kPa, rounded once. An output with a fixed unit
   may give its own precision (`Output.precision`), as the converters' error rows do.

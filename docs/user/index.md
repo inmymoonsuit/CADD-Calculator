@@ -7,7 +7,7 @@ Every answer shows its work.
 
 * [Getting started](getting-started.md): install it and run your first calculation
 * [Geometry calculators](calculators/geometry.md): circles, rectangles, triangles, polygons, arcs
-* [Conversions](calculators/conversions.md): a length, angle, area, or stress in every unit at once
+* [Conversions](calculators/conversions.md): a length, angle, area, or stress in another unit, and a fraction to a decimal and back
 * [Sheet-metal calculators](calculators/sheet-metal.md): what each one computes, and the formulas
 * [Results and copying](results.md): the result fields, copying values, the keyboard
 * [Units and precision](units-and-precision.md): typing fractions and mm, rounding

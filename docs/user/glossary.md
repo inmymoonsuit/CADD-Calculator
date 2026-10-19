@@ -54,8 +54,17 @@ sheet-metal layout terms; the FAA's *Aviation Maintenance Technician Handbook �
 **Neutral axis**: the layer inside the material that neither stretches nor compresses
 when bent.
 
+**Output units**: the units the results are shown in. The **Show in** picker above the
+results sets them for every result, such as `in`, `in 1/16` or `mm`; a result with a
+picker in its own row, as a converter's has, is set there. See
+[Results and copying](results.md#show-in-the-results-units).
+
 **Outside setback (OSSB)**: the distance from the bend's tangent line to the mold point,
 `tan(A/2)·(R + T)`. At 90° this is just `R + T`.
+
+**Reads as**: what a field's text is read as, shown after it in a lighter colour when the
+text isn't a plain number: `1-3/16` reads as `= 1 3/16 in`, and `1 - 3/16` as
+`= 0.8125 in`. It's in the field's tooltip too, and a screen reader says it.
 
 **Thickness (T)**: the sheet thickness. Gauge numbers map to thicknesses through tables
 that depend on the material **and the gauge system**. For example, 12 ga is 0.1046 in in
@@ -65,6 +74,11 @@ picker makes you choose one.
 
 **Truncated cone (frustum)**: a cone with its tip cut off parallel to the base. Its flat
 pattern is an annular sector.
+
+**Unit picker**: the box after a field, or in a result's row, that sets its unit or form,
+such as `in`, `mm`, `ft-in` or `°`. A field's number is read in the unit its picker shows,
+and a unit typed into the field is refused, with where it goes. See
+[Units and precision](units-and-precision.md).
 
 **V-die opening (V, FDO)**: the width of the V in the bottom (female) die.
 

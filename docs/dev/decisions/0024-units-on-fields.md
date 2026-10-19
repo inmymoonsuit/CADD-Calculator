@@ -1,6 +1,7 @@
 # ADR-0024: Units on fields
 
-* **Status:** **Accepted; not built.** UI/UX & Design wrote it, with Calculator
+* **Status:** **Accepted; built** in three stops, F0 to U4 (2026-10-19; the as-built
+  amendments below). UI/UX & Design wrote it, with Calculator
   Engine's sections, on 2026-10-19. Support & Review checked the final CLI and JSON (E5) for correctness: one Medium and three Lows, all folded in.
   * **D1–D6** are the maintainer's design decisions.
   * **D7, arithmetic,** is the maintainer's own decision (2026-10-19): "Let's go with the
@@ -1501,3 +1502,19 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   includes the review's 0.5 mm circle (0.0002 m) and 1/32 in (0.7938 mm). Halves typed in
   inches and shown in feet land three last places off in 50 of 4,000, and in meters in 5
   of 3,975, outside the window: KI-030.
+
+### 2026-10-19: as built, U4 (stop 3, last)
+
+* **The glossary** gains "output units", "reads as" and "unit picker".
+* **The "What this supersedes" notes** have all landed: ADR-0005 and ADR-0006 (stop 2),
+  ADR-0013 §8 and §9's rules 3 and 5, ADR-0017 §4–5, ADR-0018 §3 and its m2 amendment
+  (U3), ADR-0019 §2, §3 and U3, and ADR-0023's amendment, which was written with this ADR.
+  ADR-0021 §3 needs none.
+* **The read-through:** the guides, the README, the roadmap and the CHANGELOG's
+  Unreleased entries now describe the app as built: no Units box, no unit system, every
+  field and result with its picker, settings with theirs, and the six converters. The
+  getting-started guide still named the Units box, which went in U2; it now names Show in.
+* **Test:** `tests/test_user_docs.py` checks that every link in the guides and the README
+  resolves, anchors included, and that none uses a retired word: the Units box,
+  `--units`, `--fraction`, "display unit" or "unit system". Its own probe: with the old
+  getting-started text, it fails.
