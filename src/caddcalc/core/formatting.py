@@ -33,6 +33,7 @@ from caddcalc.core.units import (
     registry,
 )
 from caddcalc.core.units.compound import (
+    MEASURE_SPOKEN,
     NEGATIVE_SPOKEN,
     POSITIVE_SPOKEN,
     nearest_inches,
@@ -186,14 +187,21 @@ def format_number(value: float, decimals: int, decimal: str = ".") -> str:
     return text.replace(".", decimal)
 
 
+PLAIN_EXPONENTS = (-6, 16)
+"""The decimal exponents ``format_significant`` writes in plain decimals, from 10⁻⁶ up to
+but not including 10¹⁶; outside them it writes an exponent."""
+
+
 def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     """Return ``value`` to ``digits`` significant figures, as plain decimals.
 
     It rounds the value's exact binary value, half to even, as ``format_number`` does,
     so 123.4575, a little under that in binary, is ``123.457`` to six. It keeps trailing
-    zeros, which say how many figures are shown (``25.4000`` to six), writes no exponent,
-    and is never a negative zero. A rounding that carries into a new
-    place keeps the count, so 9.999997 to six is ``10.0000``. Zero is ``0.00000`` to six.
+    zeros, which say how many figures are shown (``25.4000`` to six), and is never a
+    negative zero. A rounding that carries into a new place keeps the count, so 9.999997
+    to six is ``10.0000``. Zero is ``0.00000`` to six. A value of at least 10⁻⁶ and under
+    10¹⁶ is written in plain decimals; one outside that range (``PLAIN_EXPONENTS``) is
+    written with an exponent, as ``1.00000e+300``, not 301 digits.
 
     Args:
         value: The number.
@@ -213,6 +221,10 @@ def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     text = rounded(exact.adjusted())
     if text.adjusted() > exact.adjusted():  # the rounding carried, as 9.99 to 10.0
         text = rounded(text.adjusted())
+    if not PLAIN_EXPONENTS[0] <= text.adjusted() < PLAIN_EXPONENTS[1]:
+        mantissa = text.scaleb(-text.adjusted())
+        written = f"{format(mantissa, 'f')}e{text.adjusted():+03d}"
+        return written.replace(".", decimal)
     return format(text, "f").replace(".", decimal)
 
 
@@ -319,10 +331,6 @@ def _shown(parts: ValueParts) -> str:
     return f'{parts.with_unit}  (≈ {parts.fraction}")'
 
 
-SPOKEN = "{number} {unit}"
-"""How a value and its unit's spoken name are said together."""
-
-
 def spoken_value(parts: ValueParts) -> str:
     """Return a value as a screen reader should say it, e.g. ``"0.3119 inches"``.
 
@@ -338,7 +346,7 @@ def spoken_value(parts: ValueParts) -> str:
         number = number[1:]
     unit = registry().written(parts.unit)
     name = "" if unit is None else unit.spoken(number)
-    said = SPOKEN.format(number=number, unit=name) if name else number
+    said = _(MEASURE_SPOKEN).format(number=number, unit=name) if name else number
     if sign == "-":
         return _(NEGATIVE_SPOKEN).format(value=said)
     return _(POSITIVE_SPOKEN).format(value=said) if sign == "+" else said

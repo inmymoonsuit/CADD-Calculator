@@ -19,6 +19,14 @@ MINUS_SIGN = "\u2212"
 """U+2212, the minus sign: it's read as ``-`` (ADR-0020 §4)."""
 
 
+def comma_error(text: str, decimal: str) -> InputError:
+    """The error for ``text`` with a comma where the decimal mark is ``decimal``, not ","."""
+    return InputError(
+        f"{text!r} has a comma, which isn't a decimal mark here: the decimal mark is "
+        f"{decimal!r}, and digits aren't grouped"
+    )
+
+
 def parse_number(text: str, decimal: str = ".") -> float:
     """Parse a decimal or drafting-style fraction: ``0.1046``, ``1/8``, ``1-1/2``, ``1 1/2``.
 
@@ -35,10 +43,7 @@ def parse_number(text: str, decimal: str = ".") -> float:
             raise InputError(f"{text!r} has more than one decimal mark; digits aren't grouped")
         s = s.replace(decimal, ".")
     if "," in s:
-        raise InputError(
-            f"{text!r} has a comma, which isn't a decimal mark here: the decimal mark is "
-            f"{decimal!r}, and digits aren't grouped"
-        )
+        raise comma_error(text, decimal)
     if "_" in s:
         raise InputError(f"{text!r} is not a number; digits aren't grouped")
     for pattern in (_MIXED, _FRACTION):

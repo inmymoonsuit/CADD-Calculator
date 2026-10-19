@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
@@ -246,9 +247,11 @@ def test_a_fineness_is_a_drafting_fraction_and_whole_inches_have_none() -> None:
         (1.25, "1 and a quarter inches"),
         (1.5, "1 and a half inches"),
         (1.0625, "1 and a sixteenth inches"),
-        (0.5, "1 half of an inch"),
-        (12.1875, "1 foot 3 sixteenths of an inch"),
-        (12.0625, "1 foot 1 sixteenth of an inch"),
+        (0.5, "a half inch"),
+        (0.25, "a quarter inch"),
+        (12.25, "1 foot and a quarter inch"),
+        (12.1875, "1 foot and 3 sixteenths of an inch"),
+        (12.0625, "1 foot and a sixteenth inch"),
         (16.5, "1 foot 4 and a half inches"),
         (16.75, "1 foot 4 and 3 quarters inches"),
         (16.125, "1 foot 4 and an eighth inches"),
@@ -263,8 +266,8 @@ def test_feet_and_inches_are_spoken_in_words(inches: float, spoken: str) -> None
 
 
 def test_the_finest_fractions_have_their_words() -> None:
-    assert FeetInches(32).text(12.03125 * IN).spoken == "1 foot 1 thirty-second of an inch"
-    assert FeetInches(64).text(12.046875 * IN).spoken == "1 foot 3 sixty-fourths of an inch"
+    assert FeetInches(32).text(12.03125 * IN).spoken == "1 foot and a thirty-second inch"
+    assert FeetInches(64).text(12.046875 * IN).spoken == "1 foot and 3 sixty-fourths of an inch"
     assert FeetInches(32).text(13.03125 * IN).spoken == "1 foot 1 and a thirty-second inches"
     assert FeetInches(64).text(1.015625 * IN).spoken == "1 and a sixty-fourth inches"
 
@@ -504,7 +507,7 @@ def test_an_output_naming_a_form_it_cant_be_shown_in_is_a_definition_error(
     ("tag", "inches", "spoken"),
     [
         ("en_GB", 16.1875, "1 foot 4 and 3 sixteenths inches"),
-        ("en_GB", 12.1875, "1 foot 3 sixteenths of an inch"),
+        ("en_GB", 12.1875, "1 foot and 3 sixteenths of an inch"),
         ("en_CA", 24, "2 feet"),
         ("en_GB", -4, "minus 4 inches"),
     ],
@@ -539,12 +542,19 @@ def test_a_result_field_shows_copies_and_says_a_compound_form_with_no_code_of_it
     assert feet.accessibleName() == "Feet and inches, FI: 1 foot 4 and 3 sixteenths inches"
     feet.copy_button.click()
     assert QGuiApplication.clipboard().text() == "1'4-3/16\""
-    # A compound form names its own units, so "with unit" would copy the same text.
-    for field in (feet, dms):
-        assert [a.text() for a in field.context_menu().actions()] == [
-            "Copy value",
-            "Copy full precision",
-        ]
+    # A compound form names its own units, so "with unit" would copy the same text, and
+    # its full precision is a decimal in the form's own unit, which the item names.
+    for units in ("in", "mm"):
+        window.units_box.setCurrentText(units)
+        feet, dms = window.results.fields["ft_in"], window.results.fields["dms"]
+        for field, unit, full in ((feet, "inches", "16.1875"), (dms, "degrees", "-0.5")):
+            menu = field.context_menu()
+            assert [a.text() for a in menu.actions()] == [
+                "Copy value",
+                f"Copy full precision, in {unit}",
+            ], units
+            menu.actions()[1].trigger()
+            assert QGuiApplication.clipboard().text() == full, (units, unit)
     window.close()
 
 
@@ -589,3 +599,67 @@ def test_feet_and_inches_sit_flush_right_and_dms_aligns_on_its_seconds_point() -
     for field, tail in tails.items():
         assert field.value.contentsMargins().right() == round(most - tail)
     window.close()
+
+
+def test_a_language_can_join_its_last_measure_by_its_own_and(tmp_path: Path) -> None:
+    """CLDR's list patterns: ", " between the earlier measures, "y" only before the last."""
+    from babel.messages.catalog import Catalog
+    from babel.messages.mofile import write_mo
+
+    catalog = Catalog(locale="es")
+    for context, pattern in (
+        ("unit list, two", "{first} y {second}"),
+        ("unit list, start", "{first}, {second}"),
+        ("unit list, middle", "{first}, {second}"),
+        ("unit list, end", "{first} y {second}"),
+    ):
+        catalog.add("{first} {second}", pattern, context=context)
+    path = tmp_path / "es" / "LC_MESSAGES" / "caddcalc.mo"
+    path.parent.mkdir(parents=True)
+    with path.open("wb") as mo:
+        write_mo(mo, catalog)
+    use(["es"], directories=[tmp_path])
+    try:
+        three = DegreesMinutesSeconds(2).text(40 + 30 / 60 + 15.25 / 3600).spoken
+        assert three == "40 degrees, 30 minutes y 15.25 seconds"
+        assert DegreesMinutesSeconds().text(1.5).spoken == "1 degree y 30 minutes"
+        assert FeetInches().text(16 * IN).spoken == "1 foot y 4 inches"
+        assert DegreesMinutesSeconds().text(40.0).spoken == "40 degrees", "one measure alone"
+        from caddcalc.core.units.compound import _listed
+
+        assert _listed(["a", "b", "c", "d"]) == "a, b, c y d", "the middle pattern"
+    finally:
+        use([])
+
+
+@pytest.mark.parametrize(
+    ("typed", "dimension"),
+    [("90°30,5'", A), ("40°30′15,5″", A), ("1'4,5\"", L), ("1'-4,5\"", L), ("1'4,5\"", A)],
+)
+def test_a_comma_in_a_compound_form_says_why_and_quotes_the_whole_value(
+    typed: str, dimension: Dimension
+) -> None:
+    """ADR-0020 §4's reason, for the value as typed, not a part of it."""
+    message = f"{typed!r} has a comma, which isn't a decimal mark here: the decimal mark is '.'"
+    with pytest.raises(InputError, match=re.escape(message)):
+        parse_quantity(typed, dimension)
+    if "′" in typed or ('"' in typed and dimension is L):
+        assert parse_quantity(typed, dimension, decimal=",") == pytest.approx(
+            parse_quantity(typed.replace(",", "."), dimension)
+        ), "where the comma is the mark, it reads"
+
+
+@pytest.mark.parametrize("typed", ["3 ft.", "3'.", "3 ft x"])
+def test_a_foot_mark_with_no_inches_after_it_is_no_attempt_at_feet_and_inches(typed: str) -> None:
+    with pytest.raises(InputError, match="is not a number"):
+        parse_quantity(typed, L)
+
+
+@pytest.mark.parametrize(
+    ("typed", "seconds"), [("40°30′.5″", 0.5), ("40°30′,5″", 0.5), ("-1°0′.25″", 0.25)]
+)
+def test_seconds_may_start_with_their_decimal_mark(typed: str, seconds: float) -> None:
+    sign = -1 if typed.startswith("-") else 1
+    degrees = abs(float(typed.split("°")[0])) + int(typed.split("°")[1].split("′")[0]) / 60
+    decimal = "," if "," in typed else "."
+    assert parse_quantity(typed, A, decimal=decimal) == sign * (degrees + seconds / 3600)

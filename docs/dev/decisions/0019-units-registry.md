@@ -256,6 +256,7 @@ All five were decided by the maintainer as recommended (U4 and U5 on 2026-10-17,
   length unit (`follows_length` with a derivation), or in mm² for a plugin's length with
   no square declared. Areas never show an inch fraction, and they take the registry's 4
   decimals, as `decimals_for` already allowed for a dimension without a preference.
+  (Superseded by the u3b amendment below: areas show 6 significant figures.)
 * **Citations:** the metric squares cite SP 811's Table 2 (area, the square meter) and
   their prefix in Table 5; in² and ft² cite Appendix B.8's square inch and square foot,
   and 24 FR 5348 with their root. They're the two works the units' checklist record
@@ -384,3 +385,29 @@ six significant figures), and the new messages left unmarked until the sweep.
 * **A difference takes no hint:** an `Output.signed` output, such as the Length
   converter's errors, never shows `(≈ 0")`. A value and its negative show the same
   error digits, signs apart, which a test checks for every odd 1/128 inch to 4 ft.
+
+### 2026-10-19: speech, messages and long numbers (fix round 3, group F)
+
+* **CLDR's list patterns join spoken measures** (the cloud review's 4a1187f Minor 4).
+  One pattern, `{first} {second}`, joined every part, so a translation of it as
+  `{first} y {second}` said "40 degrees y 30 minutes y 15 seconds". Measures are now
+  joined as CLDR builds a list (Unicode TR35, Part 2, "List Patterns"): a pattern for
+  two, and for three or more, `start(first, end(second, third))`, with a middle pattern
+  between. Each is its own message, in the contexts "unit list, two", "start", "middle"
+  and "end", all `{first} {second}` in English, so a Spanish catalog can give ", " and "y"
+  only before the last. A test compiles such a catalog.
+* **One part of an inch alone** is said as round 2's L4 says one part after whole
+  inches: "a quarter inch", "a half inch", not "1 quarter of an inch". After feet, a
+  fraction under an inch is joined by "and": "1 foot and a quarter inch", "1 foot and 3
+  sixteenths of an inch". Each is a whole phrase marked for translation.
+* **A plain value's measure** is said through `MEASURE_SPOKEN`, the marked template
+  compound forms use; it was an unmarked copy (4a1187f Minor 3).
+* **A comma in a compound form** gets ADR-0020 §4's reason again, for the whole value:
+  `"90°30,5'" has a comma, which isn't a decimal mark here …`, and `1'4,5"` is quoted
+  whole, not as `'4,5'` (0804466 Minor 2). `numbers.comma_error` is the one message.
+* **An attempt at feet and inches** has inches, or a sign, after the foot mark, so
+  `3 ft.` is "not a number", as on main, where it was "isn't feet and inches"; `5'9`
+  and `1'--4"` still get the feet-and-inches message.
+* **`format_significant` writes an exponent outside 10⁻⁶ to 10¹⁶**
+  (`PLAIN_EXPONENTS`): 1e300 is `1.00000e+300`, not 301 digits. Inside the range it's
+  unchanged. `Precision(0, significant=True)` says "at least 1 significant figure".

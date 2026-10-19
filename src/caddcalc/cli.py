@@ -282,16 +282,24 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+LABEL_WIDTH = 32
+"""The least width of the results' label column, in characters."""
+
+
 def format_result(
     calc: Calculator, result: Result, prefs: DisplayPrefs, *, show_work: bool = True
 ) -> str:
     """Render a result as plain text: inputs, work, results, notes, and status."""
     method = calc.get_method(result.method)
+    params = calc.params_for(result.method)
+    # The label column is as wide as its longest label, and at least LABEL_WIDTH.
+    labels = [p.label for p in params] + [o.label for o in calc.outputs]
+    width = max(LABEL_WIDTH, *(len(label) for label in labels))
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
-    for p in calc.params_for(result.method):
+    for p in params:
         value = format_value(result.inputs[p.key], p.dimension, prefs)
         source = describe_source(result.source_of(p.key))
-        lines.append(f"  {p.symbol:<6} {p.label:<32} {value}  ({source})")
+        lines.append(f"  {p.symbol:<6} {p.label:<{width}} {value}  ({source})")
     if show_work:
         lines += ["", "Work"]
         for step in result.steps:
@@ -306,7 +314,7 @@ def format_result(
     lines += ["", "Results"]
     for o in calc.outputs:
         value = format_output(o, result.outputs[o.key], prefs)
-        lines.append(f"  {o.symbol:<6} {o.label:<32} {value}")
+        lines.append(f"  {o.symbol:<6} {o.label:<{width}} {value}")
     if result.notes:
         lines += ["", "Notes"]
         for note in result.notes:

@@ -5,7 +5,7 @@ its circumscribed circle, 2R. With an odd number of sides, no two corners are op
 
 **Across flats**: a regular polygon's size across two parallel flats: the diameter of its
 inscribed circle, 2r. With an odd number of sides there are no parallel flats, so a
-caliper across the polygon reads r + R instead.
+caliper held from a flat to the opposite corner reads r + R instead.
 
 **Air bending**: press-brake bending in which the sheet touches only the punch tip and
 the two die shoulders. The inside radius depends mostly on the die opening, not the punch.

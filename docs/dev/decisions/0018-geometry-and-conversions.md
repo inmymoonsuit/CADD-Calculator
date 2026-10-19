@@ -175,7 +175,9 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
 * **The order of the families** (§1) is now the order they're registered, built-ins as
   `BUILTIN_DOMAINS` gives them, then plugins' as they load. `Registry` sorted them by
   name, which would have put Conversions first; calculators are still sorted by name
-  within a family. The window opens on the first built-in calculator, now the circle.
+  within a family. The window opens on the first built-in calculator, now Arc and
+  sector, the first Geometry calculator by name. (Corrected in fix round 3: this said
+  the circle.)
 * **The command line** reads an input's exact key or symbol before matching in any
   case: the right triangle's `a` and `A` are a leg and an angle. Matching in any case
   alone made both "unknown".
@@ -342,3 +344,19 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   the foot and the minute of arc share, such as `get_unit("'", Dimension.RATIO)`, which
   gave the foot on main. It's kept, as the right answer, and declared in the CHANGELOG
   (ADR-0019's u3b amendment has the lookup rule).
+
+### 2026-10-19: the cloud review's findings, fix round 3 (group F, text and docs)
+
+* **The caliper note says how it's held** (Minor 3): "a caliper held from a flat to the
+  opposite corner reads r + R"; turned, it reads more, up to 1.6180 in for a pentagon of
+  side 1 in against r + R's 1.5388.
+* **The converters' note says what the code does** (m2 Minor 1): the typed value is
+  read through its unit's factor, then converted to each row's unit, each factor its
+  exact definition rounded once; rows aren't converted "from the exact definitions,
+  rounded once".
+* **The command line's label column** is as wide as the longest label, at least 32
+  characters, so "Across corners (circumscribed circle)" no longer pushes its value out
+  of line; every sheet-metal result is laid out as before.
+* **Not now:** each JSON row in its own unit or form (m2 Minor 4) changes a public
+  format, so it's an open decision in the roadmap. S&R checked SP 811's B.8 factors
+  against the printed publication, which the cloud review couldn't reach; they match.

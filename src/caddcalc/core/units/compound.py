@@ -21,10 +21,10 @@ from functools import cache
 from typing import override
 
 from caddcalc.core.errors import InputError, UsageError
-from caddcalc.core.i18n import N_, NP_, _, npgettext
+from caddcalc.core.i18n import N_, NP_, _, npgettext, pgettext
 from caddcalc.core.units.builtin import INCH_MM, UNITS
 from caddcalc.core.units.model import Dimension, Unit
-from caddcalc.core.units.numbers import parse_number
+from caddcalc.core.units.numbers import comma_error, parse_number
 
 MINUS = "-"
 """The sign a negative value is written with: an ASCII hyphen-minus (ADR-0020 §4)."""
@@ -98,9 +98,9 @@ def _builtin(symbol: str) -> Unit:
 
 # Translators: a number and its unit, spoken, e.g. "4 inches" or "30 minutes".
 MEASURE_SPOKEN = N_("{number} {unit}")
-# Translators: two spoken measures of one value said together, e.g. "1 foot" and "4 inches"
-# as "1 foot 4 inches", as CLDR's unit list pattern joins them.
-TOGETHER_SPOKEN = N_("{first} {second}")
+# Translators: feet and a fraction of an inch under one, said together, e.g. "1 foot" and
+# "a quarter inch" as "1 foot and a quarter inch".
+FEET_AND_FRACTION_SPOKEN = N_("{feet} and {fraction}")
 # Translators: a negative value, spoken, e.g. "minus 1 foot 4 inches".
 NEGATIVE_SPOKEN = N_("minus {value}")
 # Translators: a value shown with its plus sign, spoken, e.g. "plus 0.0025 inches", as an
@@ -120,10 +120,36 @@ def _measure(number: str, unit: Unit) -> str:
 
 def _said(measures: list[str], negative: bool) -> str:
     """Return a value's spoken measures said together, and as negative if it is."""
-    text = measures[0]
-    for measure in measures[1:]:
-        text = _(TOGETHER_SPOKEN).format(first=text, second=measure)
+    text = _listed(measures)
     return _(NEGATIVE_SPOKEN).format(value=text) if negative else text
+
+
+def _listed(measures: list[str]) -> str:
+    """Join spoken measures by CLDR's unit list patterns: two, or start, middle and end.
+
+    Three measures are ``start(first, end(second, third))``, as CLDR's list patterns
+    build a list (Unicode TR35, Part 2, "List Patterns"), so a language can put ", "
+    between the earlier ones and its "and" only before the last.
+    """
+    if len(measures) == 1:
+        return measures[0]
+    if len(measures) == 2:
+        # Translators: two spoken measures of one value, e.g. "1 foot 4 inches" or "40
+        # degrees 30 minutes": CLDR's unit list pattern for two.
+        return pgettext("unit list, two", "{first} {second}").format(
+            first=measures[0], second=measures[1]
+        )
+    # Translators: the last two of three or more spoken measures of one value, e.g. "30
+    # minutes 15 seconds" in "40 degrees 30 minutes 15 seconds": CLDR's "end" pattern.
+    text = pgettext("unit list, end", "{first} {second}").format(
+        first=measures[-2], second=measures[-1]
+    )
+    for measure in reversed(measures[1:-2]):
+        # Translators: a spoken measure before the last two, CLDR's "middle" pattern.
+        text = pgettext("unit list, middle", "{first} {second}").format(first=measure, second=text)
+    # Translators: the first of three or more spoken measures and the rest, e.g. "40
+    # degrees" and "30 minutes 15 seconds": CLDR's "start" pattern.
+    return pgettext("unit list, start", "{first} {second}").format(first=measures[0], second=text)
 
 
 PARTS = {
@@ -154,6 +180,23 @@ ONE_PART_SPOKEN = {
 """Whole inches and one 1/2, 1/4 and so on, as they're said: "1 and a quarter inches",
 not "1 and 1 quarter inches"."""
 
+ONE_PART_ALONE_SPOKEN = {
+    # Translators: 1/2 inch alone, spoken.
+    2: N_("a half inch"),
+    # Translators: 1/4 inch alone, spoken.
+    4: N_("a quarter inch"),
+    # Translators: 1/8 inch alone, spoken.
+    8: N_("an eighth inch"),
+    # Translators: 1/16 inch alone, spoken.
+    16: N_("a sixteenth inch"),
+    # Translators: 1/32 inch alone, spoken.
+    32: N_("a thirty-second inch"),
+    # Translators: 1/64 inch alone, spoken.
+    64: N_("a sixty-fourth inch"),
+}
+"""One 1/2, 1/4 and so on alone, as they're said, consistent with ``ONE_PART_SPOKEN``:
+"a quarter inch", not "1 quarter of an inch"."""
+
 
 class FeetInches(CompoundForm):
     """Feet and inches, the drafter's way: shown ``1'-4 3/16"``, copied ``1'4-3/16"``.
@@ -177,6 +220,8 @@ class FeetInches(CompoundForm):
     def parse(self, text: str, decimal: str = ".") -> float | None:
         strict, attempt = _feet_inches_patterns()
         m = strict.fullmatch(text)
+        if (m is not None or attempt.match(text)) and "," in text and decimal != ",":
+            raise comma_error(text, decimal)  # the whole value, not just its inches
         if m is None:
             if attempt.match(text):
                 raise InputError(
@@ -214,6 +259,10 @@ def _spoken_feet(negative: bool, feet: int, whole: int, fraction: Fraction) -> s
     """Say feet and inches in words, leaving out a part that's zero: "4 inches"."""
     measures = [_measure(str(feet), _builtin("ft"))] if feet else []
     inches = _spoken_inches(whole, fraction)
+    if feet and inches and not whole:
+        # Feet and a fraction alone are joined by "and": "1 foot and a quarter inch".
+        joined = _(FEET_AND_FRACTION_SPOKEN).format(feet=measures[0], fraction=inches)
+        return _said([joined], negative)
     if inches:
         measures.append(inches)
     return _said(measures or [_measure("0", _builtin("in"))], negative)
@@ -223,7 +272,7 @@ def _spoken_inches(whole: int, fraction: Fraction) -> str:
     """Say whole inches and a fraction in words, or return ``""`` for none.
 
     For example "4 and 3 sixteenths inches", "4 and a half inches", "3 sixteenths of an
-    inch", or "4 inches".
+    inch", "a quarter inch", or "4 inches".
     """
     if not fraction:
         return _measure(str(whole), _builtin("in")) if whole else ""
@@ -234,6 +283,8 @@ def _spoken_inches(whole: int, fraction: Fraction) -> str:
         return _(ONE_PART_SPOKEN[fraction.denominator]).format(inches=whole)
     if whole:
         return _(INCHES_MIXED_SPOKEN).format(inches=whole, numerator=numerator, part=part)
+    if numerator == 1:
+        return _(ONE_PART_ALONE_SPOKEN[fraction.denominator])
     return _(INCH_FRACTION_SPOKEN).format(numerator=numerator, part=part)
 
 
@@ -246,7 +297,9 @@ def _feet_inches_patterns() -> tuple[re.Pattern[str], re.Pattern[str]]:
         rf"(?P<sign>[-+]?)(?P<feet>\d+) ?(?:{feet}) ?-? ?(?P<inches>{number}) ?(?:{inches})",
         re.IGNORECASE,
     )
-    attempt = re.compile(rf"[-+]?\d+ ?(?:{feet}) ?-? ?\S", re.IGNORECASE)
+    # An attempt has inches, or a sign, after the feet: "5'9" and "1'--4\"" are attempts,
+    # but "3 ft." is a number misread.
+    attempt = re.compile(rf"[-+]?\d+ ?(?:{feet}) ?-? ?(?:\d|[.,]\d|[-+])", re.IGNORECASE)
     return strict, attempt
 
 
@@ -273,6 +326,9 @@ class DegreesMinutesSeconds(CompoundForm):
         strict, attempt = _dms_patterns()
         m = strict.fullmatch(text)
         given = 0 if m is None else sum(m[g] is not None for g in ("d", "m", "s"))
+        written = (m is not None and given >= 2) or attempt.search(text)
+        if written and "," in text and decimal != ",":
+            raise comma_error(text, decimal)  # ADR-0020 §4's why, for the whole value
         if m is None or given < 2:
             if attempt.search(text):
                 raise InputError(

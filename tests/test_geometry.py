@@ -304,12 +304,28 @@ def test_an_angle_that_is_90_to_the_arithmetic_is_refused_in_either_method(metho
     """Within about 6e-11° of 90°, tan(A) is undefined: both angle methods refuse it alike."""
     given = {"leg_angle": "leg_a", "hypotenuse_angle": "hypotenuse"}[method]
     for angle in (90.0, 89.99999999995):
-        with pytest.raises(
-            OutOfRangeError, match=r"Angle A \(opposite a\) \(A\) must be less than 90"
-        ):
+        with pytest.raises(OutOfRangeError, match=r"^Angle A \(opposite a\) must be less than 90"):
             run_inches(RightTriangle(), method, **{given: 3, "angle_a": angle})
     out = run_inches(RightTriangle(), method, **{given: 3, "angle_a": 89.9999999999})
     assert 0 < out["leg_b"] < 1e-11
+
+
+@pytest.mark.parametrize(
+    ("label", "symbol", "named"),
+    [
+        ("Angle A (opposite a)", "A", "Angle A (opposite a)"),
+        ("Side a", "a", "Side a"),
+        ("Number of sides", "N", "Number of sides (N)"),
+        ("K-factor", "K", "K-factor (K)"),
+        ("Across flats (inscribed circle)", "AF", "Across flats (inscribed circle) (AF)"),
+    ],
+)
+def test_a_label_that_names_its_symbol_is_not_given_it_twice(
+    label: str, symbol: str, named: str
+) -> None:
+    from caddcalc.core.spec import named as named_
+
+    assert named_(label, symbol) == named
 
 
 def test_two_angles_alone_are_never_a_method() -> None:
@@ -372,7 +388,8 @@ def test_an_odd_polygon_says_what_a_caliper_reads() -> None:
     assert note.quantities["reading"] == (pytest.approx(reading), Dimension.LENGTH)
     assert note.subjects == ("sides", "across_flats", "across_corners")
     text = describe_note(note, DisplayPrefs()).lead
-    assert "a caliper across the polygon reads 1.5388 in" in text and "r + R" in text
+    assert "a caliper held from a flat to the opposite corner reads 1.5388 in" in text
+    assert "r + R" in text
     assert RegularPolygon().run({"sides": 6}, "side").notes == (), "even: flats are parallel"
 
 

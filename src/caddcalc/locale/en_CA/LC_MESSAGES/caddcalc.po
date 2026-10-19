@@ -198,6 +198,36 @@ msgstr ""
 msgid "Welcome to {product}"
 msgstr ""
 
+#. 1/2 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a half inch"
+msgstr ""
+
+#. 1/4 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a quarter inch"
+msgstr ""
+
+#. 1/16 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a sixteenth inch"
+msgstr ""
+
+#. 1/64 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a sixty-fourth inch"
+msgstr ""
+
+#. 1/32 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "a thirty-second inch"
+msgstr ""
+
+#. 1/8 inch alone, spoken.
+#: src/caddcalc/core/units/compound.py
+msgid "an eighth inch"
+msgstr ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "centimeter"
@@ -393,10 +423,41 @@ msgid_plural "thirty-seconds"
 msgstr[0] ""
 msgstr[1] ""
 
-#. two spoken measures of one value said together, e.g. "1 foot" and "4 inches"
-#. as "1 foot 4 inches", as CLDR's unit list pattern joins them.
+#. feet and a fraction of an inch under one, said together, e.g. "1 foot" and
+#. "a quarter inch" as "1 foot and a quarter inch".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgid "{feet} and {fraction}"
+msgstr ""
+
+#. the last two of three or more spoken measures of one value, e.g. "30
+#. minutes 15 seconds" in "40 degrees 30 minutes 15 seconds": CLDR's "end" pattern.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, end"
+msgid "{first} {second}"
+msgstr ""
+
+#. a spoken measure before the last two, CLDR's "middle" pattern.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, middle"
+msgid "{first} {second}"
+msgstr ""
+
+#. the first of three or more spoken measures and the rest, e.g. "40
+#. degrees" and "30 minutes 15 seconds": CLDR's "start" pattern.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, start"
+msgid "{first} {second}"
+msgstr ""
+
+#. two spoken measures of one value, e.g. "1 foot 4 inches" or "40
+#. degrees 30 minutes": CLDR's unit list pattern for two.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgctxt "unit list, two"
 msgid "{first} {second}"
 msgstr ""
 
@@ -454,4 +515,7 @@ msgstr ""
 #, python-brace-format
 msgid "{numerator} {part} of an inch"
 msgstr ""
+
+#~ msgid "{first} {second}"
+#~ msgstr ""
 

@@ -50,14 +50,16 @@ inch value, so they never disagree.
 ## Precision and rounding
 
 * Calculations use full double precision, the same as Excel.
+* A value shown to significant figures, such as an area or a converter's row, is written
+  in plain decimals from 0.000001 up to 10¹⁶, and with an exponent outside that, as
+  `1.00000e+300`.
 * **Rounding happens only for display.** Results show 4 decimals by default (angles show 2,
   stresses 1).
   The CLI's `--decimals` changes this, and `--fraction 64` adds the nearest 1/64".
 * Stresses follow the unit system: ksi when it's `in`, MPa when it's `mm`.
 * Areas follow it too, as the square of the length unit: in² when it's `in`, mm² when
   it's `mm`, to 6 significant figures, such as `6451.60 mm²` or `10.0000 in²`. They're
-  always written `in²` and `mm²`, however you typed
-  them.
+  always written `in²` and `mm²`, however you typed them.
 * Some results are always shown in one unit, whatever the unit system, such as each row
   of a unit converter. They show 6 significant figures, e.g. `25.4000 mm` or
   `0.0833333 ft`.

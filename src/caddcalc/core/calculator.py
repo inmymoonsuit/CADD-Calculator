@@ -602,7 +602,7 @@ def _resolve(
         return derived.value, derived.source
     default = p.default_value()
     if default is None:
-        raise InputError(f"Missing input: {p.label} ({p.symbol})")
+        raise InputError(f"Missing input: {p.named}")
     return default, DEFAULT
 
 

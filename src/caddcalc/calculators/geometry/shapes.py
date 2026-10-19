@@ -110,16 +110,17 @@ class Rectangle(Calculator):
 
 
 POLYGON_ODD = (
-    "With an odd number of sides, no two flats are parallel, so a caliper across the "
-    "polygon reads {reading}: the inscribed radius plus the circumscribed radius, r + R, "
-    "not the across-flats size."
+    "With an odd number of sides, no two flats are parallel, so a caliper held from a flat "
+    "to the opposite corner reads {reading}: the inscribed radius plus the circumscribed "
+    "radius, r + R, not the across-flats size. Turned another way, it reads more."
 )
 
 
 POLYGON_NOTES = (
     "Across flats is the inscribed circle's diameter, 2r, and across corners the "
     "circumscribed circle's, 2R. With an odd number of sides there are no parallel flats, "
-    "so a caliper reads r + R; the result says what it reads.",
+    "so a caliper held from a flat to the opposite corner reads r + R; the result says "
+    "what it reads.",
 )
 
 

@@ -3,9 +3,11 @@
 Each takes one value typed in any unit of its kind, and shows it in every unit of that
 kind at once, each row an output fixed in its unit (``Output.unit``) or written in a
 compound form (``Output.form``). A row is the value itself, so it adds no work
-(``Context.given``); the units registry converts it, from the units' exact definitions
-in NIST SP 811, rounding once (ADR-0019 §2). Only a value that isn't finite is refused:
-zero passes, and so does a sign, which is an offset, a compression, or a direction.
+(``Context.given``). The typed value was read through its unit's factor, as every value
+is, and each row converts it on to the row's unit, from the units' factors, each its
+exact definition in NIST SP 811 rounded once (ADR-0019 §2). Only a value that isn't
+finite, or whose smallest unit's row would overflow, is refused: zero passes, and so
+does a sign, which is an offset, a compression, or a direction.
 """
 
 from __future__ import annotations
@@ -61,8 +63,9 @@ FR_1959 = Reference(
 )
 
 ROWS_NOTE = (
-    "Each row is the value in its unit, converted from the units' exact definitions and "
-    "rounded once, to six significant figures; Copy gives what's shown, and full precision "
+    "Each row is the value in its unit: the value as typed, read through its unit's "
+    "factor, converted to the row's unit, each factor its unit's exact definition rounded "
+    "once. Rows show six significant figures; Copy gives what's shown, and full precision "
     "ten digits."
 )
 

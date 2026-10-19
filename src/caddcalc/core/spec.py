@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
@@ -26,6 +27,18 @@ class Verification(Enum):
     """No published worked example has been checked yet."""
     VERIFIED = "verified"
     """Checked against at least one cited published source, with a worked example as a test."""
+
+
+def named(label: str, symbol: str) -> str:
+    """Return a label with its symbol, ``Thickness (T)``, or the label alone if it has it.
+
+    "Side a" and "Angle A (opposite a)" name their symbols already, so a message or a
+    field says "Side a", not "Side a (a)". A symbol inside a word, such as K in
+    "K-factor", isn't named by it.
+    """
+    if re.search(rf"(?<![\w-]){re.escape(symbol)}(?![\w-])", label):
+        return label
+    return f"{label} ({symbol})"
 
 
 @dataclass(frozen=True)
@@ -59,6 +72,11 @@ class Param:
         """Return whether the method ``method_key`` uses this parameter."""
         return not self.methods or method_key in self.methods
 
+    @property
+    def named(self) -> str:
+        """The label with its symbol, as messages and fields name the input (``named``)."""
+        return named(self.label, self.symbol)
+
     def check(self, value: float, source: InputSource = EXPLICIT) -> None:
         """Check that ``value`` is finite, within the allowed range, and whole for a count.
 
@@ -71,14 +89,14 @@ class Param:
             OutOfRangeError: The value is out of range.
         """
         if not math.isfinite(value):
-            raise InputError(f"{self.label} ({self.symbol}) must be a finite number")
+            raise InputError(f"{self.named} must be a finite number")
         lo, hi = self.minimum, self.maximum
         if lo is not None and (value < lo or (value == lo and not self.min_inclusive)):
             raise OutOfRangeError(self, value, bound=lo, above=False, source=source)
         if hi is not None and (value > hi or (value == hi and not self.max_inclusive)):
             raise OutOfRangeError(self, value, bound=hi, above=True, source=source)
         if self.dimension is Dimension.COUNT and not value.is_integer():
-            raise InputError(f"{self.label} ({self.symbol}) must be a whole number")
+            raise InputError(f"{self.named} must be a whole number")
 
 
 _RELATION = {
@@ -126,10 +144,10 @@ class OutOfRangeError(InputError):
         need = f"{self.relation} {show(self.bound)}"
         if self.source.kind in (SourceKind.DOMAIN, SourceKind.DERIVED):
             return (
-                f"{p.label} ({p.symbol}) from {self.source.label} is {show(self.value)}, "
+                f"{p.named} from {self.source.label} is {show(self.value)}, "
                 f"but this calculator needs {need}. Override it in this calculator."
             )
-        return f"{p.label} ({p.symbol}) must be {need}"
+        return f"{p.named} must be {need}"
 
 
 @dataclass(frozen=True)

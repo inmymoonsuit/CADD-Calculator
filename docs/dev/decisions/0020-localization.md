@@ -460,3 +460,13 @@ Spoken forms, unit names and the fractions' words are marked (ADR-0019, u3 and u
 * **Left for the sweep,** with the parser's messages: a count that isn't whole ("isn't a
   whole number, and a count is", "must be a whole number"), and the command line's
   "could be …; give one exactly".
+
+### 2026-10-19: list patterns, and new text left for the sweep (fix round 3)
+
+* **Marked:** CLDR's four unit-list patterns, in their contexts; the phrases for one
+  part of an inch alone and for feet and a fraction ("{feet} and {fraction}"); and the
+  plain value's measure, now `MEASURE_SPOKEN` (ADR-0019's amendment of this date).
+* **Left for the sweep,** with the parser's messages: the command line's "given twice"
+  and "doesn't use … its inputs are …"; "too large to calculate with" and a converter's
+  "too large to show in …"; and the menu's "Copy full precision, in {unit}", with the
+  rest of the result fields' text.

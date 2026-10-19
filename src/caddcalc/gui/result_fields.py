@@ -62,6 +62,7 @@ from caddcalc.core.formatting import (
     copy_output,
     decimal_separator,
     output_parts,
+    output_unit,
     results_tsv,
     spoken_value,
 )
@@ -104,6 +105,11 @@ MENU = {
 shown, and the number as shown, e.g. "Copy 0,3119", only where the decimal mark isn't "."
 (ADR-0020 §4): "Copy value" writes "." for CAD. Where it isn't, every item is named by
 what it copies, such as "Copy 0.3119" and "Copy 0.3119 in"."""
+
+FULL_IN = "Copy full precision, in {unit}"
+"""The full-precision item of a compound form's menu, which names the unit it copies in,
+as feet and inches copy in inches; "Copy {number}, in {unit}" where both marks are on
+offer."""
 
 
 def _announce(widget: QWidget, message: str) -> None:
@@ -355,6 +361,10 @@ class ResultField(QWidget):
                 # "Copy 0.3119" beside "Copy 0,3119" (UI/UX's i4 review).
                 copied = copy_output(self.output, self.amount, self.prefs, form)
                 label = MENU[CopyForm.SHOWN].format(number=copied)
+            if form is CopyForm.FULL and self.parts is not None and self.parts.compound:
+                # A compound form's full precision is a decimal in the form's own unit.
+                unit = output_unit(self.output, self.prefs).spoken("2")  # its plural
+                label = FULL_IN.format(unit=unit) if point else f"{label}, in {unit}"
             action = menu.addAction(label)
             action.setEnabled(self.parts is not None)
             action.triggered.connect(_copier(self, form))

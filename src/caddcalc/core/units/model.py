@@ -144,8 +144,10 @@ class Precision:
     def __post_init__(self) -> None:
         least = 1 if self.significant else 0
         if isinstance(self.digits, bool) or not isinstance(self.digits, int) or self.digits < least:
-            kind = "significant figures" if self.significant else "decimal places"
-            raise SpecError(f"A precision needs at least {least} {kind}, not {self.digits!r}")
+            need = (
+                "at least 1 significant figure" if self.significant else "0 or more decimal places"
+            )
+            raise SpecError(f"A precision needs {need}, not {self.digits!r}")
 
 
 @dataclass(frozen=True)

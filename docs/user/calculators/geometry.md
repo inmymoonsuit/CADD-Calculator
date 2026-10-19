@@ -85,9 +85,10 @@ refused.
 You get the other two sizes, the perimeter and the area. A hexagon with sides of 1 in is
 1.7321 in across flats and 2 in across corners.
 
-With an **odd** number of sides, no two flats are parallel, so a caliper across the
-polygon doesn't read the across-flats size: it reads r + R, which the result's note
-gives.
+With an **odd** number of sides, no two flats are parallel, so a caliper doesn't read
+the across-flats size. Held from a flat to the opposite corner, it reads r + R, which
+the result's note gives; turned another way, it reads more. A pentagon of side 1 in reads
+1.5388 in from a flat to its corner, but up to 1.6180 in turned.
 
 ## Arc and sector
 

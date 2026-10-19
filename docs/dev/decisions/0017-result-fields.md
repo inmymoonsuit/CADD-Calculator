@@ -637,3 +637,13 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **"Copy with unit" isn't offered for a compound form** (UI/UX's L2): feet and inches,
   and degrees, minutes and seconds, name their units, so it would copy what "Copy value"
   does.
+
+### 2026-10-19: a compound form's full precision, and labels (fix round 3)
+
+* **A compound row's "Copy full precision" names its unit:** "Copy full precision, in
+  inches" for feet and inches, "in degrees" for degrees, minutes and seconds, since it
+  copies a decimal in the form's own unit whatever the unit system (0804466 Minor 1). A
+  test copies it under both unit systems.
+* **A field's label names its symbol once:** "Side a", not "Side a (a)", and "Angle A
+  (opposite a)", not "… (A)" (`spec.named`); range and missing-input messages use the
+  same rule. No sheet-metal label holds its symbol, so none of theirs changes.

@@ -285,3 +285,22 @@ def test_the_cli_refuses_an_input_it_would_lose(
     err = capsys.readouterr().err
     assert message in err and err.count("\n") == 1, err
     assert main(["run", "geometry.right_triangle", "a=3", "A=30", "--method", "leg_angle"]) == 0
+
+
+def test_the_cli_label_column_fits_its_longest_label(capsys: pytest.CaptureFixture[str]) -> None:
+    """The longest label, "Across corners (circumscribed circle)", is past the least 32."""
+    from caddcalc.cli import LABEL_WIDTH, main
+
+    def results(out: str) -> list[str]:
+        lines = out.splitlines()
+        first = lines.index("Results") + 1
+        return lines[first : lines.index("", first)]
+
+    # Each row is "  " + symbol padded to 6 + " " + label padded to the width + " " + value.
+    assert main(["run", "geometry.regular_polygon", "N=6", "a=1in"]) == 0
+    start = 10 + len("Across corners (circumscribed circle)")
+    rows = results(capsys.readouterr().out)
+    assert all(row[start - 1] == " " != row[start] for row in rows), rows
+    assert main(["run", "sheet_metal.bend_allowance", "--method", "course"]) == 0
+    rows = results(capsys.readouterr().out)
+    assert all(row[10 + LABEL_WIDTH - 1] == " " != row[10 + LABEL_WIDTH] for row in rows), rows

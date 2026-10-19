@@ -98,6 +98,7 @@ from caddcalc.core.formatting import (
     value_parts,
 )
 from caddcalc.core.i18n import _
+from caddcalc.core.spec import named
 from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
@@ -879,7 +880,7 @@ class MainWindow(QMainWindow):
                 row.addWidget(note)
                 self.inherit_boxes[p.key] = box
                 self.override_notes[p.key] = note
-            self.form.addRow(f"{p.label} ({p.symbol})", row)
+            self.form.addRow(p.named, row)
             self.fields[p.key] = (p, edit)
 
     def _chain_tabs(self) -> None:
@@ -1329,7 +1330,7 @@ class MainWindow(QMainWindow):
             row.addLayout(starts)
             row.addWidget(about)
             self.start_rows[setting.key] = starts
-            self.settings_form.addRow(f"{setting.label} ({setting.symbol})", row)
+            self.settings_form.addRow(named(setting.label, setting.symbol), row)
             self.setting_fields[setting.key] = (setting, edit)
             self.setting_abouts[setting.key] = about
         for choice in domain.choices:
@@ -1600,7 +1601,7 @@ class MainWindow(QMainWindow):
             message = describe_error(exc, self.prefs)
             if isinstance(exc, OutOfRangeError):  # a range error already names the setting
                 return message
-            return f"{setting.label} ({setting.symbol}): {message}"
+            return f"{named(setting.label, setting.symbol)}: {message}"
         return None
 
     def _on_setting_edited(self, key: str, text: str) -> None:

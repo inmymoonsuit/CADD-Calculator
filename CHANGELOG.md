@@ -40,9 +40,9 @@ All notable changes are recorded here. The format follows
 - **Areas (ADR-0018 §3, ADR-0019).** A new kind of quantity, the area, in in², ft², mm²,
   cm² and m², each the exact square of its length unit, so 1 ft² is 92 903.04 mm²
   exactly. Type `3 in²`, `3 in^2`, `3 in2`, `3 sq in` or `3 square inches`; it's always
-  written `in²`. Areas show in the square of your length unit, to 6 significant figures (`6451.60 mm²`,
-  `10.0000 in²`), and JSON gives them in
-  mm², with `"dimension": "area"`. Messages that list the base units now end in "mm²".
+  written `in²`. Areas show in the square of your length unit, to 6 significant figures
+  (`6451.60 mm²`, `10.0000 in²`), and JSON gives them in mm², with `"dimension":
+  "area"`. Messages that list the base units now end in "mm²".
 - **Results in a fixed unit.** A calculator's output may be shown in one unit always,
   whatever the unit system, to 6 significant figures (`Output.unit`), as the coming unit
   converters' rows are. Copying, Copy all, the document and the command line all show it
@@ -495,6 +495,22 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **Speech, in words a drafter says:** "1 foot and a quarter inch", "a half inch", "1
+  foot and 3 sixteenths of an inch". Spoken parts are joined by CLDR's list patterns, so
+  a translation can put its "and" before the last part only.
+- **A comma in feet and inches or DMS says why it's refused,** quoting the whole value:
+  `"90°30,5'" has a comma, which isn't a decimal mark here …`. `3 ft.` is "not a number"
+  again, not "isn't feet and inches".
+- "Copy full precision" on a feet-and-inches or DMS row says the unit it copies in:
+  "Copy full precision, in inches".
+- A label that names its symbol isn't followed by it again: "Side a", "Angle A (opposite
+  a) must be less than 90°", not "Side a (a)".
+- The command line's label column is as wide as its longest label.
+- A value shown to significant figures takes an exponent outside 10⁻⁶ to 10¹⁶:
+  `1.00000e+300`, not 301 digits.
+- The odd polygon's note says how the caliper is held: from a flat to the opposite
+  corner. The converters' note says how a row is converted: from the typed value,
+  through each unit's factor.
 - **The command line refuses an input it would lose:** one given twice, or one the
   chosen method doesn't use, such as `A=30` for the right triangle's two-legs method, is
   refused, exit 2, naming the method's inputs. They were silently overwritten or dropped.
@@ -523,7 +539,8 @@ All notable changes are recorded here. The format follows
   triangle, scrolls as a whole. The window no longer lays out every calculator page
   before it opens.
 - **Families are listed in their declared order,** general tools first: Geometry, then
-  Sheet Metal, with a plugin's families after the built-ins. They were sorted by name.
+  Conversions, then Sheet Metal, with a plugin's families after the built-ins, sorted by
+  name. They were all sorted by name.
 - **The command line reads an input's exact key or symbol first,** then in any case, so
   `a=3` is a side and `A=30` an angle in the same calculator. A name that matches two
   inputs only in different cases is refused, naming both.

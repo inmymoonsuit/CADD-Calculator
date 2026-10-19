@@ -36,7 +36,9 @@ button.
   * **Copy with unit:** `0.3119 in`; not offered for feet and inches or degrees, minutes
     and seconds, whose copy names its units already
   * **Copy full precision:** the value to 10 significant digits, without the display
-    rounding, in the display unit, such as `0.311864`
+    rounding, in the display unit, such as `0.311864`; for feet and inches, a decimal in
+    inches, and for degrees, minutes and seconds, in degrees, as the item says ("Copy
+    full precision, in inches")
   * **Copy fraction** (not in the desktop app yet, which has no fraction setting):
     `5/16"`, or `1-5/16"`. The inch mark keeps a spreadsheet from reading it as a date.
 * **Copy all:** the button beside the Results title copies every result as rows for a

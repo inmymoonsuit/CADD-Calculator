@@ -261,9 +261,9 @@ def test_registration_refuses_a_square_that_isnt_its_roots_square(
 
 def test_a_precision_is_some_decimal_places_or_at_least_one_significant_figure() -> None:
     assert Precision(0).digits == 0 and Precision(1, significant=True).significant
-    with pytest.raises(SpecError, match="at least 0 decimal places"):
+    with pytest.raises(SpecError, match="0 or more decimal places, not -1"):
         Precision(-1)
-    with pytest.raises(SpecError, match="at least 1 significant figures"):
+    with pytest.raises(SpecError, match="at least 1 significant figure, not 0"):
         Precision(0, significant=True)
     with pytest.raises(SpecError):
         Precision(True)  # type: ignore[arg-type]  # a bool isn't a count, as the test means
@@ -288,14 +288,15 @@ def test_a_precision_is_some_decimal_places_or_at_least_one_significant_figure()
         (-0.5, 6, "-0.500000"),
         (0.0, 6, "0.00000"),
         (-0.0, 6, "0.00000"),
-        (1e-9, 2, "0.0000000010"),
+        (1e-6, 2, "0.0000010"),
+        (1e-9, 2, "1.0e-09"),
         (0.125, 2, "0.12"),
         (123.4575, 6, "123.457"),
         (0.375, 2, "0.38"),
         (5.0, 1, "5"),
     ],
 )
-def test_significant_figures_keep_their_zeros_carry_and_never_write_an_exponent(
+def test_significant_figures_keep_their_zeros_and_carry(
     value: float, digits: int, text: str
 ) -> None:
     assert format_significant(value, digits) == text
@@ -426,3 +427,27 @@ def test_a_result_field_shows_copies_and_says_a_fixed_unit_with_no_code_of_its_o
     fields["mm"].copy_button.click()
     assert QGuiApplication.clipboard().text() == "25.4000"
     window.close()
+
+
+@pytest.mark.parametrize(
+    ("value", "shown"),
+    [
+        (1e300, "1.00000e+300"),
+        (-1e308, "-1.00000e+308"),
+        (5e-324, "4.94066e-324"),
+        (1.23e-7, "1.23000e-07"),
+        (9.999997e15, "1.00000e+16"),
+        (1.23e-6, "0.00000123000"),
+        (999999999999999.0, "1000000000000000"),
+        (1234567.0, "1234570"),
+    ],
+)
+def test_significant_figures_take_an_exponent_outside_the_plain_range(
+    value: float, shown: str
+) -> None:
+    """From 1e-6 up to 1e16 a value is plain decimals; outside, an exponent, never 301 digits."""
+    from caddcalc.core.formatting import PLAIN_EXPONENTS, format_significant
+
+    assert PLAIN_EXPONENTS == (-6, 16)
+    assert format_significant(value, 6) == shown
+    assert format_significant(value, 6, ",") == shown.replace(".", ",")

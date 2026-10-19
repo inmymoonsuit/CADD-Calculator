@@ -75,7 +75,8 @@ def test_a_result_says_its_unit_in_the_language_text_is_shown_in(
     window.method_box.setCurrentIndex(window.method_box.findData("course"))
     window.units_box.setCurrentText("mm")
     field = window.results.fields["bend_allowance"]
-    assert field.accessibleName().endswith(f" {spoken}"), field.accessibleName()
+    # The pseudo-locale marks the measure's template too: "⟦7.9213 ⟦millimeters⟧ …⟧".
+    assert f" {spoken}" in field.accessibleName(), field.accessibleName()
     window.close()
 
 
