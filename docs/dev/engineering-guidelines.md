@@ -74,7 +74,8 @@ itself is wrong, change it here in its own pull request, with an ADR if it matte
      published to four decimals: that is data, applied only by
      `core.refdata.nominal()` (ADR-0014, amendments).
    * Display text is never read back as a value. Keep what the user typed as a
-     `TypedValue`, and show values through `entry_text` and `field_text` (ADR-0013 §9).
+     `TypedValue`, and show values through `picked_text` and `choice_text` (ADR-0013 §9,
+     ADR-0024 §2).
    * Every method cites its source.
 8. **Security.**
    * No `eval` or `exec`.

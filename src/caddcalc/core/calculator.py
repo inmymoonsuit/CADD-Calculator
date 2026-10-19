@@ -16,7 +16,15 @@ from caddcalc.core.errors import CaddCalcError, InputError, SpecError, UsageErro
 from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, UnitSet
+from caddcalc.core.spec import (
+    Method,
+    OutOfRangeError,
+    Output,
+    Param,
+    UnitSet,
+    check_param_choices,
+    check_picks,
+)
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
     Dimension,
@@ -514,7 +522,7 @@ class Calculator(ABC):
         _unique(cls.id, "output key", [o.key for o in cls.outputs])
         for o in cls.outputs:
             _check_output_unit(cls.id, o)
-            _check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
+            check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
             if o.picks and (o.unit or o.form):
                 raise SpecError(
                     f"{cls.id}: output {o.key!r} gives picks and a fixed unit or form; give one"
@@ -542,50 +550,13 @@ class Calculator(ABC):
                     raise SpecError(
                         f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
-            _check_param_choices(cls.id, p)
+            check_param_choices(cls.id, p)
 
 
 def _written(choice: str, dimension: Dimension) -> str:
     """Return a choice as a picker shows it: a unit's written symbol, or a form's."""
     picked = registry().choice(choice, dimension)
     return picked.written if isinstance(picked, Unit) else picked.symbol
-
-
-def _check_picks(
-    owner: str, dimension: Dimension, picks: tuple[str, ...], what: str, *, output: bool
-) -> None:
-    """Check that each id is a choice of ``dimension``, a field's or an output's."""
-    units = registry()
-    allowed = units.output_choices(dimension) if output else units.entry_choices(dimension)
-    _unique(owner, f"choice in {what}", list(picks))
-    for pick in picks:
-        if pick not in allowed:
-            known = ", ".join(c or "''" for c in allowed)
-            raise SpecError(
-                f"{owner}: {what} names {pick!r}, which isn't a choice for "
-                f"{dimension.with_article}; there's {known}"
-            )
-
-
-def _check_param_choices(owner: str, p: Param) -> None:
-    """Check a parameter's picker: its choices exist, and its default choice resolves.
-
-    A parameter with more than one choice needs a default choice: ``Param.unit``, or a
-    default that names its unit, as ``"0.1046 in"`` does (ADR-0024 E1).
-    """
-    _check_picks(owner, p.dimension, p.units, f"parameter {p.key!r}'s units", output=False)
-    choice = p.default_choice
-    if choice is None:
-        raise SpecError(
-            f"{owner}: parameter {p.key!r} has no default unit for its picker: give "
-            "Param.unit, or a default that names its unit"
-        )
-    if choice not in p.choices:
-        known = ", ".join(c or "''" for c in p.choices)
-        raise SpecError(
-            f"{owner}: parameter {p.key!r} starts its picker in {choice!r}, which it "
-            f"doesn't offer; it offers {known}"
-        )
 
 
 def _check_sets(cls: type[Calculator]) -> None:
@@ -602,7 +573,7 @@ def _check_sets(cls: type[Calculator]) -> None:
                 f"{cls.id}: output set {unit_set.key!r} has no choice for {', '.join(missing)}"
             )
         for dimension, choice in unit_set.choices.items():
-            _check_picks(cls.id, dimension, (choice,), f"output set {unit_set.key!r}", output=True)
+            check_picks(cls.id, dimension, (choice,), f"output set {unit_set.key!r}", output=True)
 
 
 def _check_output_unit(owner: str, output: Output) -> None:

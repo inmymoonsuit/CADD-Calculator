@@ -800,24 +800,6 @@ def _mixed_spoken(fraction: Fraction, unit: Unit) -> str:
     return _(MEASURE_SPOKEN).format(number=number, unit=unit.spoken(decimal)).strip()
 
 
-def entry_text(entry: TypedValue, unit: Unit, prefs: DisplayPrefs) -> str:
-    """Return the text a field labelled ``unit`` shows for a value typed with its unit.
-
-    The user's own text is shown when it named its unit, or when its unit is still the
-    field's. Otherwise the value is shown converted, so a field never shows a bare number
-    in a unit other than the one it labels. The value itself never changes (ADR-0013 §9).
-
-    Text read in another decimal mark than the screen's is the app's, such as a default
-    written with ".", so it's shown converted too, in the locale's mark; the user's own
-    text is read in the locale's mark, so it stays as typed (ADR-0020 §4).
-    """
-    own_mark = entry.decimal == prefs.symbols.decimal or "." not in entry.text
-    as_typed = entry.explicit_unit or entry.unit == unit
-    if own_mark and as_typed:
-        return entry.text
-    return field_text(entry.value, unit, prefs)
-
-
 def render_step(
     step: Step, result: Result | None, units: ShownUnits, prefs: DisplayPrefs
 ) -> tuple[str, str | None, str]:

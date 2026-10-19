@@ -250,17 +250,6 @@ Every calculator's `cm`, `m` and `ft` output sets show it too (the cloud review 
 fixed at stop 2, since the window would change the `in` and `mm` text that E-3's
 neutrality golden holds, and a change to shown values is the maintainer's to approve.
 
-### KI-027: Settings fields still read units in their text (Low)
-
-ADR-0024's slices give calculator fields pickers first (U1). Until E-5 and U2b give a
-family settings page its own pickers, a settings field reads a unit typed with its
-number, `3 mm`, and a bare number in the Units box's unit, as before, while a calculator
-field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds of
-field are on different pages, and each page says how it reads (the user guide's Units
-and precision). With the Units box gone (U2), a settings page shows and reads in inches,
-degrees and ksi (`window._settings_units`), whatever the results are shown in, and its
-facts show strengths in ksi. Resolved by U2b, in ADR-0024's stop 3.
-
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 
 A double holds about 10⁻³⁰⁸ to 10³⁰⁸ at full precision. Heron's and Kahan's formulas
@@ -280,6 +269,15 @@ gives a leg and an area of 0, its sine under the doubles' range (the cloud revie
 PR #2, in the code before it too).
 
 ## Resolved
+
+### KI-027: Settings fields read units in their text (resolved 2026-10-19)
+
+A family settings field read a unit typed with its number, and a bare number in the
+inch set, while a calculator field had a picker. Resolved by ADR-0024's E-5 and U2b:
+each setting with a unit has its picker, reads its text in the picked unit, and refuses
+a unit typed in it (`DomainSettings.field_choice`, `set_text`); a domain's setting is
+checked at registration as a calculator's parameter is, so it names its unit
+(`spec.check_param_choices`). A material's facts are in their source's units (Q13).
 
 ### KI-025: A count was shown as a ratio, with four decimals (resolved 2026-10-19)
 

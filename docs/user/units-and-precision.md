@@ -67,22 +67,23 @@ no picker.
 
 ## Typing with the unit in the text
 
-Family settings fields (until they get pickers, KI-027) and the command line read a
-value with its unit in the text. On a settings page, a number with no unit is inches,
-degrees or ksi:
+The command line reads a value with its unit in the text, as `T=3mm`; every field in
+the app, on a calculator page or a family settings page, has a picker for its unit
+instead. On the command line, a number with no unit is in the input's default unit,
+which `caddcalc show` lists:
 
 | You type | Means |
 |---|---|
-| `0.1046` | 0.1046 inches, on a settings page and on the command line (its default unit) |
+| `0.1046` | 0.1046 inches, for an input whose default unit is inches |
 | `3mm`, `3 mm` | 3 millimetres, whatever the unit system |
-| `1/8`, `1/8in` | 0.125 (inches if no unit is typed and the system is `in`) |
+| `1/8`, `1/8in` | 0.125 (inches, for an input in inches, if no unit is typed) |
 | `1-1/2"`, `1 1/2 in` | 1.5 inches |
 | `2'` | 2 feet |
 | `90`, `90°`, `90 deg` | 90 degrees (angles are always degrees unless you type `rad`) |
 | `44%`, `0.44` | the ratio 0.44 (e.g. a K-factor) |
 | `6` | a count, such as a polygon's number of sides: a whole number, with no unit or `%` |
-| `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is ksi when the system is `in`, MPa when it's `mm` |
-| `3 in²`, `3 in^2`, `3 in2`, `3 sq in`, `3 square inches` | an area; `ft²`, `mm²`, `cm²` and `m²` are typed the same ways, and a bare number is in the square of your unit system's length |
+| `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is in the input's default unit |
+| `3 in²`, `3 in^2`, `3 in2`, `3 sq in`, `3 square inches` | an area; `ft²`, `mm²`, `cm²` and `m²` are typed the same ways, and a bare number is in the input's default unit |
 
 Units can be typed by name, in US or British spelling: `3 millimeters` or
 `3 millimetres`, `1 meter` or `1 metre`, `44 percent` or `44 per cent`.

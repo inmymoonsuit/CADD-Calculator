@@ -324,3 +324,53 @@ class Method:
         """Display text, e.g. ``"verified at 90°"`` or ``"unverified · reproduces legacy"``."""
         verification = " ".join(filter(None, (self.verification.value, self.scope)))
         return verification + (" · reproduces legacy" if self.legacy else "")
+
+
+def check_picks(
+    owner: str, dimension: Dimension, picks: tuple[str, ...], what: str, *, output: bool
+) -> None:
+    """Check that each id is a choice of ``dimension``, a field's or an output's.
+
+    Raises:
+        SpecError: An id repeats, or isn't a choice of ``dimension``.
+    """
+    units = registry()
+    allowed = units.output_choices(dimension) if output else units.entry_choices(dimension)
+    seen: set[str] = set()
+    for pick in picks:
+        if pick in seen:
+            raise SpecError(f"{owner}: duplicate choice in {what} {pick!r}")
+        seen.add(pick)
+    for pick in picks:
+        if pick not in allowed:
+            known = ", ".join(c or "''" for c in allowed)
+            raise SpecError(
+                f"{owner}: {what} names {pick!r}, which isn't a choice for "
+                f"{dimension.with_article}; there's {known}"
+            )
+
+
+def check_param_choices(owner: str, p: Param, *, kind: str = "parameter") -> None:
+    """Check a parameter's picker: its choices exist, and its default choice resolves.
+
+    A parameter with more than one choice needs a default choice: ``Param.unit``, or a
+    default that names its unit, as ``"0.1046 in"`` does (ADR-0024 E1). A calculator's
+    parameters and a domain's settings are checked alike (E-5); a setting has no default,
+    so it names its unit, and ``kind`` names it so in a message: "setting".
+
+    Raises:
+        SpecError: A choice isn't one, or none resolves as the picker's first.
+    """
+    check_picks(owner, p.dimension, p.units, f"{kind} {p.key!r}'s units", output=False)
+    choice = p.default_choice
+    if choice is None:
+        raise SpecError(
+            f"{owner}: {kind} {p.key!r} has no default unit for its picker: give "
+            "Param.unit, or a default that names its unit"
+        )
+    if choice not in p.choices:
+        known = ", ".join(c or "''" for c in p.choices)
+        raise SpecError(
+            f"{owner}: {kind} {p.key!r} starts its picker in {choice!r}, which it "
+            f"doesn't offer; it offers {known}"
+        )

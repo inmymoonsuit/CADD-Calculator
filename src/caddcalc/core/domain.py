@@ -14,8 +14,8 @@ from caddcalc.core.errors import CaddCalcError, InputError, SpecError, UsageErro
 from caddcalc.core.notes import Note
 from caddcalc.core.refdata import ReferenceTable, ReferenceValue, TableSpec
 from caddcalc.core.reference import Reference
-from caddcalc.core.spec import Param
-from caddcalc.core.units import Dimension, TypedValue
+from caddcalc.core.spec import Param, check_param_choices
+from caddcalc.core.units import TypedValue
 
 _DOMAIN_ID = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -272,8 +272,9 @@ class Domain:
 
         Raises:
             SpecError: The ID is malformed, the name is empty, a setting key or symbol
-                repeats, a symbol isn't usable in formulas, or a setting has a default or
-                is limited to particular methods.
+                repeats, a symbol isn't usable in formulas, a setting has a default or
+                is limited to particular methods, or its picker names a choice that isn't
+                one or has no unit to start in.
         """
         if not _DOMAIN_ID.fullmatch(self.id):
             raise SpecError(
@@ -304,6 +305,9 @@ class Domain:
                 raise SpecError(
                     f"Domain {self.id!r}: setting {setting.key!r} must not be limited to methods"
                 )
+            # A setting's picker starts as a calculator field's does, by Param.unit since
+            # a setting has no default (ADR-0024 E-5).
+            check_param_choices(f"Domain {self.id!r}", setting, kind="setting")
 
     def validate_choices(self) -> None:
         """Check the choices' static parts. Registration calls this after ``validate``.
@@ -394,14 +398,16 @@ class ValueOrigin:
 class Fact:
     """Something a domain shows about the user's selections, e.g. a material's strengths.
 
-    The text may name quantities, which a front end shows in its display units: each
-    ``{}`` in ``text`` takes the next of ``quantities``, in base units.
+    The text may name quantities: each ``{}`` in ``text`` takes the next of
+    ``quantities``, which a front end shows in the unit its source states, since a fact is
+    cited, not computed (ADR-0024 Q13).
     """
 
     heading: str
     """What it is about, e.g. ``"Strength"``."""
     text: str
-    quantities: tuple[tuple[float, Dimension], ...] = ()
+    quantities: tuple[TypedValue, ...] = ()
+    """The values the text names, each as its source states it, e.g. ``42 ksi``."""
     references: tuple[Reference, ...] = ()
     """Its sources, each with its scope."""
 

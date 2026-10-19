@@ -54,7 +54,12 @@ class _AcmeWidget(Calculator):
         (Domain("Sheet-Metal", "Sheet Metal", "x"), "lowercase"),
         (Domain("blank", " ", "x"), "needs a name"),
         (
-            Domain("dup", "Dup", "x", settings=(Param("t", "T", "T", L), Param("t", "U", "U", L))),
+            Domain(
+                "dup",
+                "Dup",
+                "x",
+                settings=(Param("t", "T", "T", L, unit="in"), Param("t", "U", "U", L, unit="in")),
+            ),
             "duplicate setting",
         ),
         (
@@ -65,10 +70,23 @@ class _AcmeWidget(Calculator):
             Domain("meth", "Meth", "x", settings=(Param("t", "T", "T", L, methods=("a",)),)),
             "methods",
         ),
+        (
+            Domain("unitless", "U", "x", settings=(Param("t", "T", "T", L),)),
+            "Domain 'unitless': setting 't' has no default unit for its picker",
+        ),
+        (
+            Domain("badunit", "B", "x", settings=(Param("t", "T", "T", L, units=("deg",)),)),
+            "setting 't''s units names 'deg', which isn't a choice for a length",
+        ),
         (Domain("fn", "Fn", "x", settings=(Param("t", "sqrt", "T", L),)), "not usable"),
         (Domain("kw", "Kw", "x", settings=(Param("t", "in", "T", L),)), "not usable"),
         (
-            Domain("sym", "Sym", "x", settings=(Param("t", "T", "T", L), Param("u", "T", "U", L))),
+            Domain(
+                "sym",
+                "Sym",
+                "x",
+                settings=(Param("t", "T", "T", L, unit="in"), Param("u", "T", "U", L, unit="in")),
+            ),
             "duplicate setting symbol",
         ),
     ],
@@ -378,7 +396,7 @@ GAUGED = Domain(
     "gauged",
     "Gauged",
     "A domain with one length setting.",
-    settings=(Param("length", "X", "Length", L),),
+    settings=(Param("length", "X", "Length", L, unit="in"),),
 )
 
 

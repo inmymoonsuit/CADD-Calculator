@@ -89,14 +89,13 @@ from caddcalc.core.formatting import (
     describe_setting_uses,
     describe_source,
     echo,
-    entry_text,
     format_output,
-    format_value,
     input_in_set,
     input_parts,
     method_notes,
     picked_text,
     render_step,
+    unit_parts,
     unit_suffix,
 )
 from caddcalc.core.i18n import _
@@ -107,6 +106,7 @@ from caddcalc.core.units import (
     Unit,
     UnitInTextError,
     base_text,
+    registry,
 )
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
@@ -375,6 +375,8 @@ class MainWindow(QMainWindow):
         """The domain settings the user has set; kept for the life of the window (§7)."""
         self.setting_fields: dict[str, tuple[Param, QLineEdit]] = {}
         self.setting_abouts: dict[str, QLabel] = {}
+        self.setting_pickers: dict[str, UnitPicker] = {}
+        """Each family setting's unit picker, for a setting with a unit (ADR-0024 U2b)."""
         self.choice_rows: dict[str, tuple[QComboBox | None, QComboBox]] = {}
         """Each choice's group box (``None`` when its options have no groups) and option box."""
         self.choice_groups: dict[tuple[str, str], str] = {}
@@ -1061,9 +1063,14 @@ class MainWindow(QMainWindow):
             self.output_picks[self.calculator.id, key] = choice
             self.recompute()
 
-    def _setting_unit(self, setting: Param) -> Unit:
-        """Return the unit a family setting is shown and read in (known-issues KI-027)."""
-        return _settings_units().unit(setting.dimension)
+    def _setting_units(self, domain: Domain, setting: Param) -> ShownUnits:
+        """Return the units a family setting's messages and work are in: its picker's.
+
+        The rest, such as a note's stress, are the inch set's, as a settings page has no
+        output set (ADR-0024 U2b).
+        """
+        choice = self.domain_settings.field_choice(domain, setting.key)
+        return _settings_units().with_inputs({setting.key: choice})
 
     @property
     def _decimal(self) -> str:
@@ -1636,21 +1643,36 @@ class MainWindow(QMainWindow):
             self.facts_label.setTextFormat(Qt.TextFormat.RichText)
             self.facts_label.setWordWrap(True)
             self.settings_form.addRow("Facts", self.facts_label)
+        spacers: list[QWidget] = []
         for setting in domain.settings:
             edit = QLineEdit()
             edit.setPlaceholderText("not set")
+            picked = self.domain_settings.field_choice(domain, setting.key)
             pending = self.pending_settings.get((domain.id, setting.key))
             if pending is not None:
                 edit.setText(pending)
                 edit.setModified(True)
             elif (entry := self.domain_settings.get(domain, setting.key)) is not None:
-                edit.setText(entry_text(entry, self._setting_unit(setting), self.prefs))
+                edit.setText(picked_text(entry, picked, self.prefs))
             edit.setToolTip(setting.help)
             edit.textEdited.connect(_slot(self._on_setting_edited, setting.key))
             edit.editingFinished.connect(_slot(self._apply_setting, setting.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
-            field.addWidget(QLabel(unit_suffix(self._setting_unit(setting)).strip()))
+            # As on a calculator page: a picker for a setting with a unit, and a spacer
+            # for one without, so the fields end in one column (ADR-0024 U2b).
+            if len(setting.choices) > 1:
+                picker = UnitPicker(setting.label, setting.choices, setting.dimension)
+                picker.set_choice(picked)
+                picker.picked.connect(_slot(self._on_setting_picked, setting.key))
+                picker.stepped.connect(_slot(self._on_setting_picked, setting.key))
+                picker.installEventFilter(self._wheel_guard)
+                field.addWidget(picker)
+                self.setting_pickers[setting.key] = picker
+            else:
+                spacer = QWidget()
+                field.addWidget(spacer)
+                spacers.append(spacer)
             about = QLabel()
             about.setTextFormat(Qt.TextFormat.RichText)
             about.setWordWrap(True)
@@ -1664,6 +1686,12 @@ class MainWindow(QMainWindow):
             self.settings_form.addRow(named(setting.label, setting.symbol), row)
             self.setting_fields[setting.key] = (setting, edit)
             self.setting_abouts[setting.key] = about
+        least = picker_text_width(self.setting_pickers.values())
+        for picker in self.setting_pickers.values():
+            picker.set_text_width(least)
+        width = max((pk.sizeHint().width() for pk in self.setting_pickers.values()), default=0)
+        for spacer in spacers:
+            spacer.setFixedWidth(width)
         for choice in domain.choices:
             self._fill_choice(domain, choice)
         self.settings_box.setVisible(bool(domain.settings or domain.choices))
@@ -1674,6 +1702,8 @@ class MainWindow(QMainWindow):
     def _clear_settings_form(self) -> None:
         for _setting, old in self.setting_fields.values():
             old.blockSignals(True)  # removing a focused field mustn't apply it mid-rebuild
+        for picker in self.setting_pickers.values():
+            picker.blockSignals(True)
         for boxes in self.choice_rows.values():
             for box in boxes:
                 if box is not None:
@@ -1682,6 +1712,7 @@ class MainWindow(QMainWindow):
             self.settings_form.removeRow(0)
         self.setting_fields.clear()
         self.setting_abouts.clear()
+        self.setting_pickers.clear()
         self.choice_rows.clear()
         self.start_rows.clear()
         self.start_buttons.clear()
@@ -1848,11 +1879,12 @@ class MainWindow(QMainWindow):
         self._refresh_selection_details(domain)
         for key, (setting, edit) in self.setting_fields.items():
             derived = family.derived.get(key)
+            choice = self.domain_settings.field_choice(domain, key)
             if derived is None:
                 edit.setPlaceholderText("not set")
             else:
                 entry = _derived_entry(derived, setting.dimension)
-                shown = entry_text(entry, self._setting_unit(setting), self.prefs)
+                shown = picked_text(entry, choice, self.prefs)
                 edit.setPlaceholderText(f"{shown} ({derived.source.label})")
             uses = self.registry.setting_uses(domain.id, key)
             self.setting_abouts[key].setText(
@@ -1868,7 +1900,8 @@ class MainWindow(QMainWindow):
                         setting,
                         derived,
                         overridden=key in family.values,
-                        units=_settings_units(),
+                        choice=choice,
+                        units=self._setting_units(domain, setting),
                         prefs=self.prefs,
                         scheme=current_scheme(),
                     ),
@@ -1881,7 +1914,7 @@ class MainWindow(QMainWindow):
         selections = self._selections(domain)
         if self.facts_label is not None:
             facts = domain.facts(selections)
-            self.facts_label.setText(_facts_html(facts, _settings_units(), self.prefs))
+            self.facts_label.setText(_facts_html(facts, self.prefs))
             self.settings_form.setRowVisible(self.facts_label, bool(facts))
         offered = domain.starting_values(selections)
         for key, row in self.start_rows.items():
@@ -1915,7 +1948,8 @@ class MainWindow(QMainWindow):
         )
         self.pending_settings.pop((domain.id, start.setting), None)
         _setting, edit = self.setting_fields[start.setting]
-        edit.setText(entry_text(start.entry, self._setting_unit(_setting), self.prefs))
+        choice = self.domain_settings.field_choice(domain, start.setting)
+        edit.setText(picked_text(start.entry, choice, self.prefs))
         edit.setModified(False)
         self._refresh_domain_details()
         self._show_setting_problems()
@@ -1925,17 +1959,54 @@ class MainWindow(QMainWindow):
         domain = self.domain
         if domain is None or not text.strip():
             return None
-        default_unit = self._setting_unit(setting).symbol
         try:
-            self.domain_settings.set_text(
-                domain, setting.key, text, default_unit, decimal=self._decimal
-            )
+            self.domain_settings.set_text(domain, setting.key, text, decimal=self._decimal)
+        except UnitInTextError as exc:
+            # The settings page has no fix button: it says where the unit goes.
+            return f"{named(setting.label, setting.symbol)}: {_unit_fix_text(exc, offered=False)}"
         except InputError as exc:
-            message = describe_error(exc, _settings_units(), self.prefs)
+            message = describe_error(exc, self._setting_units(domain, setting), self.prefs)
             if isinstance(exc, OutOfRangeError):  # a range error already names the setting
                 return message
             return f"{named(setting.label, setting.symbol)}: {message}"
         return None
+
+    @_settings_boundary
+    def _on_setting_picked(self, key: str, choice: str) -> None:
+        """Set a setting's picker: re-read the text the user typed, or show the value in it.
+
+        As on a calculator field (ADR-0024 §2): a number the user typed stays and is read
+        in the new unit, and a value the user applied from a citation keeps its size and
+        is shown converted. A settings page has no follow, so a step does the same.
+        """
+        domain = self.domain
+        if domain is None or key not in self.setting_fields:
+            return
+        setting, edit = self.setting_fields[key]
+        self.domain_settings = self.domain_settings.set_field_choice(domain, key, choice)
+        pending = self.pending_settings.get((domain.id, key))
+        entry = self.domain_settings.get(domain, key)
+        typed = entry is not None and self.domain_settings.origin(domain, key) is None
+        if pending is None and entry is not None and typed:
+            try:
+                self.domain_settings = self.domain_settings.set_text(
+                    domain, key, entry.text, decimal=self._decimal
+                )
+            except InputError:  # its text, refused in the new unit, waits to be fixed
+                self.domain_settings = self.domain_settings.clear(domain, key)
+                self.pending_settings[domain.id, key] = pending = entry.text
+        if pending is not None:
+            edit.setText(pending)
+            edit.setModified(True)
+        else:
+            current = self.domain_settings.get(domain, key)
+            edit.setText("" if current is None else picked_text(current, choice, self.prefs))
+            edit.setModified(False)
+        self._refresh_domain_details()
+        self._show_setting_problems()
+        said = f"{setting.label}: in {choice_name(choice, setting.dimension)}"
+        self.statusBar().showMessage(said, round(ui_style().result_field.copied_status_ms))
+        announce(self.setting_pickers.get(key, self), said)
 
     def _on_setting_edited(self, key: str, text: str) -> None:
         """Check what the user is typing, without applying it."""
@@ -1955,10 +2026,7 @@ class MainWindow(QMainWindow):
         text = edit.text()
         if self._setting_problem(setting, text) is None:
             if text.strip():
-                default_unit = self._setting_unit(setting).symbol
-                updated = self.domain_settings.set_text(
-                    domain, key, text, default_unit, decimal=self._decimal
-                )
+                updated = self.domain_settings.set_text(domain, key, text, decimal=self._decimal)
             else:
                 updated = self.domain_settings.clear(domain, key)
             self.domain_settings = updated
@@ -2075,10 +2143,11 @@ def _write_bug(exc: Exception) -> None:
 
 @cache
 def _settings_units() -> ShownUnits:
-    """Return the units a family settings page shows and reads in: the inch set.
+    """Return the units the window falls back on with no calculator's set: the inch set.
 
-    Until its fields get pickers (U2b), a bare number on it is inches (known-issues
-    KI-027). It's built on first use, once the units registry is complete.
+    A settings page shows a setting in its own picker's unit (``_setting_units``) and its
+    other values, such as a note's stress, in these. It's built on first use, once the
+    units registry is complete.
     """
     return ShownUnits.generated("in")
 
@@ -2140,15 +2209,23 @@ def _derived_html(
     derived: DerivedValue | None,
     *,
     overridden: bool,
+    choice: str,
     units: ShownUnits,
     prefs: DisplayPrefs,
     scheme: Scheme = "light",
 ) -> str:
-    """Return what a choice derives for a setting: the value, its source, caution, and work."""
+    """Return what a choice derives for a setting: the value, its source, caution, and work.
+
+    The value is in the setting's picked ``choice``, and its work in ``units``.
+    """
     if derived is None:
         return ""
-    unit = units.unit(setting.dimension)
-    value = escape(entry_text(_derived_entry(derived, setting.dimension), unit, prefs))
+    shown = picked_text(_derived_entry(derived, setting.dimension), choice, prefs)
+    # Prose has no picker beside it, so the value names its unit, as a form's marks do.
+    picked = registry().choice(choice, setting.dimension)
+    if isinstance(picked, Unit):
+        shown += unit_suffix(picked)
+    value = escape(shown)
     source = escape(describe_source(derived.source))
     if overridden:
         lines = [f"<b>Overrides</b> {value} from {source}. Clear the field to use that value."]
@@ -2165,11 +2242,16 @@ def _derived_html(
     return "<br>".join(lines)
 
 
-def _facts_html(facts: Sequence[Fact], units: ShownUnits, prefs: DisplayPrefs) -> str:
-    """Return a domain's facts about its selections, quantities in the shown units."""
+def _facts_html(facts: Sequence[Fact], prefs: DisplayPrefs) -> str:
+    """Return a domain's facts about its selections, each quantity in its source's unit.
+
+    They're cited facts, not results, so no picker sets their unit (ADR-0024 Q13).
+    """
     lines = []
     for fact in facts:
-        text = fact.text.format(*(format_value(v, d, units, prefs) for v, d in fact.quantities))
+        text = fact.text.format(
+            *(unit_parts(q.value, q.unit, prefs).with_unit for q in fact.quantities)
+        )
         cited = "; ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in fact.references)
         source = f"<br><small>{escape(cited)}</small>" if cited else ""
         lines.append(f"<b>{escape(fact.heading)}:</b> {escape(text)}{source}")

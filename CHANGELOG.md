@@ -561,6 +561,17 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **Each family setting with a unit has a picker** (ADR-0024 E-5, U2b), as a
+  calculator's inputs do, and its number is read in the unit the picker shows; a unit
+  typed in the field, as `3 mm`, is refused, with where it goes. Switching it re-reads
+  the number you typed, and a calculator shows an inherited setting in its own field's
+  unit. A material's facts are in the unit their source gives (Q13). KI-027 is
+  resolved. For calculator and plugin authors: `DomainSettings.set_text` reads in the
+  setting's picked choice (`field_choice`, `set_field_choice`) and no longer takes a
+  default unit; a domain's setting must name its unit (`Param.unit`), checked at
+  registration as a calculator's parameter is; `Fact.quantities` are the values as their
+  source states them (`TypedValue`); and `core.formatting.entry_text` is removed, for
+  `picked_text`.
 - **The command line's units (ADR-0024 E-4):** a bare number reads in the input's default
   unit, which `caddcalc show` now lists with each input's units and the calculator's
   output sets: inches and degrees for every sheet-metal and geometry input. `--unit
@@ -587,8 +598,7 @@ All notable changes are recorded here. The format follows
   chosen, it's yours for the session. Its accessible name is "Results units", its list names each set ("in 1/16 —
   inches, nearest 1/16"), the mouse wheel doesn't change it, and it adds no height. The Inputs list adds each input's
   value in the set's units where its picker shows another: `0.1046 in = 2.6568 mm`. A
-  result with its own picker (`Output.picks`) has it in its row. A family settings page
-  now shows and reads in inches, degrees and ksi until its fields get pickers (KI-027).
+  result with its own picker (`Output.picks`) has it in its row.
 - **The Inputs list and an input's range error are in the unit its picker shows**
   (ADR-0024 E4), not the Units box's: a bend angle picked in rad is listed as
   `1.5708 rad`, and refused as "must be less than 3.14159 rad". A value in radians shows
@@ -612,7 +622,7 @@ All notable changes are recorded here. The format follows
   in its list). A bend angle is picked in °, ° ′ ″ or rad. Degrees, minutes and seconds
   take hyphens between their parts (`40-30-15`), and the minus sign `−` never joins a
   mixed number. For calculator authors, a default with no unit in its text is in the
-  unit its picker starts in. Family settings fields read units in their text (KI-027).
+  unit its picker starts in.
 - **The command line suggests only names that can be given:** for the right
   triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
   `--method leg_angle`, which takes no side b, it suggests none and names that method's

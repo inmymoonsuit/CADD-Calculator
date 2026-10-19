@@ -1375,3 +1375,45 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   `parse_quantity`, where `3 - 1/2"` is a mixed number: 3.5 in, shown as 2.5. The typed
   amount is used now only where it gives the value the run used, and is base ÷ factor
   otherwise (`formatting._typed_amount`).
+
+### 2026-10-19: as built, E-5 and U2b (stop 3)
+
+* **A setting's picker** starts as a calculator field's does, by `Param.default_choice`.
+  A setting has no default, so one with a unit names it: `Param.unit="in"` on the sheet
+  metal thickness and inside radius (S&R's L3 at stop 1). `Domain.validate` runs the
+  same check as `validate_spec` does for a parameter (`spec.check_param_choices`, moved
+  from `calculator.py` with `check_picks`), worded for a setting, so a plugin family's
+  setting with no unit, or a unit it doesn't offer, is refused at registration like any
+  bad plugin.
+* **`DomainSettings`** stores each setting's picked choice (`field_choice`,
+  `set_field_choice`, which refuses a choice the setting doesn't offer), and `set_text`
+  reads in it with `TypedValue.read`, so a unit in the text is a `UnitInTextError`;
+  `default_unit` is gone. The pickers are part of the model's equality and survive a
+  rebuild of the page; Clear all clears the values and keeps the pickers, as a
+  calculator's fields keep theirs.
+* **The settings page** puts a `UnitPicker` after each setting with a unit, and a spacer
+  after one without, so the fields end in one column at one shared width, as on a
+  calculator page. A pick re-reads the typed text in the new choice (§2); text the new
+  choice refuses, such as `1'-4"` in mm, is kept, unapplied, with its problem, and the
+  value is unset. A value applied from a citation keeps its size and shows converted.
+  There's no follow on the page, so a step does what a pick does. The pick is said in the
+  status bar and to a screen reader. A unit typed in a setting is refused with "Units go
+  in the picker: '3 mm' names mm.", the no-choice wording, since the page has no fix
+  button. A range error names its bound in the setting's choice.
+* **Derived values** (a gauge's thickness) show in the setting's choice: the placeholder
+  as a number, beside the picker, and the about text with its unit, since prose has no
+  picker; the work is in the picked unit's units (`_setting_units`).
+* **Facts (Q13)** are in their source's unit: `Fact.quantities` are `TypedValue`s as the
+  source states them, shown with `unit_parts` in their own unit, never a picker's or a
+  set's. The built-in strengths are stated in ksi, so they read as before.
+* **Inherited values:** a calculator field that inherits a setting shows it converted
+  into its own choice (`picked_text`), with the same base value: 2.54 mm on the page
+  reads 0.1 on a field in inches, and runs at 2.54 mm.
+* **Removed:** `formatting.entry_text`, whose rule E6 supersedes; `picked_text` shows a
+  field's value. `_settings_units` stays only as the fallback for a page with no output
+  set, such as a note's stress on the settings page.
+* **Tests:** the model's choice, reading, refusal and equality; the page's pickers, their
+  accessible names, re-reading, kept refused text, the refusal's wording, inheritance
+  across units, a fact in MPa, and the pickers whole at the least window in English and
+  en_XA (group boxes left out, as the U1 amendment explains). 12 mutants, one for each
+  guard, are each killed.
