@@ -36,6 +36,11 @@ _UNSAFE_STARTS = frozenset("+-/.eE") | frozenset(string.digits)
 digits, signs, a fraction's slash, a decimal point, and an exponent's e."""
 
 
+_SYSTEM_ORDER = {UnitSystem.US_CUSTOMARY: 0, UnitSystem.ACCEPTED: 1, UnitSystem.SI: 2}
+"""A picker's order of unit systems: inch-pound first, then the units accepted beside SI,
+such as the degree, then SI (ADR-0024 §1); any other after them, in registered order."""
+
+
 class UnitRegistry:
     """Dimensions and units, checked as they're registered, then frozen for use."""
 
@@ -263,6 +268,69 @@ class UnitRegistry:
             return power or self.find(spec.base, dimension)
         system = length.system or UnitSystem.NONE
         return self.find(spec.shown_with.get(system, spec.base), dimension)
+
+    def entry_choices(self, dimension: Dimension) -> tuple[str, ...]:
+        """Return the ids a field of ``dimension`` can be picked in, in a picker's order.
+
+        They're its units' key symbols and the keys of its forms that read (ADR-0024 E1),
+        inch-pound first, then the accepted units, then SI, each form after its full
+        unit: ``in, ft_in, ft, mm, cm, m``. A ratio and a count have their unnamed unit
+        alone, ``""``, so their fields have no picker; a percent is typed as a ratio.
+        """
+        if not self.dimension(dimension).base:
+            return ("",)
+        return self._choices(dimension, reading=True)
+
+    def output_choices(self, dimension: Dimension) -> tuple[str, ...]:
+        """Return the ids a value of ``dimension`` can be shown in: its units and every form."""
+        return self._choices(dimension, reading=False)
+
+    def _choices(self, dimension: Dimension, *, reading: bool) -> tuple[str, ...]:
+        units = sorted(
+            self.units_for(dimension),
+            key=lambda u: _SYSTEM_ORDER.get(u.system or UnitSystem.NONE, 3),
+        )
+        forms = [f for f in self.compounds_for(dimension) if f.reads or not reading]
+        return tuple(
+            choice
+            for unit in units
+            for choice in (unit.symbol, *(f.key for f in forms if f.full_unit == unit.symbol))
+        )
+
+    def choice(self, choice: str, dimension: Dimension) -> Unit | CompoundForm:
+        """Return the unit or form a choice id names for ``dimension``.
+
+        Raises:
+            UsageError: No unit of ``dimension`` has that key symbol, and no form of it
+                that key.
+        """
+        form = self._compounds.get(choice)
+        if form is not None and form.dimension is dimension:
+            return form
+        unit = next((u for u in self.units_for(dimension) if u.symbol == choice), None)
+        if unit is None:
+            known = ", ".join(c or "''" for c in self.output_choices(dimension))
+            raise UsageError(f"{choice!r} isn't a choice for {dimension.value}; there's {known}")
+        return unit
+
+    def generated_sets(self) -> tuple[tuple[str, dict[Dimension, str]], ...]:
+        """Return the generated output sets: a set's key, and its choice for each dimension.
+
+        There's one for each length choice in a picker's order, but the finer feet and
+        inches (``CompoundForm.sets``). In each, every other dimension is shown by its
+        declared rule beside that length (``shown_unit``), as ADR-0019 §2 showed them by
+        the length preference: an area is the square of the length's unit, ``in²`` for
+        every inch form; stress follows its system; an angle is in degrees (ADR-0024 E1).
+        """
+        sets = []
+        for length in self.output_choices(Dimension.LENGTH):
+            chosen = self.choice(length, Dimension.LENGTH)
+            if isinstance(chosen, CompoundForm) and not chosen.sets:
+                continue
+            unit = chosen if isinstance(chosen, Unit) else self.find(chosen.full_unit)
+            choices = {d: self.shown_unit(d, unit).symbol for d in self._dimensions}
+            sets.append((length, {**choices, Dimension.LENGTH: length}))
+        return tuple(sets)
 
     def precision_for(self, unit: Unit) -> Precision:
         """Return the precision a value is shown with in ``unit`` when an output fixes it.

@@ -908,3 +908,71 @@ default sets", and ADR-0006 the note "a plugin length Param with a bare-number d
     `AcceptsExpression`, which is precedent for D7.
   * Apple's HIG on pop-up buttons asks for a useful default and a label that predicts
     the options.
+
+## Amendments
+
+### 2026-10-19: as built, E-1 and E-2 (with F0)
+
+**E-1, the entry reader** (`core/units/entry.py`, `TypedValue.read`, `TypedValue.choice`):
+* `evaluate` is its own tokenizer and recursive-descent parser, in exact `Fraction`
+  arithmetic, with D7's mixed-number rule. Two cases the ADR left open are refused,
+  as typos: two signs in a row (`--3`, `2--3`; `2*-3` reads), and a whole number
+  straight after a fraction's slash, so `1/2 1/4` is two numbers with nothing between
+  them, never 1/(2 1/4). A space joins a whole number and any fraction after it,
+  `1 5/4` as `parse_number` reads it; a hyphen joins only a proper fraction, so `1-5/4`
+  is -1/4.
+* Bounds: 200 characters, 50 levels of parentheses and signs, and 100,000 bits for a
+  numerator or denominator, checked on each written number before it's built and after
+  each operation.
+* **Rounding:** as E2 says, the exact value is rounded once to a double in the picked
+  unit and then multiplied by its factor, as `parse_quantity` does. So `3/16` in reads as
+  4.762499999999999 mm, bit for bit `parse_quantity("3/16 in")`, not the double nearest
+  4.7625; E-1's figure "3/16 in = 4.7625 mm" holds to 1e-15. Converting exactly into
+  millimetres first would round once less, but every typed value would then differ by
+  up to a unit in the last place from today's, and E-3's neutrality would fail.
+* **Forms:** feet and inches read with marks optional; a bare number is inches of any
+  size (`30` is 2'-6"), and the inches after feet are under 12. A whole number and a
+  proper fraction are a mixed number of inches first, so `1-3/16` in an ft-in field is
+  1 3/16 in, and `10-2-3/16` is 10'-2 3/16". DMS parts go in order, an unmarked part
+  taking the next place (`40°30` is 40°30′); degrees and minutes are whole, and a
+  decimal before the seconds is refused with "pick ° for decimal degrees". Both read
+  exactly and round once in their full unit. Only the 1/16 feet-and-inches form reads:
+  `ft_in_32` and `ft_in_64` are output forms, since a field reads any fraction typed.
+* **A unit in the text** raises `UnitInTextError`, an `InputError` that carries the fix
+  (`choice`, `number`) for U1's button. It's found in order: a form's marked grammar
+  (`1'-4"` → ft-in), a number and the unit ending it (`3 mm`, `1-3/16"` → pick in, type
+  `1-3/16`), then a form read with its marks optional (`5'9` → ft-in). A unit of another
+  dimension keeps `parse_quantity`'s message, with no offer. A ratio's field has no
+  picker, so `44 %` there offers the plain number, 0.44.
+* **Figures** (offscreen, `tests/test_entry.py`, 134 tests): the identity corpus's 11
+  number forms in each of the 21 units a field takes, and 20,000 random decimals,
+  fractions and mixed numbers in in, mm, ft and m, read bit for bit as `parse_quantity`
+  reads them. Mutants of the mixed-number binding, the no-space hyphen rule, the proper
+  fraction, exact arithmetic, rounding in the unit before the factor, the sign at the
+  front (ft-in and arithmetic), inches under 12 and the unit refusal are each killed.
+
+**E-2, the declarations:**
+* `UnitRegistry.entry_choices` and `output_choices` order a dimension's units inch-pound,
+  then accepted, then SI, each form after its full unit: a length field offers `in,
+  ft_in, ft, mm, cm, m`, an angle `deg, dms, arcmin, arcsec, rad`. A ratio and a count
+  offer `""` alone. `UnitRegistry.choice` resolves an id; `generated_sets` gives the nine
+  sets of §5 (`in, in_16, in_32, in_64, ft_in, ft, mm, cm, m`, by `CompoundForm.sets`).
+* `CompoundForm` gains `symbol` (`ft-in`, `° ′ ″`, `in 1/16`, `ft-in 1/32`), `name`
+  (marked for translation), `reads`, `sets` and `read`. `FORMS` is ordered so a picker
+  lists the nearest-inch forms, then feet and inches, after the inch.
+* `Param.unit`, `Param.units`, `Param.choices` and `Param.default_choice`;
+  `Output.picks` and `Output.follows_set`; `UnitSet`; `Calculator.output_sets` and
+  `Calculator.unit_sets`, whose generated labels name the choices for the dimensions the
+  calculator shows (`in · ° · in²` on the right triangle). `validate_spec` checks each
+  of E1's rules; it checks a default's value before its picker, so a bad default keeps
+  its own message.
+* Domain settings have no defaults (ADR-0013), so their pickers' starting choice is
+  E-5's, with U2b; E-2 checks calculator parameters only.
+* **Figures** (`tests/test_unit_choices.py`, 28 tests): every built-in parameter starts
+  its picker in a choice it offers, every sheet-metal and geometry length in inches and
+  every angle in degrees; the generated `in`, `mm`, `ft`, `cm` and `m` sets equal today's
+  `display_unit` for every dimension; every inch form's area is in². Mutants of set
+  coverage, the default-unit resolution, `picks` exclusive with a fixed unit, and the
+  inch forms' area are each killed.
+
+E-1 and E-2 change nothing a user sees; the user guide changes with U1.

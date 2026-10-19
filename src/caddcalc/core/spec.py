@@ -13,7 +13,14 @@ from caddcalc.core.errors import InputError, SpecError
 from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import Dimension, Precision, base_text, parse_quantity
+from caddcalc.core.units import (
+    Dimension,
+    Precision,
+    base_text,
+    parse_quantity,
+    parse_quantity_detailed,
+    registry,
+)
 from caddcalc.core.units.model import COUNT_LIMIT
 
 
@@ -67,6 +74,36 @@ class Param:
     """Method keys that use this parameter. Empty means all methods."""
     shared: bool = False
     """Inherit the domain setting with the same key when the user has set it (ADR-0013)."""
+    unit: str = ""
+    """The id of the unit or form its field's picker starts in, e.g. ``"mm"`` or
+    ``"ft_in"`` (ADR-0024 E1); empty for the unit ``default`` names."""
+    units: tuple[str, ...] = ()
+    """The ids its picker offers, in order, where it offers fewer than its dimension's
+    (``registry().entry_choices``); empty for all of them."""
+
+    @property
+    def choices(self) -> tuple[str, ...]:
+        """The ids its field's picker offers; a unitless one has its unnamed unit alone."""
+        return self.units or registry().entry_choices(self.dimension)
+
+    @property
+    def default_choice(self) -> str | None:
+        """The id its picker starts in: ``unit``, else the unit ``default`` names.
+
+        A field with one choice, as a ratio's is, starts in it. ``None`` means none can
+        be resolved, which ``Calculator.validate_spec`` refuses.
+        """
+        if self.unit:
+            return self.unit
+        if len(self.choices) == 1:
+            return self.choices[0]
+        if self.default is None:
+            return None
+        try:
+            parsed = parse_quantity_detailed(self.default, self.dimension)
+        except InputError:
+            return None
+        return parsed.unit.symbol if parsed.explicit_unit else None
 
     def default_value(self) -> float | None:
         """Return the default in base units, or ``None`` if there is no default."""
@@ -183,6 +220,35 @@ class Output:
     above zero gets a plus sign, as ``+0.002500 in``, in its row and its work line, and it
     takes no inch fraction hint. A compound form writes its own sign, so an output in one
     can't be signed."""
+    picks: tuple[str, ...] = ()
+    """The ids of its own picker's choices, the first its default, where it's shown in a
+    choice of its own rather than its calculator's output set (ADR-0024 D3, E1); empty
+    to follow the set. An output gives ``picks`` or a fixed ``unit`` or ``form``."""
+
+    @property
+    def follows_set(self) -> bool:
+        """Whether it's shown in its calculator's output set: no fixed unit, form or picks."""
+        return not (self.unit or self.form or self.picks)
+
+
+@dataclass(frozen=True)
+class UnitSet:
+    """A choice of the units a calculator's results are shown in (ADR-0024 E1, §5).
+
+    A calculator's output picker offers its sets; each names one choice for each
+    dimension its outputs use.
+    """
+
+    key: str
+    """Its public id, e.g. ``"in"``, ``"mm"`` or ``"in_dms"``, as ``--output-set`` takes."""
+    label: str
+    """What the picker shows for it, e.g. ``"in · ° · in²"``, or a declared name marked
+    for translation, e.g. ``N_("Inches and DMS")``."""
+    choices: Mapping[Dimension, str]
+    """The id of a unit or form for each dimension, e.g. ``{LENGTH: "in", AREA: "in²"}``."""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "choices", MappingProxyType(dict(self.choices)))
 
 
 @dataclass(frozen=True)

@@ -7,6 +7,17 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- For calculator authors (ADR-0024 E1, E2): a field's text is read in the unit or form
+  its picker chooses, by `TypedValue.read(text, choice, dimension)`. It takes numbers,
+  fractions, mixed numbers and exact arithmetic (+ − × ÷ and parentheses), with
+  AutoCAD's mixed-number rule: `1-3/16` is 1 3/16, `1 - 3/16` is 13/16. Feet and inches
+  read as `10-2 3/16` or `10'-2 3/16"`, a bare number as inches, and degrees, minutes
+  and seconds as `40 30 15`. A text that names a unit is refused with its fix
+  (`UnitInTextError`). A parameter declares its picker's choices (`Param.unit`,
+  `Param.units`; its default's unit otherwise), and a calculator its output sets
+  (`UnitSet`, `Calculator.output_sets`, generated one per length choice by default); an
+  output may have its own picker (`Output.picks`). A parameter whose picker has no
+  default unit is refused at registration, a plugin's included.
 - **The Conversions family (ADR-0018 §3),** after Geometry: Length, Angle, Area, and
   Stress and pressure. Type one value in any unit of its kind and read it in every unit
   at once, each row in its own unit whatever the unit system, to 6 significant figures,

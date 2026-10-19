@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import math
 import re
+from decimal import Decimal
+from fractions import Fraction
 
 from caddcalc.core.errors import InputError
 
@@ -66,3 +68,39 @@ def parse_number(text: str, decimal: str = ".") -> float:
     if not math.isfinite(value):
         raise InputError(f"{text!r} is too large a number to calculate with")
     return value
+
+
+_EXACT = re.compile(
+    r"(?P<whole>\d+)(?P<join>[ -])(?P<numerator>\d+)/(?P<denominator>\d+)"
+    r"|(?P<top>\d+)/(?P<bottom>\d+)"
+    r"|(?P<decimal>\d+(?:\.\d*)?|\.\d+)"
+)
+
+
+def exact_number(text: str, decimal: str = ".") -> Fraction:
+    """Read an unsigned number exactly: ``3``, ``0.1046``, ``3/16``, ``1 3/16``, ``1-3/16``.
+
+    It's a part of a compound form typed into its own field, such as the inches of
+    feet and inches, so it takes no sign and no exponent. A mixed number's fraction is
+    proper, as AutoCAD's mixed-number rule has it (ADR-0024 D7); the decimal mark is
+    ``"."`` or ``decimal``.
+
+    Raises:
+        InputError: The text isn't such a number, or a fraction has a zero denominator.
+    """
+    if decimal == "." and "," in text:
+        raise comma_error(text, decimal)
+    m = _EXACT.fullmatch(text.replace(decimal, ".") if decimal != "." else text)
+    if m is None:
+        raise InputError(f"{text!r} is not a number")
+    if m["decimal"] is not None:
+        return Fraction(Decimal(m["decimal"]))
+    top, bottom = (m["numerator"], m["denominator"]) if m["whole"] else (m["top"], m["bottom"])
+    if int(bottom) == 0:
+        raise InputError(f"Fraction {text!r} has a zero denominator")
+    fraction = Fraction(int(top), int(bottom))
+    if m["whole"] is None:
+        return fraction
+    if fraction >= 1:
+        raise InputError(f"{text!r} has an improper fraction after its whole number")
+    return int(m["whole"]) + fraction

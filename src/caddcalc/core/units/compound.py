@@ -25,7 +25,7 @@ from caddcalc.core.errors import InputError, UsageError
 from caddcalc.core.i18n import N_, NP_, _, npgettext, npgettext_shown, pgettext
 from caddcalc.core.units.builtin import INCH_MM, UNITS
 from caddcalc.core.units.model import Dimension, Unit
-from caddcalc.core.units.numbers import comma_error, parse_number
+from caddcalc.core.units.numbers import comma_error, exact_number, parse_number
 
 MINUS = "-"
 """The sign a negative value is written with: an ASCII hyphen-minus (ADR-0020 §4)."""
@@ -47,12 +47,35 @@ class CompoundForm(ABC):
     """A way of writing a value of one dimension in several units at once."""
 
     key: str
-    """Its public key, e.g. ``"ft_in"``, which an output names to be shown in it."""
+    """Its public key, e.g. ``"ft_in"``, which an output names to be shown in it, and the
+    id of its choice in a picker (ADR-0024 E1)."""
+    symbol: str
+    """What a closed picker shows for it, e.g. ``"ft-in"``; never translated."""
+    name: str
+    """Its name in a picker's open list, e.g. "feet and inches", marked for translation."""
     dimension: Dimension
     full_unit: str
     """The key symbol of the unit a full-precision copy is written in, e.g. ``"in"``."""
     fineness: int
     """How finely it's shown, in the form's own terms (each form's ``text`` says)."""
+    reads: bool = False
+    """Whether a field can be picked in it, to read what's typed by ``read``."""
+    sets: bool = True
+    """Whether a generated output set shows lengths in it (``registry.generated_sets``)."""
+
+    def read(self, text: str, decimal: str = ".") -> Fraction:
+        """Return a field's ``text``, picked in this form, exactly, in ``full_unit``.
+
+        A picked field's grammar is the form's, with its marks optional, since the picker
+        says what the parts are (ADR-0024 E2). ``text`` has its spaces run together and
+        stripped, and its minus signs read as ``-``.
+
+        Raises:
+            InputError: The text isn't written in the form.
+            UsageError: The form reads nothing (``reads`` is false).
+        """
+        del text, decimal  # a form that reads overrides this
+        raise UsageError(f"{self.key!r} is shown only; a field can't be picked in it")
 
     @abstractmethod
     def parse(self, text: str, decimal: str = ".") -> float | None:
@@ -229,6 +252,27 @@ ONE_PART_ALONE_SPOKEN = {
 "a quarter inch", not "1 quarter of an inch"."""
 
 
+FEET_INCHES_NAMES = {
+    # Translators: a picker's choice for a length, as 1'-4 3/16".
+    16: N_("feet and inches"),
+    # Translators: a picker's choice for lengths shown in feet and inches to 1/32 inch.
+    32: N_("feet and inches, nearest 1/32"),
+    # Translators: a picker's choice for lengths shown in feet and inches to 1/64 inch.
+    64: N_("feet and inches, nearest 1/64"),
+}
+"""Each feet-and-inches form's name in a picker's list, by its fineness."""
+
+NEAREST_INCH_NAMES = {
+    # Translators: a picker's choice for lengths shown as the nearest 1/16 inch.
+    16: N_("inches, nearest 1/16"),
+    # Translators: a picker's choice for lengths shown as the nearest 1/32 inch.
+    32: N_("inches, nearest 1/32"),
+    # Translators: a picker's choice for lengths shown as the nearest 1/64 inch.
+    64: N_("inches, nearest 1/64"),
+}
+"""Each nearest-inch form's name in a picker's list, by its fineness."""
+
+
 class FeetInches(CompoundForm):
     """Feet and inches, the drafter's way: shown ``1'-4 3/16"``, copied ``1'4-3/16"``.
 
@@ -239,13 +283,22 @@ class FeetInches(CompoundForm):
     """
 
     key = "ft_in"
+    symbol = "ft-in"
+    name = FEET_INCHES_NAMES[16]
     dimension = Dimension.LENGTH
     full_unit = "in"
+    reads = True
 
     def __init__(self, fineness: int = 16) -> None:
         if fineness != 1 and fineness not in PARTS:
             raise UsageError(f"Feet and inches are shown to 1, or 1/2 to 1/64, not 1/{fineness}")
         self.fineness = fineness
+        if fineness != 16:
+            # A field reads any fraction typed, so only the 1/16 form, the default, is a
+            # field's choice and a generated set's; a finer one is for a declared set.
+            self.key, self.symbol = f"ft_in_{fineness}", f"ft-in 1/{fineness}"
+            self.name = FEET_INCHES_NAMES.get(fineness, FEET_INCHES_NAMES[16])
+            self.reads = self.sets = False
 
     @override
     def parse(self, text: str, decimal: str = ".") -> float | None:
@@ -265,6 +318,38 @@ class FeetInches(CompoundForm):
             raise InputError(f"{text!r} has {m['inches']} inches; give inches under 12")
         sign = -1.0 if m["sign"] == "-" else 1.0
         return sign * (int(m["feet"]) * 12 + inches) * float(INCH_MM)
+
+    @override
+    def read(self, text: str, decimal: str = ".") -> Fraction:
+        """Read feet and inches with their marks optional: ``10-2 3/16`` and ``10'-2 3/16"``.
+
+        A bare number is inches, as AutoCAD reads one (ADR-0024 Q2), of any size; a whole
+        number and a proper fraction are a mixed number of inches, ``1-3/16`` and
+        ``1 3/16``. Feet are whole, and the inches after them under 12. One sign, at the
+        front.
+        """
+        if not self.reads:
+            return super().read(text, decimal)  # a finer one is shown only
+        if decimal == "." and "," in text:
+            raise comma_error(text, decimal)
+        sign, body = (text[0], text[1:]) if text[:1] in ("-", "+") else ("", text)
+        bare, marked, unmarked = _feet_inches_picked()
+        for pattern in (bare, marked, unmarked):
+            m = pattern.fullmatch(body)
+            if m is None:
+                continue
+            try:
+                inches = exact_number(m["inches"], decimal) if m["inches"] else Fraction(0)
+            except InputError:
+                continue  # an improper fraction after a whole number: the next reading
+            feet = int(m["feet"]) if "feet" in m.groupdict() and m["feet"] else 0
+            if pattern is not bare and inches >= 12:
+                raise InputError(f"{text!r} has {m['inches']} inches; give inches under 12")
+            return -(feet * 12 + inches) if sign == "-" else feet * 12 + inches
+        raise InputError(
+            f"{text!r} isn't feet and inches: give whole feet, then the inches, as 10-2 3/16 "
+            "or 10'-2 3/16\", or the inches alone; one sign, at the front"
+        )
 
     @override
     def text(self, value: float, decimal: str = ".") -> CompoundText:
@@ -325,6 +410,25 @@ def _spoken_inches(whole: int, fraction: Fraction) -> str:
 
 
 @cache
+def _feet_inches_picked() -> tuple[re.Pattern[str], re.Pattern[str], re.Pattern[str]]:
+    """A picked field's readings of feet and inches, tried in turn.
+
+    They're the inches alone, feet with their mark, and feet and inches without marks,
+    joined by a hyphen or a space.
+    """
+    feet, inches = _marks(_builtin("ft")), _marks(_builtin("in"))
+    number = r"\d+[ -]\d+/\d+|\d+/\d+|\d+(?:[.,]\d*)?|[.,]\d+"
+    mark = rf"(?: ?(?:{inches}))?"
+    return (
+        re.compile(rf"(?P<inches>{number}){mark}", re.IGNORECASE),
+        re.compile(
+            rf"(?P<feet>\d+) ?(?:{feet})(?: ?-? ?(?P<inches>{number}){mark})?", re.IGNORECASE
+        ),
+        re.compile(rf"(?P<feet>\d+)[ -](?P<inches>{number}){mark}", re.IGNORECASE),
+    )
+
+
+@cache
 def _feet_inches_patterns() -> tuple[re.Pattern[str], re.Pattern[str]]:
     """The form's pattern, and the start of anything written as an attempt at it."""
     feet, inches = _marks(_builtin("ft")), _marks(_builtin("in"))
@@ -349,8 +453,12 @@ class DegreesMinutesSeconds(CompoundForm):
     """
 
     key = "dms"
+    symbol = "° ′ ″"
+    # Translators: a picker's choice for an angle, as 40°30′15″.
+    name = N_("degrees, minutes and seconds")
     dimension = Dimension.ANGLE
     full_unit = "deg"
+    reads = True
 
     def __init__(self, fineness: int = 2) -> None:
         if not 0 <= fineness <= 6:
@@ -383,6 +491,45 @@ class DegreesMinutesSeconds(CompoundForm):
         return sign * (int(m["d"] or 0) + minutes / 60 + seconds / 3600)
 
     @override
+    def read(self, text: str, decimal: str = ".") -> Fraction:
+        """Read degrees, minutes and seconds with their marks optional: ``40 30 15``.
+
+        An unmarked part is the one after the last, so ``40°30`` is 40°30′; marks go in
+        order. Degrees and minutes are whole, seconds may have decimals, and minutes and
+        seconds are under 60. One sign, at the front.
+        """
+        if decimal == "." and "," in text:
+            raise comma_error(text, decimal)
+        sign, body = (text[0], text[1:]) if text[:1] in ("-", "+") else ("", text)
+        part, kinds = _dms_picked()
+        parts: list[str | None] = [None, None, None]
+        at = slot = 0
+        while at < len(body):
+            m = part.match(body, at)
+            mark = None if m is None else next((k for k in kinds if m[k]), None)
+            index = slot if m is None or mark is None else kinds.index(mark)
+            if m is None or index < slot or index > 2:
+                raise InputError(
+                    f"{text!r} isn't degrees, minutes and seconds: give whole degrees and "
+                    "minutes, then seconds, as 40 30 15 or 40°30′15″; one sign, at the front"
+                )
+            parts[index], slot, at = m["number"], index + 1, m.end()
+        degrees, minutes, seconds = (
+            exact_number(p, decimal) if p is not None else Fraction(0) for p in parts
+        )
+        if degrees.denominator != 1 or minutes.denominator != 1:
+            raise InputError(
+                f"{text!r} has a decimal before its seconds: give whole degrees and minutes, "
+                "or pick ° for decimal degrees"
+            )
+        if minutes >= 60 or seconds >= 60:
+            raise InputError(
+                f"{text!r} has a part of 60 or more; give minutes and seconds under 60"
+            )
+        value = degrees + minutes / 60 + seconds / 3600
+        return -value if sign == "-" else value
+
+    @override
     def text(self, value: float, decimal: str = ".") -> CompoundText:
         if not math.isfinite(value):
             raise UsageError(f"{value} can't be written in degrees, minutes and seconds")
@@ -402,6 +549,22 @@ class DegreesMinutesSeconds(CompoundForm):
             measures.append(_measure(seconds.replace(".", decimal), second))
         spoken = _said(measures or [_measure("0", degree)], bool(sign))
         return CompoundText(shown, copied, spoken)
+
+
+@cache
+def _dms_picked() -> tuple[re.Pattern[str], tuple[str, str, str]]:
+    """A picked field's part of degrees, minutes and seconds, and its marks' groups.
+
+    A part is a number and its mark, if it has one; the groups are in the parts' order.
+    """
+    degree = _marks(_builtin("deg")) + "|d"
+    minute, second = _marks(_builtin("arcmin")), _marks(_builtin("arcsec"))
+    part = re.compile(
+        rf"(?P<number>\d+(?:[.,]\d*)?|[.,]\d+) ?(?:(?P<d>{degree})|(?P<m>{minute})|"
+        rf"(?P<s>{second}))? ?",
+        re.IGNORECASE,
+    )
+    return part, ("d", "m", "s")
 
 
 @cache
@@ -445,6 +608,8 @@ class NearestInches(CompoundForm):
             raise UsageError(f"An inch fraction is 1/2 to 1/64, not 1/{fineness}")
         self.fineness = fineness
         self.key = f"in_{fineness}"
+        self.symbol = f"in 1/{fineness}"
+        self.name = NEAREST_INCH_NAMES.get(fineness, NEAREST_INCH_NAMES[16])
 
     @override
     def parse(self, text: str, decimal: str = ".") -> float | None:
@@ -470,11 +635,14 @@ class NearestInches(CompoundForm):
 
 
 FORMS: tuple[CompoundForm, ...] = (
-    FeetInches(),
-    DegreesMinutesSeconds(),
     NearestInches(16),
     NearestInches(32),
     NearestInches(64),
+    FeetInches(),
+    FeetInches(32),
+    FeetInches(64),
+    DegreesMinutesSeconds(),
 )
-"""The built-in compound forms: feet and inches to 1/16 inch, degrees, minutes and seconds
-to hundredths of a second, and the nearest 1/16, 1/32 and 1/64 inch."""
+"""The built-in compound forms: the nearest 1/16, 1/32 and 1/64 inch; feet and inches to
+1/16, 1/32 and 1/64 inch; and degrees, minutes and seconds to hundredths of a second. A
+picker lists a dimension's forms after their full unit, in this order (ADR-0024 §1)."""

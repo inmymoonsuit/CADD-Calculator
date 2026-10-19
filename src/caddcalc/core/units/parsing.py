@@ -22,6 +22,7 @@ from typing import NamedTuple
 from caddcalc.core.errors import InputError, UsageError
 from caddcalc.core.units.builtin import DIMENSIONS
 from caddcalc.core.units.builtin import UNITS as UNITS
+from caddcalc.core.units.entry import read as read_entry
 from caddcalc.core.units.model import COUNT_LIMIT, Dimension, Exact, Unit
 from caddcalc.core.units.numbers import MINUS_SIGN as MINUS_SIGN
 from caddcalc.core.units.numbers import parse_number as parse_number
@@ -179,10 +180,11 @@ class TypedValue:
     """A value the user typed: the text, its exact parse, and the unit that was applied.
 
     This is the *intent* tier of ADR-0013 §9: the base-unit ``value`` is parsed once from
-    the user's own ``text`` and never re-read from rounded display text. A front end may
-    show ``text`` verbatim when it named its unit, or when ``unit`` is the display unit;
-    otherwise it shows ``value`` in the display unit. Build one with ``parse``; building
-    one directly checks that ``text`` read in ``unit`` gives ``value`` and ``explicit_unit``.
+    the user's own ``text`` and never re-read from rounded display text. A value typed
+    into a field picked in a unit or form is built with ``read``, and its ``choice`` is
+    the pick (ADR-0024 E2); text with its unit in it, from the command line or a
+    declaration, is built with ``parse``, and its ``choice`` is empty. Building one
+    directly checks that ``text`` read so gives ``value``, ``unit`` and ``explicit_unit``.
     """
 
     value: float
@@ -196,13 +198,22 @@ class TypedValue:
     decimal: str = "."
     """The locale's decimal mark the text was read with, besides ``"."``: ``","`` for
     ``"0,0625"`` typed in a comma locale (ADR-0020 §4)."""
+    choice: str = ""
+    """The id of the unit or form the field was picked in, e.g. ``"mm"`` or ``"ft_in"``;
+    ``""`` for text that names its own unit or takes the default (``parse``)."""
 
     def __post_init__(self) -> None:
         # Re-reading the user's own text is safe; re-reading rounded display text isn't (§9).
         try:
-            parsed = parse_quantity_detailed(
-                self.text, self.dimension, self.unit.symbol, decimal=self.decimal
-            )
+            if self.choice:
+                value, unit = read_entry(
+                    self.text, self.choice, self.dimension, decimal=self.decimal
+                )
+                parsed = ParsedQuantity(value, unit, False)
+            else:
+                parsed = parse_quantity_detailed(
+                    self.text, self.dimension, self.unit.symbol, decimal=self.decimal
+                )
         except InputError as exc:
             raise UsageError(f"TypedValue text {self.text!r} is not a value: {exc}") from None
         agrees = (
@@ -240,3 +251,21 @@ class TypedValue:
         """
         parsed = parse_quantity_detailed(text, dimension, default_unit, decimal=decimal)
         return cls(parsed.value, text.strip(), parsed.unit, parsed.explicit_unit, decimal)
+
+    @classmethod
+    def read(
+        cls, text: str, choice: str, dimension: Dimension, *, decimal: str = "."
+    ) -> TypedValue:
+        """Read a field's ``text``, picked in ``choice``, as a ``dimension`` value.
+
+        A plain number reads bit for bit as ``parse_quantity`` reads it in that unit; a
+        form's text by the form's grammar, with its marks optional; and a text that
+        names a unit is refused with its fix (``core.units.entry``).
+
+        Raises:
+            UnitInTextError: The text names a unit, which goes in the picker.
+            InputError: The text isn't a value in the choice.
+            UsageError: ``choice`` isn't one of ``dimension``'s.
+        """
+        value, unit = read_entry(text, choice, dimension, decimal=decimal)
+        return cls(value, text.strip(), unit, False, decimal, choice)

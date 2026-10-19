@@ -243,12 +243,32 @@ msgid_plural "degrees"
 msgstr[0] ""
 msgstr[1] ""
 
+#. a picker's choice for an angle, as 40°30′15″.
+#: src/caddcalc/core/units/compound.py
+msgid "degrees, minutes and seconds"
+msgstr ""
+
 #: src/caddcalc/core/units/compound.py
 msgctxt "fraction"
 msgid "eighth"
 msgid_plural "eighths"
 msgstr[0] ""
 msgstr[1] ""
+
+#. a picker's choice for a length, as 1'-4 3/16".
+#: src/caddcalc/core/units/compound.py
+msgid "feet and inches"
+msgstr ""
+
+#. a picker's choice for lengths shown in feet and inches to 1/32 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "feet and inches, nearest 1/32"
+msgstr ""
+
+#. a picker's choice for lengths shown in feet and inches to 1/64 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "feet and inches, nearest 1/64"
+msgstr ""
 
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
@@ -277,6 +297,21 @@ msgid "inch"
 msgid_plural "inches"
 msgstr[0] ""
 msgstr[1] ""
+
+#. a picker's choice for lengths shown as the nearest 1/16 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "inches, nearest 1/16"
+msgstr ""
+
+#. a picker's choice for lengths shown as the nearest 1/32 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "inches, nearest 1/32"
+msgstr ""
+
+#. a picker's choice for lengths shown as the nearest 1/64 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "inches, nearest 1/64"
+msgstr ""
 
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"

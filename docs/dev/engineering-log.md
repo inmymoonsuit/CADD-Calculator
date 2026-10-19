@@ -16,6 +16,16 @@ Template:
 
 ---
 
+## 2026-10-19: Recognizing a form before a unit in a field's text
+**Tried:** for a field's text that names a unit (ADR-0024 Q5), reading it first by each
+form's grammar with its marks optional, to offer ft-in for `5'9`, then by the unit
+ending it.
+**Outcome:** replaced before E-1 was committed.
+**Why:** with the marks optional, feet and inches read `1-3/16"` as inches with their
+mark, so the fix offered was "pick ft-in" where the text is plainly 1 3/16 in.
+**Instead:** a form's marked grammar first (`1'-4"`), then a number and the unit ending
+it (`1-3/16"` → pick in), and only then a form with its marks optional (`5'9`).
+
 ## 2026-10-19: Counting a tie's last places in millimeters
 **Tried:** taking a count within `TIE_ULPS` = 2 units in the last place of a half as
 the half, with the units counted in the base unit's last place, millimeters (ADR-0019's

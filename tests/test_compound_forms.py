@@ -394,7 +394,14 @@ def test_degrees_minutes_and_seconds_are_spoken_in_words(
 
 def test_the_forms_are_registered_for_their_dimensions_only() -> None:
     units = registry()
-    assert [f.key for f in units.compounds_for(L)] == ["ft_in", "in_16", "in_32", "in_64"]
+    assert [f.key for f in units.compounds_for(L)] == [
+        "in_16",
+        "in_32",
+        "in_64",
+        "ft_in",
+        "ft_in_32",
+        "ft_in_64",
+    ]
     assert [f.key for f in units.compounds_for(A)] == ["dms"]
     assert units.compounds_for(Dimension.AREA) == ()
     assert (units.compound("ft_in").fineness, units.compound("dms").fineness) == (16, 2)
@@ -410,7 +417,8 @@ def test_registering_a_form_is_checked() -> None:
         test.register(unit)
     test.register_compound(FeetInches())
     with pytest.raises(SpecError, match="the key is taken"):
-        test.register_compound(FeetInches(64))
+        test.register_compound(FeetInches())
+    assert FeetInches(64).key == "ft_in_64", "a finer one is a form of its own"
 
     class Furlongs(FeetInches):
         key = "fur"
@@ -432,7 +440,7 @@ class _Forms(Calculator):
     summary = "Shows a length in feet and inches and an angle in DMS."
     params = (
         Param("length", "X", "Length", L, default="16.1875 in"),
-        Param("angle", "B", "Angle", A, default="-0.5"),
+        Param("angle", "B", "Angle", A, default="-0.5 deg"),
     )
     outputs = (
         Output("ft_in", "FI", "Feet and inches", L, form="ft_in"),
