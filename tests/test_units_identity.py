@@ -66,10 +66,17 @@ INVALID = (
     "3,5 mm",
 )
 """Text the parser has always refused, each with its own message."""
-OLD_DIMENSIONS = {d: old.Dimension(d.value) for d in Dimension if d is not Dimension.AREA}
+NEW_DIMENSIONS = {Dimension.AREA, Dimension.COUNT}
+"""The dimensions added since: the area (ADR-0018 §3) and the count (KI-025)."""
+OLD_DIMENSIONS = {d: old.Dimension(d.value) for d in Dimension if d not in NEW_DIMENSIONS}
 """The dimensions the old module had, by the new ones."""
-OLD_UNITS = tuple(u for u in UNITS if u.symbol in {was.symbol for was in old.UNITS})
-"""The units the old module had: every unit but the squares and the minute and second."""
+OLD_UNITS = tuple(
+    u
+    for u in UNITS
+    if u.dimension not in NEW_DIMENSIONS and u.symbol in {was.symbol for was in old.UNITS}
+)
+"""The units the old module had: every unit but the squares, the minute and second, and
+the count."""
 ARC_MARKS = {"'": "arcmin", "′": "arcmin", '"': "arcsec", "″": "arcsec"}
 """The foot's and inch's marks, which in an angle are the minute's and second's (SP 811
 Table 6): an angle the old module refused as a length reads in them now."""
@@ -236,12 +243,12 @@ def test_every_factor_is_as_it_was_but_psis_one_unit_in_the_last_place() -> None
 
 
 def test_dimensions_and_base_units_are_as_they_were() -> None:
-    """The old dimensions keep their order, base units, and articles; the area follows."""
+    """The old dimensions keep their order, base units, and articles; the new ones follow."""
     assert {d.value: u for d, u in BASE_UNITS.items() if d in OLD_DIMENSIONS} == {
         d.value: u for d, u in old.BASE_UNITS.items()
     }
     assert list(Dimension)[: len(OLD_DIMENSIONS)] == list(OLD_DIMENSIONS)
-    assert base_unit_names() == f"{old.base_unit_names()}, mm²"
+    assert base_unit_names() == f"{old.base_unit_names()}, mm², count"
     for dimension in OLD_DIMENSIONS:
         assert dimension.with_article == OLD_DIMENSIONS[dimension].with_article
         was = [u.symbol for u in old.units_for(OLD_DIMENSIONS[dimension])]

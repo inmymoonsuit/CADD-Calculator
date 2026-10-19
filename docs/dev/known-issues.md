@@ -195,14 +195,6 @@ need checking by hand before a release on each platform:
 
 The art specification (docs/dev/design/welcome-screen.md) points here.
 
-### KI-025: A count is shown as a ratio, with four decimals (Low)
-
-The regular polygon's number of sides, N, is a ratio, the one unitless dimension, so the
-inputs and the work show it as `6.0000`, though it must be whole: the calculator refuses
-`6.5`. A count dimension, shown with no decimals, would be a reviewed core change
-(ADR-0019 §5: dimensions are a closed set in core), and would come with ADR-0005's
-amendment. `test_a_number_of_sides_that_isnt_whole_is_refused` pins the refusal.
-
 ### KI-024: With shorter text lines, a page can scroll at launch (Low; superseded, pending ADR-0023)
 
 **Superseded on 2026-10-19 by ADR-0021's interim rule,** on the maintainer's ruling: the
@@ -228,6 +220,17 @@ launch and moved the Units box. On Windows at 9 pt the launch height is now 738 
 more than `launch_lines`' 736.
 
 ## Resolved
+
+### KI-025: A count was shown as a ratio, with four decimals (resolved 2026-10-19)
+
+The regular polygon's number of sides, N, was a ratio, the one unitless dimension, so the
+inputs and the work showed it as `6.0000`, though it had to be whole, and `600 %` read as
+6 sides, since a percent is a unit of the ratio. A count is now a dimension of its own,
+`Dimension.COUNT`, with one unnamed unit and no decimals, and N is one (ADR-0005's and
+ADR-0019's amendments of 2026-10-19). It shows as `6` in the inputs, the work, Copy, the
+command line and JSON, where it's an integer; a unit or a percent on it is refused; and
+`Param.check` refuses a count that isn't whole, after its range, in place of the
+calculator's own check. `tests/test_count.py` checks each of these.
 
 ### KI-009: No feet-and-inches input (resolved 2026-10-18)
 

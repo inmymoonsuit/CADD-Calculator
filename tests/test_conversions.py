@@ -230,3 +230,14 @@ def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixtur
     assert data["outputs"]["kpa"]["unit"] == "MPa", "JSON is in base units"
     assert data["outputs"]["kpa"]["value"] == pytest.approx(0.006894757293168361)
     assert main(["run", "conversions.length", "X=inf"]) != 0
+
+
+def test_a_half_way_length_takes_the_even_fraction_in_every_row() -> None:
+    """3/32 in is half-way from 1/16 to 1/8 in, and 7/32 in from 3/16 to 1/4 in."""
+    for typed, nearest, ft_in in (
+        ("3/32 in", '1/8"', "0'-0 1/8\""),
+        ("7/32 in", '1/4"', "0'-0 1/4\""),
+    ):
+        rows = _shown(LengthConverter(), typed)
+        assert (rows["nearest_16"], rows["ft_in"]) == (nearest, ft_in), typed
+    assert _shown(LengthConverter(), "3/128 in")["nearest_64"] == '1/32"'

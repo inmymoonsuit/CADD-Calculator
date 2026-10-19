@@ -103,3 +103,12 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
   is degrees, minutes and seconds for an angle, with the minute and second of arc as
   units (SP 811 Table 6). KI-009 is resolved. ADR-0019's u3 amendment has the details.
 
+### 2026-10-19: a count dimension (UI/UX's M2; KI-025)
+
+* **`Dimension.COUNT`**, for a number of things, such as a polygon's sides. Its one unit
+  is unnamed, as the ratio's is, and it's shown with no decimals (`Precision(0)`), in
+  the inputs, the work, Copy and the command line; JSON gives it as an integer. A count
+  that isn't whole is refused, by the parser and by `Param.check`, and a unit or a
+  percent on one is refused as measuring something else. A ratio stays the dimension of
+  a factor such as the K-factor. ADR-0019's amendment of the same date has the registry's
+  side.

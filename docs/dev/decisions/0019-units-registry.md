@@ -350,3 +350,24 @@ six significant figures), and the new messages left unmarked until the sweep.
   stays required, so `5'9` and `5'9-1/2` are refused. Typed arithmetic may come later,
   where a bare hyphen would read as subtraction, and the grammar will be settled in its
   own decision first.
+
+### 2026-10-19: a count, and the reviews' findings on rounding (fix round 2)
+
+* **A count (UI/UX's M2, KI-025).** `Dimension.COUNT` is declared in `builtin.py` with
+  one unit, unnamed (`""`, named "count"), cited to SP 811 §7.10 as the unit one, as the
+  ratio's is. Each unitless dimension may now have one unnamed unit; any other symbol
+  still names one unit only, and registering a second unit with it is a definition error.
+  `find("")`, the unit of a bare number, takes the asked dimension's unnamed unit, and
+  with none of that dimension the ratio's, as before, so a bare number read with no unit
+  for a length is still "a ratio, but a length is expected". The base units
+  in messages now end in "count".
+* **Half-way values round to even** (S&R's L1). A value typed half-way between two
+  fractions, such as 3/32 in between 1/16 and 1/8, is a double, a little off the half;
+  `round_half_even` in `compound.py` takes a count of the finest part that's within one
+  unit in the last place of the value, so counted, of a half as that half. The
+  tolerance is the value's ulp times the scale, not the quotient's own ulp: the
+  quotient's error is the value's rounding plus the division's, a little over one of its
+  own ulps where the value's is largest. Feet and inches, degrees, minutes and seconds,
+  and the nearest 1/16, 1/32 and 1/64 inch all use it, so 3/32 in shows as 1/8", 7/32 in
+  as 1/4" and 3/128 in as 1/32", typed in inches or in millimeters, either sign. A test
+  rounds every odd 1/32, 1/64 and 1/128 inch to 4 ft both ways.

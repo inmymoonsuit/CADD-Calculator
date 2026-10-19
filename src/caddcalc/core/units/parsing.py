@@ -157,6 +157,8 @@ def parse_quantity_detailed(
         raise InputError(
             f"{text!r} is {unit.dimension.with_article}, but {dimension.with_article} is expected"
         )
+    if dimension is Dimension.COUNT and not float(number).is_integer():
+        raise InputError(f"{text!r} isn't a whole number, and a count is")
     return ParsedQuantity(number * unit.factor, unit, explicit)
 
 

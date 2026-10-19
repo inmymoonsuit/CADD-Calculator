@@ -12,6 +12,7 @@ from typing import override
 from caddcalc.calculators.geometry.common import (
     ANGLE,
     AREA,
+    COUNT,
     LENGTH,
     MH31_CIRCLE,
     MH31_POLYGON,
@@ -19,12 +20,11 @@ from caddcalc.calculators.geometry.common import (
     MH31_RECTANGLE,
     MH31_SEGMENT,
     POCKET_PLANE_FIGURES,
-    RATIO,
     length,
     method,
 )
 from caddcalc.calculators.geometry.domain import DOMAIN
-from caddcalc.core import N_, Calculator, Context, InputError, Output, Param
+from caddcalc.core import N_, Calculator, Context, Output, Param
 
 
 class Circle(Calculator):
@@ -134,7 +134,7 @@ class RegularPolygon(Calculator):
             "sides",
             "N",
             "Number of sides",
-            RATIO,
+            COUNT,
             default="6",
             minimum=3.0,
             help="How many equal sides the polygon has: a whole number, 3 or more.",
@@ -199,8 +199,6 @@ class RegularPolygon(Calculator):
     @override
     def compute(self, ctx: Context) -> None:
         sides = ctx["sides"]
-        if sides != int(sides):
-            raise InputError("The number of sides (N) must be a whole number.")
         if ctx.method == "side":
             ctx.given("a", output="side")
             ctx.calc(

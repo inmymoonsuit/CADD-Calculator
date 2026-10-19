@@ -42,7 +42,8 @@ Give the three sides a, b and c. You get the perimeter, the area, and the three 
 A, B and C, each opposite the side of the same letter.
 
 * **The sides must make a triangle:** the longest must be shorter than the other two
-  together. A flat "triangle", whose longest side equals the other two, is refused too.
+  together. A flat "triangle", whose longest side equals the other two, is refused too,
+  even where the computer's arithmetic puts it a hair over, as 0.1 + 0.2 is over 0.3.
 * **Each angle comes from the law of cosines** (p. 96). The Handbook's procedure for
   three known sides (p. 101) takes its second angle from the law of sines instead, which
   can't give an angle over 90°: for sides 3, 7 and 5 it would give 60° where the angle
@@ -68,7 +69,9 @@ perimeter.
 
 ## Regular polygon
 
-Give the number of sides N, a whole number of 3 or more, and one of its sizes:
+Give the number of sides N, a whole number of 3 or more, and one of its sizes. N is a
+count: it's shown without decimals, and a unit or a percent on it, such as `600 %`, is
+refused.
 
 * the **side** a
 * **across flats (inscribed circle)**: the inscribed circle's diameter, 2r

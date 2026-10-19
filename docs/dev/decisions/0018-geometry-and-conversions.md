@@ -225,3 +225,29 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   triangle.
 * **The CLI** needs nothing of its own: `caddcalc run conversions.length X=4.7625mm`
   prints every row, and JSON gives each in base units.
+
+### 2026-10-19: the reviews' findings, fix round 2 (group B, correctness)
+
+* **A flat triangle typed in decimals is refused** (S&R's M1). Sides typed as decimals
+  are doubles, so `0.1 + 0.2 − 0.3` comes out 5.55e−17, over 0, and the strict test
+  `c ≥ a + b` took sides 0.1, 0.2 and 0.3 in for a triangle. A triangle is now flat when
+  `(a + b) − c ≤ 4ε·c`, sorted, with ε the double's machine epsilon
+  (`triangles.FLAT_GAP`). The tolerance, from S&R's measurement: over 200,000 flat
+  triples typed as decimals, the gap was at most 1.80ε of the longest side, and with the
+  fix 80,000 of 80,000 were refused; the triangle the cosine-clamp test needs, the
+  nearest to flat a test uses, is 21.98ε. This build's own sweep, 8,000 flat triples
+  typed to three decimals in in, mm, ft and m, in every order, peaks at 1.72ε. 4ε leaves
+  twice the measured gap and is a fifth of the clamp triangle's. The tests refuse 0.1,
+  0.2 and 0.3 in each unit, refuse the sweep, and pin the boundary: a gap of 4ε is flat
+  and of 5ε a triangle. Mutants of 3ε and 5ε fail the boundary test, and no tolerance
+  fails the decimals tests.
+* **N is a count** (UI/UX's M2), shown `6`, with a unit or a percent refused; KI-025 is
+  resolved. ADR-0005's amendment of this date has the dimension.
+* **The command line never reads a result's symbol as an input** (S&R's L2). In any case,
+  `B` matched only the side `b`, so `geometry.right_triangle a=3 B=30` read the angle B
+  as the leg b. A name matched in any case must now match one symbol only, the results'
+  among them, or it's refused naming each: "could be b/leg_b, B/angle_b (a result)". An
+  exact key or symbol still comes first, so `b=30` is the leg, and a lowercase name that
+  matches one thing, such as `leg_b`, still reads.
+* **The half-way fractions** (S&R's L1) are ADR-0019's amendment of this date: 3/32 in
+  is 1/8" in the Length converter's feet and inches and its nearest 1/16 inch.

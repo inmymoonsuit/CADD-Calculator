@@ -145,6 +145,19 @@ def test_registration_refuses_a_unit_that_breaks_a_rule(
         _fresh().register(_yard(**changes))
 
 
+@pytest.mark.parametrize("dimension", [Dimension.RATIO, Dimension.COUNT])
+def test_each_unitless_dimension_has_one_unnamed_unit(dimension: Dimension) -> None:
+    """A bare number is its dimension's unnamed unit, and the ratio's for any other."""
+    test = UnitRegistry(builtin.DIMENSIONS)
+    for unit in builtin.UNITS:
+        test.register(unit)
+    assert [u.dimension for u in test.units if not u.symbol] == [Dimension.RATIO, Dimension.COUNT]
+    assert test.find("", dimension).dimension is dimension
+    assert test.find("").dimension is test.find("", Dimension.LENGTH).dimension is Dimension.RATIO
+    with pytest.raises(SpecError, match="the symbol '' is taken"):
+        test.register(_yard(symbol="", aliases=("twice",), dimension=dimension))
+
+
 def test_case_sensitive_units_may_differ_only_in_case() -> None:
     """A future Mm beside mm: both must declare themselves case-sensitive."""
     test = UnitRegistry(builtin.DIMENSIONS)

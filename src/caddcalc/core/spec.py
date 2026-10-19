@@ -60,14 +60,14 @@ class Param:
         return not self.methods or method_key in self.methods
 
     def check(self, value: float, source: InputSource = EXPLICIT) -> None:
-        """Check that ``value`` is finite and within the allowed range.
+        """Check that ``value`` is finite, within the allowed range, and whole for a count.
 
         Args:
             value: The value, in base units.
             source: Where the value came from, so an error can say so.
 
         Raises:
-            InputError: The value is not finite.
+            InputError: The value is not finite, or a count's isn't whole.
             OutOfRangeError: The value is out of range.
         """
         if not math.isfinite(value):
@@ -77,6 +77,8 @@ class Param:
             raise OutOfRangeError(self, value, bound=lo, above=False, source=source)
         if hi is not None and (value > hi or (value == hi and not self.max_inclusive)):
             raise OutOfRangeError(self, value, bound=hi, above=True, source=source)
+        if self.dimension is Dimension.COUNT and not value.is_integer():
+            raise InputError(f"{self.label} ({self.symbol}) must be a whole number")
 
 
 _RELATION = {

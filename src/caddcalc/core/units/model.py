@@ -31,6 +31,8 @@ class Dimension(Enum):
     RATIO = "ratio"
     STRESS = "stress"
     AREA = "area"
+    COUNT = "count"
+    """How many of something, such as a polygon's sides: always a whole number."""
 
     @property
     def with_article(self) -> str:

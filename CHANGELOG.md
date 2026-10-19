@@ -387,6 +387,17 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A flat triangle typed in decimals is refused** (ADR-0018, amendments): sides 0.1,
+  0.2 and 0.3 in made a "triangle", since 0.1 + 0.2 is a hair over 0.3 in the computer's
+  arithmetic. A triangle within 4 machine epsilons of its longest side of flat is flat.
+- **The polygon's number of sides is a count** (KI-025 resolved): it shows as `6`, not
+  `6.0000`, everywhere, JSON included, where it's an integer and its dimension `count`;
+  and `600 %` or `6 in` is refused, where `600 %` read as 6 sides.
+- **A value half-way between two fractions takes the even one** (ADR-0019, amendments):
+  3/32 in showed as 1/16" and 7/32 in as 3/16", since a typed 3/32 lands a hair under
+  the half; they now show 1/8" and 1/4", in feet and inches and the nearest fractions.
+- **The command line refuses a name that could be a result,** such as the right
+  triangle's `B=30`, which it read as the side `b`; the message names both.
 - A result's value or unit column could be a pixel narrower than its widest label asked
   for in some fonts, cutting the label's last pixel; on Linux with DejaVu Sans, the
   Angle converter's degrees, minutes and seconds lost one. Each column now takes its

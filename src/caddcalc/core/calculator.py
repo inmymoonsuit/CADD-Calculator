@@ -54,7 +54,8 @@ class Result:
         """A JSON-serialisable form. Values are in base units, and each one names its unit."""
 
         def q(value: float, dim: Dimension) -> dict[str, Any]:
-            return {"value": value, "unit": BASE_UNITS[dim], "dimension": dim.value}
+            number = int(value) if dim is Dimension.COUNT else value  # a count is whole
+            return {"value": number, "unit": BASE_UNITS[dim], "dimension": dim.value}
 
         return {
             "calculator": self.calculator_id,

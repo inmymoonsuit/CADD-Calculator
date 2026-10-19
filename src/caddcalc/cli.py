@@ -192,17 +192,29 @@ def _cmd_show(args: argparse.Namespace) -> int:
 def _resolve_param(calc: Calculator, name: str) -> Param:
     """Return the input ``name`` names: by its exact key or symbol, else in any case.
 
-    An exact match comes first, so ``a`` and ``A`` can be a side and an angle.
+    An exact match comes first, so ``a`` and ``A`` can be a side and an angle. A name
+    matched in any case must match one symbol only, among the results too: ``B`` for a
+    triangle is its angle, a result, and never its side ``b``.
 
     Raises:
-        InputError: No input has the name, or, in any case, several do.
+        InputError: No input has the name, or, in any case, several inputs or results do.
     """
     exact = [p for p in calc.params if name in (p.key, p.symbol)]
     if len(exact) == 1:
         return exact[0]
-    matches = [p for p in calc.params if name.lower() in (p.key.lower(), p.symbol.lower())]
-    if len(matches) > 1:
-        names = ", ".join(f"{p.symbol}/{p.key}" for p in matches)
+    folded = name.casefold()
+    matches = [p for p in calc.params if folded in (p.key.casefold(), p.symbol.casefold())]
+    symbols = {p.symbol for p in matches}
+    results = [
+        o
+        for o in calc.outputs
+        if folded in (o.key.casefold(), o.symbol.casefold()) and o.symbol not in symbols
+    ]
+    if len(matches) + len({o.symbol for o in results}) > 1:
+        names = ", ".join(
+            [f"{p.symbol}/{p.key}" for p in matches]
+            + [f"{o.symbol}/{o.key} (a result)" for o in results]
+        )
         raise InputError(f"Input {name!r} for {calc.id} could be {names}; give one exactly")
     if not matches:
         options = ", ".join(f"{p.symbol}/{p.key}" for p in calc.params)

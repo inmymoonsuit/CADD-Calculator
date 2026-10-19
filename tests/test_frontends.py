@@ -242,3 +242,19 @@ def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
     with pytest.raises(InputError, match=r"'ab' for test\.twins could be aB/first, Ab/second"):
         parse_inputs(Twins(), ["ab=1"], "in")
     assert parse_inputs(Twins(), ["Ab=1"], "in") == {"second": pytest.approx(25.4)}
+
+
+@pytest.mark.parametrize("calc_id", ["geometry.right_triangle", "geometry.triangle"])
+def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_id: str) -> None:
+    """``B`` is the angle opposite b, a result: it's never read as the side ``b``."""
+    from caddcalc.calculators import default_registry
+    from caddcalc.cli import parse_inputs
+    from caddcalc.core import InputError
+
+    calc = default_registry(load_plugins=False).get(calc_id)
+    with pytest.raises(
+        InputError, match=rf"'B' for {calc_id} could be b/\w+, B/angle_b \(a result\); give one"
+    ):
+        parse_inputs(calc, ["B=30"], "in")
+    (key,) = parse_inputs(calc, ["b=30"], "in")
+    assert next(p for p in calc.params if p.key == key).symbol == "b"

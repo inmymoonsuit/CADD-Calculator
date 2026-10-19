@@ -86,6 +86,7 @@ def _tooltip(tree: Any, item: Any) -> str:
     from PySide6.QtWidgets import QApplication, QToolTip
 
     at = tree.visualItemRect(item).center()
+    assert tree.itemAt(at) is item, "the pointer rests on the row itself"
     viewport = tree.viewport()
     QApplication.sendEvent(viewport, QHelpEvent(QEvent.Type.ToolTip, at, viewport.mapToGlobal(at)))
     text = QToolTip.text() if QToolTip.isVisible() else ""
@@ -119,7 +120,12 @@ def test_a_list_name_too_long_for_its_row_shows_whole_in_its_tooltip(
     try:
         for row in _rows(window):
             name, summary = row.text(0), row.toolTip(0)
-            splitter.setSizes([60, 2340])
+            splitter.setSizes([1200, 1200])
+            settle(window)
+            # A family's rows are indented; 24 px past the indent leaves room for a few
+            # letters, whatever the platform's indentation and font.
+            indent = window.tree.visualItemRect(row).left()
+            splitter.setSizes([indent + 24, 2400 - indent - 24])
             settle(window)
             # The stretched column keeps its width when the list narrows, so it's narrowed too.
             window.tree.header().resizeSection(0, window.tree.viewport().width())

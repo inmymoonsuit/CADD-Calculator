@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from caddcalc.core import Dimension, Method, Param, Reference, Verification
 
-LENGTH, ANGLE, AREA, RATIO = Dimension.LENGTH, Dimension.ANGLE, Dimension.AREA, Dimension.RATIO
+LENGTH, ANGLE, AREA, COUNT = Dimension.LENGTH, Dimension.ANGLE, Dimension.AREA, Dimension.COUNT
 
 MH31 = "Machinery's Handbook, 31st ed."
 MH31_RECTANGLE = Reference(

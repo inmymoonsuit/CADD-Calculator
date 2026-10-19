@@ -96,7 +96,8 @@ def _unit(
     Its ``names``, singular and plural, are US English, the source language, marked with
     ``NP_`` in the "unit" context; they're translated where they're shown (ADR-0019 U5).
     """
-    source = cite(f"sp811_{symbol or 'one'}", SP_811, locator)
+    unnamed = "one" if dimension is Dimension.RATIO else dimension.value
+    source = cite(f"sp811_{symbol or unnamed}", SP_811, locator)
     name, plural = names
     return Unit(
         symbol,
@@ -114,12 +115,13 @@ def _unit(
     )
 
 
-LENGTH, ANGLE, RATIO, STRESS, AREA = (
+LENGTH, ANGLE, RATIO, STRESS, AREA, COUNT = (
     Dimension.LENGTH,
     Dimension.ANGLE,
     Dimension.RATIO,
     Dimension.STRESS,
     Dimension.AREA,
+    Dimension.COUNT,
 )
 SI, ACCEPTED, US, NONE = (
     UnitSystem.SI,
@@ -141,11 +143,12 @@ DIMENSIONS = (
         follows_length=True,
         derivation=Derivation(LENGTH, 2),
     ),
+    DimensionSpec(COUNT, "a count", "", Precision(0)),
 )
 """Every dimension. A stress follows the length choice: ksi beside inches or feet, MPa
 otherwise (ADR-0005, amendments). An area is the square of the length choice, in² beside
 inches (ADR-0018 §3), to six significant figures. An angle shows in degrees, a ratio as a
-number."""
+number, and a count as a whole number, with no decimals."""
 
 
 def _square(
@@ -253,6 +256,7 @@ UNITS: tuple[Unit, ...] = (
         aliases=("radian", "radians"),
     ),
     _unit("", ("ratio", ""), RATIO, Fraction(1), NONE, "§7.10 (the unit one)"),
+    _unit("", ("count", ""), COUNT, Fraction(1), NONE, "§7.10 (the unit one)"),
     _unit(
         "%",
         NP_("unit", "percent", "percent"),

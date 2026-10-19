@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import itertools
 import math
+import random
+import sys
 from decimal import Decimal, getcontext
 from typing import override
 
@@ -45,6 +47,7 @@ from caddcalc.core import (
     Verification,
 )
 from caddcalc.core.formatting import DisplayPrefs, describe_note
+from caddcalc.core.units import parse_quantity
 from tests.helpers import run_inches
 
 IN2 = 25.4**2
@@ -165,6 +168,40 @@ def test_a_flat_or_impossible_triangle_is_refused(sides: tuple[float, float, flo
         Triangle().run(keys)
 
 
+def _refused_in_every_order(*typed: str) -> None:
+    """Check the triangle refuses sides typed as a user types them, in every order."""
+    sides = [parse_quantity(t, Dimension.LENGTH) for t in typed]
+    for order in itertools.permutations(sides):
+        with pytest.raises(InputError, match="These sides make no triangle"):
+            Triangle().run(dict(zip(("side_a", "side_b", "side_c"), order, strict=True)))
+
+
+@pytest.mark.parametrize("unit", ["in", "mm", "ft", "m"])
+def test_a_flat_triangle_typed_in_decimals_is_refused(unit: str) -> None:
+    """0.1 + 0.2 comes out over 0.3 as doubles, yet those sides make no triangle."""
+    _refused_in_every_order(f"0.1 {unit}", f"0.2 {unit}", f"0.3 {unit}")
+
+
+@pytest.mark.parametrize("unit", ["in", "mm", "ft", "m"])
+def test_every_flat_triangle_typed_to_three_decimals_is_refused(unit: str) -> None:
+    rng = random.Random(f"flat {unit}")
+    for _ in range(2000):
+        p, q = rng.randint(1, 99_999), rng.randint(1, 99_999)
+        typed = (Decimal(p) / 1000, Decimal(q) / 1000, Decimal(p + q) / 1000)
+        _refused_in_every_order(*(f"{t} {unit}" for t in typed))
+
+
+def test_a_flat_triangle_is_one_within_4_epsilon_of_the_longest_side() -> None:
+    """The tolerance is 4 ε of the longest side: a gap of 4 ε is flat, of 5 ε a triangle."""
+    eps = sys.float_info.epsilon
+    keys = {"side_a": 0.5, "side_b": 0.5 + 4 * eps, "side_c": 1.0}
+    assert (keys["side_a"] + keys["side_b"]) - keys["side_c"] == 4 * eps
+    with pytest.raises(InputError, match="These sides make no triangle"):
+        Triangle().run(keys)
+    result = Triangle().run({**keys, "side_b": 0.5 + 5 * eps})
+    assert result.outputs["area"] > 0 and result.outputs["angle_c"] < 180
+
+
 @pytest.mark.parametrize(
     ("method", "given"),
     [
@@ -259,7 +296,7 @@ def test_fewer_than_three_sides_is_refused(sides: float, error: type[Exception])
 
 @pytest.mark.parametrize("sides", [6.5, 3.000001, 1e3 + 0.5])
 def test_a_number_of_sides_that_isnt_whole_is_refused(sides: float) -> None:
-    with pytest.raises(InputError, match=r"number of sides \(N\) must be a whole number"):
+    with pytest.raises(InputError, match=r"Number of sides \(N\) must be a whole number"):
         RegularPolygon().run({"sides": sides}, "side")
 
 

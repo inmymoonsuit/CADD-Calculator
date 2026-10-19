@@ -130,7 +130,10 @@ class UnitRegistry:
                     f"{where}: {key!r} is the built-in unit {built_in.symbol!r} "
                     f"({built_in.name}), in any dimension"
                 )
-        if any(u.symbol == unit.symbol for u in self._units):
+        # An unnamed unit is its dimension's one, as a ratio's or a count's is, so "" is
+        # taken only within a dimension.
+        holders = [u for u in self._units if u.symbol == unit.symbol]
+        if any(unit.symbol or u.dimension is unit.dimension for u in holders):
             raise SpecError(f"{where}: the symbol {unit.symbol!r} is taken")
         for other in self.units_for(unit.dimension):
             for key in unit.keys:
@@ -229,11 +232,13 @@ class UnitRegistry:
         if key:
             named = [u for u in self._by_name.get(key.casefold(), ()) if _names(u, key)]
         else:
-            named = [u for u in self._units if not u.symbol]  # "" is the unnamed ratio
+            named = [u for u in self._units if not u.symbol]
         # With no dimension given, a length: the foot and inch had ' and " before the
         # minute and second of arc shared them (ADR-0019, u3 review).
         own = [u for u in named if u.dimension is (dimension or Dimension.LENGTH)]
-        found = own or named
+        # A bare number where the dimension has no unnamed unit is the ratio's, so the
+        # caller says it measures the wrong thing (ADR-0019, amendments).
+        found = own or (named if key else [u for u in named if u.dimension is Dimension.RATIO])
         if not found:
             raise InputError(f"Unknown unit {text!r}")
         if len(found) > 1:

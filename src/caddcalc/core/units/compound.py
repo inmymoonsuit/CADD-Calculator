@@ -70,6 +70,22 @@ class CompoundForm(ABC):
         """Return a base-unit value written in this form, rounded once, to ``fineness``."""
 
 
+def round_half_even(value: float, scale: Fraction) -> int:
+    """Return ``|value| · scale`` rounded to a whole number once, half to even.
+
+    ``scale`` counts a base-unit value in a form's finest part, such as sixteenths of an
+    inch. A value typed as a half-way one, as 3/32 in is between 1/16 and 1/8, is a double
+    already, so it lands a little off the half, one way or the other. A count within one
+    unit in the last place of the typed value, so counted, of a half is taken as that half,
+    and rounds to even whichever way it landed.
+    """
+    parts = abs(Fraction(value)) * scale
+    half = Fraction(math.floor(parts)) + Fraction(1, 2)
+    if abs(parts - half) <= Fraction(math.ulp(value)) * scale:
+        parts = half
+    return round(parts)
+
+
 def _marks(*units: Unit) -> str:
     """Return a regular expression for any key of ``units``, longest first."""
     keys = sorted({key for unit in units for key in unit.keys}, key=len, reverse=True)
@@ -158,7 +174,7 @@ class FeetInches(CompoundForm):
         if not math.isfinite(value):
             raise UsageError(f"{value} can't be written in feet and inches")
         den = self.fineness
-        units = round(abs(Fraction(value)) / INCH_MM * den)  # half to even, once
+        units = round_half_even(value, den / INCH_MM)
         sign = MINUS if value < 0 and units else ""
         feet, rest = divmod(units, 12 * den)
         whole, part = divmod(rest, den)
@@ -255,7 +271,7 @@ class DegreesMinutesSeconds(CompoundForm):
         if not math.isfinite(value):
             raise UsageError(f"{value} can't be written in degrees, minutes and seconds")
         scale = 10**self.fineness
-        units = round(abs(Fraction(value)) * 3600 * scale)  # half to even, once
+        units = round_half_even(value, Fraction(3600 * scale))
         sign = MINUS if value < 0 and units else ""
         degrees, rest = divmod(units, 3600 * scale)
         minutes, rest = divmod(rest, 60 * scale)
@@ -289,10 +305,11 @@ def _dms_patterns() -> tuple[re.Pattern[str], re.Pattern[str]]:
 def nearest_inches(value: float, denominator: int) -> Fraction:
     """Return a base-unit length's nearest 1/``denominator`` inch, in inches, exactly.
 
-    It's rounded once, half to even, so a value halfway between two fractions takes the
-    one with the even numerator.
+    It's rounded once, half to even (``round_half_even``), so a value halfway between two
+    fractions takes the one with the even numerator.
     """
-    return Fraction(round(Fraction(value) / INCH_MM * denominator), denominator)
+    sign = -1 if value < 0 else 1
+    return Fraction(sign * round_half_even(value, denominator / INCH_MM), denominator)
 
 
 class NearestInches(CompoundForm):

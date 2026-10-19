@@ -11,6 +11,7 @@
 | `2'` | 2 feet |
 | `90`, `90°`, `90 deg` | 90 degrees (angles are always degrees unless you type `rad`) |
 | `44%`, `0.44` | the ratio 0.44 (e.g. a K-factor) |
+| `6` | a count, such as a polygon's number of sides: a whole number, with no unit or `%` |
 | `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is ksi when the system is `in`, MPa when it's `mm` |
 | `3 in²`, `3 in^2`, `3 in2`, `3 sq in`, `3 square inches` | an area; `ft²`, `mm²`, `cm²` and `m²` are typed the same ways, and a bare number is in the square of your unit system's length |
 
@@ -39,7 +40,9 @@ degree; everywhere else they're feet and inches.
 Where a result is shown in feet and inches, it reads `1'-4 3/16"`, to the nearest 1/16
 inch, and Copy gives `1'4-3/16"`, the form CAD takes. A result in degrees, minutes and
 seconds reads `40°30′15.00″`, and Copy gives `40d30'15.00"`. Rounding carries, so
-1'-11 63/64" shows as 2'-0", and 29.99999999° as 30°0′0.00″.
+1'-11 63/64" shows as 2'-0", and 29.99999999° as 30°0′0.00″. A value exactly half-way
+between two fractions takes the one with the even numerator, so 3/32" shows as 1/8" and
+7/32" as 1/4", however it was typed.
 
 ## Precision and rounding
 

@@ -9,6 +9,7 @@ is √((c − a)·(c + a)), both arranged to keep their digits.
 
 from __future__ import annotations
 
+import sys
 from typing import override
 
 from caddcalc.calculators.geometry.common import (
@@ -27,6 +28,10 @@ from caddcalc.calculators.geometry.common import (
 )
 from caddcalc.calculators.geometry.domain import DOMAIN
 from caddcalc.core import N_, Calculator, Context, InputError, Output, Param
+
+FLAT_GAP = 4 * sys.float_info.epsilon
+"""How far over 0 the gap ``a + b − c`` may be, relative to the longest side c, and the
+triangle still be flat (ADR-0018, amendments)."""
 
 TRIANGLE_NOTES = (
     "Each angle comes from the law of cosines, with its cosine kept within −1 to 1 against "
@@ -81,7 +86,10 @@ class Triangle(Calculator):
     @override
     def compute(self, ctx: Context) -> None:
         shortest, middle, longest = sorted((ctx["side_a"], ctx["side_b"], ctx["side_c"]))
-        if longest >= shortest + middle:
+        # Sides typed as decimals are doubles, so a flat triangle's gap can come out a few
+        # units in the last place over 0, as 0.1 + 0.2 - 0.3 does; within FLAT_GAP of the
+        # longest side it's flat (ADR-0018, amendments).
+        if (shortest + middle) - longest <= FLAT_GAP * longest:
             raise InputError(
                 "These sides make no triangle: the longest side must be shorter than the "
                 "other two together."

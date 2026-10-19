@@ -53,7 +53,9 @@ uv run caddcalc run sheet_metal.truncated_cone_layout --json        # machine-re
 ```
 
 Inputs can be given by symbol (`T`) or key (`thickness`). Anything you leave out uses the
-default shown by `caddcalc show`.
+default shown by `caddcalc show`. A name is matched exactly first, then in any case, but
+only where it can mean one thing: a triangle's `a` is a side and `A` an angle, and since
+its `B` is an angle the calculator gives, `B=30` is refused rather than read as side `b`.
 
 ## Language and number format
 

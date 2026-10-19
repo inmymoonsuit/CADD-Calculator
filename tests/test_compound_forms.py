@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 from typing import override
 
@@ -42,7 +44,7 @@ from caddcalc.core.units import (
     parse_quantity_detailed,
     registry,
 )
-from caddcalc.core.units.compound import DegreesMinutesSeconds, FeetInches
+from caddcalc.core.units.compound import DegreesMinutesSeconds, FeetInches, nearest_inches
 from tests.catalogs import shipped
 
 L, A = Dimension.LENGTH, Dimension.ANGLE
@@ -150,6 +152,55 @@ def test_feet_and_inches_show_and_copy_and_rounding_carries(
     """1'-11 63/64" at 1/16 is 2'-0", never 1'-12"; zero never "-0'-0"."""
     text = FeetInches(16).text(inches * IN)
     assert (text.shown, text.copied) == (shown, copied)
+
+
+@pytest.mark.parametrize(
+    ("typed", "denominator", "nearest"),
+    [
+        ("3/32 in", 16, Fraction(1, 8)),
+        ("7/32 in", 16, Fraction(1, 4)),
+        ("5/32 in", 16, Fraction(1, 8)),
+        ("3/128 in", 64, Fraction(1, 32)),
+        ("-3/32 in", 16, Fraction(-1, 8)),
+        ("2.38125 mm", 16, Fraction(1, 8)),  # 3/32 in, typed in mm
+        ("5.55625 mm", 16, Fraction(1, 4)),  # 7/32 in
+    ],
+)
+def test_a_value_half_way_between_two_fractions_takes_the_even_one(
+    typed: str, denominator: int, nearest: Fraction
+) -> None:
+    """3/32 in is half-way from 1/16 to 1/8 in; as a double it lands either side of it."""
+    value = parse_quantity(typed, L)
+    assert nearest_inches(value, denominator) == nearest
+    if denominator == 16:
+        shown = FeetInches(16).text(value).shown
+        assert shown.endswith(f' {abs(nearest)}"') and shown.startswith("-" * (nearest < 0))
+
+
+@pytest.mark.parametrize("denominator", [16, 32, 64])
+@pytest.mark.parametrize("unit", ["in", "mm"])
+def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: str) -> None:
+    """Each odd 1/(2d) inch to 4 ft, typed in inches or exactly in mm, either sign."""
+    for odd in range(1, 4 * 12 * 2 * denominator, 2):
+        half = Fraction(odd, 2 * denominator)
+        text = (
+            f"{half} in"
+            if unit == "in"
+            else f"{Decimal(half.numerator) * Decimal('25.4') / half.denominator} mm"
+        )
+        expected = Fraction(round(half * denominator), denominator)  # half to even, exactly
+        for sign in (1, -1):
+            value = sign * parse_quantity(text, L)
+            assert nearest_inches(value, denominator) == sign * expected, (sign, text)
+            if denominator == 16:
+                again = parse_quantity(FeetInches(16).text(value).copied, L)
+                assert nearest_inches(again, 16) == sign * expected, (sign, text)
+
+
+@pytest.mark.parametrize(("seconds", "shown"), [(0.005, "0.00"), (0.015, "0.02"), (0.025, "0.02")])
+def test_half_way_seconds_take_the_even_hundredth(seconds: float, shown: str) -> None:
+    typed = parse_quantity(f"0°0′{seconds}″", A)
+    assert DegreesMinutesSeconds(2).text(typed).shown == f"0°0′{shown}″"
 
 
 def test_a_fineness_is_a_drafting_fraction_and_whole_inches_have_none() -> None:
