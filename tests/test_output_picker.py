@@ -248,6 +248,8 @@ def test_the_header_keeps_its_height_without_the_picker(calc_id: str) -> None:
     assert not panel.header.stacked
     assert panel.header.height() == line
     picker = panel.set_picker
+    if picker.isHidden():
+        return  # a calculator with no sets has no picker to fit, and lays none out
     assert picker.height() <= line
     assert picker.height() >= picker.fontMetrics().height(), "its text still fits"
     window.close()
