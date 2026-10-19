@@ -7,10 +7,35 @@ It started as the Excel spreadsheets used to teach sheet-metal bend calculations
 CADD degree program. The goal is a principled, tested, extensible home for those
 calculations and for future ones: structural drafting, tolerancing, threads, and more.
 
-> **Status: pre-alpha skeleton (0.1.0.dev0).** The architecture is in place and four
-> sheet-metal calculators work from the CLI and a basic GUI. Nothing is packaged yet.
+> **Status: pre-alpha (0.1.0.dev0).** Fourteen calculators in three families work from
+> the desktop app and the CLI, in US and British English. Nothing is packaged yet. Next:
+> a unit picker beside every field and over the results
+> ([ADR-0024](docs/dev/decisions/0024-units-on-fields.md)), then installers for every
+> platform ([ADR-0022](docs/dev/decisions/0022-distribution-and-signing.md)).
 
 ## What it does today
+
+**Geometry:** every property of a shape at once.
+
+| Calculator | Methods |
+|---|---|
+| Arc and sector | Radius and angle |
+| Circle | From the diameter; from the radius |
+| Rectangle | Length and width |
+| Regular polygon | From the side; from across flats; from across corners |
+| Right triangle | Two legs; a leg and the hypotenuse; a leg and its opposite angle; the hypotenuse and an angle |
+| Triangle (three sides) | Three sides |
+
+**Conversions:** a value in every unit of its kind.
+
+| Calculator | Units |
+|---|---|
+| Angle | Degrees, radians, degrees-minutes-seconds |
+| Area | in², ft², mm², cm², m² |
+| Length | in, ft, mm, cm, m, feet and inches, and the nearest 1/16, 1/32 and 1/64 inch |
+| Stress and pressure | psi, ksi, kPa, MPa |
+
+**Sheet metal:**
 
 | Calculator | Methods |
 |---|---|
@@ -21,7 +46,8 @@ calculations and for future ones: structural drafting, tolerancing, threads, and
 
 Every result shows its work (formula, substituted values, result), names its method and
 references, and is labeled with a **verification status** (`unverified` or `verified`), plus
-whether it **reproduces the legacy** course spreadsheets. See [docs/user](docs/user/index.md).
+whether it **reproduces the legacy** course spreadsheets. Inputs take decimals, fractions,
+mixed numbers, and feet and inches (`1'-4 3/16"`). See [docs/user](docs/user/index.md).
 
 ```text
 $ caddcalc run sheet_metal.bend_allowance T=0.1046 R=0.156 A=90 --method course
