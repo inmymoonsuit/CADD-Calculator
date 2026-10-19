@@ -69,6 +69,13 @@ def qt(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     monkeypatch.setattr(QClipboard, "text", text)
     monkeypatch.setattr(QClipboard, "clear", clear)
     app = widgets.QApplication.instance() or widgets.QApplication([])
+    # The welcome card adds the vendored display face to the application's fonts, which
+    # can change the fallback faces other text measures in (S&R's M1 at stop 2). Added
+    # first, it's there for every test, so no test's widths depend on whether a card was
+    # shown before it.
+    from caddcalc.gui.fonts import display_family
+
+    display_family()
     before = set(app.topLevelWidgets())
     yield widgets
     for widget in app.topLevelWidgets():

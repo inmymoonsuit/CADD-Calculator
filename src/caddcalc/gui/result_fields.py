@@ -147,14 +147,26 @@ class _ElidedLabel(QLabel):
         self._elide()
 
     def _elide(self) -> None:
-        shown = self.fontMetrics().elidedText(
-            self.full_text, Qt.TextElideMode.ElideRight, self.width()
-        )
+        # Elided to the width the label's own size hint measures text by, its bounding
+        # box, which can be a pixel wider than the advance elidedText fits, as on macOS:
+        # so the text it shows always fits it, and never draws past its edge.
+        metrics = self.fontMetrics()
+        width = self.width()
+        shown = metrics.elidedText(self.full_text, Qt.TextElideMode.ElideRight, width)
+        while width > 0 and self._needs(shown) > self.width():
+            width -= 1
+            shown = metrics.elidedText(self.full_text, Qt.TextElideMode.ElideRight, width)
         self.setText(shown)
         if shown != self.full_text:
             self.setToolTip(tip_text(self.full_text, self.help_text))
         else:
             self.setToolTip(self.help_text)
+
+    def _needs(self, text: str) -> int:
+        """The width the label asks for to show ``text``, as its size hint measures it."""
+        size = self.fontMetrics().size(Qt.TextFlag.TextSingleLine, text)
+        margins = self.contentsMargins()
+        return size.width() + margins.left() + margins.right() + 2 * self.margin()
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:

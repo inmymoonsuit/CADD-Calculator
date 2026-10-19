@@ -468,6 +468,10 @@ an entered value's typed unit should count instead goes with E-3.
   each value at least three of its own last places from a 1/64 tie and under 10⁻¹⁴ in
   from it (two of the inch's last places at 24 in are 7.1 × 10⁻¹⁵ in). No
   value typed as a tie is missed by either count.
+* **And a result that carries a typed value,** shown in an inch form: a Length
+  converter's nearest-fraction rows, and an output that passes an input through, such as
+  a circle's diameter, in an `in_N` or `ft_in` set. A value typed in mm is pulled to a
+  tie there under the same bound, 10⁻¹⁴ in from it (S&R's L4 at ADR-0024's stop 2).
 * Counting in the typed unit would need the typed unit carried with every value to
   every place it's shown, a result's included, which has none. That's a second rule
   for those rows alone.

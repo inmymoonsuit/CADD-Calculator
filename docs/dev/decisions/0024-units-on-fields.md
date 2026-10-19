@@ -1291,3 +1291,29 @@ When the runners came back, CI's first run of stop 2 (on 6d859c6) failed two job
   in the last place of the largest value in its run (`ULPS`); every difference in CI's
   macOS logs is at most 2. A test pins the bound: 4 pass, 8 fail. On Linux and Windows
   they match bit for bit.
+
+### 2026-10-19: S&R's review at stop 2, and macOS's least window
+
+* **macOS's least window:** a result field's label clipped by a pixel. It elides to its
+  width by the text's advance, but its size hint measures the text's bounding box, which
+  on macOS can be a pixel wider; with the Units box gone, the least window is narrow
+  enough for labels to elide there. A label now elides until its text fits by its own
+  measure (`_ElidedLabel._needs`). In en_XA the set picker clipped there too, which its
+  least width (above) fixes.
+* **M1, the order the tests run in:** the welcome card adds the vendored display face to
+  the application's fonts, which can change the fallback faces other text measures in,
+  so a clip test could pass alone and fail after a card. The tests' `qt` fixture adds the
+  face first, so every test measures with the fonts the app has once its card is shown.
+* **L1:** a calculator with no output sets, such as a converter, gives `output_set: null`
+  in JSON, as E5 says; its fallback units had the inch set's key. `--output-unit` picks
+  apply to it too. The schema test asserts it.
+* **L2:** an input's `shown.value` is the number as typed, read exactly and rounded once,
+  where it was typed in the shown unit: `T=3` is 3, not base ÷ factor's
+  2.9999999999999996. `base` is unchanged.
+* **L3:** an input in a form is listed in the form only when that shows the value the run
+  used at least as nearly as the form's full unit does: `0'-0.1046"` picked in ft-in runs
+  at 0.1046 in and is listed `0.1046 in`, not `0'-0 1/8"`, while `40 30 15.123` stays
+  `40°30′15.12″`, nearer than `40.50°` (`formatting.input_parts`). In the window, the
+  CLI and JSON alike.
+* **L4:** ADR-0019's amendment names results that carry a typed value. **Note 3** is
+  KI-028.

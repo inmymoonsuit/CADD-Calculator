@@ -16,6 +16,7 @@ import os
 import sys
 import traceback
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 
 from caddcalc import __version__
 from caddcalc.calculators import default_registry
@@ -441,7 +442,8 @@ def _output_units(
         picks[output.key] = choice.strip()
     inputs = {p.key: _shown_choice(p, entries.get(p.key)) for p in calc.params}
     if not sets:
-        return ShownUnits.generated().with_inputs(inputs)
+        # Its notes and messages need units, but it has no set to name (JSON's null).
+        return replace(ShownUnits.generated(), picks=picks, inputs=inputs, key="")
     chosen = next((s for s in sets if s.key == set_key), sets[0])
     return ShownUnits.of(chosen, picks=picks, inputs=inputs)
 

@@ -113,7 +113,9 @@ def test_the_work_uses_the_form_s_full_unit() -> None:
 def test_an_input_is_shown_in_its_field_s_choice_else_the_set_s() -> None:
     result = _Part().run()
     units = ShownUnits.generated("mm").with_inputs({"length": "ft_in"})
-    assert format_input("length", result.inputs["length"], L, units, PREFS) == "0'-8 1/8\""
+    # 8 3/32 in can't be shown to the 1/16, so it's listed as it ran, in inches (S&R's L3).
+    assert format_input("length", result.inputs["length"], L, units, PREFS) == "8.0938 in"
+    assert format_input("length", 8.125 * 25.4, L, units, PREFS) == "0'-8 1/8\"", "exactly"
     assert format_input("angle", result.inputs["angle"], A, units, PREFS) == "30.50°"
     plain = ShownUnits.generated("mm")
     assert format_input("length", result.inputs["length"], L, plain, PREFS) == "205.5812 mm"

@@ -222,6 +222,18 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
+### KI-028: A decimal half typed in one unit can show the odd last digit in another (Low)
+
+A value is shown by rounding its double in the shown unit to the shown decimals, half to
+even. A value converted from another unit is the conversion's double, already rounded
+once, so at an exact decimal half it can land just over or under the half. 49.92751 mm is
+exactly 1.96565 in, which half to even shows as 1.9656, but its double in inches is
+1.9656500000000001, so it shows 1.9657 (S&R's Note 3 at ADR-0024's stop 2; it predates
+units on fields). Only a value exactly half-way at the shown decimals is affected, and by
+one unit in the last shown place. The inch fractions don't have it: they count a tie
+within the shown unit's last places as the tie (ADR-0019, amendments); the decimals could
+take the same window, which would change shown text everywhere it applies.
+
 ### KI-027: Settings fields still read units in their text (Low)
 
 ADR-0024's slices give calculator fields pickers first (U1). Until E-5 and U2b give a

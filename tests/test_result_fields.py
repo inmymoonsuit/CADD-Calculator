@@ -690,3 +690,26 @@ def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
     field.label.resize(8, field.label.height())
     assert field.label.toolTip() == tip_text(field.output.label, field.output.help), "elided"
     window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_an_elided_label_fits_its_text_at_every_width() -> None:
+    """It elides until its text fits by its own size hint's measure, as macOS's needs."""
+    from PySide6.QtWidgets import QApplication, QWidget
+
+    from caddcalc.gui.result_fields import _ElidedLabel
+
+    parent = QWidget()
+    parent.resize(400, 60)
+    parent.show()
+    for text in ("Hypotenuse", "Area of the right triangle", "Bend allowance"):
+        label = _ElidedLabel(text, parent)
+        label.show()
+        wide = []
+        for width in range(16, 260):
+            label.resize(width, 20)
+            QApplication.processEvents()
+            if label.minimumSizeHint().width() > width:
+                wide.append(width)
+        assert wide == [], text
+    parent.close()

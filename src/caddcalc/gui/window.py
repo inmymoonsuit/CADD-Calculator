@@ -1016,7 +1016,7 @@ class MainWindow(QMainWindow):
         }
         inputs = {p.key: self._choice(calc, p) for p in calc.params}
         if unit_set is None:
-            return replace(_settings_units(), picks=picks, inputs=inputs)
+            return replace(_settings_units(), picks=picks, inputs=inputs, key="")
         return ShownUnits.of(unit_set, picks=picks, inputs=inputs)
 
     def _output_set(self, calc: Calculator) -> UnitSet | None:

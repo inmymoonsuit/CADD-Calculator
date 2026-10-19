@@ -43,7 +43,8 @@ from caddcalc.core.units.compound import (
     POSITIVE_SPOKEN,
     NearestInches,
 )
-from caddcalc.core.units.entry import lone_fraction
+from caddcalc.core.units.entry import evaluate, lone_fraction
+from caddcalc.core.units.numbers import MINUS_SIGN
 
 # Translators: shown under every calculator's results, after the command line's results,
 # and in About.
@@ -411,8 +412,31 @@ def unit_parts(value: float, unit: Unit, prefs: DisplayPrefs) -> ValueParts:
 def input_parts(
     key: str, value: float, dimension: Dimension, units: ShownUnits, prefs: DisplayPrefs
 ) -> ValueParts:
-    """Return an input's value as shown in its field's choice, or else the set's."""
-    return choice_parts(value, units.input_choice(key, dimension), dimension, prefs)
+    """Return an input's value as shown in its field's choice, or else the set's.
+
+    In a form it's shown as the form writes it unless the form's full unit shows the value
+    the run used more nearly: 0.1046 in picked in feet and inches would be ``0'-0 1/8"``,
+    so it's ``0.1046 in``, as typed, while ``40 30 15.123`` stays ``40°30′15.12″`` rather
+    than ``40.50°`` (S&R's L3 at stop 2). A result is rounded to its form as shown; an
+    input is what the run used.
+    """
+    choice = units.input_choice(key, dimension)
+    parts = choice_parts(value, choice, dimension, prefs)
+    if parts.compound is None:
+        return parts
+    in_unit = unit_parts(value, choice_unit(choice, dimension), prefs)
+    form_off = _off(parts.number, choice, dimension, value, prefs)
+    unit_off = _off(in_unit.number, choice_unit(choice, dimension).symbol, dimension, value, prefs)
+    return in_unit if unit_off < form_off else parts
+
+
+def _off(shown: str, choice: str, dimension: Dimension, value: float, prefs: DisplayPrefs) -> float:
+    """How far a shown text reads from ``value``, read in ``choice``; infinite if it doesn't."""
+    try:
+        read = TypedValue.read(shown, choice, dimension, decimal=prefs.symbols.decimal)
+    except CaddCalcError:
+        return math.inf
+    return abs(read.value - value)
 
 
 def _parts(value: float, unit: Unit, precision: Precision, prefs: DisplayPrefs) -> ValueParts:
@@ -1034,12 +1058,13 @@ def result_json(
     for key, value in result.inputs.items():
         dimension = result.dimensions[key]
         choice = units.input_choice(key, dimension)
-        parts = choice_parts(value, choice, dimension, prefs)
-        item = {
-            "dimension": dimension.value,
-            "base": _base_json(value, dimension),
-            "shown": _shown_json(value, choice_unit(choice, dimension), parts, choice),
-        }
+        parts = input_parts(key, value, dimension, units, prefs)
+        shown = _shown_json(value, choice_unit(choice, dimension), parts, choice)
+        typed = _typed_amount(entered[key], shown["unit"]) if key in entered else None
+        if typed is not None:
+            # The number as typed, not base ÷ factor: T=3 is 3, never 2.9999999999999996.
+            shown["value"] = _json_number(float(typed), dimension)
+        item = {"dimension": dimension.value, "base": _base_json(value, dimension), "shown": shown}
         if key in entered:
             item["entered"] = _entered_json(entered[key])
         item["source"] = result.source_of(key).to_dict()
@@ -1135,6 +1160,30 @@ def entered_form(entry: TypedValue) -> str | None:
         except CaddCalcError:
             continue
     return None
+
+
+def _typed_amount(entry: TypedValue, unit: str) -> Fraction | None:
+    """Return the number an input was typed as, exactly, if it was typed in ``unit``.
+
+    A form's text gives its amount in the form's full unit, inches for feet and inches.
+    ``None`` for a text read in another unit, or one this can't read alone.
+    """
+    if entry.unit.symbol != unit:
+        return None
+    units = registry()
+    text = entry.text.replace(MINUS_SIGN, "-")
+    try:
+        form = entered_form(entry)
+        if form is not None:
+            return units.compound(form).read(text, entry.decimal)
+        if entry.explicit_unit:
+            ending = units.ending(text, entry.dimension)
+            if ending is None:
+                return None
+            text = text[: len(text) - ending[1]].rstrip()
+        return evaluate(text, entry.decimal)
+    except CaddCalcError:
+        return None
 
 
 def _note_json(note: Note, units: ShownUnits, prefs: DisplayPrefs) -> dict[str, Any]:

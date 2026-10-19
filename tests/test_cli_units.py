@@ -136,11 +136,14 @@ def test_every_key_of_schema_1_is_there_with_its_type(calc_id: str, method: str)
     unit = choice_unit(first.default_choice or "", first.dimension).symbol
     entry = TypedValue.parse(first.default or "1", first.dimension, unit)
     result = calc.run({first.key: entry.value}, method)
-    units = ShownUnits.generated().with_inputs({p.key: p.default_choice or "" for p in calc.params})
+    from caddcalc.cli import _output_units
+
+    units = _output_units(calc, None, [], {first.key: entry})
     data = result_json(calc, result, units, DisplayPrefs(), {first.key: entry})
     json.dumps(data)  # it serialises
     assert data["schema"] == 1 and data["calculator"] == calc_id and data["method"] == method
-    assert data["output_set"] == "in"
+    sets = calc.unit_sets()
+    assert data["output_set"] == (sets[0].key if sets else None), "null with no sets"
     values = [
         *(("input", k, v) for k, v in data["inputs"].items()),
         *(("output", k, v) for k, v in data["outputs"].items()),
@@ -213,3 +216,36 @@ def test_inputs_after_options_are_read(capsys: pytest.CaptureFixture[str]) -> No
     assert data["inputs"]["inside_radius"]["entered"]["text"] == "4mm"
     status, _out, err = _run(capsys, "run", BEND, "--method", "course", "T=0.25", "stray")
     assert status == 2 and "Expected NAME=VALUE, got 'stray'" in err, "in every version"
+
+
+@pytest.mark.parametrize(
+    ("argv", "unit", "value"),
+    [
+        (["T=3"], "in", 3.0),
+        (["T=0.3cm"], "cm", 0.3),
+        (["--unit", "T=cm", "T=0.3"], "cm", 0.3),
+        (["--unit", "T=ft_in", "T=10-2"], "in", 122.0),
+    ],
+)
+def test_an_input_s_shown_value_is_the_number_typed(
+    capsys: pytest.CaptureFixture[str], argv: list[str], unit: str, value: float
+) -> None:
+    """Not base ÷ factor, which makes T=3 2.9999999999999996 (S&R's L2 at stop 2)."""
+    thickness = _json(capsys, "run", BEND, *argv)["inputs"]["thickness"]
+    assert (thickness["shown"]["unit"], thickness["shown"]["value"]) == (unit, value)
+    assert thickness["base"]["value"] == TypedValue.read(str(value), unit, Dimension.LENGTH).value
+
+
+def test_an_input_in_a_form_is_listed_as_nearly_as_it_ran(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """0.1046 in picked in ft-in isn't 0'-0 1/8": it's listed in inches (S&R's L3)."""
+    inexact = _json(capsys, "run", BEND, "--unit", "T=ft_in", "T=0'-0.1046\"")
+    shown = inexact["inputs"]["thickness"]["shown"]
+    assert shown["text"] == "0.1046 in" and "form" not in shown
+    status, out, _err = _run(capsys, "run", BEND, "--unit", "T=ft_in", "T=0'-0.1046\"")
+    assert status == 0 and "Material thickness               0.1046 in" in out
+    exact = _json(capsys, "run", BEND, "--unit", "T=ft_in", "T=10-2 3/16")
+    assert exact["inputs"]["thickness"]["shown"]["text"] == "10'-2 3/16\""
+    seconds = _json(capsys, "run", BEND, "--unit", "A=dms", "A=40 30 15.123")
+    assert seconds["inputs"]["bend_angle"]["shown"]["text"] == "40°30′15.12″", "nearer than 40.50°"

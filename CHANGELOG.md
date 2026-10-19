@@ -398,6 +398,11 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **JSON gives `output_set: null` for a calculator with no output sets,** such as a
+  converter, and an input's `shown.value` is the number as typed (`T=3` is 3).
+- **An input read in feet and inches is listed as it ran:** `0'-0.1046"` is listed
+  `0.1046 in`, not rounded to `0'-0 1/8"`; one the form shows exactly stays in the form.
+- A result's label no longer draws a pixel past its edge where it elides, as on macOS.
 - **The command line read no input given after an option on Python 3.12,** as in
   `run CALC --method course T=0.25`; it reads them wherever they're given now.
 - **A degrees-minutes-seconds field left at a sign ran at 0°:** `-`, `+` or an empty
