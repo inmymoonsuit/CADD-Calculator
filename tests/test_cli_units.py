@@ -203,3 +203,13 @@ def test_a_signed_step_shows_its_plus_in_json() -> None:
     for step in signed:
         sign = "+" if step["base"]["value"] > 0 else "-"
         assert step["shown"]["text"].startswith(sign), step
+
+
+def test_inputs_after_options_are_read(capsys: pytest.CaptureFixture[str]) -> None:
+    """Before Python 3.13, argparse took a run's inputs only before its first option."""
+    data = _json(capsys, "run", BEND, "--method", "course", "T=0.25", "--output-set", "mm", "R=4mm")
+    assert data["method"] == "course" and data["output_set"] == "mm"
+    assert data["inputs"]["thickness"]["entered"]["text"] == "0.25"
+    assert data["inputs"]["inside_radius"]["entered"]["text"] == "4mm"
+    status, _out, err = _run(capsys, "run", BEND, "--method", "course", "T=0.25", "stray")
+    assert status == 2 and "Expected NAME=VALUE, got 'stray'" in err, "in every version"

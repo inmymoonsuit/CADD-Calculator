@@ -768,7 +768,9 @@ class _SetPicker(QComboBox):
 
     A picker is a field's height, taller than the title and Copy all, so the header, and
     every page with it, would grow by the difference, and a page that fit at launch would
-    scroll (UI/UX's M1 at stop 2). Its text still has a line's height.
+    scroll (UI/UX's M1 at stop 2). Its text still has a line's height. It's never narrower
+    than its longest label, as a field's picker never is, so the least window keeps it
+    whole.
     """
 
     def __init__(self, line: Callable[[], int], parent: QWidget) -> None:
@@ -782,8 +784,8 @@ class _SetPicker(QComboBox):
 
     @override
     def minimumSizeHint(self) -> QSize:
-        hint = super().minimumSizeHint()
-        return QSize(hint.width(), min(hint.height(), self._line()))
+        """As ``sizeHint``: it never narrows past its longest label, which would clip."""
+        return self.sizeHint()
 
 
 def _set_name(unit_set: UnitSet, dimensions: list[Dimension]) -> str:

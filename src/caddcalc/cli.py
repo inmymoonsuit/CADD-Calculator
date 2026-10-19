@@ -75,7 +75,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``caddcalc`` command line and return the exit status."""
     _ensure_unicode_output()
     parser = _build_parser()
-    args = parser.parse_args(argv)
+    args = _parse(parser, argv)
     # Words follow the language; numbers keep "." for scripts (ADR-0020 §§3-4).
     i18n.use(cli_languages(args.lang, os.environ))
     if args.command is None:
@@ -87,6 +87,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         # Only running a calculator raises range errors, and _cmd_run words them itself.
         _write_cause(exc)
         return _fail(str(exc))
+
+
+def _parse(parser: argparse.ArgumentParser, argv: Sequence[str] | None) -> argparse.Namespace:
+    """Parse the arguments, a run's ``NAME=VALUE`` inputs wherever they're given.
+
+    Before Python 3.13, argparse gives a positional that takes any number of arguments
+    only those before the first option, so ``run CALC --method course T=3`` left ``T=3``
+    unrecognized. Each argument of a run left over that isn't an option joins its inputs,
+    as Python 3.13 takes it, so a stray word is refused as an input in every version;
+    an unknown option is refused as argparse refuses it.
+    """
+    args, extra = parser.parse_known_args(argv)
+    inputs = [e for e in extra if not e.startswith("-")]
+    if args.command == "run" and inputs:
+        args.inputs = [*args.inputs, *inputs]
+        extra = [e for e in extra if e not in inputs]
+    if extra:
+        parser.error(f"unrecognized arguments: {' '.join(extra)}")
+    return args
 
 
 def _write_cause(exc: CaddCalcError) -> None:

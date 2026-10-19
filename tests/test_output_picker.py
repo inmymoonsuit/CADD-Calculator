@@ -339,3 +339,16 @@ def test_a_picker_taller_than_the_row_doesn_t_grow_the_header() -> None:
     settle(window)
     assert panel.header.height() == before
     window.close()
+
+
+def test_the_picker_never_narrows_past_its_longest_label() -> None:
+    """A squeezed picker clipped its label at the least window on Windows (CI at 6d859c6)."""
+    window = open_window()
+    window.select_calculator(RIGHT)
+    picker = window.results.set_picker
+    assert picker.minimumSizeHint().width() == picker.sizeHint().width()
+    longest = max(
+        picker.fontMetrics().horizontalAdvance(picker.itemText(i)) for i in range(picker.count())
+    )
+    assert picker.sizeHint().width() > longest
+    window.close()

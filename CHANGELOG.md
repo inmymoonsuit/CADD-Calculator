@@ -398,6 +398,8 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **The command line read no input given after an option on Python 3.12,** as in
+  `run CALC --method course T=0.25`; it reads them wherever they're given now.
 - **A degrees-minutes-seconds field left at a sign ran at 0°:** `-`, `+` or an empty
   text now isn't finished, as in any other field, and so are `40-` and `40-30-`; a
   hyphen after a mark, `40°-30′`, is refused.

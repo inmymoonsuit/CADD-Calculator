@@ -1267,3 +1267,17 @@ UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
   its choices' names for what the calculator shows, translated where shown: "in 1/16 · °
   · in² — inches, nearest 1/16; degrees; square inches".
 * Five mutants, one for each, are each killed.
+
+### 2026-10-19: CI's first run of stop 2
+
+When the runners came back, CI's first run of stop 2 (on 6d859c6) failed two jobs:
+* **Python 3.12, every CLI call with an input after an option.** Before 3.13, argparse
+  gives a positional that takes any number of arguments only the ones before the first
+  option, so `run CALC --method eight_t R=10` left `R=10` unrecognized: 446 of the
+  corpus's calls and the new CLI tests. `cli._parse` now passes every leftover
+  non-option argument of a run to its inputs, as 3.13 does, so a stray word is refused
+  as an input in every version. The suite passes on 3.12 and 3.13 here.
+* **Windows, the least window:** the right triangle's output picker was squeezed below
+  its longest label, `in · ° · in²`. It's never narrower than its longest label now, as
+  a field's picker never is. Offscreen, that makes the least window 509 px wide, from
+  492; the native width is UI/UX's to re-measure.
