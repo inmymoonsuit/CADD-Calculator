@@ -1480,3 +1480,24 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
 * **The unit-naming heuristic** (`entry._last_word`) counts an exponent's `e` and a
   degree or minute mark between numbers as part of the number: `1e3)mm` names "mm", and
   `40d30m` in an inch field names "m".
+
+### 2026-10-19: KI-028 resolved, decided by the lanes (stop 3)
+
+* **The rule:** every decimal takes the forms' tie window (`formatting.round_tie`; ADR-0019's
+  amendment of this date): a value within two of its own last places of a half at the
+  shown places is the half, rounded to even. Python's formatting rounded each double as
+  it is.
+* **E-3's golden** changes in 2 runs, 3 strings, all held by their digests, and every one a
+  tie: Fraction to decimal's input scaled by 0.1, 0.01875 in, is listed `0.0188 in`, not
+  `0.0187 in`, with "." and with ",", and so is its CLI report's Inputs line. The other
+  961 runs are unchanged. The list comes from rendering every run both ways, the old
+  rounding reproducing the golden exactly.
+* **Other text that moves:** the published example's JSON, the course bend allowance at
+  T = 0.125 and R = 0.375, is exactly 0.66875 in and shows `0.6688 in`; `123.4575` to six
+  figures is `123.458`.
+* **The review's cases:** `tests/test_decimal_ties.py` sweeps 4,000 decimal halves in each
+  of seven pairs of units (cm, m and ft shown, mm, cm and in typed), each as the exact
+  decimal it is in the unit typed, and checks each within the window shows to even; it
+  includes the review's 0.5 mm circle (0.0002 m) and 1/32 in (0.7938 mm). Halves typed in
+  inches and shown in feet land three last places off in 50 of 4,000, and in meters in 5
+  of 3,975, outside the window: KI-030.

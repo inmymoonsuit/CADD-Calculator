@@ -11,7 +11,7 @@ import re
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_EVEN, Decimal, localcontext
 from enum import Enum
 from fractions import Fraction
 from types import MappingProxyType
@@ -42,6 +42,8 @@ from caddcalc.core.units.compound import (
     NEGATIVE_SPOKEN,
     PARTS,
     POSITIVE_SPOKEN,
+    TIE_CAP,
+    TIE_ULPS,
     NearestInches,
 )
 from caddcalc.core.units.entry import evaluate, lone_fraction
@@ -266,15 +268,44 @@ def decimal_separator(prefs: DisplayPrefs) -> str:
     return prefs.symbols.decimal
 
 
+def round_tie(value: float, places: int) -> Decimal:
+    """Return ``value`` rounded once to ``places`` decimal places, half to even.
+
+    A value typed as a decimal half in one unit, as 49.92751 mm is 1.96565 in exactly, is a
+    double already, rounded once as typed and again into the shown unit, so it lands a
+    little off the half, one way or the other. A value within ``TIE_ULPS`` of its own last
+    places of a half at ``places``, and never more than ``TIE_CAP`` of a step, is taken as
+    that half, and rounds to even whichever way it landed, as a form counts a tie
+    (``compound.round_half_even``; KI-028, resolved). Any other value is its exact binary
+    value rounded, as Python's own formatting rounds it.
+    """
+    exact = Decimal(value)
+    with localcontext() as context:
+        context.prec = 2 * len(exact.as_tuple().digits) + abs(places) + 20  # exact, always
+        parts = exact.scaleb(places)
+        half = parts.to_integral_value(rounding=ROUND_FLOOR) + Decimal("0.5")
+        window = min(
+            Decimal(TIE_ULPS) * Decimal(math.ulp(value)).scaleb(places),
+            Decimal(TIE_CAP.numerator) / TIE_CAP.denominator,
+        )
+        if abs(parts - half) <= window:
+            parts = half
+        return parts.quantize(Decimal(1), rounding=ROUND_HALF_EVEN).scaleb(-places)
+
+
 def format_number(value: float, decimals: int, decimal: str = ".") -> str:
     """Return ``value`` rounded to ``decimals`` places, never as negative zero.
+
+    A near-half rounds to even as a half does (``round_tie``).
 
     Args:
         value: The number.
         decimals: Its decimal places.
         decimal: The decimal mark to write it with.
     """
-    text = f"{value:.{decimals}f}"
+    if not math.isfinite(value):
+        return f"{value:.{decimals}f}"
+    text = format(round_tie(value, decimals), f".{decimals}f")
     text = "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
     return text.replace(".", decimal)
 
@@ -287,8 +318,9 @@ but not including 10¹⁶; outside them it writes an exponent."""
 def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     """Return ``value`` to ``digits`` significant figures, as plain decimals.
 
-    It rounds the value's exact binary value, half to even, as ``format_number`` does,
-    so 123.4575, a little under that in binary, is ``123.457`` to six. It keeps trailing
+    It rounds once, half to even, as ``format_number`` does, a near-half as the half
+    (``round_tie``): 123.4575, a little under that in binary, is ``123.458`` to six, and
+    123.4574 is ``123.457``. It keeps trailing
     zeros, which say how many figures are shown (``25.4000`` to six), and is never a
     negative zero. A rounding that carries into a new place keeps the count, so 9.999997
     to six is ``10.0000``. Zero is ``0.00000`` to six. A value of at least 10⁻⁶ and under
@@ -313,8 +345,7 @@ def format_significant(value: float, digits: int, decimal: str = ".") -> str:
         digits = min(digits, max(1, math.floor((bits - 1) * math.log10(2))))
 
     def rounded(adjusted: int) -> Decimal:
-        step = Decimal(1).scaleb(adjusted - digits + 1)
-        return exact.quantize(step, rounding=ROUND_HALF_EVEN)
+        return round_tie(value, digits - 1 - adjusted)
 
     text = rounded(exact.adjusted())
     if text.adjusted() > exact.adjusted():  # the rounding carried, as 9.99 to 10.0
@@ -667,8 +698,7 @@ def _significant(value: float, digits: int) -> str:
     exact = Decimal(value)
     if not exact:
         return "0"
-    step = Decimal(1).scaleb(exact.adjusted() - digits + 1)
-    text = format(exact.quantize(step, rounding=ROUND_HALF_EVEN), "f")
+    text = format(round_tie(value, digits - 1 - exact.adjusted()), "f")
     if "." in text:
         text = text.rstrip("0").rstrip(".")
     return "0" if text in ("-0", "") else text

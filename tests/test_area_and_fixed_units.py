@@ -296,7 +296,8 @@ def test_a_precision_is_some_decimal_places_or_at_least_one_significant_figure()
         (1e-6, 2, "0.0000010"),
         (1e-9, 2, "1.0e-09"),
         (0.125, 2, "0.12"),
-        (123.4575, 6, "123.457"),
+        (123.4575, 6, "123.458"),  # a decimal half, to even (KI-028, resolved)
+        (123.4574, 6, "123.457"),
         (0.375, 2, "0.38"),
         (5.0, 1, "5"),
     ],

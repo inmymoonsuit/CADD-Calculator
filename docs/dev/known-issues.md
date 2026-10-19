@@ -224,24 +224,17 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
-### KI-028: A decimal half typed in one unit can show the odd last digit in another (Low)
+### KI-030: A decimal half converted through three roundings can land outside the tie window (Low)
 
-A value is shown by rounding its double in the shown unit to the shown decimals, half to
-even. A value converted from another unit is the conversion's double, already rounded
-once, so at an exact decimal half it can land just over or under the half. 49.92751 mm is
-exactly 1.96565 in, which half to even shows as 1.9656, but its double in inches is
-1.9656500000000001, so it shows 1.9657 (S&R's Note 3 at ADR-0024's stop 2; it predates
-units on fields). Only a value exactly half-way at the shown decimals is affected, and by
-one unit in the last shown place. The inch fractions don't have it: they count a tie
-within the shown unit's last places as the tie (ADR-0019, amendments); the decimals could
-take the same window, which would change shown text everywhere it applies.
-
-Every calculator's `cm`, `m` and `ft` output sets show it too (the cloud review of stop
-2, its Low 3): in the `m` set, a 0.5 mm diameter's radius, exactly 0.00025 m, shows
-`0.0003 m` where half to even gives `0.0002`, and 1/32 in shows `0.7937 mm`, not
-`0.7938`; the review counted 361 such cases. It's kept as a known issue rather than
-fixed at stop 2, since the window would change the `in` and `mm` text that E-3's
-neutrality golden holds, and a change to shown values is the maintainer's to approve.
+A decimal shown to its places rounds a near-half as the half, half to even, when it's
+within two of its own last places of it (`formatting.round_tie`, as the inch fractions
+count a tie; KI-028, resolved). A half typed in inches and shown in feet goes through
+three roundings, as typed, into millimeters and into feet, and can land three last places
+off: 50 of 4,000 such halves in `tests/test_decimal_ties.py`, and 5 of 3,975 typed in
+inches and shown in meters. Those round as their value does, so about half of them show
+the odd last digit. Widening the window to three would take a value genuinely three of its
+last places off a half as a tie, which ADR-0019's amendments ruled out for the forms;
+counting it in the unit the value was typed in would need the typed unit at display.
 
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 
@@ -262,6 +255,18 @@ gives a leg and an area of 0, its sine under the doubles' range (the cloud revie
 PR #2, in the code before it too).
 
 ## Resolved
+
+### KI-028: A decimal half could show the odd last digit (resolved 2026-10-19)
+
+A value converted from a decimal half in another unit lands a little off the half, so it
+rounded as its double did: 49.92751 mm, exactly 1.96565 in, showed 1.9657, and in the
+cloud review's count 361 cm, m and ft cases did too, such as a 0.5 mm circle's radius
+showing 0.0003 m. Resolved by ADR-0024's stop 3: every decimal shown to its places or
+figures takes the inch fractions' tie window (`formatting.round_tie`), so a value within
+two of its own last places of a half is the half, to even: 1.9656 in, 0.0002 m, 0.7938
+mm for 1/32 in, and 0.6688 in for the course's 0.66875 in. `tests/test_decimal_ties.py`
+sweeps 4,000 halves in each of seven pairs of units. A half that three roundings put
+further off is KI-030.
 
 ### KI-029: The converters showed every unit at once, with no output picker (resolved 2026-10-19)
 

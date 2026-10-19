@@ -190,7 +190,8 @@ def test_a_published_example_in_schema_1(capsys: pytest.CaptureFixture[str]) -> 
     assert ba["base"]["unit"] == "mm" and ba["shown"]["unit"] == "in"
     assert ba["shown"]["value"] == pytest.approx(1.338 / 2, abs=0.0005 + 1e-9)
     assert ba["base"]["value"] == pytest.approx(ba["shown"]["value"] * INCH, rel=1e-15)
-    assert ba["shown"]["text"] == f"{ba['shown']['value']:.4f} in"
+    # 0.66875 in is a decimal half, so it's shown to even, not as its double rounds.
+    assert ba["shown"]["text"] == "0.6688 in"
     sixteenths = _json(capsys, *args, "--output-set", "in_16")["outputs"]["bend_allowance"]
     assert sixteenths["base"] == ba["base"], "the set changes only how it's shown"
     assert sixteenths["shown"] == {

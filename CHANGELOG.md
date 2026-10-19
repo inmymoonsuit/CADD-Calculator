@@ -398,6 +398,11 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A decimal half shows to even in every unit** (KI-028): 49.92751 mm is `1.9656 in`, a
+  0.5 mm circle's radius `0.0002 m`, and 1/32 in `0.7938 mm`, where each showed its
+  double's rounding. A value within two of its last places of a half is taken as the
+  half, as the inch fractions take one; the course's 0.66875 in bend allowance now shows
+  `0.6688 in`.
 - **A field's echo no longer widens the window's least size;** it hides when it doesn't
   fit, as it always did. A plugin's declared output set is shown by its translated label,
   in the results and in `caddcalc show`. A unit run on to a number with an exponent, as

@@ -476,3 +476,16 @@ an entered value's typed unit should count instead goes with E-3.
   every place it's shown, a result's included, which has none. That's a second rule
   for those rows alone.
 
+
+### 2026-10-19: decimals take the tie window too (ADR-0024 stop 3; KI-028)
+
+* **Every decimal shown to its places or figures** rounds once, half to even, with a value
+  within `TIE_ULPS` (two) of its own last places of a half, and never more than
+  `TIE_CAP` (a quarter) of a step, taken as that half (`formatting.round_tie`), as the
+  inch fractions count a tie (`compound.round_half_even`). It applies in a set, in a
+  field's text, to significant figures, and to a full-precision copy alike.
+* So 49.92751 mm, exactly 1.96565 in, shows 1.9656 in, a 0.5 mm circle's radius 0.0002 m,
+  1/32 in 0.7938 mm, and the course's bend allowance of 0.66875 in, for T = 0.125 and
+  R = 0.375, 0.6688 in, where each showed its double's rounding before.
+* A value three or more of its last places off a half isn't one, as for the forms; a half
+  that three roundings put that far off is KI-030.
