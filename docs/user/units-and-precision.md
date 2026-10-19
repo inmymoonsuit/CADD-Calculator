@@ -44,8 +44,13 @@ no picker.
   a default, a family value or the course example, keeps its size and is shown
   converted. Each switch is shown in the status bar and said to screen readers.
 * **Your first switch of a picker on a calculator carries** to that calculator's other
-  pickers of the same kind, so a part drawn in millimeters takes one change. After
-  that, each picker is set on its own, for as long as the app is open.
+  fields of the same kind that show a value you didn't type, such as a default, so a
+  part drawn in millimeters takes one change. A field you typed a number in keeps its
+  unit: you typed that number in it. After that, each picker is set on its own, for as
+  long as the app is open.
+* **With the keyboard,** ↑ and ↓ on a closed picker step through its units, and its
+  field is re-read at each step; the switch carries to the other fields, and is said,
+  once you press Enter or leave the picker.
 
 ## Typing with the unit in the text
 

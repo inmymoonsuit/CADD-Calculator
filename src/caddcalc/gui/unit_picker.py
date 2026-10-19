@@ -13,14 +13,15 @@ import math
 from collections.abc import Iterable, Sequence
 from typing import override
 
-from PySide6.QtCore import QModelIndex, QPersistentModelIndex, Qt, Signal
-from PySide6.QtGui import QFontMetricsF, QPalette, QResizeEvent
+from PySide6.QtCore import QEvent, QModelIndex, QPersistentModelIndex, QSize, Qt, Signal
+from PySide6.QtGui import QFocusEvent, QFontMetricsF, QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QLabel,
     QLineEdit,
     QStyle,
     QStyledItemDelegate,
+    QStyleOptionComboBox,
     QStyleOptionFrame,
     QStyleOptionViewItem,
     QWidget,
@@ -30,6 +31,8 @@ from caddcalc.core.formatting import Echo
 from caddcalc.core.i18n import _, npgettext_shown
 from caddcalc.core.units import CompoundForm, Dimension, Unit, registry
 from caddcalc.core.units.model import NAME_CONTEXT
+from caddcalc.gui.icons import current_scheme
+from caddcalc.gui.ui_style import secondary_text
 
 NAME_ROLE = int(Qt.ItemDataRole.UserRole) + 10
 """Picker item data holding the choice's name, as its list shows and it's spoken."""
@@ -68,11 +71,17 @@ class _ChoiceItems(QStyledItemDelegate):
 class UnitPicker(QComboBox):
     """A field's unit picker: its parameter's choices, in a picker's order (ADR-0024 §1).
 
+    A choice settles when it's made in the open list, when Enter is pressed, or when the
+    picker loses focus; ↑, ↓ and the like on a closed picker only step through the
+    choices (§3). Neither signal is emitted when the picker is set from code.
+
     Signals:
-        picked: Emitted with the choice's id when the user picks one, never when the
-            picker is set from code.
+        stepped: Emitted with the choice's id at each step through a closed picker.
+        picked: Emitted with the choice's id once a choice settles, if it differs from
+            the one settled before.
     """
 
+    stepped = Signal(str)
     picked = Signal(str)
 
     def __init__(
@@ -93,10 +102,14 @@ class UnitPicker(QComboBox):
             self.setItemData(index, name, NAME_ROLE)
             self.setItemData(index, name, Qt.ItemDataRole.ToolTipRole)
         self.setAccessibleName(f"{label} unit")
-        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.text_width = 0
+        """The width its closed face holds text in, shared by a page's pickers."""
+        self._stepping = False
+        self._settled = ""
         self.currentIndexChanged.connect(self._named)
-        self.activated.connect(lambda index: self.picked.emit(self.itemData(index, CHOICE_ROLE)))
+        self.activated.connect(self._activated)
         self._named()
+        self._settled = self.choice
 
     @property
     def choice(self) -> str:
@@ -109,8 +122,64 @@ class UnitPicker(QComboBox):
         return tuple(str(self.itemData(i, CHOICE_ROLE) or "") for i in range(self.count()))
 
     def set_choice(self, choice: str) -> None:
-        """Show ``choice``, as code sets it: ``picked`` isn't emitted."""
+        """Show ``choice``, as code sets it: neither signal is emitted."""
         self.setCurrentIndex(self.choices.index(choice))
+        self._settled = choice
+
+    def set_text_width(self, width: int) -> None:
+        """Hold ``width`` pixels of text, as wide as the page's widest symbol (§1, §8)."""
+        self.text_width = width
+        self.updateGeometry()
+
+    @override
+    def sizeHint(self) -> QSize:
+        """The face that holds ``text_width`` of text, with the frame and arrow, no icon."""
+        hint = super().sizeHint()
+        if not self.text_width:
+            return hint
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        contents = QSize(self.text_width, self.fontMetrics().height())
+        size = self.style().sizeFromContents(
+            QStyle.ContentsType.CT_ComboBox, option, contents, self
+        )
+        return QSize(size.width(), hint.height())
+
+    @override
+    def minimumSizeHint(self) -> QSize:
+        """As ``sizeHint``: the picker column never narrows past its widest symbol."""
+        return self.sizeHint() if self.text_width else super().minimumSizeHint()
+
+    @override
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Step on ↑ and ↓ and the like while closed; settle on Enter."""
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not self.view().isVisible():
+            self._settle()
+            event.accept()
+            return
+        self._stepping = not self.view().isVisible()
+        try:
+            super().keyPressEvent(event)
+        finally:
+            self._stepping = False
+
+    @override
+    def focusOutEvent(self, event: QFocusEvent) -> None:
+        """Settle the choice stepped to, as the picker loses focus."""
+        self._settle()
+        super().focusOutEvent(event)
+
+    def _activated(self, index: int) -> None:
+        choice = str(self.itemData(index, CHOICE_ROLE) or "")
+        if self._stepping:
+            self.stepped.emit(choice)
+        else:
+            self._settle()
+
+    def _settle(self) -> None:
+        if self.choice != self._settled:
+            self._settled = self.choice
+            self.picked.emit(self.choice)
 
     def _named(self, *_args: object) -> None:
         """Say the choice by its name, and show it as the tooltip (Q3)."""
@@ -119,24 +188,18 @@ class UnitPicker(QComboBox):
         self.setToolTip(name)
 
 
-def picker_min_chars(pickers: Iterable[UnitPicker]) -> int:
-    """Return the least width every picker on a page shares: its widest symbol, measured.
+def picker_text_width(pickers: Iterable[UnitPicker]) -> int:
+    """Return the text width every picker on a page shares: its widest symbol, measured.
 
-    It's counted in the widths of "X" that a combo box's least contents length counts,
-    so the pickers stand in one column with no ragged edge (``picker_min_chars``,
-    ADR-0024 §1, §8).
+    So the pickers stand in one column with no ragged edge, as narrow as their symbols
+    allow (``picker_min_chars``, ADR-0024 §1, §8).
     """
-    widest = 0
+    widest = 0.0
     for picker in pickers:
         metrics = QFontMetricsF(picker.font())
-        x = metrics.horizontalAdvance("X")
-        longest = max(
-            (metrics.horizontalAdvance(picker.itemText(i)) for i in range(picker.count())),
-            default=0.0,
-        )
-        if x > 0:
-            widest = max(widest, math.ceil(longest / x))
-    return widest
+        for i in range(picker.count()):
+            widest = max(widest, metrics.horizontalAdvance(picker.itemText(i)))
+    return math.ceil(widest)
 
 
 class EchoField(QLineEdit):
@@ -155,8 +218,8 @@ class EchoField(QLineEdit):
         self.help = ""
         self.echo: Echo | None = None
         self.echo_label = QLabel(self)
-        self.echo_label.setForegroundRole(QPalette.ColorRole.PlaceholderText)
         self.echo_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._color()
         self.echo_label.hide()
         self.textChanged.connect(self._place)
 
@@ -204,6 +267,20 @@ class EchoField(QLineEdit):
         self.setTextMargins(0, 0, echo + gap, 0)
         self.echo_label.setGeometry(inner.right() - echo + 1, inner.top(), echo, inner.height())
         self.echo_label.show()
+
+    def _color(self) -> None:
+        """Give the echo secondary text's colour in the scheme shown (WCAG 1.4.3).
+
+        It's information, not a placeholder's hint, so it takes the secondary text role.
+        """
+        self.echo_label.setStyleSheet(f"color: {secondary_text(current_scheme())};")
+
+    @override
+    def changeEvent(self, event: QEvent) -> None:
+        """Recolour the echo when the palette or the colour scheme changes."""
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.PaletteChange, QEvent.Type.ApplicationPaletteChange):
+            self._color()
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:

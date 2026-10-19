@@ -13,6 +13,7 @@ Python's ``ast``, which would read ``0x10``, ``1_000`` and ``1j`` as numbers.
 
 from __future__ import annotations
 
+import itertools
 import math
 import re
 import sys
@@ -305,6 +306,8 @@ def _mixed(tokens: list[_Token], text: str) -> list[_Token]:
     digits, with no space around its slash, and the whole number isn't the denominator
     of a fraction before it, so ``1/2 1/4`` stays two numbers.
     """
+    if _unfinished(tokens):
+        raise InputError(f"{text!r} isn't finished: a mixed number needs its fraction, as 1 3/16")
     joined: list[_Token] = []
     i = 0
     while i < len(tokens):
@@ -322,6 +325,34 @@ def _mixed(tokens: list[_Token], text: str) -> list[_Token]:
     return joined
 
 
+def _unfinished(tokens: list[_Token]) -> bool:
+    """Whether the text ends partway through a mixed number: ``1 3``, ``1 3/``, ``1-3/``.
+
+    Typing ``1 3/16`` passes through them, so they're said to be unfinished, not two
+    numbers with nothing between them. ``1-3`` is a whole subtraction, which the echo
+    shows, and a whole number that's a fraction's denominator, as in ``1/2 3``, starts
+    no mixed number.
+    """
+
+    def tight(a: _Token, b: _Token) -> bool:
+        return a.end == b.start
+
+    shapes = (("number", "number"), ("number", "number", "/"), ("number", "-", "number", "/"))
+    for shape in shapes:
+        tail = tokens[-len(shape) :]
+        if len(tail) < len(shape) or tuple(t.kind for t in tail) != shape:
+            continue
+        before = tokens[-len(shape) - 1] if len(tokens) > len(shape) else None
+        if before is not None and before.kind == "/" and tight(before, tail[0]):
+            continue
+        if not all(t.digits for t in tail if t.kind == "number"):
+            continue
+        if shape[1] == "-":
+            return all(tight(a, b) for a, b in itertools.pairwise(tail))
+        return not tight(tail[0], tail[1]) and (len(tail) == 2 or tight(tail[1], tail[2]))
+    return False
+
+
 def _mixed_size(tokens: list[_Token], i: int) -> int:
     """Return how many tokens from ``i`` a mixed number takes: 5, 4, or 0 for none."""
 
@@ -329,7 +360,7 @@ def _mixed_size(tokens: list[_Token], i: int) -> int:
         return j < len(tokens) and tokens[j].kind == "number" and tokens[j].digits
 
     def touch(j: int) -> bool:
-        return tokens[j].end == tokens[j + 1].start
+        return j + 1 < len(tokens) and tokens[j].end == tokens[j + 1].start
 
     def kind(j: int) -> str:
         return tokens[j].kind if j < len(tokens) else ""

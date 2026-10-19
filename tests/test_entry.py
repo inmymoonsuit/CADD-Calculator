@@ -6,7 +6,9 @@ number reads bit for bit as ``parse_quantity`` reads it in that unit.
 
 from __future__ import annotations
 
+import contextlib
 import random
+import re
 from fractions import Fraction
 
 import pytest
@@ -47,19 +49,25 @@ def test_a_plain_number_reads_bit_for_bit_as_parse_quantity(
     choice: str, dimension: Dimension
 ) -> None:
     """Every number form of ADR-0019's identity corpus, in every unit a field takes."""
-    for text in identity.NUMBERS:
+    for text in (*identity.NUMBERS, *NON_DYADIC):
         try:
-            expected: float | str = parse_quantity(text, dimension, choice)
+            expected: float | str = parse_quantity(text, dimension, choice).hex()
         except InputError as exc:
             expected = str(exc)  # a count's "1-1/2": both refuse it, in the same words
         try:
-            got: float | str = value(text, choice, dimension)
+            got: float | str = value(text, choice, dimension).hex()
         except InputError as exc:
             got = str(exc)
         assert got == expected, (text, choice)
 
 
+NON_DYADIC = ("2 4/7", "3 78/100", "3 97/100", "4 56/100", "-0", "-0/16", "-0.0", "1-1/3")
+"""Mixed numbers whose fraction a double can't hold, and zeros written with a minus:
+each is read exactly and rounded once, and zero is +0.0, on both paths."""
+
+
 def test_random_decimals_and_fractions_read_bit_for_bit_as_parse_quantity() -> None:
+    """Compared by their bits, so -0.0 and 0.0, or two doubles a unit apart, differ."""
     rng = random.Random("entry identity")
     for _ in range(20_000):
         digits = rng.randrange(1, 18)
@@ -67,9 +75,19 @@ def test_random_decimals_and_fractions_read_bit_for_bit_as_parse_quantity() -> N
         if rng.random() < 0.3:
             text = f"{rng.randrange(1, 100)}/{rng.choice([2, 4, 8, 16, 32, 64, 3, 7])}"
         if rng.random() < 0.2:
-            text = f"{rng.randrange(0, 100)} {rng.randrange(1, 15)}/16"
+            denominator = rng.choice([16, 7, 100, 3, 9])
+            text = f"{rng.randrange(0, 100)} {rng.randrange(1, denominator)}/{denominator}"
+        if rng.random() < 0.05:
+            text = f"-0{rng.choice(['', '/16', '.0', ' 0/4'])}"
         for choice in ("in", "mm", "ft", "m"):
-            assert value(text, choice) == parse_quantity(text, L, choice), (text, choice)
+            got, expected = value(text, choice), parse_quantity(text, L, choice)
+            assert got.hex() == expected.hex(), (text, choice)
+
+
+def test_a_typed_minus_zero_is_zero_on_both_paths() -> None:
+    for text in ("-0", "-0/16", "-0.0", "-0 0/4"):
+        assert value(text, "in").hex() == parse_quantity(text, L, "in").hex() == "0x0.0p+0"
+    assert parse_quantity("3 78/100", L, "mm") == 3.78, "exact, then rounded once"
 
 
 @pytest.mark.parametrize(
@@ -222,7 +240,7 @@ def test_degrees_minutes_and_seconds_refuse_what_their_grammar_doesnt_hold(
         ("2**3", "isn't a number or arithmetic"),
         ("2(3)", "two numbers with nothing between them"),
         ("1/2 1/4", "two numbers with nothing between them"),
-        ("2 3", "two numbers with nothing between them"),
+        ("2 3.5", "two numbers with nothing between them"),
         ("(2", "isn't closed"),
         ("2)", "isn't a number or arithmetic"),
         ("1-1/2-", "ends before its last number"),
@@ -351,3 +369,79 @@ def test_every_unit_of_every_dimension_a_field_takes_is_a_choice() -> None:
     for dimension in (L, A, Dimension.STRESS, Dimension.AREA):
         symbols = {u.symbol for u in units_for(dimension)}
         assert symbols <= set(registry().entry_choices(dimension))
+
+
+@pytest.mark.parametrize(
+    ("text", "why"),
+    [
+        ("1-", "ends before its last number"),
+        ("12-", "ends before its last number"),
+        ("1-3/", "isn't finished: a mixed number needs its fraction"),
+        ("1 3/", "isn't finished: a mixed number needs its fraction"),
+        ("1 3", "isn't finished: a mixed number needs its fraction"),
+        ("2 × 1 3", "isn't finished: a mixed number needs its fraction"),
+        ("1/2 3", "two numbers with nothing between them"),
+    ],
+)
+def test_a_prefix_of_a_mixed_number_is_refused_as_unfinished(text: str, why: str) -> None:
+    """Typing 1-3/16 or 1 3/16 passes through each of these, so none may crash."""
+    with pytest.raises(InputError, match=re.escape(why)):
+        read(text, "in", L)
+    assert evaluate("1-3") == -2, "a whole subtraction, which the echo shows"
+
+
+ENTRIES = [
+    ("1-3/16", "in", L),
+    ("1 3/16", "in", L),
+    ("12-1/2", "in", L),
+    ("2 × 1 3/16 - (1/4 + .5)", "in", L),
+    ("-1-3/16", "in", L),
+    ("1e3/4", "mm", L),
+    ("10'-2 3/16\"", "ft_in", L),
+    ("10-2-3/16", "ft_in", L),
+    ("-10 2 3/16", "ft_in", L),
+    ("40°30′15.5″", "dms", A),
+    ("40d30'15\"", "dms", A),
+    ("-40 30 15.25", "dms", A),
+    ("0.44", "", R),
+]
+"""Valid entries, each typed one key at a time."""
+
+
+@pytest.mark.parametrize(("text", "choice", "dimension"), ENTRIES)
+def test_every_prefix_of_a_valid_entry_reads_or_is_refused(
+    text: str, choice: str, dimension: Dimension
+) -> None:
+    """Each keystroke's text is read: a value, or a refusal, never another exception."""
+    for end in range(1, len(text) + 1):
+        with contextlib.suppress(InputError):
+            read(text[:end], choice, dimension)
+    read(text, choice, dimension)
+
+
+def test_no_text_of_the_grammars_characters_raises_but_a_refusal() -> None:
+    rng = random.Random("entry fuzz")
+    alphabet = "0123456789 -+/*×÷−().,'\"°′″dDe"
+    choices = [("in", L), ("ft_in", L), ("dms", A), ("deg", A), ("", R), ("", C)]
+    for _ in range(30_000):
+        text = "".join(rng.choice(alphabet) for _ in range(rng.randrange(1, 14)))
+        choice, dimension = rng.choice(choices)
+        with contextlib.suppress(InputError):
+            read(text, choice, dimension, decimal=rng.choice([".", ","]))
+
+
+@pytest.mark.parametrize("text", ["1-3 /16", "1-3/ 16", "1 - 3 / 16"])
+def test_a_slash_with_a_space_beside_it_makes_no_mixed_number(text: str) -> None:
+    """The fraction of a mixed number is written tight: spaced, it's arithmetic."""
+    assert evaluate(text) == Fraction(13, 16)
+
+
+def test_a_huge_exponent_is_refused_before_its_number_is_built() -> None:
+    """Building 10**99999999 takes minutes; the bound refuses it at once."""
+    import time
+
+    for text in ("1e99999999", "1e-99999999", "1e999999*2"):
+        started = time.perf_counter()
+        with pytest.raises(InputError, match="too large a number to calculate with"):
+            read(text, "in", L)
+        assert time.perf_counter() - started < 0.5, text

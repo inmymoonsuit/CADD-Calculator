@@ -36,6 +36,10 @@ def parse_number(text: str, decimal: str = ".") -> float:
     most. Digits are never grouped, so ``1.234`` is 1.234 in every locale, and a comma
     that isn't the locale's mark is refused, never read as grouping (ADR-0020 §4).
 
+    A fraction or mixed number is exact, rounded once, and zero has one sign, +0.0, so
+    ``-0`` and ``-0/16`` read as ``0``: as a field picked in a unit reads them
+    (``core.units.entry``), bit for bit.
+
     Raises:
         InputError: The text isn't a number.
     """
@@ -58,7 +62,10 @@ def parse_number(text: str, decimal: str = ".") -> float:
             if den == 0:
                 raise InputError(f"Fraction {text!r} has a zero denominator")
             whole = numbers[0] if len(numbers) == 3 else 0
-            return sign * (whole + numbers[-2] / den)
+            # Exactly, then rounded once: 3 78/100 is the double nearest 3.78, as a
+            # picked field reads it (ADR-0024 E2), not 3 + 0.78 rounded twice.
+            exact = Fraction(whole) + Fraction(numbers[-2], den)
+            return float(exact if sign > 0 else -exact)
     try:
         value = float(s)
     except ValueError:
@@ -67,7 +74,7 @@ def parse_number(text: str, decimal: str = ".") -> float:
         raise InputError(f"{text!r} is not a finite number")
     if not math.isfinite(value):
         raise InputError(f"{text!r} is too large a number to calculate with")
-    return value
+    return value + 0.0  # "-0" is 0.0: zero has one sign, as an exact value's has
 
 
 _EXACT = re.compile(

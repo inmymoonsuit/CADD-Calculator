@@ -119,8 +119,19 @@
 * **"Follow until set," decided (Q6).**
   * The first time the user changes a length picker on a calculator, the calculator's
     other length pickers that the user hasn't set follow it.
-  * Each moves under §2's rules, and the announcement names them all ("Lengths now in
-    millimeters: thickness, radius, formed view dimension").
+  * **A field the user has typed a number in is set,** so it never follows: the user
+    typed that number in the unit its picker showed. Only fields showing a value the
+    user didn't type follow: a default, a family value or a course example. Each keeps
+    its quantity and is shown converted.
+  * The announcement names only the fields that moved ("Lengths now in millimeters:
+    radius, formed view dimension").
+  * **It runs once the choice settles:** when the picker loses focus, Enter is pressed,
+    or a choice is made in its open list. It doesn't run on each arrow-key step through a
+    closed picker. The picker's own field is re-read at each step (§2), which is
+    reversible.
+  * *Amended 2026-10-19, from UI/UX's review of U1 (H2, M1):* this replaces "each moves
+    under §2's rules". That wording made a typed follower re-read its number, so 0.06 in
+    became 0.06 mm. It also let the first arrow-key step lead the others.
   * After that, each picker is the user's.
   * A segment drawn in mm then takes one change, not three, with no group control and
     no global preference (D4).
@@ -1031,4 +1042,38 @@ E-1 and E-2 change nothing a user sees; the user guide changes with U1.
 * **Native only, for UI/UX's review:** pickers 26 px tall like the fields; the echo's
   0 px of height and width; nothing clipping at the 521 px least window; and no page
   growing past ADR-0023's table but for the header.
+
+### 2026-10-19: as built, the stop-1 reviews' fixes (U1)
+
+From UI/UX's native review (2 High, 2 Medium, 4 Low) and Support & Review's (3 Low; its
+third, the domain settings' default choices, goes with U2b):
+* **H1:** `_mixed_size`'s `touch` read past the last token, so `1-` and `12-`, on every
+  keystroke path to `1-3/16`, raised IndexError and the error hook's box. It's bounded;
+  every prefix of thirteen valid entries, in each choice, reads or is refused, through
+  the reader and typed key by key into a field with the error hook watched; and 30,000
+  random texts of the grammars' characters raise nothing but a refusal.
+* **H2 and M1:** §3 as amended above. `UnitPicker.stepped` is emitted at each ↑/↓ step
+  of a closed picker, which re-reads only its own field (`_on_stepped`); `picked` once
+  the choice settles, on Enter, focus out, or a choice in the open list, and only when
+  it differs from the choice settled before. Followers skip a field the user typed in,
+  or has text pending in (`_typed_in`), and the announcement names the fields that moved.
+* **M2:** the echo takes `secondary_text` in the scheme shown, recoloured on a palette
+  change, not the placeholder role: 5.80:1 on the light fields' surface, at least 4.5:1
+  in both schemes (tested).
+* **L1:** a picker's face is `sizeFromContents` of the page's widest symbol, with no
+  icon's reserve (`picker_text_width`, `UnitPicker.set_text_width`).
+* **L2:** a bend angle offers `deg`, `dms` and `rad` (`Param.units`, in sheet metal's
+  `bend_angle`).
+* **L3:** a text that ends partway through a mixed number, `1 3`, `1 3/`, `1-3/`, says it
+  "isn't finished"; `1/2 3` stays two numbers, and `1-3` is a subtraction the echo shows.
+* **L4:** "Check the inputs" says the text names a unit; the fix's sentence and button
+  are by the field alone.
+* **S&R L1:** `parse_number` reads a fraction or mixed number exactly and rounds once,
+  so `3 78/100` mm is 3.78, not 3.7800000000000002, and zero has one sign, +0.0, for
+  `-0` and `-0/16` alike. The two paths are compared by `float.hex`, over the corpus,
+  non-dyadic mixed numbers and zeros, and 20,000 random numbers.
+* **S&R L2:** `1-3 /16` and `1-3/ 16` are 13/16, and `1e99999999` is refused in under
+  0.5 s.
+* Thirteen mutants, one for each of these guards, are each killed; without its bound,
+  `1e99999999` outlasts a 60 s timeout.
 

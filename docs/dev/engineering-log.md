@@ -16,6 +16,18 @@ Template:
 
 ---
 
+## 2026-10-19: Following a pick with every untouched picker, at every step
+**Tried:** in U1, the first change to a dimension's picker carried to the calculator's
+other pickers of that dimension, each "moving under §2's rules", and a closed picker's
+↑/↓ step was a change.
+**Outcome:** replaced after UI/UX's native review of U1 (H2, M1).
+**Why:** §2 re-reads a typed number in the new unit, so a field the user had typed
+0.06 in became 0.06 mm when another field was picked in mm, silently, by a factor of
+25.4. And the first arrow-key step, from in to ft-in, led the others there.
+**Instead:** a field the user typed in never follows; only values the user didn't type
+follow, converted. A step re-reads only its own field; the follow and the
+announcement run when the choice settles (ADR-0024 §3, as amended).
+
 ## 2026-10-19: Recognizing a form before a unit in a field's text
 **Tried:** for a field's text that names a unit (ADR-0024 Q5), reading it first by each
 form's grammar with its marks optional, to offer ft-in for `5'9`, then by the unit

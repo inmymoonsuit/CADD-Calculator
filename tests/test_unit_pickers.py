@@ -221,7 +221,9 @@ def test_a_unit_in_the_text_is_refused_and_its_fix_offered() -> None:
     window.select_calculator(BEND)
     type_into(field(window, "thickness"), "25 mm")
     assert window.result is None
-    assert "Material thickness: Units go in the picker. Use 25 mm?" in results_text(window)
+    shown = results_text(window)
+    assert "Material thickness: '25 mm' names a unit" in shown
+    assert "Units go in the picker" not in shown, "the fix's sentence shows once, by the field"
     row, note, button = window.unit_fixes["thickness"]
     assert not row.isHidden() and button.text() == "Use 25 mm"
     assert note.text() == "Units go in the picker. Use 25 mm?"
@@ -337,4 +339,189 @@ def test_nothing_clips_at_the_launch_size(tmp_path: Path, language: str) -> None
         window.resize(round(launch.width), round(launch.height))
         settle(window)
         assert _clipped(window) == [], row.text(0)
+    window.close()
+
+
+def test_typing_a_mixed_number_key_by_key_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every keystroke to 1-3/16 passes "1-", which once raised IndexError mid-typing."""
+    import sys
+
+    from PySide6.QtTest import QTest
+
+    raised: list[BaseException] = []
+    monkeypatch.setattr(sys, "excepthook", lambda _t, exc, _tb: raised.append(exc))
+    window = open_window()
+    window.select_calculator(BEND)
+    edit = field(window, "thickness")
+    edit.selectAll()
+    QTest.keyClicks(edit, "1-3/16")
+    assert raised == []
+    assert window.result.inputs["thickness"] == 1.1875 * INCH
+    assert edit.echo.text == "= 1 3/16 in"
+    window.close()
+
+
+@pytest.mark.parametrize(
+    ("choice", "text"),
+    [("in", "2 × 1 3/16 - (1/4 + .5)"), ("ft_in", "-10'-2 3/16\""), ("in", "12-1/2")],
+)
+def test_every_prefix_typed_into_a_field_reads_or_is_refused(
+    monkeypatch: pytest.MonkeyPatch, choice: str, text: str
+) -> None:
+    import sys
+
+    from PySide6.QtTest import QTest
+
+    raised: list[BaseException] = []
+    monkeypatch.setattr(sys, "excepthook", lambda _t, exc, _tb: raised.append(exc))
+    window = open_window()
+    window.select_calculator(BEND)
+    if choice != "in":
+        pick(window, "thickness", choice)
+    edit = field(window, "thickness")
+    for end in range(1, len(text) + 1):
+        edit.selectAll()
+        QTest.keyClicks(edit, text[:end])
+        assert raised == [], text[:end]
+    window.close()
+
+
+def test_a_field_the_user_typed_in_never_follows_a_pick() -> None:
+    """Typed in inches, T and R stay in inches when FVD is picked in mm (§3 as amended)."""
+    window = open_window()
+    window.select_calculator("sheet_metal.segment_flat_length")
+    type_into(field(window, "thickness"), "0.06")
+    type_into(field(window, "inside_radius"), "0.09")
+    pick(window, "formed_dimension", "mm")
+    assert window.pickers["thickness"].choice == window.pickers["inside_radius"].choice == "in"
+    assert window.result.inputs["thickness"] == pytest.approx(0.06 * INCH)
+    assert window.result.inputs["inside_radius"] == pytest.approx(0.09 * INCH)
+    message = window.statusBar().currentMessage()
+    assert (
+        message.startswith("Formed view dimension: shown in millimeters")
+        and "Lengths" not in message
+    )
+    window.close()
+
+
+def test_only_fields_showing_a_value_the_user_didnt_type_follow() -> None:
+    window = open_window()
+    window.select_calculator("sheet_metal.segment_flat_length")
+    type_into(field(window, "thickness"), "0.06")
+    pick(window, "formed_dimension", "mm")
+    assert window.pickers["thickness"].choice == "in"
+    assert window.pickers["inside_radius"].choice == "mm", "its default, converted"
+    assert (
+        window.statusBar()
+        .currentMessage()
+        .endswith("Lengths now in millimeters: inside bend radius")
+    )
+    window.close()
+
+
+def test_arrow_keys_step_a_closed_picker_and_follow_once_it_settles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """From in to mm the steps pass ft-in and ft: the others follow only the settled mm."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    import caddcalc.gui.window as window_module
+
+    said: list[str] = []
+    monkeypatch.setattr(window_module, "announce", lambda _w, message: said.append(message))
+    window = open_window()
+    window.show()
+    window.select_calculator(BEND)
+    type_into(field(window, "thickness"), "25")
+    picker = window.pickers["thickness"]
+    picker.setFocus()
+    steps = []
+    for _ in range(3):
+        QTest.keyClick(picker, Qt.Key.Key_Down)
+        steps.append((picker.choice, window.result.inputs["thickness"]))
+    assert steps == [("ft_in", 25 * INCH), ("ft", 25 * 304.8), ("mm", 25.0)], "re-read each step"
+    assert said == [] and window.pickers["inside_radius"].choice == "in", "nothing follows yet"
+    QTest.keyClick(picker, Qt.Key.Key_Return)
+    assert window.pickers["inside_radius"].choice == "mm"
+    assert said == [
+        "Material thickness: 25 now read as millimeters. "
+        "Lengths now in millimeters: inside bend radius"
+    ]
+    window.close()
+
+
+def test_focus_leaving_a_stepped_picker_settles_it() -> None:
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    window = open_window()
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+    window.select_calculator(BEND)
+    picker = window.pickers["thickness"]
+    picker.setFocus()
+    QApplication.processEvents()
+    QTest.keyClick(picker, Qt.Key.Key_Down)
+    QTest.keyClick(picker, Qt.Key.Key_Up)
+    QTest.keyClick(picker, Qt.Key.Key_Tab)
+    assert window.statusBar().currentMessage() == "", "back where it began: nothing settled"
+    picker.setFocus()
+    QApplication.processEvents()
+    assert picker.hasFocus()
+    QTest.keyClick(picker, Qt.Key.Key_Down)
+    QTest.keyClick(picker, Qt.Key.Key_Tab)
+    assert not picker.hasFocus()
+    assert window.pickers["inside_radius"].choice == "ft_in"
+    assert window.statusBar().currentMessage().startswith("Material thickness: shown in")
+    window.close()
+
+
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_the_echo_is_secondary_text_with_at_least_4_5_to_1(scheme: str) -> None:
+    """It's information, not a placeholder's hint (WCAG 1.4.3)."""
+    from caddcalc.gui.style_tokens import palette_color
+    from caddcalc.gui.ui_style import secondary_text, ui_style
+    from tests.test_palette import contrast
+
+    color = secondary_text(scheme)
+    assert contrast(color, palette_color(ui_style().result_field.fill_role, scheme)) >= 4.5
+    window = open_window()
+    window.select_calculator(BEND)
+    label = field(window, "thickness").echo_label
+    assert label.styleSheet() == f"color: {secondary_text('light')};"
+    window.close()
+
+
+def test_a_picker_is_as_wide_as_its_widest_symbol_with_no_icons_room() -> None:
+    from PySide6.QtCore import QSize
+    from PySide6.QtWidgets import QStyle, QStyleOptionComboBox
+
+    window = open_window()
+    window.select_calculator(BEND)
+    picker = window.pickers["thickness"]
+    option = QStyleOptionComboBox()
+    picker.initStyleOption(option)
+    least = picker.style().sizeFromContents(
+        QStyle.ContentsType.CT_ComboBox,
+        option,
+        QSize(picker.text_width, picker.fontMetrics().height()),
+        picker,
+    )
+    assert picker.sizeHint().width() == least.width()
+    widest = max(
+        picker.fontMetrics().horizontalAdvance(p.itemText(i))
+        for p in window.pickers.values()
+        for i in range(p.count())
+    )
+    assert widest <= picker.text_width <= widest + 1, "the widest symbol, measured"
+    window.close()
+
+
+def test_a_bend_angle_is_picked_in_degrees_dms_or_radians() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    assert window.pickers["bend_angle"].choices == ("deg", "dms", "rad")
     window.close()
