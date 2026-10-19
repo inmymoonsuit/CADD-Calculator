@@ -6,7 +6,9 @@ typed in any unit, including feet and inches (`1'-4 3/16"`); areas show in the s
 your length unit (in² or mm²), to 6 significant figures. Angles are in degrees.
 
 Input that describes no real shape is refused with a message, never computed: every
-length must be greater than zero, and each calculator's own limits are below.
+length must be greater than zero, and each calculator's own limits are below. A length
+must also be from 10⁻⁷⁰ mm to 10⁷⁰ mm, far past any drawing: outside that the arithmetic
+can't hold the products of the lengths, and an angle or an area would come out wrong.
 
 ## Sources
 

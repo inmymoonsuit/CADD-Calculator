@@ -22,6 +22,7 @@ from caddcalc.calculators.geometry.common import (
     MH31_SEGMENT,
     POCKET_PLANE_FIGURES,
     POCKET_SEGMENTS,
+    check_scale,
     length,
     method,
 )
@@ -65,6 +66,7 @@ class Circle(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        check_scale(ctx)
         if ctx.method == "diameter":
             ctx.given("D", output="diameter")
             ctx.calc("r", "D/2", label="Radius", dimension=LENGTH, output="radius")
@@ -105,6 +107,7 @@ class Rectangle(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        check_scale(ctx)
         ctx.calc("P", "2*(L + W)", label="Perimeter", dimension=LENGTH, output="perimeter")
         ctx.calc("S", "L*W", label="Area", dimension=AREA, output="area")
         ctx.calc("d", "sqrt(L**2 + W**2)", label="Diagonal", dimension=LENGTH, output="diagonal")
@@ -204,6 +207,7 @@ class RegularPolygon(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        check_scale(ctx)
         sides = ctx["sides"]
         if ctx.method == "side":
             ctx.given("a", output="side")
@@ -306,6 +310,7 @@ class ArcSector(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        check_scale(ctx)
         ctx.calc("L", "pi*r*A/180", label="Arc length", dimension=LENGTH, output="arc_length")
         ctx.calc("c", "2*r*sind(A/2)", label="Chord", dimension=LENGTH, output="chord")
         ctx.calc("h", "2*r*sind(A/4)**2", label="Sagitta", dimension=LENGTH, output="sagitta")

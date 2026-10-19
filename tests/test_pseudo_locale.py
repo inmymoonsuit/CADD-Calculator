@@ -56,7 +56,7 @@ def test_each_string_grows_by_about_40_percent() -> None:
         ("Welcome to CADD Calculator", ["CADD Calculator"]),
         ("&File and && more", ["&F", "&&"]),
         ("<b>Method</b>: see &amp; read", ["<b>", "</b>", "&amp;"]),
-        ("Load %(name)s now, %s of %d", ["%(name)s", "%s", "%d"]),  # S&R's i2 L1
+        ("Load %(name)s now, %s of %d", ["%(name)s", "%s", "%d"]),  # printf placeholders too
     ],
 )
 def test_what_makes_text_work_is_never_touched(text: str, kept: list[str]) -> None:

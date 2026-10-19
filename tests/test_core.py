@@ -447,7 +447,7 @@ def test_a_failing_check_is_a_definition_error() -> None:
 
 
 def test_a_check_sees_each_inputs_source_read_only() -> None:
-    """Review L2: a check tells a derived thickness from a typed one by its source."""
+    """A check tells a derived thickness from a typed one by its source."""
     seen: dict[str, str] = {}
 
     def sources(ctx: Context, _selections: Mapping[str, str]) -> None:
@@ -634,7 +634,7 @@ def test_core_and_calculators_use_only_the_standard_library() -> None:
     assert not offenders, offenders
 
 
-# --- evaluator hardening (review findings) ------------------------------------------------
+# --- evaluator hardening ------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -689,6 +689,18 @@ def test_expr_sine_and_cosine_are_exactly_0_where_they_are_0() -> None:
     )
     for k in range(-8, 9):
         assert expr.evaluate("tand(x)", {"x": 180.0 * k}) == 0.0, k
+    # A zero is signed as IEEE 754's sinPi and tanPi sign it (IEEE 754-2019, §9.2.1): the
+    # sine by the angle's sign, and the tangent by it and the multiple's parity.
+    for deg, sine, tangent in [
+        (0.0, 1.0, 1.0),
+        (-0.0, -1.0, -1.0),
+        (180.0, 1.0, -1.0),
+        (-180.0, -1.0, 1.0),
+        (360.0, 1.0, 1.0),
+        (-360.0, -1.0, -1.0),
+    ]:
+        assert math.copysign(1.0, expr.evaluate("sind(x)", {"x": deg})) == sine, deg
+        assert math.copysign(1.0, expr.evaluate("tand(x)", {"x": deg})) == tangent, deg
     assert math.tan(math.radians(180)) != 0, "the case it's for"
     assert expr.evaluate("tand(x)", {"x": 45.0}) == math.tan(math.radians(45))
 
@@ -765,7 +777,7 @@ def test_zero_to_a_power_follows_evaluate() -> None:
     ],
 )
 def test_the_exact_evaluator_refuses_runaway_values_promptly(formula: str) -> None:
-    """The reviewer's probe hung before the size bound; nesting compounded the exponents."""
+    """The size bound refuses each promptly, however nesting compounds the exponents."""
     started = time.perf_counter()
     with pytest.raises(CalculationError, match="exceed 100000 bits"):
         expr.evaluate_exact(formula, {}, digits=40)
@@ -832,7 +844,7 @@ def test_the_exact_evaluators_digits_are_capped_before_any_work() -> None:
 
 
 def test_a_stated_value_is_shown_as_stated_in_either_unit() -> None:
-    """Review M3: rounding 0.109375 in to 0.1094 in made a third value for 12 ga."""
+    """A stated 0.109375 in is never rounded to 0.1094 in, a third value for 12 ga."""
     from caddcalc.core import Step
     from caddcalc.core.formatting import DisplayPrefs, render_step
 
@@ -859,7 +871,7 @@ def test_a_stated_value_is_shown_as_stated_in_either_unit() -> None:
 
 
 def test_a_methods_notes_name_their_values_and_read_in_the_users_format() -> None:
-    """UI/UX's i4 L2: the app's own numbers in a note are values, filled where shown."""
+    """The app's own numbers in a note are values, filled where shown."""
     from caddcalc.core.errors import SpecError
     from caddcalc.core.formatting import DisplayPrefs, NumberSymbols, method_notes
     from caddcalc.core.units import Dimension

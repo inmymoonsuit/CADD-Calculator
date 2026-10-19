@@ -462,45 +462,67 @@ msgstr ""
 #. whole inches and 1/2 inch, spoken, e.g. "1 and a half inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a half inches"
-msgstr ""
+msgid_plural "{inches} and a half inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/4 inch, spoken, e.g. "1 and a quarter inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a quarter inches"
-msgstr ""
+msgid_plural "{inches} and a quarter inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/16 inch, spoken, e.g. "1 and a sixteenth inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a sixteenth inches"
-msgstr ""
+msgid_plural "{inches} and a sixteenth inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/64 inch, spoken, e.g. "1 and a sixty-fourth inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a sixty-fourth inches"
-msgstr ""
+msgid_plural "{inches} and a sixty-fourth inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/32 inch, spoken, e.g. "1 and a thirty-second inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a thirty-second inches"
-msgstr ""
+msgid_plural "{inches} and a thirty-second inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/8 inch, spoken, e.g. "1 and an eighth inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and an eighth inches"
-msgstr ""
+msgid_plural "{inches} and an eighth inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
-#. is the fraction's denominator as a word, such as "sixteenths".
+#. is the fraction's denominator as a word, such as "sixteenths". The form follows the
+#. whole value as a decimal, 4.1875, so English's two forms are the same.
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and {numerator} {part} inches"
-msgstr ""
+msgid_plural "{inches} and {numerator} {part} inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. a number and its unit, spoken, e.g. "4 inches" or "30 minutes".
 #: src/caddcalc/core/units/compound.py

@@ -56,9 +56,8 @@ uv run pytest                # tests
 
 ## Disclaimer
 
-Results are for drafting and education. Real bend allowances depend on tooling, material
-lot, grain direction, and the bending method. Verify against your shop's data and test
-bends before manufacturing. The software comes with no warranty.
+Verify results and test according to your organization's policies or industry best
+practice before manufacturing. The software comes with no warranty.
 
 ## License
 

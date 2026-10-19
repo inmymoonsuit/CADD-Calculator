@@ -35,10 +35,13 @@ def named(label: str, symbol: str) -> str:
 
     "Side a" and "Angle A (opposite a)" name their symbols already, so a message or a
     field says "Side a", not "Side a (a)". A symbol inside a word, such as K in
-    "K-factor", isn't named by it.
+    "K-factor", isn't named by it. A label that ends in parentheses takes the symbol
+    inside them: "Across flats (inscribed circle, AF)", never two pairs.
     """
     if re.search(rf"(?<![\w-]){re.escape(symbol)}(?![\w-])", label):
         return label
+    if label.endswith(")") and "(" in label:
+        return f"{label[:-1]}, {symbol})"
     return f"{label} ({symbol})"
 
 

@@ -483,7 +483,7 @@ def test_a_field_draws_its_border_and_its_outline(
 
 
 def test_the_results_title_is_the_size_of_the_documents_headings() -> None:
-    """The panel's title reads as one of the document's headings (UI/UX's k3 review)."""
+    """The panel's title reads as one of the document's headings."""
     from PySide6.QtGui import QTextCursor
 
     window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
@@ -503,7 +503,7 @@ def test_the_results_title_is_the_size_of_the_documents_headings() -> None:
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_the_document_has_the_fields_surface(scheme: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """In dark, the document matched neither the fields nor the window (UI/UX's k3 review)."""
+    """Light or dark, the document has the fields' surface."""
     from PySide6.QtCore import QPoint
 
     from caddcalc.gui import result_fields
@@ -541,7 +541,7 @@ def _runs(colors: list[str], color: str) -> tuple[list[int], list[int]]:
 
 
 def test_a_dashed_outline_reads_eight_on_and_four_off() -> None:
-    """Flat caps: the pattern's 4 and 2 line widths, not 10 and 2 (UI/UX's k3 review)."""
+    """Flat caps: the pattern's 4 and 2 line widths, not 10 and 2."""
     from caddcalc.core import NoteKind
     from caddcalc.gui.icons import role_color
     from caddcalc.gui.outlines import note_outline
@@ -563,7 +563,7 @@ def test_a_dashed_outline_reads_eight_on_and_four_off() -> None:
 
 
 def test_the_focus_ring_is_even_and_whole_at_150_percent() -> None:
-    """Each side: the same gap and the same ring, in whole device pixels (k3 review L4)."""
+    """Each side: the same gap and the same ring, in whole device pixels."""
     from PySide6.QtCore import QSize, Qt
     from PySide6.QtGui import QImage
 
@@ -601,7 +601,7 @@ def test_the_focus_ring_is_even_and_whole_at_150_percent() -> None:
 
 
 def test_the_window_never_shrinks_below_a_title_a_method_row_and_one_field() -> None:
-    """The k3b page scroll let the window shrink to a sliver (UI/UX's k3b check)."""
+    """The window can't shrink to a sliver when the page scrolls."""
     from caddcalc.gui.ui_style import ui_style
 
     tokens = ui_style().result_field
@@ -635,7 +635,7 @@ def test_the_panel_fills_the_page_up_to_the_pages_cap() -> None:
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
-    """Sources in the Inputs grid and on a note's last line (UI/UX's k4 M1)."""
+    """Sources in the Inputs grid and on a note's last line."""
     from caddcalc.core import Note, NoteKind, Reference
     from caddcalc.gui.style_tokens import contrast, luminance, palette_color
     from caddcalc.gui.ui_style import secondary_text
@@ -645,7 +645,7 @@ def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
     background = palette_color("background", scheme)
     assert contrast(luminance(color), luminance(background)) >= 4.5
     expected = {"light": "#646662", "dark": "#BCBEBC"}[scheme]
-    assert color == expected, "UI/UX's figures: 5.80:1 and 8.32:1"
+    assert color == expected, "5.80:1 and 8.32:1"
     window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
     note = Note(NoteKind.LIMIT_EXCEEDED, "Too tight.", (Reference("Shop handbook"),))
     result = window.result
@@ -658,7 +658,7 @@ def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
 
 
 def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
-    """The label's tooltip is the output's help, the user guide's sentence (UI/UX's L1)."""
+    """The label's tooltip is the output's help, the user guide's sentence."""
     from caddcalc.gui.name_tips import tip_text
 
     window = open_window()

@@ -45,7 +45,9 @@ between two fractions takes the one with the even numerator, so 3/32" shows as 1
 7/32" as 1/4". The computer holds a typed value to about 16 digits, so a half-way value
 typed in inches, millimeters, meters or a fraction of a foot, such as `3/32 in`,
 `2.38125 mm`, `0.12779375 m` or `317/384 ft`, lands a hair off the half; a value within
-two units in its last digit of the half counts as the half. A value so large that a
+two units in its last digit, as written in inches, of the half counts as the half. One
+three units off, as `11.976562500000005 in` is, is a value of its own, and rounds as it
+is. A value so large that a
 sixteenth of an inch is lost in its last digits is rounded as it is. Seconds of an angle
 round the same way. Every inch fraction rounds by this one rule: feet and inches, the
 nearest 1/16, 1/32 and 1/64 inch, and the `(≈ …")` beside an inch value, so they never

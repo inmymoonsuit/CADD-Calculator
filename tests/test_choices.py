@@ -499,7 +499,7 @@ def test_a_kept_dependent_may_be_offered_under_another_parent_selection() -> Non
 
 
 class _Undeclared:
-    """The reviewer's probe: choice "u" declares no parent but reads "a" to decide."""
+    """Choice "u" declares no parent but reads "a" to decide."""
 
     def __init__(self) -> None:
         self.seen: list[tuple[str, dict[str, str]]] = []

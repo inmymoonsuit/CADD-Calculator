@@ -91,7 +91,7 @@ def test_math_is_typeset_number_by_number(math: str, comma: str) -> None:
 
 
 def test_copy_writes_a_point_and_copy_all_and_the_shown_form_the_locales_mark() -> None:
-    """Ctrl+C pastes into CAD, which reads a comma between coordinates (ADR-0020 L4)."""
+    """Ctrl+C pastes into CAD, which reads a comma between coordinates (ADR-0020 §4)."""
     calc, result = _bend()
     output = calc.outputs[0]
     value = result.outputs[output.key]

@@ -132,7 +132,7 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
             f"inside radius {radius:.4f} in is below {minimum}, the recommended minimum this "
             f"check uses, for 6061-T6 aluminum at {thickness:.4f} in, in aerospace bending "
             "practice."
-        ), "the verdict and its numbers first, with its scope (F1; review M2, L1)"
+        ), "the verdict and its numbers first, with its scope (ADR-0017 F1)"
         shown = said(limit)
         assert shown.startswith("Limit exceeded: inside radius ")
         assert shown.count("AC 43.13-1B (2024 ed. update), Table 4-6, p. 4-17: ") == 1, "once"
@@ -140,7 +140,7 @@ def test_6061_is_held_to_the_larger_source_at_each_thickness(
         assert "p. 4-14" not in shown, "a reviewer's remark is never rendered"
         assert "Engineering Series for Aircraft Repair" not in shown, "short"
         assert "Engineering Series for Aircraft Repair" in limit.references[1].title, "in full"
-        assert len(shown) < 800, "review 2b.7d: about 790 characters"
+        assert len(shown) < 800, "short references keep it short (ADR-0014, phase 2b.7d)"
         assert "The larger minimum governs" in detail(limit)
         assert limit.subjects == ("inside_radius", "thickness")
         assert "aircraft repair practice" in shown, "each source's scope"
@@ -165,7 +165,7 @@ def test_304_uses_the_half_hard_row_as_a_labelled_stand_in() -> None:
     assert (
         "TO 1-1A-9 (2020 Change 3) gives 2T for sheet 0.012–0.051 in, from TO's only "
         "304 row, for ½ Hard; a conservative stand-in for annealed 2B sheet."
-    ) in detail(limit), "where the value applies, as the source states it (wording M1)"
+    ) in detail(limit), "where the value applies, as the source states it"
     assert "Change 14" in limit.references[-1].edition, "the 2015 edition's row is cited"
 
 
@@ -191,7 +191,7 @@ def test_a_thickness_no_source_lists_is_said_aloud(
 def test_where_one_source_covers_the_thickness_it_is_used_alone() -> None:
     """Flag 5: AC lists nothing as thin as 0.012 in, so TO checks it alone."""
     result = bend(0.012, 0.02, "al:6061")
-    assert notes(result, GAP) == [], "the check applied, through TO (review L1)"
+    assert notes(result, GAP) == [], "the check applied, through TO"
     (gap,) = [n for n in notes(result, WARNING) if n.text == checks.PARTIAL]
     assert said(gap) == (
         "Checked against TO 1-1A-9 (2020 Change 3) only: AC 43.13-1B (2024 ed. update) lists "
@@ -274,7 +274,7 @@ def test_a_gauge_from_another_materials_system_is_warned_about(
 
 
 def test_a_typed_thickness_equal_to_the_gauges_isnt_warned_about() -> None:
-    """Review L2: the warning goes by the thickness's source, not its value."""
+    """The warning goes by the thickness's source, not its value."""
     gauge_thickness = 0.0598  # Manufacturers' Standard 16 ga, as the system states it
     typed = bend(gauge_thickness, 0.2, "al:6061", gauge="msg:16")
     assert typed.source_of("thickness").kind.value == "explicit"
@@ -318,7 +318,7 @@ def test_a_calculators_copy_of_an_applied_k_is_checked_too() -> None:
 
 
 def test_an_applied_k_given_for_other_materials_is_warned_about() -> None:
-    """Review L3: an applied value keeps its citation when the material changes."""
+    """An applied value keeps its citation when the material changes."""
     stainless = applied_k("ss:304", "faa_neutral_axis")
     (warning,) = [n for n in stainless.notes if n.text == checks.K_MISMATCH]
     assert said(warning) == K_FOR_304
@@ -329,7 +329,7 @@ def test_an_applied_k_given_for_other_materials_is_warned_about() -> None:
 
 
 def test_the_k_warning_offers_a_starting_value_only_where_one_is_given() -> None:
-    """Wording L4: galvanized has no K starting value, so the warning doesn't offer one."""
+    """Galvanized has no K starting value, so the warning doesn't offer one."""
     (warning,) = [
         n for n in applied_k("cs:a653", "faa_neutral_axis").notes if n.text == checks.K_MISMATCH
     ]
@@ -390,7 +390,7 @@ def test_a_part_with_every_bend_past_90_degrees_is_checked_as_before() -> None:
 def test_each_limit_detail_states_every_covering_sources_value_where_it_applies(
     material: str, thickness: float, radius: float
 ) -> None:
-    """Wording M1: each source's stated value and its column or band, as it states them."""
+    """Each source's stated value and its column or band, as it states them."""
     data = load_materials(MATERIAL_TABLE.load())
     temper = data.by_key[material].tempers[0].key
     (limit,) = notes(bend(thickness, radius, material), LIMIT)
@@ -410,8 +410,7 @@ def test_each_limit_detail_states_every_covering_sources_value_where_it_applies(
 LEAD_WORDS = 85
 """Characters a limit lead's template may use besides its values, name, and practice."""
 LEAD_BUDGET = 150
-"""A 6061-T6 limit lead in inches: UI/UX's 140, plus L1's longer "the recommended minimum
-this check uses"."""
+"""A 6061-T6 limit lead in inches, with room for "the recommended minimum this check uses"."""
 
 
 @pytest.mark.parametrize("unit", ["in", "mm"])
@@ -423,24 +422,24 @@ this check uses"."""
 def test_a_limit_lead_keeps_its_scope_words_within_its_budget(
     material: str, thickness: float, radius: float, unit: str, fraction: int | None
 ) -> None:
-    """Wording L1–L3: the scope stays in the lead, and the lead's own words stay short.
+    """The scope stays in the lead, and the lead's own words stay short.
 
     The budget holds the wording, not the data: a longer material name, or inch fractions,
-    may take the lead past it, but the scope words never go to make room (L3).
+    may take the lead past it, but the scope words never go to make room.
     """
     data = load_materials(MATERIAL_TABLE.load())
     name = data.by_key[material].tempers[0].name
     prefs = DisplayPrefs(length_unit=unit, fraction_denominator=fraction)
     (limit,) = notes(bend(thickness, radius, material), LIMIT)
     text = lead(limit, prefs)
-    assert "the recommended minimum this check uses" in text, "L1"
-    assert f"for {name} at " in text, "L2: the material named as the data names it"
-    assert limit.phrases["practice"] in text and "practice" in limit.phrases["practice"], "L2"
+    assert "the recommended minimum this check uses" in text, "the scope words"
+    assert f"for {name} at " in text, "the material named as the data names it"
+    assert limit.phrases["practice"] in text and "practice" in limit.phrases["practice"]
     shown = [value_parts(v, d, prefs).with_unit for v, d in limit.quantities.values()]
     own = len(text) - sum(map(len, shown)) - len(name) - len(limit.phrases["practice"])
-    assert own <= LEAD_WORDS, "L3: the template's own words"
+    assert own <= LEAD_WORDS, "the template's own words"
     if (material, unit, fraction) == ("al:6061", "in", None):
-        assert len(text) <= LEAD_BUDGET, "L3: the usual case"
+        assert len(text) <= LEAD_BUDGET, "the usual case"
 
 
 def test_a_notes_values_are_named_fields_shown_in_the_display_units() -> None:
@@ -449,7 +448,7 @@ def test_a_notes_values_are_named_fields_shown_in_the_display_units() -> None:
     assert set(limit.quantities) == {"R", "minimum", "T"}
     assert "0." not in limit.text, "the template holds no number"
     fractions = DisplayPrefs(fraction_denominator=64)
-    assert "≈" not in said(limit, fractions), "no fraction inside a sentence (S&R's k4 M1)"
+    assert "≈" not in said(limit, fractions), "no fraction inside a sentence"
     assert "inside radius 0.0500 in is below 0.1600 in," in lead(limit, fractions)
     assert "1.2700 mm" in lead(limit, DisplayPrefs(length_unit="mm"))
     data = limit.to_dict()

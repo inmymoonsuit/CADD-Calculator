@@ -189,12 +189,13 @@ def _cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
-def _resolve_param(calc: Calculator, name: str) -> Param:
+def _resolve_param(calc: Calculator, name: str, used: Sequence[Param]) -> Param:
     """Return the input ``name`` names: by its exact key or symbol, else in any case.
 
     An exact match comes first, so ``a`` and ``A`` can be a side and an angle. A name
     matched in any case must match one symbol only, among the results too: ``B`` for a
-    triangle is its angle, a result, and never its side ``b``.
+    triangle is its angle, a result, and never its side ``b``. Only the inputs in
+    ``used``, the chosen method's, are offered in its place.
 
     Raises:
         InputError: No input has the name, or, in any case, several inputs or results do.
@@ -213,15 +214,18 @@ def _resolve_param(calc: Calculator, name: str) -> Param:
     if len(matches) > 1:
         names = ", ".join(f"{p.symbol}/{p.key}" for p in matches)
         raise InputError(f"Input {name!r} for {calc.id} could be {names}; give one exactly")
+    options = ", ".join(f"{p.symbol}/{p.key}" for p in used)
     if matches and results:
-        # Only what can be given is offered: the result is named, not suggested.
+        # Only what can be given is offered: the result is named, not suggested, and
+        # an input the method refuses isn't suggested either.
         (p,) = matches
-        raise InputError(
-            f"Input {name!r} for {calc.id} isn't one: as written it's a result, "
-            f"{results[0].key}. Did you mean {p.symbol}/{p.key}? Give it exactly"
+        said = (
+            f"Input {name!r} for {calc.id} isn't one: as written it's a result, {results[0].key}."
         )
+        if p in used:
+            raise InputError(f"{said} Did you mean {p.symbol}/{p.key}? Give it exactly")
+        raise InputError(f"{said} Inputs: {options}")
     if not matches:
-        options = ", ".join(f"{p.symbol}/{p.key}" for p in calc.params)
         raise InputError(f"Unknown input {name!r} for {calc.id}. Inputs: {options}")
     return matches[0]
 
@@ -241,13 +245,15 @@ def parse_inputs(
         InputError: An argument is malformed, names an unknown input, has a bad value, or
             gives an input twice or one the method doesn't use, which would be lost.
     """
+    chosen = calc.get_method(method)
+    used = calc.params_for(chosen.key)
     values: dict[str, float] = {}
     given: dict[str, str] = {}
     for item in items:
         name, sep, text = item.partition("=")
         if not sep:
             raise InputError(f"Expected NAME=VALUE, got {item!r}")
-        p = _resolve_param(calc, name.strip())
+        p = _resolve_param(calc, name.strip(), used)
         if p.key in given:
             raise InputError(
                 f"Input {p.symbol}/{p.key} is given twice, as {given[p.key]!r} and {item!r}; "
@@ -256,8 +262,6 @@ def parse_inputs(
         given[p.key] = item
         default_unit = entry_unit(p.dimension, DisplayPrefs(length_unit=length_unit))
         values[p.key] = parse_quantity(text, p.dimension, default_unit)
-    chosen = calc.get_method(method)
-    used = calc.params_for(chosen.key)
     unused = [given[key] for key in values if key not in {p.key for p in used}]
     if unused:
         inputs = ", ".join(f"{p.symbol}/{p.key}" for p in used)

@@ -211,7 +211,7 @@ def _next_tab_stop(widget: Any) -> Any:
 
 
 def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
-    """Inputs, each copy button, Copy all, then the document (UI/UX's k4 M3)."""
+    """Inputs, each copy button, Copy all, then the document."""
     from PySide6.QtCore import Qt
 
     window = _bend_window()
@@ -225,7 +225,7 @@ def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
 
 
 def test_a_focused_copy_button_draws_no_focus_of_its_own() -> None:
-    """Its field's ring is the one focus indicator (UI/UX's k4 M2).
+    """Its field's ring is the one focus indicator.
 
     Whether a style draws a tool button's focus varies by style and platform, so this
     checks what the button asks its style to draw: a field's button never asks for
@@ -288,7 +288,7 @@ def _pixels_tab_changes(button: Any, before: Any) -> int:
 
 @pytest.mark.parametrize("style_name", ["Fusion", "windows11"])
 def test_tabbing_to_a_copy_button_paints_no_focus_but_the_ring(style_name: str) -> None:
-    """The painting itself (UI/UX's k6 L2): a field's button is unchanged; Copy all isn't."""
+    """The painting itself: a field's button is unchanged; Copy all isn't."""
     from PySide6.QtWidgets import QApplication, QStyleFactory
 
     style = QStyleFactory.create(style_name)
@@ -309,7 +309,7 @@ def test_tabbing_to_a_copy_button_paints_no_focus_but_the_ring(style_name: str) 
 
 
 def test_the_copied_message_stays_long_enough_to_read(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The check shows for copied_ms; the status bar's words for longer (UI/UX's k4 L1)."""
+    """The check shows for copied_ms; the status bar's words for longer."""
     from caddcalc.gui.ui_style import ui_style
 
     tokens = ui_style().result_field

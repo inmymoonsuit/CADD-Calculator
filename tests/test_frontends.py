@@ -258,6 +258,23 @@ def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_i
     assert next(p for p in calc.params if p.key == key).symbol == "b"
 
 
+def test_a_cli_suggestion_is_an_input_of_the_chosen_method() -> None:
+    """The leg-and-angle method has no side b, so ``B`` there suggests none: its inputs."""
+    from caddcalc.calculators import default_registry
+    from caddcalc.cli import parse_inputs
+    from caddcalc.core import InputError
+
+    calc = default_registry(load_plugins=False).get("geometry.right_triangle")
+    with pytest.raises(InputError) as refused:
+        parse_inputs(calc, ["a=3", "B=30"], "in", "leg_angle")
+    assert str(refused.value) == (
+        "Input 'B' for geometry.right_triangle isn't one: as written it's a result, "
+        "angle_b. Inputs: a/leg_a, A/angle_a"
+    )
+    with pytest.raises(InputError, match=r"Unknown input 'q' .*Inputs: a/leg_a, A/angle_a$"):
+        parse_inputs(calc, ["q=3"], "in", "leg_angle")
+
+
 @pytest.mark.parametrize(
     ("args", "message"),
     [
@@ -278,7 +295,7 @@ def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_i
 def test_the_cli_refuses_an_input_it_would_lose(
     args: list[str], message: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """An input the method doesn't use, or one given twice, was dropped or overwritten."""
+    """An unused input, or one given twice, is refused rather than dropped or overwritten."""
     from caddcalc.cli import main
 
     assert main(["run", "geometry.right_triangle", *args]) == 2

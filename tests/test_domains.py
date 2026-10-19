@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -297,7 +298,10 @@ def test_one_bad_item_does_not_drop_the_rest_of_a_plugin() -> None:
 
 
 def test_plugin_families_follow_the_builtins_sorted_by_name() -> None:
-    """Never in the order the packages are found: that follows the file system."""
+    """Never in the order the packages are found: that follows the file system.
+
+    The names sort against their IDs, and two named alike in any case go by ID.
+    """
 
     def plugin(domain_id: str, name: str) -> tuple[_FakeEntryPoint, _FakeEntryPoint]:
         domain = Domain(domain_id, name, f"The {name} plugin.")
@@ -310,14 +314,20 @@ def test_plugin_families_follow_the_builtins_sorted_by_name() -> None:
             domain_id, f"{domain_id}:Widget", widget
         )
 
-    found = [plugin("zeta", "Zeta Tools"), plugin("mid", "middle tools"), plugin("alpha", "Alpha")]
+    found = [
+        plugin("alpha", "Zeta Tools"),
+        plugin("zeta", "Alpha"),
+        plugin("twin_b", "middle tools"),
+        plugin("twin_a", "Middle Tools"),
+    ]
     builtins = [d.id for d in BUILTIN_DOMAINS]
-    for order in (found, found[::-1]):
+    expected = ["zeta", "twin_a", "twin_b", "alpha"]
+    for order in itertools.permutations(found):
         registry = _with_plugins([d for d, _ in order], [c for _, c in order])
         assert registry.plugin_errors == []
-        assert [d.id for d in registry.domains()] == [*builtins, "alpha", "mid", "zeta"]
-        assert [d.id for d in registry.by_domain()][-3:] == ["alpha", "mid", "zeta"]
-        assert [c.domain for c in registry][-3:] == ["alpha", "mid", "zeta"]
+        assert [d.id for d in registry.domains()] == [*builtins, *expected]
+        assert [d.id for d in registry.by_domain()][-4:] == expected
+        assert [c.domain for c in registry][-4:] == expected
 
 
 def test_a_plugin_cannot_redefine_a_builtin_domain() -> None:

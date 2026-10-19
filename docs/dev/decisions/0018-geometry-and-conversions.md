@@ -387,3 +387,22 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   three sites, the TSV keeping a "+" value a number, and full precision without the "+".
   Every long page in the layout test is a built-in calculator.
 * **The disclaimer** is the maintainer's line (ADR-0020's amendment of this date).
+
+### 2026-10-19: PR #1's follow-ups (the final review's lows and notes)
+
+* **A length scale for Geometry** (KI-026): every calculator refuses a length outside
+  10⁻⁷⁰ mm to 10⁷⁰ mm (`LENGTH_SCALE`, `check_scale`) before its work, with a plain
+  message. Offscreen, a 3-4-5 triangle scaled by 10ⁿ mm lost its area's digits from
+  n = -80 (0 at -82) and its angles' from -155 (9 % off at -162, a division by zero at
+  -165); a circle's area was 0 at -162; and the triangle's area overflowed at 77. At either end of the scale the
+  triangle, the right triangle and the circle keep their digits to 1e-15. Refusing was
+  chosen over scaling the sides by the largest, which would mend the angles but not an
+  area, and would show the scale in every step.
+* **Signed zeros:** `sind` and `tand` at a multiple of 180° give the zero IEEE 754-2019
+  §9.2.1 gives `sinPi` and `tanPi`, so `tand(-0.0)` is -0.0.
+* **The command line** suggests, in place of a result's name, only an input of the
+  chosen method; with `--method leg_angle`, `B=30` names that method's inputs.
+* **A label ending in parentheses** takes its symbol inside them (`named`): "Across flats
+  (inscribed circle, AF)".
+* The triangles' module docstring names Kahan's half-angle formula, and the README's
+  disclaimer is ADR-0020's line.

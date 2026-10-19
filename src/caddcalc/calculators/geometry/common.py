@@ -9,9 +9,17 @@ rounded ones.
 
 from __future__ import annotations
 
-from caddcalc.core import Dimension, Method, Param, Reference, Verification
+from caddcalc.core import Context, Dimension, InputError, Method, Param, Reference, Verification
 
 LENGTH, ANGLE, AREA, COUNT = Dimension.LENGTH, Dimension.ANGLE, Dimension.AREA, Dimension.COUNT
+
+LENGTH_SCALE = (1e-70, 1e70)
+"""The least and greatest length a Geometry calculator works with, in mm (KI-026).
+
+Its formulas multiply up to four lengths, as Heron's and Kahan's do, and a product of
+four lengths in this range is a normal double, with room for the constant factors: a
+smaller length's work underflows and loses its digits, and a larger one's overflows.
+"""
 
 MH31 = "Machinery's Handbook, 31st ed."
 MH31_RECTANGLE = Reference(
@@ -102,3 +110,20 @@ def length(key: str, symbol: str, label: str, default: str, help: str, *methods:
         help=help,
         methods=methods,
     )
+
+
+def check_scale(ctx: Context) -> None:
+    """Refuse a length the method uses outside ``LENGTH_SCALE``, whose work would be wrong.
+
+    Raises:
+        InputError: A length is too small or too large to work with.
+    """
+    least, greatest = LENGTH_SCALE
+    for p in ctx.calculator.params_for(ctx.method):
+        value = ctx[p.key]
+        if p.dimension is LENGTH and not least <= value <= greatest:
+            size = "small" if value < least else "large"
+            raise InputError(
+                f"{p.named} is too {size} to work with: Geometry lengths are from "
+                f"{least:g} mm to {greatest:g} mm.".replace("e+", "e")
+            )

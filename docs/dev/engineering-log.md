@@ -16,6 +16,17 @@ Template:
 
 ---
 
+## 2026-10-19: Counting a tie's last places in millimeters
+**Tried:** taking a count within `TIE_ULPS` = 2 units in the last place of a half as
+the half, with the units counted in the base unit's last place, millimeters (ADR-0019's
+amendment of fix round 4).
+**Outcome:** replaced in PR #1's follow-ups (ADR-0019's amendment of the same date).
+**Why:** a millimeter's last place is up to two of an inch's, so the window was up to
+four units of the inch a value was typed in, and `-11.976562500000005 in`, three off a
+half, was taken as the tie.
+**Instead:** count them in the shown unit's last place, inches for an inch fraction. A
+sweep of 520,115 typed ties in five units finds none missed either way.
+
 ## 2026-10-19: A launch height taken from the tallest built-in page
 **Tried:** sizing the window at launch to the tallest built-in calculator page, with
 each of its methods, at the launch width (ADR-0021 §3's tallest-page term, added for

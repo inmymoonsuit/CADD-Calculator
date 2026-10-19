@@ -3,7 +3,7 @@
 The core wraps an error that isn't caddcalc's own, from a compute or from a domain's
 resolver or details, as a SpecError. The window's recalculation, its form and its
 settings page are isolation boundaries, and the app shows an error nothing caught
-(S&R's reviews of f97d230 and a1f0735; ADR-0006 and ADR-0017 §4, amendments).
+(ADR-0006 and ADR-0017 §4, amendments).
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def test_the_cli_exits_with_the_error(
         assert cli.main(["run", "acme.flaky", "X=2", "--method", "failing", *extra]) == 2
         err = capsys.readouterr().err
         assert "compute failed: ZeroDivisionError: the plugin's own error" in err
-        assert "Traceback" in err, "the plugin's author gets where it failed (S&R's note)"
+        assert "Traceback" in err, "the plugin's author gets where it failed"
     assert cli.main(["run", "acme.flaky", "X=2", "--method", "good", "--json"]) == 0
 
 
@@ -261,7 +261,7 @@ def _faulty() -> tuple[Domain, _FaultyPlates, _FaultyDetails]:
     ],
 )
 def test_the_core_wraps_a_domains_unexpected_error(call: str, what: str) -> None:
-    """S&R's review of a1f0735: a family's own code, as a compute's (ADR-0006)."""
+    """A family's own code is wrapped, as a compute's is (ADR-0006)."""
     domain, resolver, details = _faulty()
     resolver.failing.add(call)
     details.failing.add(call)
@@ -343,7 +343,7 @@ def test_a_family_that_fails_shows_its_error_in_place_of_its_settings() -> None:
 
 @pytest.mark.gui
 def test_an_input_to_fix_and_a_failed_calculation_are_headed_apart() -> None:
-    """S&R's L1: "Check the inputs:" only where the user can fix an input."""
+    """The heading "Check the inputs:" shows only where the user can fix an input."""
     window = open_window(_registry())
     window.select_calculator("acme.flaky")
     type_into(window.fields["length"][1], "abc")
@@ -358,7 +358,7 @@ def test_an_input_to_fix_and_a_failed_calculation_are_headed_apart() -> None:
 def test_the_hook_only_writes_out_when_a_box_cant_or_shouldnt_show(
     guard: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S&R's notes 2 and 3: from aboutToQuit on, while closing down, and for KeyboardInterrupt."""
+    """From aboutToQuit on, while closing down, and for KeyboardInterrupt."""
     from PySide6.QtWidgets import QApplication
 
     from caddcalc.gui.app import install_error_hook
@@ -386,7 +386,7 @@ def test_the_hook_only_writes_out_when_a_box_cant_or_shouldnt_show(
 
 
 def test_a_domains_own_input_error_passes_through() -> None:
-    """Worded for users already, a family's input error isn't wrapped (S&R's K2)."""
+    """Worded for users already, a family's input error isn't wrapped."""
     domain, resolver, _details = _faulty()
     resolver.failing.add("derive with an input error")
     with pytest.raises(InputError, match="a plate the user can fix"):
@@ -395,7 +395,7 @@ def test_a_domains_own_input_error_passes_through() -> None:
 
 @pytest.mark.gui
 def test_a_setting_applied_while_the_family_fails_shows_its_error() -> None:
-    """S&R's L1: applying a typed setting is a settings-page boundary too."""
+    """Applying a typed setting is a settings-page boundary too."""
     window, _domain, resolver = _faulty_window()
     window.select_domain("faulty")
     settle(window)
@@ -411,7 +411,7 @@ def test_a_setting_applied_while_the_family_fails_shows_its_error() -> None:
 
 @pytest.mark.gui
 def test_opening_the_familys_calculator_while_it_fails_builds_no_form() -> None:
-    """S&R's K4: building the form is a boundary, opening it from another calculator."""
+    """Building the form is a boundary, opening it from another calculator."""
     window, _domain, resolver = _faulty_window()
     window.select_calculator("sheet_metal.bend_allowance")
     settle(window)
@@ -426,7 +426,7 @@ def test_opening_the_familys_calculator_while_it_fails_builds_no_form() -> None:
 
 @pytest.mark.gui
 def test_a_page_built_again_before_the_deferred_clear_keeps_its_form() -> None:
-    """S&R's K7: the failed page's clear, deferred to the event loop, skips a rebuilt page."""
+    """The failed page's clear, deferred to the event loop, skips a rebuilt page."""
     window, _domain, resolver = _faulty_window()
     window.select_domain("faulty")
     settle(window)
@@ -445,7 +445,7 @@ def test_a_page_built_again_before_the_deferred_clear_keeps_its_form() -> None:
 
 @pytest.mark.gui
 def test_an_input_error_from_the_run_is_headed_check_the_inputs() -> None:
-    """S&R's K9: a run's input error is the user's to fix, so it's headed so."""
+    """A run's input error is the user's to fix, so it's headed so."""
     registry = _registry()
     registry.register(_Picky)
     window = open_window(registry)

@@ -68,7 +68,7 @@ def test_edd5_fig19_12_single_bend_k_factor() -> None:
     B = 12.250, A = 4.875, R = C = 0.125, K = 0.4, one 90° bend, dimensioned to the outside.
     The book rounds π to 3.14 (Z = .275, flat = 16.900). With exact π, flat = 16.899889.
     Each leg is bent at its first end, then at its second, so "verified at 90°" covers a
-    segment's bend at either end (S&R's note).
+    segment's bend at either end.
     """
     common = {"thickness": 0.125, "inside_radius": 0.125, "k_factor": 0.4}
     z = run_inches(BendAllowance(), "k_factor", **common, bend_angle=90)["bend_allowance"]
@@ -206,7 +206,7 @@ def test_only_methods_a_published_example_runs_through_are_verified() -> None:
 
 
 def test_each_status_says_what_its_example_covers() -> None:
-    """UI/UX's promotion review: the row's status carries the scope; its tooltip, the source."""
+    """The row's status carries the scope; its tooltip, the source (ADR-0010, amendments)."""
     registry = default_registry(load_plugins=False)
     statuses = {(c.id, m.key): m for c in registry for m in c.methods}
     for key, (_test, source, scope) in VERIFIED.items():

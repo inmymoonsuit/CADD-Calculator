@@ -426,3 +426,17 @@ six significant figures), and the new messages left unmarked until the sweep.
 * Tests sweep every tie to 4 ft typed in metres and as foot fractions, and 20,000 DMS
   ties; a value three units over a half rounds as itself, and the capped case holds.
   Mutants of one and four units, and of no cap, each fail them.
+
+### 2026-10-19: a tie counted in the unit it's shown in (PR #1's follow-ups)
+
+* `round_half_even` takes the unit a value is shown in, `INCH_MM` for feet and inches
+  and the nearest inch fraction, and counts `TIE_ULPS` in that unit's last place, not in
+  the base unit's. In millimeters two units could be four of an inch's, so a value
+  typed three of its own last places off a half, `-11.976562500000005 in`, was taken as
+  the tie; it's now 11 63/64" to the 1/64, as itself.
+* Either window holds every typed tie, since each of the two roundings on the way in is
+  under one unit in the shown unit's last place, times the factor. Offscreen, 520,115
+  half-way values to 2,000 in, typed exactly as decimals in in, mm, cm, m and ft to the
+  1/16, 1/32 and 1/64, are all ties under both; the existing sweeps of metres, foot
+  fractions and 20,000 DMS ties pass unchanged. A test pins the example, and the mutant
+  that counts in millimeters fails it.

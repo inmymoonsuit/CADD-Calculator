@@ -33,7 +33,7 @@ def _bend_window(symbols: NumberSymbols = COMMA) -> Any:
 
 
 def test_results_show_the_locales_mark_and_copy_writes_a_point() -> None:
-    """ADR-0020 L4: Copy and Ctrl+C write "." in every locale, for CAD."""
+    """ADR-0020 §4: Copy and Ctrl+C write "." in every locale, for CAD."""
     window = _bend_window()
     field = window.results.fields["bend_allowance"]
     assert field.parts.number == "0,3119"
@@ -57,7 +57,7 @@ def test_the_menu_offers_the_number_as_shown_in_a_comma_locale() -> None:
 
 
 def test_in_a_comma_locale_each_copy_item_says_what_it_copies() -> None:
-    """UI/UX's i4 L1: "Copy 0.3119" beside "Copy 0,3119", so the menu explains itself."""
+    """The menu explains itself: "Copy 0.3119" beside "Copy 0,3119"."""
     window = _bend_window()
     menu = window.results.fields["bend_allowance"].context_menu()
     names = []
@@ -71,7 +71,7 @@ def test_in_a_comma_locale_each_copy_item_says_what_it_copies() -> None:
 
 
 def test_a_methods_note_writes_its_values_in_the_locales_mark() -> None:
-    """UI/UX's i4 L2: the cone's note gives the course example's angles as values."""
+    """The cone's note gives the course example's angles as values."""
     window = open_window(symbols=COMMA)
     window.select_calculator("sheet_metal.truncated_cone_layout")
     window.method_box.setCurrentIndex(window.method_box.findData("course"))
@@ -81,7 +81,7 @@ def test_a_methods_note_writes_its_values_in_the_locales_mark() -> None:
 
 
 def test_a_range_errors_decimal_bound_is_written_in_the_locales_mark() -> None:
-    """UI/UX's i4 review: a bound the app writes, in a field's message, takes the mark."""
+    """A bound the app writes, in a field's message, takes the mark."""
     from caddcalc.core import Registry
     from caddcalc.core.spec import Param
     from caddcalc.core.units import Dimension, parse_quantity
@@ -181,7 +181,7 @@ def _undo_text() -> str:
 
 
 def test_with_no_catalog_for_the_language_the_whole_window_stays_english() -> None:
-    """UI/UX's i4 M1: Qt's own text follows ours, so a window never mixes languages."""
+    """Qt's own text follows ours, so a window never mixes languages."""
     from PySide6.QtCore import QCoreApplication, QLocale
 
     from caddcalc.gui.regional import install_translations
@@ -199,7 +199,7 @@ def test_with_no_catalog_for_the_language_the_whole_window_stays_english() -> No
 
 
 def test_with_our_catalog_for_the_language_qts_text_is_in_it_too(tmp_path: Any) -> None:
-    """Our German catalog brings Qt's German, its shortcut names included (UI/UX's L3)."""
+    """Our German catalog brings Qt's German, its shortcut names included."""
     from babel.messages.catalog import Catalog
     from babel.messages.mofile import write_mo
     from PySide6.QtCore import QCoreApplication, QLocale

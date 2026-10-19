@@ -96,7 +96,7 @@ def test_a_reference_keeps_its_old_shape_and_gains_structured_fields() -> None:
 
 
 def test_a_citation_puts_its_locator_before_its_detail_and_never_shows_a_remark() -> None:
-    """Review M1: a reviewer's remark read as part of the citation."""
+    """A source's remark, for reviewers, is never read as part of the citation."""
     cited = Reference("AC 43.13-1B", edition="2024", locator="Table 4-6, p. 4-17", detail="Ch. 4")
     assert str(cited) == "AC 43.13-1B, 2024, Table 4-6, p. 4-17, Ch. 4"
     remarked = parse_table(
@@ -320,7 +320,7 @@ def test_every_shipped_public_domain_url_is_on_the_host_allowlist() -> None:
 
 
 def test_a_vendor_chart_cant_pass_as_a_government_document() -> None:
-    """The reviewer's probe: a vendor page declared a government document, public domain."""
+    """A vendor page declared a government document, public domain."""
     probe = {
         "kind": '"government_document"',
         "title": '"Vendor gauge chart"',
@@ -346,7 +346,7 @@ def test_a_vendor_chart_cant_pass_as_a_government_document() -> None:
 
 
 def test_a_public_domain_publication_without_a_url_must_be_named_on_purpose() -> None:
-    """The reviewer's probe: the vendor chart again, with a basis claimed and no url."""
+    """The vendor chart again, with a basis claimed and no url."""
     probe = publication(kind='"government_document"', title='"Vendor gauge chart"')
     unhosted = parse_table(table(probe, source()), "test", SAMPLE_KEYS)
     assert off_allowlist(unhosted) == ["p (no url)"]
@@ -415,7 +415,7 @@ def test_a_work_split_across_tables_is_counted_once() -> None:
 
 
 def test_a_book_split_into_several_entries_stays_under_its_cap() -> None:
-    """The reviewer's probe: one handbook cited five ways, each with its own cap of 1."""
+    """One handbook cited five ways, each with its own cap of 1."""
     values = [constant(float(n), f"s{n}", f"c{n}") for n in range(5)]
     one_work = table(
         publication(**BOOK, title='"Machinery\'s Handbook"', cite_only_cap="1"),
@@ -599,7 +599,7 @@ def test_bands_in_one_series_must_not_overlap() -> None:
 
 
 def test_other_sources_quantities_and_conditions_are_other_series() -> None:
-    """Sources may overlap: where they disagree, every one is shown (ADR-0014 M4)."""
+    """Sources may overlap: where they disagree, every one is shown (ADR-0014 §1)."""
     sample = sample_table()
     low = band(0.012, 0.051)
     sample.check_values(

@@ -248,7 +248,7 @@ def test_malformed_gauge_content_is_refused(old: str, new: str, message: str) ->
 def test_the_work_shows_the_stated_thickness_never_a_rounded_one(
     key: str, stated: str, millimetres: str
 ) -> None:
-    """Review M3: US Standard 12 ga's work said 0.1094 in, and 40 AWG's 0.0031 in."""
+    """US Standard 12 ga's work says 0.109375 in, never 0.1094 in; 40 AWG's, 0.00314 in."""
     settings = DomainSettings().set_choice(DOMAIN, "gauge", key).for_domain(DOMAIN)
     result = BendAllowance().run(settings=settings)
     work = result.steps[0]

@@ -1,4 +1,4 @@
-"""The gauge picker, and derived values on calculator pages (ADR-0014 §2, review M3).
+"""The gauge picker, and derived values on calculator pages (ADR-0014 §2).
 
 Skipped when PySide6 is not installed.
 """
@@ -208,7 +208,7 @@ def test_the_gauges_work_is_true_in_millimetres() -> None:
 
 
 def test_the_wheel_doesnt_change_a_gauge() -> None:
-    """Review M1: a wheel tick over a box changed the gauge while T had the focus."""
+    """A wheel tick over a box never changes the gauge while T has the focus."""
     from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtGui import QWheelEvent
     from PySide6.QtWidgets import QApplication
@@ -251,7 +251,7 @@ def test_the_wheel_doesnt_change_a_gauge() -> None:
 def test_both_pages_show_the_stated_thickness_in_the_work(
     unit: str, system: str, size: str, stated: str
 ) -> None:
-    """Review M3: the work rounded the stated value to the display decimals."""
+    """The work gives the stated value, never one rounded to the display decimals."""
     window = open_window()
     window.units_box.setCurrentText(unit)
     pick(window, system, size)

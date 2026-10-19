@@ -190,7 +190,7 @@ def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: st
     """Each odd 1/(2d) inch to 4 ft, typed in inches or exactly in mm, either sign.
 
     The nearest fraction, feet and inches, the ``(≈ …")`` hint and ``to_fraction`` all
-    round by one rule, so they agree on every tie (the reviews' Major 5).
+    round by one rule, so they agree on every tie (ADR-0019, amendments).
     """
     prefs = DisplayPrefs(length_unit="in", fraction_denominator=denominator)
     for odd in range(1, 4 * 12 * 2 * denominator, 2):
@@ -263,7 +263,7 @@ def test_a_fineness_is_a_drafting_fraction_and_whole_inches_have_none() -> None:
     ],
 )
 def test_feet_and_inches_are_spoken_in_words(inches: float, spoken: str) -> None:
-    """A zero part isn't said, and a negative is "minus" (UI/UX's u3 L2 and L3)."""
+    """A zero part isn't said, and a negative is "minus"."""
     assert FeetInches(16).text(inches * IN).spoken == spoken
 
 
@@ -388,7 +388,7 @@ def test_seconds_are_shown_in_the_locales_mark_and_copied_with_a_point() -> None
 def test_degrees_minutes_and_seconds_are_spoken_in_words(
     degrees: float, fineness: int, spoken: str
 ) -> None:
-    """A zero part isn't said, and a negative is "minus" (UI/UX's u3 L2 and L3)."""
+    """A zero part isn't said, and a negative is "minus"."""
     assert DegreesMinutesSeconds(fineness).text(degrees).spoken == spoken
 
 
@@ -576,7 +576,7 @@ class _Mixed(_Forms):
 @pytest.mark.gui
 @pytest.mark.usefixtures("qt")
 def test_feet_and_inches_sit_flush_right_and_dms_aligns_on_its_seconds_point() -> None:
-    """UI/UX's u3 M1: with no point to align on, feet and inches end at the column's edge."""
+    """With no point to align on, feet and inches end at the column's edge."""
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QFontMetricsF
 
@@ -702,17 +702,29 @@ def test_a_tie_in_seconds_takes_the_even_hundredth() -> None:
 
 
 def test_a_count_three_units_in_the_last_place_from_a_half_is_no_tie() -> None:
-    """The tolerance is two units in the last place: three is a value, not a typed tie."""
+    """The tolerance is two units in the inch's last place: three is a value, not a tie."""
     from caddcalc.core.units.compound import TIE_ULPS
 
     assert TIE_ULPS == 2
     tie = parse_quantity("1/32 in", L)  # between 0 and 1/16: a tie takes 0, the even one
-    scale = Fraction(16) / Fraction("25.4")
+    inch = Fraction("25.4")
     value = tie
-    while (Fraction(value) * scale - Fraction(1, 2)) / (Fraction(math.ulp(value)) * scale) < 3:
+    while (Fraction(value) / inch - Fraction(1, 32)) / Fraction(math.ulp(value / inch)) < 3:
         value = math.nextafter(value, math.inf)
     assert nearest_inches(tie, 16) == 0
     assert nearest_inches(value, 16) == Fraction(1, 16), "three units over: it rounds up"
+
+
+def test_a_value_typed_three_of_its_own_last_places_off_a_half_isnt_a_tie() -> None:
+    """In millimetres it's within two of their last places, yet it isn't taken as the tie."""
+    typed = parse_quantity("-11.976562500000005 in", L)
+    half = Fraction(766 * 2 + 1, 128)  # 11 61/64 and a half 64th, inches
+    off = (abs(Fraction(typed)) / Fraction("25.4") - half) / Fraction(math.ulp(typed / 25.4))
+    in_mm = (abs(Fraction(typed)) - half * Fraction("25.4")) / Fraction(math.ulp(typed))
+    assert 2 < off < 4 and in_mm <= 2, (off, in_mm)
+    assert nearest_inches(typed, 64) == -Fraction(767, 64), "it rounds as itself"
+    assert nearest_inches(parse_quantity("-11.9765625 in", L), 64) == -Fraction(766, 64)
+    assert FeetInches(64).text(typed).shown == "-0'-11 63/64\""
 
 
 def test_a_value_too_large_for_its_finest_part_is_never_all_ties() -> None:
@@ -725,3 +737,32 @@ def test_a_value_too_large_for_its_finest_part_is_never_all_ties() -> None:
 
     assert Fraction(1, 4) == TIE_CAP
     assert DegreesMinutesSeconds(2).text(2.0**33 + 2.0**-6).shown == "8589934592°0′56.25″"
+
+
+@pytest.mark.parametrize(
+    ("inches", "spoken"),
+    [
+        (1.5, "1 and a half [other]"),
+        (1.1875, "1 and 3 sixteenths [other]"),
+        (1.0625, "1 and a sixteenth [other]"),
+    ],
+)
+def test_a_mixed_number_of_inches_takes_its_plural_form_from_the_whole_value(
+    tmp_path: Path, inches: float, spoken: str
+) -> None:
+    """1 and a half is 1.5, which English counts as other: never the whole inch's one."""
+    from babel.messages.catalog import Catalog
+
+    from caddcalc.core.units.compound import INCHES_MIXED_SPOKEN, ONE_PART_SPOKEN
+    from tests.catalogs import tooling
+
+    catalog = Catalog(locale="en_GB", domain="caddcalc")
+    for pair, phrase in [
+        (ONE_PART_SPOKEN[2], "{inches} and a half"),
+        (ONE_PART_SPOKEN[16], "{inches} and a sixteenth"),
+        (INCHES_MIXED_SPOKEN, "{inches} and {numerator} {part}"),
+    ]:
+        catalog.add(pair, (f"{phrase} [one]", f"{phrase} [other]"), context="inches spoken")
+    tooling().compile_to(catalog, tmp_path / "en_GB" / "LC_MESSAGES" / "caddcalc.mo")
+    use(["en_GB"], directories=[tmp_path])
+    assert FeetInches(16).text(inches * IN).spoken == spoken

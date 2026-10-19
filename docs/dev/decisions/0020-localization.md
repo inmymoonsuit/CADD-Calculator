@@ -483,3 +483,12 @@ for every family, Sheet Metal included, word for word, wherever it's shown: unde
 results, after the command line's results, and in About. It's marked for translation;
 the British catalog spells it "organisation's", and en_CA keeps the source's
 "organization's".
+
+### 2026-10-19: mixed inches as plural pairs (PR #1's follow-ups)
+
+"1 and a half inches" and "4 and 3 sixteenths inches", `ONE_PART_SPOKEN` and
+`INCHES_MIXED_SPOKEN`, are `NP_` pairs in the "inches spoken" context, with named
+fields, and their form follows the whole value as a decimal, 1.5 or 4.1875, through
+`npgettext_shown` (§5), as a unit's name does. English's two forms are the same, since a
+decimal takes its plural; a language whose rule counts 1.5 as one can give its own. The
+README's disclaimer is the line of this ADR's amendment above.

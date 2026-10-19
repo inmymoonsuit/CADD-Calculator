@@ -149,7 +149,7 @@ def test_only_the_fraction_form_copies_the_fraction_with_its_inch_mark() -> None
 
 
 def test_a_spreadsheet_never_reads_a_text_cell_as_a_formula() -> None:
-    """R2, with Support & Review's L5: text cells get an apostrophe; values never do."""
+    """ADR-0017 R2: text cells get an apostrophe; values never do."""
     from caddcalc.core.formatting import _text_cell
 
     for text in ("=SUM(A1)", "+1", "-x", "@cmd", "\uff1dSUM(A1)", "\uff20cmd", "  =x"):

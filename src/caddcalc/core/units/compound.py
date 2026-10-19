@@ -16,12 +16,13 @@ import math
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import Decimal
 from fractions import Fraction
 from functools import cache
 from typing import override
 
 from caddcalc.core.errors import InputError, UsageError
-from caddcalc.core.i18n import N_, NP_, _, npgettext, pgettext
+from caddcalc.core.i18n import N_, NP_, _, npgettext, npgettext_shown, pgettext
 from caddcalc.core.units.builtin import INCH_MM, UNITS
 from caddcalc.core.units.model import Dimension, Unit
 from caddcalc.core.units.numbers import comma_error, parse_number
@@ -79,19 +80,24 @@ the last place: under half a count, so a value too large to hold the finest part
 all ties."""
 
 
-def round_half_even(value: float, scale: Fraction) -> int:
+def round_half_even(value: float, scale: Fraction, unit: Fraction = Fraction(1)) -> int:
     """Return ``|value| · scale`` rounded to a whole number once, half to even.
 
-    ``scale`` counts a base-unit value in a form's finest part, such as sixteenths of an
-    inch. A value typed as a half-way one, as 3/32 in is between 1/16 and 1/8, is a double
-    already, rounded once as typed and again into the base unit, as 0.12779375 m is, so it
-    lands a little off the half, one way or the other. A count within ``TIE_ULPS`` units in
-    the last place of the value, so counted, of a half, and never more than ``TIE_CAP``, is
-    taken as that half, and rounds to even whichever way it landed (ADR-0019, amendments).
+    ``scale`` counts a value in a form's finest part, such as sixteenths of an inch, and
+    ``unit`` is the size of the unit it's shown in, in the value's own, such as
+    ``INCH_MM`` for a base-unit length shown in inches. A value typed as a half-way one, as
+    3/32 in is between 1/16 and 1/8, is a double already, rounded once as typed and again
+    into the base unit, as 0.12779375 m is, so it lands a little off the half, one way or
+    the other. A count within ``TIE_ULPS`` units in the last place of the value in the
+    shown unit, so counted, of a half, and never more than ``TIE_CAP``, is taken as that
+    half, and rounds to even whichever way it landed. The shown unit is the one a value is
+    typed in, when it's typed as shown, so a value three of its own last places off a
+    half isn't one (ADR-0019, amendments).
     """
     parts = abs(Fraction(value)) * scale
     half = Fraction(math.floor(parts)) + Fraction(1, 2)
-    if abs(parts - half) <= min(TIE_ULPS * Fraction(math.ulp(value)) * scale, TIE_CAP):
+    last_place = Fraction(math.ulp(value / unit)) * unit
+    if abs(parts - half) <= min(TIE_ULPS * last_place * scale, TIE_CAP):
         parts = half
     return round(parts)
 
@@ -117,8 +123,13 @@ NEGATIVE_SPOKEN = N_("minus {value}")
 # error is, so its direction is heard as it's seen.
 POSITIVE_SPOKEN = N_("plus {value}")
 # Translators: a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
-# is the fraction's denominator as a word, such as "sixteenths".
-INCHES_MIXED_SPOKEN = N_("{inches} and {numerator} {part} inches")
+# is the fraction's denominator as a word, such as "sixteenths". The form follows the
+# whole value as a decimal, 4.1875, so English's two forms are the same.
+INCHES_MIXED_SPOKEN = NP_(
+    "inches spoken",
+    "{inches} and {numerator} {part} inches",
+    "{inches} and {numerator} {part} inches",
+)
 # Translators: a fraction of an inch, spoken, e.g. "3 sixteenths of an inch".
 INCH_FRACTION_SPOKEN = N_("{numerator} {part} of an inch")
 
@@ -172,20 +183,30 @@ PARTS = {
 }
 """The words for an inch fraction's denominator, singular and plural, as spoken."""
 
-# Each is a whole phrase, so a language can give each part its own article or form.
+# Each is a whole phrase, so a language can give each part its own article or form, and a
+# plural pair, whose form follows the whole value as a decimal, as 1.25 for "1 and a
+# quarter inches"; a decimal takes English's plural, so its two forms are the same.
 ONE_PART_SPOKEN = {
     # Translators: whole inches and 1/2 inch, spoken, e.g. "1 and a half inches".
-    2: N_("{inches} and a half inches"),
+    2: NP_("inches spoken", "{inches} and a half inches", "{inches} and a half inches"),
     # Translators: whole inches and 1/4 inch, spoken, e.g. "1 and a quarter inches".
-    4: N_("{inches} and a quarter inches"),
+    4: NP_("inches spoken", "{inches} and a quarter inches", "{inches} and a quarter inches"),
     # Translators: whole inches and 1/8 inch, spoken, e.g. "1 and an eighth inches".
-    8: N_("{inches} and an eighth inches"),
+    8: NP_("inches spoken", "{inches} and an eighth inches", "{inches} and an eighth inches"),
     # Translators: whole inches and 1/16 inch, spoken, e.g. "1 and a sixteenth inches".
-    16: N_("{inches} and a sixteenth inches"),
+    16: NP_("inches spoken", "{inches} and a sixteenth inches", "{inches} and a sixteenth inches"),
     # Translators: whole inches and 1/32 inch, spoken, e.g. "1 and a thirty-second inches".
-    32: N_("{inches} and a thirty-second inches"),
+    32: NP_(
+        "inches spoken",
+        "{inches} and a thirty-second inches",
+        "{inches} and a thirty-second inches",
+    ),
     # Translators: whole inches and 1/64 inch, spoken, e.g. "1 and a sixty-fourth inches".
-    64: N_("{inches} and a sixty-fourth inches"),
+    64: NP_(
+        "inches spoken",
+        "{inches} and a sixty-fourth inches",
+        "{inches} and a sixty-fourth inches",
+    ),
 }
 """Whole inches and one 1/2, 1/4 and so on, as they're said: "1 and a quarter inches",
 not "1 and 1 quarter inches"."""
@@ -250,7 +271,7 @@ class FeetInches(CompoundForm):
         if not math.isfinite(value):
             raise UsageError(f"{value} can't be written in feet and inches")
         den = self.fineness
-        units = round_half_even(value, den / INCH_MM)
+        units = round_half_even(value, den / INCH_MM, INCH_MM)
         sign = MINUS if value < 0 and units else ""
         feet, rest = divmod(units, 12 * den)
         whole, part = divmod(rest, den)
@@ -289,10 +310,15 @@ def _spoken_inches(whole: int, fraction: Fraction) -> str:
     singular, plural = PARTS[fraction.denominator]
     numerator = fraction.numerator
     part = npgettext("fraction", singular, plural, numerator)
+    # The phrase's form follows the whole value, as a decimal: a power-of-two fraction's
+    # is exact, as 4.1875 is.
+    decimal = str(Decimal(whole) + Decimal(numerator) / Decimal(fraction.denominator))
     if whole and numerator == 1:
-        return _(ONE_PART_SPOKEN[fraction.denominator]).format(inches=whole)
+        template = npgettext_shown("inches spoken", *ONE_PART_SPOKEN[fraction.denominator], decimal)
+        return template.format(inches=whole)
     if whole:
-        return _(INCHES_MIXED_SPOKEN).format(inches=whole, numerator=numerator, part=part)
+        template = npgettext_shown("inches spoken", *INCHES_MIXED_SPOKEN, decimal)
+        return template.format(inches=whole, numerator=numerator, part=part)
     if numerator == 1:
         return _(ONE_PART_ALONE_SPOKEN[fraction.denominator])
     return _(INCH_FRACTION_SPOKEN).format(numerator=numerator, part=part)
@@ -399,7 +425,7 @@ def nearest_inches(value: float, denominator: int) -> Fraction:
     fractions takes the one with the even numerator.
     """
     sign = -1 if value < 0 else 1
-    return Fraction(sign * round_half_even(value, denominator / INCH_MM), denominator)
+    return Fraction(sign * round_half_even(value, denominator / INCH_MM, INCH_MM), denominator)
 
 
 class NearestInches(CompoundForm):

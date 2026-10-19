@@ -1,10 +1,10 @@
 """A triangle from its three sides, and a right triangle from any two of its parts.
 
-Every angle of the three-sided triangle comes from the law of cosines (MH31 p. 96), its
-cosine kept within [-1, 1], where MH31's own three-sides procedure (p. 101) takes one
-angle from the law of sines, which can't give an obtuse angle: a deliberate departure
-(ADR-0018 §2). The area is Heron's in Kahan's arrangement, and a leg from the hypotenuse
-is √((c − a)·(c + a)), both arranged to keep their digits.
+Every angle of the three-sided triangle comes from Kahan's half-angle formula, the law
+of cosines (MH31 p. 96) rearranged to keep its digits, where MH31's own three-sides
+procedure (p. 101) takes one angle from the law of sines, which can't give an obtuse
+angle: a deliberate departure (ADR-0018 §2). The area is Heron's in Kahan's arrangement,
+and a leg from the hypotenuse is √((c − a)·(c + a)), both arranged to keep their digits.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from caddcalc.calculators.geometry.common import (
     MH31_THREE_SIDES,
     MH31_TRIANGLE,
     POCKET_TRIANGLES,
+    check_scale,
     length,
     method,
 )
@@ -94,6 +95,7 @@ class Triangle(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        check_scale(ctx)
         shortest, middle, longest = sorted((ctx["side_a"], ctx["side_b"], ctx["side_c"]))
         # Sides typed as decimals are doubles, so a flat triangle's gap can come out a few
         # units in the last place over 0, as 0.1 + 0.2 - 0.3 does; within FLAT_GAP of the
@@ -226,6 +228,7 @@ class RightTriangle(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        check_scale(ctx)
         if ctx.method in ("leg_angle", "hypotenuse_angle") and tan_is_undefined(ctx["angle_a"]):
             # So near 90° that tan(A) is undefined, A is 90° to the arithmetic, in either
             # angle method, and refused as the range refuses 90° itself.

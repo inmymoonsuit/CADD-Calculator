@@ -222,6 +222,21 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
+### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
+
+A double holds about 10⁻³⁰⁸ to 10³⁰⁸ at full precision. Heron's and Kahan's formulas
+multiply up to four lengths, so a smaller length's work underflows and loses its digits.
+Offscreen, for a 3-4-5 triangle scaled by 10ⁿ mm, the area loses digits from n = -80 and
+is 0 at -82; the angles lose digits from -155, are 9 % off at -162, and divide by zero
+at -165; a circle's area loses digits from -155 and is 0 at -162. A larger triangle's
+area overflows at n = 77. Every Geometry calculator refuses a length outside
+`LENGTH_SCALE`, 10⁻⁷⁰ mm to 10⁷⁰ mm, with a plain message (`geometry.common.check_scale`),
+before its work. Scaling the sides by the largest before each formula would lift the
+limit for the angles, but not for an area, which is the square of a length, and it would
+put the scale into every step of the shown work; no drawing comes near the limit.
+`test_every_length_outside_the_scale_is_refused_plainly` and
+`test_a_triangle_at_either_end_of_the_scale_keeps_its_digits` check both ends.
+
 ## Resolved
 
 ### KI-025: A count was shown as a ratio, with four decimals (resolved 2026-10-19)

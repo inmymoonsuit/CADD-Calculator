@@ -22,8 +22,9 @@ All notable changes are recorded here. The format follows
   sides), Right triangle, Regular polygon, and Arc and sector. Each gives every property
   of its shape at once, cites *Machinery's Handbook* (31st ed.), and points students to
   the *Pocket Companion* (32nd ed.). Input that describes no shape is refused, such as a
-  flat triangle or a hypotenuse no longer than its leg. Triangle angles all come from the
-  law of cosines, a deliberate departure from the Handbook's three-sides procedure, and
+  flat triangle or a hypotenuse no longer than its leg. Triangle angles all come from
+  Kahan's arrangement of the law of cosines, a deliberate departure from the Handbook's
+  three-sides procedure, and
   the formulas are arranged to keep their digits for needle-thin triangles and small
   arcs. See the user guide's [Geometry calculators](docs/user/calculators/geometry.md).
 - `Context.given` reports an input as an output, unchanged, for a method that takes as
@@ -387,6 +388,20 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A Geometry length outside 10⁻⁷⁰ mm to 10⁷⁰ mm is refused, plainly** (KI-026). A 3-4-5
+  triangle of 3·10⁻⁸² mm had an area of 0, and one of 3·10⁻¹⁶² mm angles 9 % off; at
+  3·10⁻¹⁶⁵ mm it divided by zero, a circle that small had an area of 0, and a triangle of
+  3·10⁷⁷ mm said its area "does not give a finite number".
+- **A value three units in its last place off a half-way inch fraction rounds as itself:**
+  `-11.976562500000005 in` is 11 63/64" to the 1/64, not the even 11 31/32". The two units
+  in the last place that make a typed half-way value a tie are counted in inches, the
+  unit it's shown in, not in millimeters, where they were up to four of an inch's.
+- `tand(-0.0)` and `sind(-0.0)`, and their zeros at multiples of 180°, are signed as IEEE
+  754's `tanPi` and `sinPi` sign them: `tand(-0.0)` is -0.0, not 0.0.
+- A label that ends in parentheses takes its symbol inside them: "Across flats
+  (inscribed circle, AF) must be greater than 0", not "(inscribed circle) (AF)".
+- "1 and a half inches" and "4 and 3 sixteenths inches" are plural pairs for translators,
+  their form following the whole value, as 1.5 and 4.1875, as a unit's name does.
 - **A right triangle's hypotenuse equal to its leg is refused in any units:** `a=39 in`
   with `c=990.6 mm` gave a leg of 0 and an angle of 90°.
 - **A half-way value typed in meters or as a fraction of a foot takes the even
@@ -504,7 +519,9 @@ All notable changes are recorded here. The format follows
 
 ### Changed
 - **The command line suggests only names that can be given:** for the right
-  triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?".
+  triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
+  `--method leg_angle`, which takes no side b, it suggests none and names that method's
+  inputs, a/leg_a and A/angle_a.
 - A result's help reaches the keyboard: screen readers say it after the copy button's
   value. An error's work line shows its sign, `+0.0025 in`, as its row does.
 - **Speech, in words a drafter says:** "1 foot and a quarter inch", "a half inch", "1
@@ -526,7 +543,9 @@ All notable changes are recorded here. The format follows
 - **The command line refuses an input it would lose:** one given twice, or one the
   chosen method doesn't use, such as `A=30` for the right triangle's two-legs method, is
   refused, exit 2, naming the method's inputs. They were silently overwritten or dropped.
-  Every valid sheet-metal command line runs as before.
+  A sheet-metal command line that gave such an input is refused too: `K=0.44` for the
+  bend allowance's default course method, which takes no K, needs `--method` naming a
+  method that uses it. Every other sheet-metal command line runs as before.
 - **Plugin families are listed after the built-ins, sorted by name,** whatever order the
   installed packages are found in.
 - `get_unit` with a dimension that has neither unit raises `UsageError` for a mark the
@@ -546,8 +565,7 @@ All notable changes are recorded here. The format follows
 - **The disclaimer is one line for every family,** in the maintainer's words, marked for
   translation: "Verify results and test according to your organization's policies or
   industry best practice before manufacturing." It's shown under the results, after the
-  command line's results, and in About. The maintainer chose it: "Sounds like the best
-  wording so far. I like it" (ADR-0020, amendments).
+  command line's results, in About, and in the README (ADR-0020, amendments).
 - **The window opens at one height whatever calculator it shows,** 738 px with
   Windows' 9 pt text and in proportion at other text sizes. A page taller than the
   window, such as the Length converter or the right triangle, scrolls as a whole; the

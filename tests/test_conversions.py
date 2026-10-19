@@ -188,7 +188,7 @@ def test_an_error_shows_its_sign_both_ways_and_says_it() -> None:
 
 
 def test_every_negative_is_spoken_minus() -> None:
-    """A plain value says its sign by the template a compound form's uses (UI/UX's L3)."""
+    """A plain value says its sign by the template a compound form's uses."""
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity("-0.31 in", L)})
     parts = output_parts(calc.output("mm"), result.outputs["mm"], DisplayPrefs())
@@ -335,10 +335,29 @@ def test_no_row_is_ever_infinite_or_not_a_number(calc: type[Calculator], value: 
         assert "inf" not in text and "nan" not in text, (output.key, text)
 
 
-@pytest.mark.parametrize("typed", ["1e308 ft", "-1e308 ft", "1e308 m", "1e400"])
-def test_a_finite_number_too_large_to_calculate_with_says_so(typed: str) -> None:
-    with pytest.raises(InputError, match="is too large"):
+@pytest.mark.parametrize(
+    ("typed", "message"),
+    [
+        (
+            "1e308 ft",
+            "'1e308 ft' is too large to calculate with: its size in mm must be under 1.79769e+308",
+        ),
+        (
+            "-1e308 ft",
+            "'-1e308 ft' is too large to calculate with: its size in mm must be under 1.79769e+308",
+        ),
+        (
+            "1e308 m",
+            "'1e308 m' is too large to calculate with: its size in mm must be under 1.79769e+308",
+        ),
+        ("1e400", "'1e400' is too large a number to calculate with"),
+        ("-1e400 in", "'-1e400' is too large a number to calculate with"),
+    ],
+)
+def test_a_finite_number_too_large_to_calculate_with_says_so(typed: str, message: str) -> None:
+    with pytest.raises(InputError) as refused:
         parse_quantity(typed, L)
+    assert str(refused.value) == message
 
 
 def test_a_length_that_rounds_to_zero_has_no_minus_sign() -> None:

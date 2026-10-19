@@ -216,7 +216,7 @@ def test_unreadable_text_stays_with_its_error_and_applies_no_prefix() -> None:
 
 
 def test_a_units_round_trip_never_changes_a_calculator_value() -> None:
-    """KI-017: switching units used to re-read six-decimal display text as the value."""
+    """KI-017: switching units never re-reads six-decimal display text as the value."""
     window = open_window()
     window.select_calculator(BEND)
     type_into(field(window, "thickness"), "1/3", enter=False)

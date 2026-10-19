@@ -175,8 +175,8 @@ def test_the_card_is_owned_by_the_window_and_stays_above_it(
     """Natively, the system keeps the card above the window that owns it.
 
     Qt gives a window its owner only as it shows, so the window's shell is made, and the
-    card given to it, before the card shows. Given later, the card had no owner, and the
-    window, shown on top of it, hid it for good (UI/UX's real-launch review).
+    card given to it, before the card shows. Given later, the card has no owner, and the
+    window, shown on top of it, hides it for good.
     """
     import ctypes
     import sys

@@ -44,7 +44,7 @@ def test_the_check_finds_both_forms_and_passes_a_held_image() -> None:
 
 
 def test_pixels_are_never_read_from_a_temporary_image() -> None:
-    """A temporary QImage can be freed before its bytes are copied; it failed on Linux.
+    """A temporary QImage can be freed before its bytes are copied, as on Linux.
 
     So the image is held in a name first (ADR-0016, amendments).
     """

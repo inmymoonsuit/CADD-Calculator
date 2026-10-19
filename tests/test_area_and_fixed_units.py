@@ -164,7 +164,7 @@ def test_an_area_is_shown_in_the_square_of_the_length_choice(length: str, square
 def test_an_area_shows_six_significant_figures_whatever_its_size(
     value: float, length: str, shown: str
 ) -> None:
-    """UI/UX's u2 L1: 4 decimals would give 6451.6000 mm² and 0.0065 m²."""
+    """4 decimals would give 6451.6000 mm² and 0.0065 m²."""
     assert format_value(value, AREA, DisplayPrefs(length_unit=length, decimals=2)) == shown
 
 
