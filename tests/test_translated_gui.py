@@ -189,10 +189,13 @@ def _described(widget: Any, window: Any) -> str:
 
     least = widget.minimumSizeHint()
     right = widget.mapTo(window, QPoint(widget.width(), 0)).x()
+    text_width = getattr(widget, "text_width", None)
     return (
         f"{type(widget).__name__} {widget.accessibleName() or widget.objectName()!r}: "
         f"{widget.width()}x{widget.height()}, least {least.width()}x{least.height()}, "
-        f"ends at x={right} of the window's {window.width()}"
+        f"ends at x={right} of the window's {window.width()}; "
+        f"{widget.style().name()} style, {widget.font().pointSizeF()} pt"
+        + ("" if text_width is None else f", text width {text_width}")
     )
 
 
@@ -217,7 +220,15 @@ def test_nothing_clips_at_the_least_window_size(tmp_path: Path, language: str) -
         settle(window)
         window.resize(window.minimumSizeHint())
         settle(window)
-        found += [f"{row.text(0)}: {_described(w, window)}" for w in _clipped(window)]
+        clipped = _clipped(window)
+        found += [f"{row.text(0)}: {_described(w, window)}" for w in clipped]
+        if clipped:
+            # Whether the layout only held a size it wasn't told had changed.
+            for widget in clipped:
+                widget.updateGeometry()
+            settle(window)
+            told = len(_clipped(window))
+            found.append(f"{row.text(0)}: {told} still clipped once told to update")
     assert not found, "\n".join(found)
     window.close()
 

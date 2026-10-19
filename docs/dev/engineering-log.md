@@ -16,6 +16,22 @@ Template:
 
 ---
 
+## 2026-10-19: Settling the least-size clip test before it sizes the window
+**Tried:** at stop 3, both Windows jobs reported the Sheet Metal settings page's unit
+pickers as clipped at the least window size. The test read the window's least size
+straight after switching pages, before the page's layout had run, so it was the last
+page's. 76d626e made the test settle first.
+**Outcome:** not enough. The Windows jobs still failed, now with numbers: each picker
+52 px wide with a least width of 55, and room to spare in the window. The page's layout
+held a picker width older than the picker's own. It doesn't reproduce offscreen on
+Linux, with Fusion or the Windows style, any font tried, or a proxy style that widens or
+re-fonts a combo box once shown or polished.
+**Instead:** a picker tells its layout its size again when it shows
+(`UnitPicker.showEvent`), since a picker on a hidden page is measured before it shows.
+Only the Windows jobs can test it, since nothing here fails without it.
+The test still settles first, which it needs in any case, and names the style, font,
+text width, and whether a clip clears once the layout is told.
+
 ## 2026-10-19: Knowing a picker's list is open by overriding hidePopup
 **Tried:** for M-B at stop 2, the picker set `_listing` in `showPopup` and cleared it in
 an overridden `hidePopup`, so the focus its list takes didn't settle a step.
