@@ -1282,9 +1282,12 @@ When the runners came back, CI's first run of stop 2 (on 6d859c6) failed two job
   a field's picker never is. Offscreen, that makes the least window 509 px wide, from
   492; the native width is UI/UX's to re-measure.
 * **macOS, the corpus's outputs:** macOS's maths library rounds sine and tangent
-  differently in the last bits from Linux's, where the corpus was captured, so 62 of
-  the segment's runs gave outputs a few units in the last place apart, 1.5 × 10⁻¹⁵
-  relative at most after a subtraction. Every input read bit for bit. So the corpus
-  holds the inputs bit for bit on every platform, which is what E-4's rewriting
-  decides, and the outputs and steps to 10⁻¹² relative; on Linux and Windows they
-  still match bit for bit.
+  differently in the last bits from Linux's, where the corpus was captured, so some
+  runs gave outputs a few units in the last place apart; every input read bit for bit.
+  Counted in the last places of a run's own value, a step that subtracts looks worse
+  than it is: the segment's flat length, 18.9 mm from terms of 324 mm, was 8 of its own
+  last places off, but half of its terms'. So the corpus holds the inputs, which E-4's
+  rewriting decides, bit for bit on every platform, and each output and step to 4 units
+  in the last place of the largest value in its run (`ULPS`); every difference in CI's
+  macOS logs is at most 2. A test pins the bound: 4 pass, 8 fail. On Linux and Windows
+  they match bit for bit.
