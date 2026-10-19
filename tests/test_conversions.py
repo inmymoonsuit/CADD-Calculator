@@ -25,6 +25,7 @@ from caddcalc.core.formatting import (
     format_output,
     output_parts,
     spoken_value,
+    value_parts,
 )
 from caddcalc.core.units import convert, get_unit, parse_quantity
 
@@ -114,10 +115,10 @@ def test_the_length_rows() -> None:
 def test_each_nearest_fraction_carries_its_error() -> None:
     """The error is the fraction less the value: positive where the fraction is longer."""
     rows = _shown(LengthConverter(), "0.31 in")
-    assert (rows["nearest_16"], rows["error_16"]) == ('5/16"', "0.002500 in")
+    assert (rows["nearest_16"], rows["error_16"]) == ('5/16"', "+0.002500 in")
     rows = _shown(LengthConverter(), "23.984375 in")  # 23 63/64
     assert rows["ft_in"] == "2'-0\"", "1'-11 63/64\" carries at 1/16"
-    assert (rows["nearest_16"], rows["error_16"]) == ('24"', "0.015625 in")
+    assert (rows["nearest_16"], rows["error_16"]) == ('24"', "+0.015625 in")
     assert (rows["nearest_64"], rows["error_64"]) == ('23 63/64"', "0.000000 in")
     assert _copied(LengthConverter(), "0.31 in", "nearest_16", CopyForm.VALUE) == '5/16"'
     assert _copied(LengthConverter(), "1.19 in", "nearest_16", CopyForm.VALUE) == '1-3/16"'
@@ -135,6 +136,9 @@ def test_a_typed_fraction_has_no_error_in_any_unit() -> None:
     for typed in ("7.9375 mm", "411.1625 mm"):
         rows = _shown(LengthConverter(), typed)
         assert {rows[f"error_{d}"] for d in (16, 32, 64)} == {"0.000000 in"}, typed
+        result = LengthConverter().run({"value": parse_quantity(typed, L)})
+        assert {result.outputs[f"error_{d}"] for d in (16, 32, 64)} == {0.0}, "within its ulp"
+        assert _copied(LengthConverter(), typed, "error_16", CopyForm.FULL) == "0"
 
 
 def test_the_length_work_shows_each_fraction_and_its_error() -> None:
@@ -161,6 +165,36 @@ def test_zero_and_negative_values_convert(calc: type[Calculator]) -> None:
     for bad in (math.inf, -math.inf, math.nan):
         with pytest.raises(InputError, match="must be a finite number"):
             calc().run({"value": bad})
+
+
+def test_an_error_shows_its_sign_both_ways_and_says_it() -> None:
+    """A positive error has its "+", so its direction reads as the negative's does."""
+    calc = LengthConverter()
+    for typed, shown, spoken in (
+        ("0.31 in", "+0.002500", "plus 0.002500 inches"),
+        ("0.315 in", "-0.002500", "minus 0.002500 inches"),
+        ("0.3125 in", "0.000000", "0.000000 inches"),
+    ):
+        result = calc.run({"value": parse_quantity(typed, L)})
+        parts = output_parts(calc.output("error_16"), result.outputs["error_16"], DisplayPrefs())
+        assert (parts.number, spoken_value(parts)) == (shown, spoken), typed
+        assert _copied(calc, typed, "error_16", CopyForm.VALUE) == shown, "as shown"
+    assert calc.output("error_16").help.endswith(
+        "positive where the fraction is longer than the value."
+    )
+    assert not calc.output("mm").signed, "only a difference is signed"
+    assert _shown(calc, "-0.31 in")["mm"] == "-7.87400 mm"
+
+
+def test_every_negative_is_spoken_minus() -> None:
+    """A plain value says its sign by the template a compound form's uses (UI/UX's L3)."""
+    calc = LengthConverter()
+    result = calc.run({"value": parse_quantity("-0.31 in", L)})
+    parts = output_parts(calc.output("mm"), result.outputs["mm"], DisplayPrefs())
+    assert spoken_value(parts) == "minus 7.87400 millimeters"
+    assert spoken_value(value_parts(-25.4, L, DisplayPrefs())) == "minus 1.0000 inches"
+    assert spoken_value(value_parts(-30.0, A, DisplayPrefs())) == "minus 30.00 degrees"
+    assert spoken_value(value_parts(-0.25, Dimension.RATIO, DisplayPrefs())) == "minus 0.2500"
 
 
 def test_a_negative_keeps_its_sign_in_every_row() -> None:
@@ -230,6 +264,10 @@ def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixtur
     assert data["outputs"]["kpa"]["unit"] == "MPa", "JSON is in base units"
     assert data["outputs"]["kpa"]["value"] == pytest.approx(0.006894757293168361)
     assert main(["run", "conversions.length", "X=inf"]) != 0
+    capsys.readouterr()
+    assert main(["run", "conversions.length", "X=0.31in"]) == 0
+    assert "E16    Error of the nearest 1/16" in (out := capsys.readouterr().out)
+    assert "+0.002500 in" in out, "the sign is display only; JSON keeps the number"
 
 
 def test_a_half_way_length_takes_the_even_fraction_in_every_row() -> None:

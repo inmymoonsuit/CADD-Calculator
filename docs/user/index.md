@@ -45,6 +45,7 @@ Each result shows:
 
 ## Disclaimer
 
-Results are for drafting and education. Real parts depend on tooling, material lot,
-grain direction, temper, and bending method. Verify against your shop's data and test
-bends before manufacturing. The software comes with no warranty.
+Results are for drafting and education. Verify them against your shop's tooling,
+material data, and a test part before manufacturing. A bent part also depends on the
+material lot, grain direction, temper, and bending method, so make a test bend. The
+software comes with no warranty.

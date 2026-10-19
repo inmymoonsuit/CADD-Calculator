@@ -103,6 +103,9 @@ MEASURE_SPOKEN = N_("{number} {unit}")
 TOGETHER_SPOKEN = N_("{first} {second}")
 # Translators: a negative value, spoken, e.g. "minus 1 foot 4 inches".
 NEGATIVE_SPOKEN = N_("minus {value}")
+# Translators: a value shown with its plus sign, spoken, e.g. "plus 0.0025 inches", as an
+# error is, so its direction is heard as it's seen.
+POSITIVE_SPOKEN = N_("plus {value}")
 # Translators: a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
 # is the fraction's denominator as a word, such as "sixteenths".
 INCHES_MIXED_SPOKEN = N_("{inches} and {numerator} {part} inches")
@@ -132,6 +135,24 @@ PARTS = {
     64: NP_("fraction", "sixty-fourth", "sixty-fourths"),
 }
 """The words for an inch fraction's denominator, singular and plural, as spoken."""
+
+# Each is a whole phrase, so a language can give each part its own article or form.
+ONE_PART_SPOKEN = {
+    # Translators: whole inches and 1/2 inch, spoken, e.g. "1 and a half inches".
+    2: N_("{inches} and a half inches"),
+    # Translators: whole inches and 1/4 inch, spoken, e.g. "1 and a quarter inches".
+    4: N_("{inches} and a quarter inches"),
+    # Translators: whole inches and 1/8 inch, spoken, e.g. "1 and an eighth inches".
+    8: N_("{inches} and an eighth inches"),
+    # Translators: whole inches and 1/16 inch, spoken, e.g. "1 and a sixteenth inches".
+    16: N_("{inches} and a sixteenth inches"),
+    # Translators: whole inches and 1/32 inch, spoken, e.g. "1 and a thirty-second inches".
+    32: N_("{inches} and a thirty-second inches"),
+    # Translators: whole inches and 1/64 inch, spoken, e.g. "1 and a sixty-fourth inches".
+    64: N_("{inches} and a sixty-fourth inches"),
+}
+"""Whole inches and one 1/2, 1/4 and so on, as they're said: "1 and a quarter inches",
+not "1 and 1 quarter inches"."""
 
 
 class FeetInches(CompoundForm):
@@ -201,13 +222,16 @@ def _spoken_feet(negative: bool, feet: int, whole: int, fraction: Fraction) -> s
 def _spoken_inches(whole: int, fraction: Fraction) -> str:
     """Say whole inches and a fraction in words, or return ``""`` for none.
 
-    For example "4 and 3 sixteenths inches", "3 sixteenths of an inch", or "4 inches".
+    For example "4 and 3 sixteenths inches", "4 and a half inches", "3 sixteenths of an
+    inch", or "4 inches".
     """
     if not fraction:
         return _measure(str(whole), _builtin("in")) if whole else ""
     singular, plural = PARTS[fraction.denominator]
     numerator = fraction.numerator
     part = npgettext("fraction", singular, plural, numerator)
+    if whole and numerator == 1:
+        return _(ONE_PART_SPOKEN[fraction.denominator]).format(inches=whole)
     if whole:
         return _(INCHES_MIXED_SPOKEN).format(inches=whole, numerator=numerator, part=part)
     return _(INCH_FRACTION_SPOKEN).format(numerator=numerator, part=part)

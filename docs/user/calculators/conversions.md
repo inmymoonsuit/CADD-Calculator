@@ -27,11 +27,14 @@ Type a length in any unit: `3/16 in`, `4.7625 mm`, `0.25 ft`, `1'-4 3/16"`. It's
 | Inches, Feet, Millimeters, Centimeters, Meters | `16.1875 in` | `16.1875` |
 | Feet and inches | `1'-4 3/16"`, to the nearest 1/16 inch | `1'4-3/16"` |
 | Nearest 1/16, 1/32, and 1/64 inch | `16 3/16"` | `16-3/16"` |
-| Error of each nearest fraction | `0.002500 in` | `0.002500` |
+| Error of each nearest fraction | `+0.002500 in` | `+0.002500` |
 
 The error is the nearest fraction less the value, in inches to six decimals: positive
-where the fraction is longer than the value. A value typed in inches as that very
-fraction has an error of exactly 0.
+where the fraction is longer than the value, and shown with its `+` so its direction
+reads at a glance. The error row's tooltip says so too. A value that is that very
+fraction has an error of exactly 0, whether it's typed in inches or in millimeters, such
+as `411.1625 mm` for 16 3/16 in. A value half-way between two fractions takes the one
+with the even numerator: `3/32 in` is `1/8"` to the nearest 1/16.
 
 ## Angle
 

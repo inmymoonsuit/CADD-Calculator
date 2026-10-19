@@ -251,3 +251,34 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   matches one thing, such as `leg_b`, still reads.
 * **The half-way fractions** (S&R's L1) are ADR-0019's amendment of this date: 3/32 in
   is 1/8" in the Length converter's feet and inches and its nearest 1/16 inch.
+
+### 2026-10-19: the reviews' findings, fix round 2 (group C, display, copy and speech)
+
+* **The error rows are signed and say which way they run** (UI/UX's L1): `+0.002500 in`
+  (`Output.signed`), with the user guide's sentence as the label's tooltip (ADR-0017's
+  amendment of this date). The label keeps its words, "Error of the nearest 1/16".
+* **An error within the value's own last place is 0** (S&R's Note 2). 411.1625 mm is
+  16 3/16 in exactly, but as doubles the fraction built in inches is one unit in the last
+  place from the value, an error of -2.2e-15 in that Copy full precision gave. Where the
+  fraction is within one ulp of the value, the fraction is recorded as the value itself,
+  so `E16 = N16 − X` is exactly 0 and the fraction shown is the same. This keeps the rows
+  honest: a value can't be told from the fraction closer than its own last place, which
+  is all such an error measures. A value typed in inches as the fraction was 0 already.
+* **A whole circle's chord is exactly 0** (S&R's Note 2): `sind(180)` is 0 (ADR-0004's
+  amendment). At 180° the chord is 20 for r = 10, exactly, and the sagitta
+  9.999999999999998, which every shown precision and Copy full precision's 10 digits
+  give as 10; a sagitta of exactly r there would need an exact sin²(45°), which a double
+  hasn't, so it's left.
+* **An angle that's 90° to the arithmetic is refused in both angle methods** (S&R's
+  Note 3). Within about 6e-11° of 90°, `tand(A)` is undefined, so `leg_angle` failed in
+  its work while `hypotenuse_angle` gave, for c = 1 mm, a leg b of 8.7e-13 mm. Both now refuse it before
+  computing, as the range refuses 90°: "Angle A (opposite a) (A) must be less than 90°".
+* **The locators** (S&R's Note 1): MH31's "Dimensions of Plane Figures" is printed
+  pp. 75–80, and the table of regular polygons on p. 82 is under "Polygons", pp. 81–82,
+  cited so; p. 101's running head is "Solution of Oblique Triangles". The arc's methods
+  add the *Pocket Companion*'s "Segments of Circles", pp. 7–9, as a second "see also".
+* **The disclaimer** is one line for every family (S&R's Note 5; ADR-0020's amendment of
+  this date).
+* **Speech** (UI/UX's L3 and L4): every negative is "minus …", and "1 and a quarter
+  inches", "1 and a half inches" (ADR-0020's amendment). "Copy with unit" isn't offered
+  for a compound form (UI/UX's L2).

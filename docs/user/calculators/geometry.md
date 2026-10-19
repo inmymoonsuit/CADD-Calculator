@@ -11,14 +11,15 @@ length must be greater than zero, and each calculator's own limits are below.
 ## Sources
 
 The formulas are from *Machinery's Handbook*, 31st edition (Industrial Press, 2020),
-Mathematics: "Dimensions of Plane Figures" (printed pp. 75–82) and "Solution of
-Triangles" (pp. 96–101). The triangles also cite the NIST Digital Library of
+Mathematics: "Dimensions of Plane Figures" (printed pp. 75–80), "Polygons" (pp. 81–82),
+and "Solution of Triangles" (pp. 96–101; p. 101 is under the running head "Solution of
+Oblique Triangles"). The triangles also cite the NIST Digital Library of
 Mathematical Functions, §4.42. π comes from the computer's full-precision value, not the
 Handbook's rounded constants.
 
 **For students:** the *Machinery's Handbook Pocket Companion* (32nd edition, Industrial
 Press, 2024) covers the same figures more briefly: "Dimensions of Plane Figures",
-pp. 1–6, and the triangles, pp. 16–19. Each method lists it last, as "see also"; the
+pp. 1–6, "Segments of Circles", pp. 7–9, for the arc, and the triangles, pp. 16–19. Each method lists it last, as "see also"; the
 31st edition is the source of record.
 
 None of these methods is marked *verified* yet: that needs a published worked example
@@ -63,7 +64,8 @@ angles opposite a and b. Give any two of them, as long as one is a length:
 | A leg and its opposite angle | a and A |
 | The hypotenuse and an angle | c and A |
 
-An acute angle must be greater than 0° and less than 90°. Two angles alone fix no size,
+An acute angle must be greater than 0° and less than 90°; one so near 90°, within about
+6e-11°, that its tangent can't be computed is refused as 90° is, in either angle method. Two angles alone fix no size,
 so they aren't a method. You get all three sides, both acute angles, the area and the
 perimeter.
 
@@ -94,3 +96,6 @@ the major arc. You get:
 * the sagitta, or rise, from the chord's middle to the arc: 2·r·sin²(A/4), the
   Handbook's r·(1 − cos(A/2)) written so a small angle keeps its digits
 * the sector area, π·r²·A/360°
+
+A whole circle's chord, at 360°, is exactly 0: the sine of a whole multiple of 180° is
+taken as 0, not the computer's 1.2e-16.

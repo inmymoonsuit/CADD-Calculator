@@ -674,6 +674,21 @@ def test_expr_tan_at_90_degrees_is_an_error_not_a_huge_number() -> None:
         expr.evaluate("tand(x)", {"x": 90.0})
 
 
+def test_expr_sine_and_cosine_are_exactly_0_where_they_are_0() -> None:
+    """π/180 is rounded, so sin(radians(180)) is 1.2e-16; sind(180) is 0, as sinPi(1) is."""
+    for k in range(-8, 9):
+        assert expr.evaluate("sind(x)", {"x": 180.0 * k}) == 0.0, k
+        assert expr.evaluate("cosd(x)", {"x": 90.0 + 180.0 * k}) == 0.0, k
+    assert math.sin(math.radians(180)) != 0, "the case it's for"
+    for deg in (0.5, 30.0, 45.0, 89.99999999, 179.99999999, 1e6 + 0.5):
+        assert expr.evaluate("sind(x)", {"x": deg}) == math.sin(math.radians(deg)), deg
+        assert expr.evaluate("cosd(x)", {"x": deg}) == math.cos(math.radians(deg)), deg
+    assert (
+        expr.evaluate("sind(x)", {"x": 90.0}) == 1.0
+        and expr.evaluate("cosd(x)", {"x": 180.0}) == -1.0
+    )
+
+
 def test_expr_evaluates_exactly_with_exact_inputs() -> None:
     """The same expression, evaluated as rationals; 0.1 + 0.2 is 3/10, not 0.30000000000000004."""
     assert expr.evaluate_exact("a + b", {"a": Decimal("0.1"), "b": Fraction(1, 5)}, digits=10) == (

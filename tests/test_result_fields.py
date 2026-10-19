@@ -655,3 +655,25 @@ def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
     assert "<small>" not in html
     assert f"color:{color}'>default<" in html and f"color:{color}'>Sources: Shop handbook<" in html
     window.close()
+
+
+def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
+    """The label's tooltip is the output's help, the user guide's sentence (UI/UX's L1)."""
+    from caddcalc.gui.name_tips import tip_text
+
+    window = open_window()
+    window.show()
+    window.select_calculator("conversions.length")
+    settle(window)
+    _param, value = window.fields["value"]
+    type_into(value, "0.31 in")
+    field = window.results.fields["error_16"]
+    help_text = "The nearest fraction less the value: positive where the fraction is longer"
+    assert field.output.help.startswith(help_text)
+    assert field.value.text() == "+0.002500" and field.unit.text() == "in"
+    assert field.label.toolTip() == field.output.help == field.accessibleDescription()
+    assert "plus 0.002500 inches" in field.accessibleName()
+    assert "Copy with unit" in [a.text() for a in field.context_menu().actions()]
+    field.label.resize(8, field.label.height())
+    assert field.label.toolTip() == tip_text(field.output.label, field.output.help), "elided"
+    window.close()

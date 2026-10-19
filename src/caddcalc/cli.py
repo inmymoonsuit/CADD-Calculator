@@ -291,7 +291,7 @@ def format_result(
         for note in result.notes:
             first, *rest = describe_note(note, prefs).lines
             lines += [f"  ! {first}", *(f"      {line}" for line in rest)]
-    lines += ["", f"Method status: {method.status}. {DISCLAIMER}"]
+    lines += ["", f"Method status: {method.status}. {_(DISCLAIMER)}"]
     return "\n".join(lines)
 
 

@@ -152,6 +152,10 @@ class Output:
     """The key of a compound form it's always shown in, e.g. ``"ft_in"`` for feet and
     inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.
     An output gives a unit or a form, not both."""
+    signed: bool = False
+    """Whether a value shown above zero gets a plus sign, as ``+0.002500 in``, for a
+    difference whose direction matters, such as an error. A compound form writes its own
+    sign, so it ignores this."""
 
 
 @dataclass(frozen=True)

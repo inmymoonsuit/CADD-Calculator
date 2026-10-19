@@ -58,3 +58,17 @@ The front ends show the method, status, references, and a disclaimer next to eve
 * **SymPy** for symbolic formulas: powerful but heavy (ADR-0003) and slow to import.
 * **Formulas defined only in data files (TOML)**: too limiting for calculators that need
   logic. It can be layered on top later.
+
+## Amendments
+
+### 2026-10-19: sine and cosine are exactly 0 where they are 0 (ADR-0018, fix round 2)
+
+* `sind` is exactly 0 at a whole multiple of 180°, and `cosd` at an odd multiple of 90°.
+  The multiple is found exactly, with `math.fmod`, as IEEE 754's `sinPi` and `cosPi`
+  are exact at whole numbers (IEEE 754-2019, §9.2). Everywhere else they're computed as
+  before, from `radians`, so no other value changes; π/180 is rounded, so
+  `sin(radians(180))` is 1.2e-16, which made a whole circle's chord 2.4e-15 in long.
+  Support & Review's Note 2 on ADR-0018's m1 found it. No sheet-metal formula uses
+  either function, and every golden test passes unchanged.
+* `expr.tan_is_undefined` is the test `tand` refuses by, public so a calculator can
+  refuse the same angle before another method computes from it (ADR-0018, fix round 2).

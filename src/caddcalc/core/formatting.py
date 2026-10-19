@@ -17,6 +17,7 @@ from fractions import Fraction
 from caddcalc.core import expr
 from caddcalc.core.calculator import Calculator, Result
 from caddcalc.core.errors import CaddCalcError, UsageError
+from caddcalc.core.i18n import N_, _
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output
@@ -31,11 +32,16 @@ from caddcalc.core.units import (
     get_unit,
     registry,
 )
+from caddcalc.core.units.compound import NEGATIVE_SPOKEN, POSITIVE_SPOKEN
 
-DISCLAIMER = (
-    "Results are for drafting and education. Verify against your shop's tooling, "
-    "material data, and test bends before manufacturing."
+# Translators: shown under every calculator's results, after the command line's results,
+# and in About.
+DISCLAIMER = N_(
+    "Results are for drafting and education. Verify them against your shop's tooling, "
+    "material data, and a test part before manufacturing."
 )
+"""The one disclaimer for every family, marked for translation; it's translated where
+it's shown."""
 
 
 @dataclass(frozen=True)
@@ -315,13 +321,20 @@ def spoken_value(parts: ValueParts) -> str:
 
     The unit is named in full, singular only after a shown ``1`` (``Unit.spoken``); a
     ratio is only its number, and a compound form is said as it says itself, e.g. "1 foot
-    4 inches".
+    4 inches". A sign is said in words, by the templates compound forms use: "minus 0.3119
+    inches", and "plus 0.0025 inches" where a plus sign is shown.
     """
     if parts.compound is not None:
         return parts.compound.spoken
+    number, sign = parts.number, parts.number[:1]
+    if sign in ("-", "+"):
+        number = number[1:]
     unit = registry().written(parts.unit)
-    name = "" if unit is None else unit.spoken(parts.number)
-    return SPOKEN.format(number=parts.number, unit=name) if name else parts.number
+    name = "" if unit is None else unit.spoken(number)
+    said = SPOKEN.format(number=number, unit=name) if name else number
+    if sign == "-":
+        return _(NEGATIVE_SPOKEN).format(value=said)
+    return _(POSITIVE_SPOKEN).format(value=said) if sign == "+" else said
 
 
 def output_unit(output: Output, prefs: DisplayPrefs) -> Unit:
@@ -350,10 +363,14 @@ def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValuePart
         written = registry().compound(output.form).text(value, prefs.symbols.decimal)
         return ValueParts(written.shown, "", None, written)
     if not output.unit:
-        return value_parts(value, output.dimension, prefs)
-    unit = output_unit(output, prefs)
-    precision = output.precision or registry().precision_for(unit)
-    return _parts(value, unit, precision, prefs)
+        parts = value_parts(value, output.dimension, prefs)
+    else:
+        unit = output_unit(output, prefs)
+        precision = output.precision or registry().precision_for(unit)
+        parts = _parts(value, unit, precision, prefs)
+    if output.signed and parts.number[:1] != "-" and any(c in "123456789" for c in parts.number):
+        return replace(parts, number=f"+{parts.number}")  # zero, as shown, has no sign
+    return parts
 
 
 def format_output(output: Output, value: float, prefs: DisplayPrefs) -> str:

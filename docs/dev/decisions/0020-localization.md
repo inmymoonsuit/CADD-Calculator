@@ -446,3 +446,17 @@ marked yet either:
   (ADR-0018's m1), whose names and summaries are marked.
 
 Spoken forms, unit names and the fractions' words are marked (ADR-0019, u3 and u3b).
+
+### 2026-10-19: the disclaimer and new spoken forms are marked (ADR-0018, fix round 2)
+
+* **The disclaimer** is one line for every family (Support & Review's Note 5), marked
+  for translation and translated where it's shown: under the results, after the command
+  line's results, and in About. It said "test bends", which only Sheet Metal makes; it
+  now says "a test part". The user guide's disclaimer keeps the bending detail.
+* **Spoken forms:** "plus {value}", and whole inches and one part of an inch said as a
+  whole phrase per part, "{inches} and a half inches" to "{inches} and a sixty-fourth
+  inches" (UI/UX's L4), so a language can give each part its own article or form. More
+  than one part stays "{inches} and {numerator} {part} inches".
+* **Left for the sweep,** with the parser's messages: a count that isn't whole ("isn't a
+  whole number, and a count is", "must be a whole number"), and the command line's
+  "could be …; give one exactly".

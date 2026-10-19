@@ -387,6 +387,16 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A whole circle's chord is exactly 0,** not 2.4e-15 in: `sind` is exactly 0 at a
+  whole multiple of 180°, and `cosd` at an odd multiple of 90° (ADR-0004, amendments).
+- **A right triangle's angle within about 6e-11° of 90° is refused in both angle
+  methods,** as 90° is; the hypotenuse-and-angle method gave a leg b of 8.7e-13 mm for
+  c = 1 mm.
+- **The Length converter's error is exactly 0** for a value that is the fraction, typed
+  in millimeters too, such as `411.1625 mm`; Copy full precision gave -2.2e-15.
+- The Geometry calculators' *Machinery's Handbook* locators name "Polygons" (pp. 81–82)
+  and "Solution of Oblique Triangles" (p. 101), and the arc points students to the
+  *Pocket Companion*'s "Segments of Circles" too.
 - **A flat triangle typed in decimals is refused** (ADR-0018, amendments): sides 0.1,
   0.2 and 0.3 in made a "triangle", since 0.1 + 0.2 is a hair over 0.3 in the computer's
   arithmetic. A triangle within 4 machine epsilons of its longest side of flat is flat.
@@ -474,6 +484,15 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The Length converter's errors show their sign,** `+0.002500 in`, and the error
+  row's tooltip says it's the fraction less the value (`Output.signed`; a field's
+  label shows its output's help as a tooltip).
+- **Screen readers hear every negative as "minus …"** and a shown plus sign as "plus
+  …", and one part of an inch as "1 and a quarter inches" or "1 and a half inches".
+- "Copy with unit" isn't offered for feet and inches or degrees, minutes and seconds,
+  whose copy names its units already.
+- **The disclaimer is one line for every family,** marked for translation: "…Verify them
+  against your shop's tooling, material data, and a test part before manufacturing."
 - **The window opens at main's launch height again, 738 px at 9 pt,** and is never
   sized to its content (ADR-0021, the interim amendment, on the maintainer's ruling,
   pending ADR-0023). A page taller than that, such as the Length converter or the right

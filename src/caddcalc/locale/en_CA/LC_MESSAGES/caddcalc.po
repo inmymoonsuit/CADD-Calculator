@@ -146,6 +146,14 @@ msgstr ""
 msgid "Regular polygon"
 msgstr ""
 
+#. shown under every calculator's results, after the command line's results,
+#. and in About.
+#: src/caddcalc/core/formatting.py
+msgid ""
+"Results are for drafting and education. Verify them against your shop's tooling, material data, "
+"and a test part before manufacturing."
+msgstr ""
+
 #: src/caddcalc/calculators/geometry/triangles.py
 msgid "Right triangle"
 msgstr ""
@@ -294,6 +302,13 @@ msgid_plural "percent"
 msgstr[0] "percent"
 msgstr[1] "percent"
 
+#. a value shown with its plus sign, spoken, e.g. "plus 0.0025 inches", as an
+#. error is, so its direction is heard as it's seen.
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "plus {value}"
+msgstr ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "pound per square inch"
@@ -383,6 +398,42 @@ msgstr[1] ""
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
 msgid "{first} {second}"
+msgstr ""
+
+#. whole inches and 1/2 inch, spoken, e.g. "1 and a half inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a half inches"
+msgstr ""
+
+#. whole inches and 1/4 inch, spoken, e.g. "1 and a quarter inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a quarter inches"
+msgstr ""
+
+#. whole inches and 1/16 inch, spoken, e.g. "1 and a sixteenth inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a sixteenth inches"
+msgstr ""
+
+#. whole inches and 1/64 inch, spoken, e.g. "1 and a sixty-fourth inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a sixty-fourth inches"
+msgstr ""
+
+#. whole inches and 1/32 inch, spoken, e.g. "1 and a thirty-second inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and a thirty-second inches"
+msgstr ""
+
+#. whole inches and 1/8 inch, spoken, e.g. "1 and an eighth inches".
+#: src/caddcalc/core/units/compound.py
+#, python-brace-format
+msgid "{inches} and an eighth inches"
 msgstr ""
 
 #. a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}

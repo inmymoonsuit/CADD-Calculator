@@ -27,7 +27,9 @@ from caddcalc.calculators.geometry.common import (
     method,
 )
 from caddcalc.calculators.geometry.domain import DOMAIN
-from caddcalc.core import N_, Calculator, Context, InputError, Output, Param
+from caddcalc.core import N_, Calculator, Context, InputError, OutOfRangeError, Output, Param
+from caddcalc.core.expr import tan_is_undefined
+from caddcalc.core.provenance import EXPLICIT
 
 FLAT_GAP = 4 * sys.float_info.epsilon
 """How far over 0 the gap ``a + b − c`` may be, relative to the longest side c, and the
@@ -219,6 +221,17 @@ class RightTriangle(Calculator):
 
     @override
     def compute(self, ctx: Context) -> None:
+        if ctx.method in ("leg_angle", "hypotenuse_angle") and tan_is_undefined(ctx["angle_a"]):
+            # So near 90° that tan(A) is undefined, A is 90° to the arithmetic, in either
+            # angle method, and refused as the range refuses 90° itself.
+            angle = next(p for p in self.params if p.key == "angle_a")
+            raise OutOfRangeError(
+                angle,
+                ctx["angle_a"],
+                bound=90.0,
+                above=True,
+                source=ctx.sources.get("angle_a", EXPLICIT),
+            )
         if ctx.method == "legs":
             ctx.given("a", output="leg_a")
             ctx.given("b", output="leg_b")

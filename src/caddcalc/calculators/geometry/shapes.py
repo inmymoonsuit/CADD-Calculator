@@ -20,6 +20,7 @@ from caddcalc.calculators.geometry.common import (
     MH31_RECTANGLE,
     MH31_SEGMENT,
     POCKET_PLANE_FIGURES,
+    POCKET_SEGMENTS,
     length,
     method,
 )
@@ -289,6 +290,7 @@ class ArcSector(Calculator):
             MH31_CIRCLE,
             MH31_SEGMENT,
             POCKET_PLANE_FIGURES,
+            POCKET_SEGMENTS,
             notes=(
                 "The sagitta is the Handbook's r·(1 − cos(A/2)) written as 2·r·sin²(A/4), "
                 "the same value, which keeps its digits for a small angle, where "

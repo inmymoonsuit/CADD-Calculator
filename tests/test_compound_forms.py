@@ -223,12 +223,16 @@ def test_a_fineness_is_a_drafting_fraction_and_whole_inches_have_none() -> None:
         (1, "1 inch"),
         (0, "0 inches"),
         (0.1875, "3 sixteenths of an inch"),
-        (4.5, "4 and 1 half inches"),
+        (4.5, "4 and a half inches"),
+        (1.25, "1 and a quarter inches"),
+        (1.5, "1 and a half inches"),
+        (1.0625, "1 and a sixteenth inches"),
+        (0.5, "1 half of an inch"),
         (12.1875, "1 foot 3 sixteenths of an inch"),
         (12.0625, "1 foot 1 sixteenth of an inch"),
-        (16.5, "1 foot 4 and 1 half inches"),
+        (16.5, "1 foot 4 and a half inches"),
         (16.75, "1 foot 4 and 3 quarters inches"),
-        (16.125, "1 foot 4 and 1 eighth inches"),
+        (16.125, "1 foot 4 and an eighth inches"),
         (-16.1875, "minus 1 foot 4 and 3 sixteenths inches"),
         (-4, "minus 4 inches"),
         (-0.001, "0 inches"),
@@ -242,6 +246,8 @@ def test_feet_and_inches_are_spoken_in_words(inches: float, spoken: str) -> None
 def test_the_finest_fractions_have_their_words() -> None:
     assert FeetInches(32).text(12.03125 * IN).spoken == "1 foot 1 thirty-second of an inch"
     assert FeetInches(64).text(12.046875 * IN).spoken == "1 foot 3 sixty-fourths of an inch"
+    assert FeetInches(32).text(13.03125 * IN).spoken == "1 foot 1 and a thirty-second inches"
+    assert FeetInches(64).text(1.015625 * IN).spoken == "1 and a sixty-fourth inches"
 
 
 @pytest.mark.parametrize(
@@ -513,6 +519,12 @@ def test_a_result_field_shows_copies_and_says_a_compound_form_with_no_code_of_it
     assert feet.accessibleName() == "Feet and inches, FI: 1 foot 4 and 3 sixteenths inches"
     feet.copy_button.click()
     assert QGuiApplication.clipboard().text() == "1'4-3/16\""
+    # A compound form names its own units, so "with unit" would copy the same text.
+    for field in (feet, dms):
+        assert [a.text() for a in field.context_menu().actions()] == [
+            "Copy value",
+            "Copy full precision",
+        ]
     window.close()
 
 

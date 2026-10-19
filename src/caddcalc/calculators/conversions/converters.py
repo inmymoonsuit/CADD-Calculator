@@ -10,6 +10,7 @@ zero passes, and so does a sign, which is an offset, a compression, or a directi
 
 from __future__ import annotations
 
+import math
 from typing import ClassVar, override
 
 from caddcalc.calculators.conversions.domain import DOMAIN
@@ -149,9 +150,11 @@ class LengthConverter(_Converter):
                     f"E{denominator}",
                     f"Error of the nearest 1/{denominator}",
                     LENGTH,
-                    "The nearest fraction less the value: positive where the fraction is longer.",
+                    "The nearest fraction less the value: positive where the fraction is "
+                    "longer than the value.",
                     unit="in",
                     precision=Precision(6),
+                    signed=True,
                 ),
             )
         ),
@@ -175,6 +178,10 @@ class LengthConverter(_Converter):
             # As the parser builds a length typed in inches, so a value typed in inches as
             # this very fraction has an error of exactly 0, not a rounding's worth.
             nearest = to_base(float(nearest_inches(ctx["value"], denominator)), "in")
+            if abs(nearest - ctx["value"]) <= math.ulp(ctx["value"]):
+                # Within the value's own last place, as 411.1625 mm is of 16 3/16 in, the
+                # fraction is the value, so its error is 0 (ADR-0018, amendments).
+                nearest = ctx["value"]
             ctx.record(
                 f"N{denominator}",
                 nearest,

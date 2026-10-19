@@ -622,3 +622,18 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **What it changes:** a column may be a pixel wider in some fonts; the launch height is
   unchanged (996 px offscreen here, 990 px with DejaVu Sans).
 
+### 2026-10-19: a field's help, signs, and the copy menu (ADR-0018, fix round 2)
+
+* **A field's label has its output's help as its tooltip** (UI/UX's L1), and the field
+  has it as its accessible description, so the error rows say which way they run: "The
+  nearest fraction less the value: positive where the fraction is longer than the
+  value." Once the label elides, the tooltip starts with the whole label in bold, as a
+  list row's does (`name_tips.tip_text`).
+* **A signed output** (`Output.signed`) shows a plus sign above zero, `+0.002500 in`,
+  and copies it as shown; zero, as shown, has none, and Copy full precision gives the
+  plain number. Only the Length converter's error rows are signed.
+* **A sign is spoken in words** (UI/UX's L3): every negative is "minus …", by the
+  template the compound forms use, and a shown plus sign is "plus …".
+* **"Copy with unit" isn't offered for a compound form** (UI/UX's L2): feet and inches,
+  and degrees, minutes and seconds, name their units, so it would copy what "Copy value"
+  does.

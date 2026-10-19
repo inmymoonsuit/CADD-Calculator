@@ -31,8 +31,9 @@ from caddcalc.calculators.geometry.common import (
     MH31,
     MH31_LAW_OF_COSINES,
     MH31_THREE_SIDES,
+    POCKET,
     POCKET_PLANE_FIGURES,
-    POCKET_TRIANGLES,
+    POCKET_SEGMENTS,
 )
 from caddcalc.core import (
     Calculator,
@@ -245,6 +246,19 @@ def test_an_acute_angle_outside_0_to_90_is_refused(angle: float) -> None:
         run_inches(RightTriangle(), "leg_angle", leg_a=3, angle_a=angle)
 
 
+@pytest.mark.parametrize("method", ["leg_angle", "hypotenuse_angle"])
+def test_an_angle_that_is_90_to_the_arithmetic_is_refused_in_either_method(method: str) -> None:
+    """Within about 6e-11° of 90°, tan(A) is undefined: both angle methods refuse it alike."""
+    given = {"leg_angle": "leg_a", "hypotenuse_angle": "hypotenuse"}[method]
+    for angle in (90.0, 89.99999999995):
+        with pytest.raises(
+            OutOfRangeError, match=r"Angle A \(opposite a\) \(A\) must be less than 90"
+        ):
+            run_inches(RightTriangle(), method, **{given: 3, "angle_a": angle})
+    out = run_inches(RightTriangle(), method, **{given: 3, "angle_a": 89.9999999999})
+    assert 0 < out["leg_b"] < 1e-11
+
+
 def test_two_angles_alone_are_never_a_method() -> None:
     """Two angles fix no size, so every method takes at least one length."""
     calc = RightTriangle()
@@ -316,7 +330,9 @@ def test_a_major_arc_and_a_whole_circle() -> None:
     assert major["sagitta"] == pytest.approx(10 + 5 * math.sqrt(2), rel=1e-14)
     whole = run_inches(ArcSector(), radius=10, angle=360)
     assert whole["arc_length"] == pytest.approx(20 * math.pi)
-    assert whole["sagitta"] == pytest.approx(20) and whole["chord"] == pytest.approx(0, abs=1e-12)
+    assert whole["sagitta"] == 20 and whole["chord"] == 0, "exactly: sind(180) is 0"
+    half = run_inches(ArcSector(), radius=10, angle=180)
+    assert half["chord"] == 20 and half["sagitta"] == pytest.approx(10, rel=1e-15)
 
 
 def test_a_small_angles_sagitta_keeps_its_digits() -> None:
@@ -359,9 +375,11 @@ def test_every_method_cites_the_handbook_and_points_students_to_the_pocket_compa
         for m in calc.methods:
             titles = [r.title for r in m.references]
             assert MH31 in titles, (calc.id, m.key)
-            pocket = {POCKET_PLANE_FIGURES, POCKET_TRIANGLES} & set(m.references)
-            assert len(pocket) == 1 and m.references[-1] in pocket, "last, as a see also"
+            pocket = [r for r in m.references if r.title == POCKET]
+            assert pocket and m.references[-len(pocket) :] == tuple(pocket), "last, see also"
             assert all(r.detail.startswith("see also") for r in pocket)
+            if calc is ArcSector:
+                assert pocket == [POCKET_PLANE_FIGURES, POCKET_SEGMENTS], "and its segments"
             assert m.verification is Verification.UNVERIFIED, "no published example tests it"
             assert m.verification_note, (calc.id, m.key)
 

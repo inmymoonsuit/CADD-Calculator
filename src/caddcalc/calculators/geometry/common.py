@@ -27,7 +27,7 @@ MH31_POLYGON = Reference(
     MH31, "Mathematics: Dimensions of Plane Figures, regular polygon, printed p. 78"
 )
 MH31_POLYGON_TABLE = Reference(
-    MH31, "Mathematics: Formulas and Table for Regular Polygons, printed p. 82"
+    MH31, "Mathematics: Polygons, Formulas and Table for Regular Polygons, printed p. 82"
 )
 MH31_SEGMENT = Reference(
     MH31, "Mathematics: Dimensions of Plane Figures, circular segment, printed p. 79"
@@ -40,8 +40,8 @@ MH31_RIGHT_TRIANGLES = Reference(
 )
 MH31_THREE_SIDES = Reference(
     MH31,
-    "Mathematics: Solution of Triangles, All Three Sides Known, printed p. 101; its second "
-    "angle, from the law of sines, isn't followed (see the method's notes)",
+    "Mathematics: Solution of Oblique Triangles, All Three Sides Known, printed p. 101; its "
+    "second angle, from the law of sines, isn't followed (see the method's notes)",
 )
 DLMF_TRIANGLES = Reference(
     "NIST Digital Library of Mathematical Functions",
@@ -54,14 +54,12 @@ KAHAN_NEEDLE = Reference(
     "California, Berkeley)",
     url="https://people.eecs.berkeley.edu/~wkahan/Triangle.pdf",
 )
+POCKET = "Machinery's Handbook Pocket Companion, 32nd ed. (Industrial Press, 2024)"
 POCKET_PLANE_FIGURES = Reference(
-    "Machinery's Handbook Pocket Companion, 32nd ed. (Industrial Press, 2024)",
-    "see also, for students: Dimensions of Plane Figures, pp. 1-6",
+    POCKET, "see also, for students: Dimensions of Plane Figures, pp. 1-6"
 )
-POCKET_TRIANGLES = Reference(
-    "Machinery's Handbook Pocket Companion, 32nd ed. (Industrial Press, 2024)",
-    "see also, for students: triangles, pp. 16-19",
-)
+POCKET_SEGMENTS = Reference(POCKET, "see also, for students: Segments of Circles, pp. 7-9")
+POCKET_TRIANGLES = Reference(POCKET, "see also, for students: triangles, pp. 16-19")
 
 UNVERIFIED = (
     "Not verified: no published worked example runs through this calculator in the tests "
