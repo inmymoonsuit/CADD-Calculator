@@ -160,6 +160,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_run.add_argument(
         "--output-set",
+        action="append",
+        default=[],
         metavar="SET",
         help="the units the results show in, e.g. mm or in_16 (default: the calculator's "
         "first; 'caddcalc show' lists them)",
@@ -369,6 +371,14 @@ def _picked_choices(
             raise InputError(f"Expected --unit NAME=ID, got {item!r}")
         p = _resolve_param(calc, name.strip(), used)
         choice = choice.strip()
+        if not choice:
+            raise InputError(f"--unit {item}: give the unit or form to read {p.key} in")
+        if p not in used:
+            inputs = ", ".join(f"{q.symbol}/{q.key}" for q in used)
+            raise InputError(
+                f"--unit {item}: {p.symbol}/{p.key} isn't an input of this method; "
+                f"its inputs are {inputs}"
+            )
         if p.key in picked:
             raise InputError(
                 f"--unit names {p.symbol}/{p.key} twice, as {picked[p.key][1]!r} and "
@@ -424,9 +434,9 @@ def _output_units(
     picks: dict[str, str] = {}
     for item in output_items:
         name, sep, choice = item.partition("=")
-        output = _resolve_output(calc, name.strip()) if sep else None
-        if output is None:
+        if not sep or not name.strip():
             raise InputError(f"Expected --output-unit KEY=ID, got {item!r}")
+        output = _resolve_output(calc, name.strip(), item)
         if not output.picks:
             raise InputError(
                 f"--output-unit {item}: {output.symbol}/{output.key} has no unit of its own "
@@ -448,9 +458,30 @@ def _output_units(
     return ShownUnits.of(chosen, picks=picks, inputs=inputs)
 
 
-def _resolve_output(calc: Calculator, name: str) -> Output | None:
-    """Return the output ``name`` names, by its key or symbol, if one does."""
-    return next((o for o in calc.outputs if name in (o.key, o.symbol)), None)
+def _resolve_output(calc: Calculator, name: str, item: str) -> Output:
+    """Return the output ``name`` names: by its exact key or symbol, else in any case.
+
+    As ``--unit`` resolves an input (``_resolve_param``), a name in any case must match
+    one output only.
+
+    Raises:
+        InputError: No output has the name, or, in any case, several do.
+    """
+    exact = [o for o in calc.outputs if name in (o.key, o.symbol)]
+    if len(exact) == 1:
+        return exact[0]
+    folded = name.casefold()
+    matches = [o for o in calc.outputs if folded in (o.key.casefold(), o.symbol.casefold())]
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        names = ", ".join(f"{o.symbol}/{o.key}" for o in matches)
+        raise InputError(f"--output-unit {item}: {name!r} could be {names}; give one exactly")
+    own = ", ".join(f"{o.symbol}/{o.key}" for o in calc.outputs if o.picks)
+    raise InputError(
+        f"--output-unit {item}: {calc.id} has no output {name!r}; "
+        f"the outputs with their own unit to pick are {own or 'none'}"
+    )
 
 
 def _shown_choice(p: Param, entry: TypedValue | None) -> str:
@@ -476,7 +507,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
     units = ShownUnits.generated()
     try:
         entries = parse_inputs(calc, args.inputs, args.method, unit_items=args.unit)
-        units = _output_units(calc, args.output_set, args.output_unit, entries)
+        if len(args.output_set) > 1:
+            raise InputError(
+                f"--output-set is given {len(args.output_set)} times, as "
+                f"{', '.join(map(repr, args.output_set))}; give it once"
+            )
+        output_set = args.output_set[0] if args.output_set else None
+        units = _output_units(calc, output_set, args.output_unit, entries)
         inputs = {key: entry.value for key, entry in entries.items()}
         result = calc.run(inputs, method=args.method)
     except CaddCalcError as exc:

@@ -30,9 +30,9 @@ from caddcalc.calculators import default_registry
 from caddcalc.cli import main
 from caddcalc.core import Dimension, InputError, TypedValue
 
-ULPS = 4
+ULPS = 8
 """Units in the last place of a run's largest value its outputs and steps may differ by:
-every difference macOS's maths library made, in CI's logs, is at most 2."""
+enough for a maths library 2 last places off, by S&R's measure (ADR-0024, E-4 as built)."""
 
 CORPUS = json.loads((Path(__file__).parent / "data" / "cli_corpus.json").read_text("utf-8"))
 
@@ -89,17 +89,28 @@ def _scale(base: dict[str, Any]) -> float:
 
 
 def _within(got: float, want: float, scale: float) -> bool:
-    """Whether two values agree to ``ULPS`` units in the last place of ``scale``."""
-    return got == want or abs(got - want) <= ULPS * math.ulp(scale)
+    """Whether two values agree to ``ULPS`` units in the last place of ``scale``.
+
+    Equal values agree only with the same sign, as -0 and 0 don't.
+    """
+    if got == want:
+        return _bits(got) == _bits(want)
+    return abs(got - want) <= ULPS * math.ulp(scale)
+
+
+def _bits(value: float) -> str:
+    """A value's bits, sign included: ``==`` holds -0 equal to 0."""
+    return float(value).hex()
 
 
 def test_the_bound_is_a_few_last_places_of_the_run() -> None:
-    """Pinned: 4 of the scale's last places pass, 8 fail, and so does any input."""
+    """Pinned: 8 of the scale's last places pass, 16 fail, and so does -0 for 0."""
     scale = 323.7609432604796
     assert _within(18.918888629956797, 18.918888629956825, scale), "macOS's, half a place"
     assert _within(1.0, 1.0 + ULPS * math.ulp(scale), scale)
     assert not _within(1.0, 1.0 + 2 * ULPS * math.ulp(scale), scale)
     assert not _within(18.9188886299568, 18.9188886299578, scale), "a change in the 14th digit"
+    assert not _within(-0.0, 0.0, scale), "a sign"
 
 
 def test_the_corpus_is_s_and_r_s_size() -> None:
@@ -115,7 +126,8 @@ def test_every_call_rewritten_gives_c7b1772_s_base_values(row: dict[str, Any]) -
     assert status == row["exit"]
     if base is not None:
         want = row["base"]
-        assert base["inputs"] == want["inputs"], "read bit for bit"
+        bits = {k: _bits(v) for k, v in base["inputs"].items()}
+        assert bits == {k: _bits(v) for k, v in want["inputs"].items()}, "read bit for bit"
         scale = _scale(want)
         assert base["outputs"].keys() == want["outputs"].keys()
         far = {

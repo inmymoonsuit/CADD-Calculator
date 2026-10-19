@@ -398,6 +398,27 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **Escape, or a click outside, on a picker's open list left it unable to settle:** a
+  step taken before, and every step after, never carried to the other fields. Closing
+  the list chooses nothing, and the step settles when you leave the picker.
+- **The Inputs list printed false equalities in inch-fraction and feet-and-inches sets,**
+  such as `0.1046 in = 1/8"`. An input has no second value where the set's unit is its
+  field's, a form gives way to its unit where it would round the input (`= 0.1046 in`),
+  and a calculator with no Show in picker, such as a converter, gives none.
+- **A calculator's own output set in a finer feet-and-inches form** (`ft_in_32`,
+  `ft_in_64`) passed registration, then failed in the app and on the command line; it
+  shows now, with its other units taken from the inch set.
+- `30'`, `30"` and `30 arcmin` in a bend angle offered "Use 30′?" with no button; a unit
+  its picker doesn't list is refused with no offer. A picker switch also clears its
+  field's undo, which would otherwise read an earlier text in the new unit.
+- Feet alone, `1'` in a feet-and-inches field, read a last place apart from the command
+  line's `L=1'`; both read 304.8 mm now. A refused unit run on to its number, `3μm`, is
+  named as `μm`; a refused form quotes a minus sign as typed; and `40d30m` in a DMS field
+  is refused as not degrees, minutes and seconds rather than as a length.
+- **The command line:** an unknown `--output-unit` name is named in its message, and a
+  result is named in any case as an input is; `--unit` with an empty unit, or for an
+  input the method doesn't use, is refused as such; a repeated `--output-set` is refused
+  as the other repeated options are.
 - **JSON gives `output_set: null` for a calculator with no output sets,** such as a
   converter, and an input's `shown.value` is the number as typed (`T=3` is 3).
 - **An input read in feet and inches is listed as it ran:** `0'-0.1046"` is listed
@@ -560,9 +581,9 @@ All notable changes are recorded here. The format follows
   their title and Copy all. It offers a set per length unit, `in`, `in 1/16`, `in 1/32`,
   `in 1/64`, `ft-in`, `ft`, `mm`, `cm` and `m`, labelled by what the calculator shows
   (`in · ° · in²` on the right triangle), and sets the fields, Copy, Copy all, speech
-  and the work together. Until you choose one, it follows your length inputs while they
-  share a unit; once chosen, it's yours for the session, and changing the method never
-  moves it. Its accessible name is "Results units", its list names each set ("in 1/16 —
+  and the work together. Until you choose one, it follows the method's length inputs
+  while they share a unit, and stays on the set it last followed while they don't; once
+  chosen, it's yours for the session. Its accessible name is "Results units", its list names each set ("in 1/16 —
   inches, nearest 1/16"), the mouse wheel doesn't change it, and it adds no height. The Inputs list adds each input's
   value in the set's units where its picker shows another: `0.1046 in = 2.6568 mm`. A
   result with its own picker (`Output.picks`) has it in its row. A family settings page

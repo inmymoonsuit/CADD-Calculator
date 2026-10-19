@@ -176,9 +176,13 @@ class ShownUnits:
         """Return a declared or generated set as shown, with any picks and input choices.
 
         A set names only the dimensions its calculator's outputs show in it, so the rest,
-        such as a note's stress, take the generated set's for its length choice.
+        such as a note's stress, take the generated set's for its length choice: for a
+        form with no set of its own, such as ``ft_in_32``, its full unit's (review M6).
         """
-        base = cls.generated(unit_set.choices.get(Dimension.LENGTH, "in")).choices
+        length = unit_set.choices.get(Dimension.LENGTH, "in")
+        if length not in dict(registry().generated_sets()):
+            length = choice_unit(length, Dimension.LENGTH).symbol
+        base = cls.generated(length).choices
         return cls(
             {**base, **unit_set.choices}, dict(picks or {}), dict(inputs or {}), unit_set.key
         )
@@ -420,7 +424,29 @@ def input_parts(
     than ``40.50°`` (S&R's L3 at stop 2). A result is rounded to its form as shown; an
     input is what the run used.
     """
-    choice = units.input_choice(key, dimension)
+    return _nearer(value, units.input_choice(key, dimension), dimension, prefs)
+
+
+def input_in_set(
+    key: str, value: float, dimension: Dimension, units: ShownUnits, prefs: DisplayPrefs
+) -> ValueParts | None:
+    """Return an input's value in the output set too, where its field shows another unit.
+
+    The Inputs list gives it after the field's: ``T 0.1046 in = 2.6568 mm``. There's none
+    where the set's unit is the field's, as ``in`` and ``in_16`` both are inches, nor for
+    a calculator with no sets, whose set the user never sees. A form gives way to its full
+    unit as an input does (``input_parts``), so ``= 0'-0 1/8"`` never stands for 0.1046 in
+    (review M2, L1).
+    """
+    choice = units.choice(dimension)
+    field = choice_unit(units.input_choice(key, dimension), dimension)
+    if not units.key or choice_unit(choice, dimension) == field:
+        return None
+    return _nearer(value, choice, dimension, prefs)
+
+
+def _nearer(value: float, choice: str, dimension: Dimension, prefs: DisplayPrefs) -> ValueParts:
+    """Return a value in ``choice``, or in a form's full unit where that's nearer it."""
     parts = choice_parts(value, choice, dimension, prefs)
     if parts.compound is None:
         return parts

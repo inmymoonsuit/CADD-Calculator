@@ -99,9 +99,9 @@ def read(text: str, choice: str, dimension: Dimension, *, decimal: str = ".") ->
 
     In a unit, the text is evaluated exactly (``evaluate``), rounded once to a double in
     the unit, then multiplied by its factor, as ``parse_quantity`` does. In a form, it's
-    read by the form's grammar (``CompoundForm.read``) in the form's full unit, which is
-    the unit returned, and converted so. ``decimal`` is the locale's decimal mark, read
-    besides ``"."``.
+    read by the form's grammar (``CompoundForm.read_in``) in the form's full unit, which is
+    the unit returned, and converted from it, or from a unit the text gives alone, as
+    feet. ``decimal`` is the locale's decimal mark, read besides ``"."``.
 
     Raises:
         UnitInTextError: The text names a unit or a form, with the fix where it has one.
@@ -114,15 +114,23 @@ def read(text: str, choice: str, dimension: Dimension, *, decimal: str = ".") ->
     stripped = _SPACES.sub(" ", text).strip()
     try:
         if isinstance(picked, CompoundForm):
-            exact = picked.read(stripped.replace(MINUS_SIGN, "-"), decimal)
+            signed = stripped.replace(MINUS_SIGN, "-")
+            exact, written = picked.read_in(signed, decimal)
             unit = units.find(picked.full_unit, dimension)
+            if written != picked.full_unit:
+                return _base(exact, units.find(written, dimension), text), unit
         else:
             exact, unit = evaluate(stripped, decimal), picked
     except _NotArithmeticError as exc:
         raise _named(stripped, dimension, decimal) or InputError(str(exc)) from None
     except InputError as exc:
         if isinstance(picked, CompoundForm):
-            raise _named(stripped, dimension, decimal, but=picked) or exc from None
+            named = _named(stripped, dimension, decimal, but=picked)
+            # The form quotes the text it read, its minus signs as "-": quote it as typed.
+            typed = str(exc).replace(repr(stripped.replace(MINUS_SIGN, "-")), repr(stripped), 1)
+            if type(exc) is InputError and typed != str(exc):
+                exc = InputError(typed)
+            raise named or exc from None
         raise
     return _base(exact, unit, text), unit
 
@@ -168,20 +176,26 @@ def _named(
         except InputError:
             pass  # an attempt at the form, read with its marks optional below
     ending = units.ending(text, dimension)
-    if ending is not None and ending[0].dimension is not dimension:
-        unit = ending[0]
-        return InputError(
-            f"{text!r} is {unit.dimension.with_article}, but {dimension.with_article} is expected"
-        )
+    amount = None
     if ending is not None:
-        unit, length = ending
-        number = text[: len(text) - length].rstrip()
+        number = text[: len(text) - ending[1]].rstrip()
         try:
             amount = evaluate(number, decimal)
         except InputError:
             amount = None
-        if amount is not None:
-            return _unit_fix(text, unit, number, amount)
+    # In a form's field, a unit of another dimension is refused as one only after a
+    # number: "40d30m" is an attempt at the form, not metres (the stop-2 review's Note).
+    if (
+        ending is not None
+        and ending[0].dimension is not dimension
+        and (but is None or amount is not None)
+    ):
+        unit = ending[0]
+        return InputError(
+            f"{text!r} is {unit.dimension.with_article}, but {dimension.with_article} is expected"
+        )
+    if ending is not None and amount is not None:
+        return _unit_fix(text, ending[0], text[: len(text) - ending[1]].rstrip(), amount)
     for form in forms:
         try:
             form.read(signed, decimal)
@@ -192,8 +206,22 @@ def _named(
         # In a form's field a mark ending the text is the form's own, as in "30′ 40°".
         # The unit is named as written, its last word: "μm" in "3 μm", never the "m"
         # that ends it.
-        return UnitInTextError(text, None, text.split()[-1], "")
+        return UnitInTextError(text, None, _last_word(text), "")
     return None
+
+
+_NUMBER_CHARS = re.compile(r"^[\d\s.,+\-*/×÷−()]+")
+"""What a number or arithmetic begins a word with, before a unit run on to it."""
+
+
+def _last_word(text: str) -> str:
+    """Return the unit a text ends with, as written: its last word, from where a number ends.
+
+    So "3μm", "3)mm" and ``1-"`` name "μm", "mm" and ``"`` (review L4 at stop 1), while
+    "ft-in", which begins with no number, is named whole.
+    """
+    word = text.split()[-1]
+    return _NUMBER_CHARS.sub("", word) or word
 
 
 def _unit_fix(text: str, unit: Unit, number: str, amount: Fraction) -> UnitInTextError:

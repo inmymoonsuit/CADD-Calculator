@@ -119,7 +119,7 @@ class UnitPicker(QComboBox):
         """The width its closed face holds text in, shared by a page's pickers."""
         self._stepping = False
         self._listing = False
-        """Whether its list is open, which takes the focus without settling a step."""
+        """Whether its list is opening, which takes the focus without settling a step."""
         self._settled = ""
         self.currentIndexChanged.connect(self._named)
         self.activated.connect(self._activated)
@@ -180,15 +180,16 @@ class UnitPicker(QComboBox):
 
     @override
     def showPopup(self) -> None:
-        """Open the list; the focus it takes isn't the picker losing it (§3)."""
-        self._listing = True
-        super().showPopup()
+        """Open the list; the focus it takes isn't the picker losing it (§3).
 
-    @override
-    def hidePopup(self) -> None:
-        """Close the list. A choice made in it has settled already (``_activated``)."""
-        super().hidePopup()
-        self._listing = False
+        Only while it opens: after that the list's own visibility says so, since Escape
+        or a click outside closes it without calling ``hidePopup`` (review M1).
+        """
+        self._listing = True
+        try:
+            super().showPopup()
+        finally:
+            self._listing = False
 
     @override
     def focusOutEvent(self, event: QFocusEvent) -> None:

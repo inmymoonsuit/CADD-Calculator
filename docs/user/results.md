@@ -27,13 +27,19 @@ The open list names each set, as `in 1/16 · ° · in² — inches, nearest 1/16
 square inches`, and a screen reader says the chosen set's name. The mouse wheel never
 changes it; click it, or use the keyboard.
 
-* **Until you choose a set, it follows your inputs:** while every length input's picker
-  shows the same unit, the results show in it. Pick mm for the thickness, and the other
-  lengths and the results follow. Once you choose a set, it's yours for the session, on
-  that calculator, and changing the method never moves it.
+* **Until you choose a set, it follows your inputs:** while every length input the
+  method shows has the same unit picked, the results show in it. Pick mm for the
+  thickness, and the other lengths and the results follow. While the lengths disagree,
+  as with the thickness in mm and the radius in cm, the results stay in the set they
+  last followed. An input another method uses, hidden for now, doesn't count. Once you
+  choose a set, it's yours for the session, on that calculator.
 * **What follows the set:** the fields, Copy, Copy all, what a screen reader says, and
   the work. The Inputs list gives each input in its own picker's unit, then in the
-  set's where they differ: `0.1046 in = 2.6568 mm`.
+  set's where the unit differs: `0.1046 in = 2.6568 mm`. An inch field has no second
+  value in an inch-fraction set, whose unit is inches too. Where a fraction or feet and
+  inches would round an input, it's given in the form's unit instead: `2.6568 mm =
+  0.1046 in`, never `= 0'-0 1/8"`. A calculator with no Show in picker gives no second
+  value.
 * **Some results keep their own unit,** such as each row of a unit converter, and a
   result with its own picker in its row is set there. A calculator whose every result
   has its own unit has no Show in picker.

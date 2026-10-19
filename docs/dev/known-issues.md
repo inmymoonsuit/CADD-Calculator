@@ -234,6 +234,13 @@ one unit in the last shown place. The inch fractions don't have it: they count a
 within the shown unit's last places as the tie (ADR-0019, amendments); the decimals could
 take the same window, which would change shown text everywhere it applies.
 
+Every calculator's `cm`, `m` and `ft` output sets show it too (the cloud review of stop
+2, its Low 3): in the `m` set, a 0.5 mm diameter's radius, exactly 0.00025 m, shows
+`0.0003 m` where half to even gives `0.0002`, and 1/32 in shows `0.7937 mm`, not
+`0.7938`; the review counted 361 such cases. It's kept as a known issue rather than
+fixed at stop 2, since the window would change the `in` and `mm` text that E-3's
+neutrality golden holds, and a change to shown values is the maintainer's to approve.
+
 ### KI-027: Settings fields still read units in their text (Low)
 
 ADR-0024's slices give calculator fields pickers first (U1). Until E-5 and U2b give a

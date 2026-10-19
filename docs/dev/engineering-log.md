@@ -16,6 +16,25 @@ Template:
 
 ---
 
+## 2026-10-19: Knowing a picker's list is open by overriding hidePopup
+**Tried:** for M-B at stop 2, the picker set `_listing` in `showPopup` and cleared it in
+an overridden `hidePopup`, so the focus its list takes didn't settle a step.
+**Outcome:** replaced after the cloud review of stop 2 (M1).
+**Why:** Escape, and Qt closing the popup for a click outside it, close the list without
+calling `hidePopup`, so `_listing` stayed set and the picker never settled again.
+**Instead:** `_listing` is set only while `showPopup` runs, and after that the list's own
+visibility says whether it's open (`unit_picker.UnitPicker`).
+
+## 2026-10-19: The CLI corpus's outputs to 4 last places of the run
+**Tried:** holding the corpus's outputs and steps to 4 units in the last place of a run's
+largest value, from the most CI's macOS logs had shown (2).
+**Outcome:** raised to 8 after S&R's native re-check of stop 2.
+**Why:** S&R nudged every maths-library result: a 1-ulp difference, which is macOS's
+against glibc, moves outputs by exactly 4.00 of the run's last places, so 4 had no
+margin, and 2 ulps reach 6.
+**Instead:** 8 (`tests/test_cli_corpus.py`, `ULPS`), which holds a 2-ulp library and
+still allows at most 1.2 × 10⁻¹¹ relative; the inputs stay bit for bit.
+
 ## 2026-10-19: E-3's neutrality golden in full text, and from c7b1772
 **Tried:** holding E-3 to every built-in calculator's text written with the length
 preference, captured as ADR-0024's E8 says, from c7b1772, and in full: 912 runs, the

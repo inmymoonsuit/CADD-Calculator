@@ -621,6 +621,30 @@ def test_a_pick_keeps_the_undo_of_the_fields_it_didnt_change() -> None:
     window.close()
 
 
+@pytest.mark.parametrize("how", ["pick", "step"])
+def test_a_field_whose_choice_changes_forgets_its_undo(how: str) -> None:
+    """Undoing to 0.1046 after picking mm would read it as 0.1046 mm, never entered."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    window = open_window()
+    window.select_calculator(BEND)
+    thickness = field(window, "thickness")
+    type_into(thickness, "25")
+    assert thickness.isUndoAvailable()
+    if how == "pick":
+        pick(window, "thickness", "mm")
+    else:
+        window.pickers["thickness"].setFocus()
+        QTest.keyClick(window.pickers["thickness"], Qt.Key.Key_Down)
+    assert thickness.text() == "25" and not thickness.isUndoAvailable()
+    QTest.keyClick(thickness, Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
+    QTest.keyClick(thickness, Qt.Key.Key_Return)
+    assert thickness.text() == "25"
+    assert window.result.inputs["thickness"] == (25.0 if how == "pick" else 25 * INCH)
+    window.close()
+
+
 def test_the_inputs_are_shown_in_each_field_s_choice_not_the_results_units() -> None:
     """The Inputs block says each input as its field reads it (ADR-0024 E4)."""
     window = open_window()
@@ -678,6 +702,81 @@ def test_opening_a_stepped_picker_s_list_settles_nothing() -> None:
     window.close()
 
 
+def test_the_focus_the_list_takes_as_it_opens_settles_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Natively the picker loses the focus to its list before the list shows (M-B).
+
+    Offscreen the list is visible by then; this sends the focus out at that moment.
+    """
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QFocusEvent
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QComboBox
+
+    window = open_window()
+    window.show()
+    window.select_calculator(BEND)
+    picker = window.pickers["thickness"]
+    opening = QComboBox.showPopup
+
+    def show_popup(combo: QComboBox) -> None:
+        lost = QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.PopupFocusReason)
+        QApplication.sendEvent(combo, lost)
+        opening(combo)
+
+    monkeypatch.setattr(QComboBox, "showPopup", show_popup)
+    picker.setFocus()
+    QTest.keyClick(picker, Qt.Key.Key_Down)
+    picker.showPopup()
+    assert window.pickers["inside_radius"].choice == "in", "the step didn't lead"
+    picker.hidePopup()
+    window.close()
+
+
+@pytest.mark.parametrize("close", ["escape", "click outside", "closed by the app"])
+def test_a_list_closed_without_a_choice_leaves_the_step_to_settle(close: str) -> None:
+    """Escape, or the app closing the list for a click outside it, skips ``hidePopup``.
+
+    So the picker can't rely on ``hidePopup`` to know its list has closed (review M1). A
+    click elsewhere on the window is closed by the combo offscreen; where the platform
+    closes popups itself, Qt closes the list as the last case does.
+    """
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    window = open_window()
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+    window.select_calculator(BEND)
+    picker = window.pickers["thickness"]
+    picker.setFocus()
+    QApplication.processEvents()
+    QTest.keyClick(picker, Qt.Key.Key_Down)  # in → ft-in, a step
+    QTest.keyClick(picker, Qt.Key.Key_F4)
+    QApplication.processEvents()
+    assert picker.view().isVisible()
+    if close == "escape":
+        QTest.keyClick(picker.view(), Qt.Key.Key_Escape)
+    elif close == "closed by the app":
+        QApplication.activePopupWidget().close()
+    else:
+        popup = picker.view().window()
+        radius = field(window, "inside_radius")
+        at = popup.mapFromGlobal(radius.mapToGlobal(radius.rect().center()))
+        QTest.mouseClick(popup, Qt.MouseButton.LeftButton, pos=at)
+    QApplication.processEvents()
+    assert not picker.view().isVisible()
+    assert window.pickers["inside_radius"].choice == "in", "closing chose nothing"
+    picker.setFocus()
+    QApplication.processEvents()
+    QTest.keyClick(picker, Qt.Key.Key_Tab)
+    assert window.pickers["inside_radius"].choice == "ft_in", "the step settles on focus out"
+    window.close()
+
+
 @pytest.mark.parametrize("text", ["", "-", "+", "−", "40-", "40-30-", "40°-30′"])
 def test_a_dms_field_refuses_text_with_no_number_or_a_stray_hyphen(text: str) -> None:
     """A bend angle left at "-" mustn't run at 0° (M-A)."""
@@ -694,4 +793,81 @@ def test_a_bend_angle_left_at_a_sign_runs_nothing() -> None:
     type_into(field(window, "bend_angle"), "-", enter=False)
     assert window.result is None
     assert "ends before its last number" in window.output.toPlainText()
+    window.close()
+
+
+@pytest.mark.parametrize("text", ["30'", '30"', "30 arcmin"])
+def test_a_unit_the_picker_doesn_t_offer_gets_no_fix(text: str) -> None:
+    """A bend angle offers no ′ or ″, so "Use 30′?" would have nothing to pick."""
+    window = open_window()
+    window.select_calculator(BEND)
+    assert "arcmin" not in window.pickers["bend_angle"].choices
+    type_into(field(window, "bend_angle"), text)
+    assert window.result is None
+    shown = results_text(window)
+    assert "Units go in the picker: " in shown and "Use " not in shown
+    assert window.unit_fixes["bend_angle"][0].isHidden(), "no button to pick it"
+    assert window.pickers["bend_angle"].choice == "deg"
+    window.close()
+
+
+def test_the_fix_s_unit_goes_against_its_number_as_written() -> None:
+    """The fix writes "Use 30°", never "Use 30 °" (SP 811 §7.2)."""
+    window = open_window()
+    window.select_calculator(BEND)
+    pick(window, "bend_angle", "rad")
+    type_into(field(window, "bend_angle"), "30°")
+    row, note, button = window.unit_fixes["bend_angle"]
+    assert not row.isHidden()
+    assert (button.text(), note.text()) == ("Use 30°", "Units go in the picker. Use 30°?")
+    window.close()
+
+
+def test_text_still_pending_is_typed_so_it_never_follows_a_pick() -> None:
+    """``1-``, half typed, was typed in the unit its picker showed (§3 as amended)."""
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(field(window, "inside_radius"), "1-", enter=False)
+    pick(window, "thickness", "mm")
+    assert window.pickers["inside_radius"].choice == "in"
+    assert field(window, "inside_radius").text() == "1-"
+    window.close()
+
+
+@pytest.mark.parametrize("how", ["pick", "step"])
+def test_a_pick_or_step_that_fails_leaves_the_picker_showing_what_the_field_reads(
+    monkeypatch: pytest.MonkeyPatch, how: str
+) -> None:
+    """The ``finally`` puts the picker back, so it never shows mm while the field reads in."""
+    window = open_window()
+    window.select_calculator(BEND)
+    picker = window.pickers["thickness"]
+    picker.setCurrentIndex(picker.choices.index("mm"))  # as the user's click moved it
+
+    def fail() -> None:
+        raise RuntimeError("a pick that fails")
+
+    monkeypatch.setattr(window, "_finish_field_edits", fail)
+    handler = window._on_picked if how == "pick" else window._on_stepped
+    with pytest.raises(RuntimeError, match="a pick that fails"):
+        handler("thickness", "mm")
+    assert picker.choice == "in" and window.result.inputs["thickness"] == 0.1046 * INCH
+    window.close()
+
+
+def test_the_echo_takes_the_scheme_s_colour_when_the_palette_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+
+    import caddcalc.gui.unit_picker as picker_module
+    from caddcalc.gui.ui_style import secondary_text
+
+    window = open_window()
+    window.select_calculator(BEND)
+    label = field(window, "thickness").echo_label
+    monkeypatch.setattr(picker_module, "current_scheme", lambda: "dark")
+    QApplication.sendEvent(field(window, "thickness"), QEvent(QEvent.Type.PaletteChange))
+    assert label.styleSheet() == f"color: {secondary_text('dark')};"
     window.close()

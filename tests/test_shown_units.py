@@ -165,3 +165,70 @@ def test_a_unit_too_coarse_for_its_dimension_s_places_shows_its_own() -> None:
         "angle", 0.5323254, A, ShownUnits.generated().with_inputs({"angle": "rad"}), PREFS
     )
     assert shown == "0.0093 rad"
+
+
+class _Fine(_Part):
+    """A part whose only set shows lengths in feet and inches to the 1/32, a form with no set."""
+
+    id = "acme.fine"
+    domain = "acme"
+    params = (_Part.params[0], Param("angle", "θ", "Angle", A, default="30.5°"))
+    output_sets = (
+        UnitSet("ft32", "Feet and inches to 1/32", {L: "ft_in_32", A: "deg", AREA: "in²"}),
+    )
+
+
+def test_a_declared_set_in_a_form_with_no_set_of_its_own_takes_its_full_unit_s() -> None:
+    """``ft_in_32`` has no generated set, so the rest come from inches' (review M6)."""
+    _Fine.validate_spec()
+    units = ShownUnits.of(_Fine.output_sets[0])
+    assert units.choice(L) == "ft_in_32" and units.key == "ft32"
+    assert units.choice(S) == "ksi", "a note's stress, from the inch set"
+    result = _Fine().run({"length": 8.09375 * 25.4})
+    assert format_output(_Fine.outputs[0], result.outputs["double"], units, PREFS) == (
+        "1'-4 3/16\""
+    )
+    assert units.unit(L).symbol == "in", "the work in the form's full unit"
+
+
+def test_a_declared_set_in_a_form_with_no_set_runs_through_the_cli(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from caddcalc import cli
+    from caddcalc.core import Registry
+    from tests.test_domains import ACME
+
+    def registry() -> Registry:
+        found = Registry()
+        found.register_domain(ACME)
+        found.register(_Fine)
+        return found
+
+    monkeypatch.setattr(cli, "default_registry", registry)
+    for extra in ([], ["--output-set", "ft32"]):
+        assert cli.main(["run", _Fine.id, "X=8.09375", "--no-work", *extra]) == 0
+        assert "1'-4 3/16\"" in capsys.readouterr().out
+
+
+@pytest.mark.gui
+@pytest.mark.usefixtures("qt")
+def test_a_declared_set_in_a_form_with_no_set_shows_in_the_window() -> None:
+    from caddcalc.core import Registry
+    from tests.qt_helpers import open_window
+    from tests.test_domains import ACME
+
+    registry = Registry()
+    registry.register_domain(ACME)
+    registry.register(_Fine)
+    window = open_window(registry)
+    window.select_calculator(_Fine.id)
+    assert window.results.set_key == "ft32"
+    field = window.results.fields["double"]
+    assert field.parts is not None and field.parts.with_unit == "1'-4 3/16\""
+    window.close()
+
+
+def test_a_declared_set_takes_the_rest_from_its_length_s_generated_set() -> None:
+    """A set in mm takes a note's stress in MPa, not the inch set's ksi."""
+    units = ShownUnits.of(UnitSet("metric", "Metric", {L: "mm", A: "deg"}))
+    assert units.choice(S) == "MPa" and units.choice(AREA) == "mm²"

@@ -92,12 +92,12 @@ from caddcalc.core.formatting import (
     entry_text,
     format_output,
     format_value,
+    input_in_set,
     input_parts,
     method_notes,
     picked_text,
     render_step,
     unit_suffix,
-    value_parts,
 )
 from caddcalc.core.i18n import _
 from caddcalc.core.spec import named
@@ -328,6 +328,9 @@ class MainWindow(QMainWindow):
         self.output_sets: dict[str, str] = {}
         """The key of the output set the user picked for each calculator, by its id; a
         calculator not named follows its inputs (ADR-0024 §6)."""
+        self.followed_sets: dict[str, str] = {}
+        """The key of the set each calculator's results last followed its inputs to, kept
+        while its length fields disagree (``_output_set``)."""
         self.output_picks: dict[tuple[str, str], str] = {}
         """The choice the user picked for each output with its own picker, by calculator
         id and output key."""
@@ -1022,24 +1025,29 @@ class MainWindow(QMainWindow):
     def _output_set(self, calc: Calculator) -> UnitSet | None:
         """Return the set ``calc``'s results show in: the user's pick, or the followed one.
 
-        Until the user picks one, it follows the calculator's length fields while they're
-        all in one choice, and is the first set otherwise (ADR-0024 §6). Every length
-        input counts, not only the method's, so changing the method never moves it.
+        Until the user picks one, it follows the length fields the method shows while
+        they're all in one choice. While they disagree it stays on the set it last
+        followed, the first set if none yet (ADR-0024 §6, as amended at stop 2): a field
+        of another method, hidden, doesn't count.
         """
         sets = calc.unit_sets()
         if not sets:
             return None
-        picked = self.output_sets.get(calc.id)
-        for unit_set in sets:
-            if unit_set.key == picked:
-                return unit_set
-        lengths = {self._choice(calc, p) for p in calc.params if p.dimension is Dimension.LENGTH}
+        by_key = {unit_set.key: unit_set for unit_set in sets}
+        if (picked := self.output_sets.get(calc.id)) in by_key:
+            return by_key[picked]
+        method = self.method_key if calc is self.calculator else ""
+        # While a page is built its method box can still hold another calculator's.
+        known = method in {m.key for m in calc.methods}
+        shown = calc.params_for(method) if known else calc.params
+        lengths = {self._choice(calc, p) for p in shown if p.dimension is Dimension.LENGTH}
         if len(lengths) == 1:
             (choice,) = lengths
             for unit_set in sets:
                 if unit_set.choices.get(Dimension.LENGTH) == choice:
+                    self.followed_sets[calc.id] = unit_set.key
                     return unit_set
-        return sets[0]
+        return by_key.get(self.followed_sets.get(calc.id, ""), sets[0])
 
     def _on_set_picked(self, key: str) -> None:
         """Show the results in the set the user picked, for the rest of the session."""
@@ -1083,7 +1091,9 @@ class MainWindow(QMainWindow):
                 # The fix's sentence and button are in the field's note area; the list
                 # says only what's wrong, so the sentence shows once.
                 return f"{p.label}: {exc.text!r} names a unit"
-            return f"{p.label}: {_unit_fix_text(exc)}"
+            # A unit the picker doesn't offer, as ′ in a bend angle, gets no "Use 30′?":
+            # there's nothing to pick (review L1 at stop 1).
+            return f"{p.label}: {_unit_fix_text(exc, offered=False)}"
         except InputError as exc:
             return f"{p.label}: {exc}"
         return None
@@ -1284,8 +1294,15 @@ class MainWindow(QMainWindow):
         self.recompute()
 
     def _switch(self, calc: Calculator, p: Param, choice: str) -> None:
-        """Pick ``choice`` for ``p``'s field, and re-read the text the user typed in it."""
+        """Pick ``choice`` for ``p``'s field, and re-read the text the user typed in it.
+
+        The field forgets its undo: an earlier text undone would be read in ``choice``,
+        a value never entered (review L2 at stop 1).
+        """
         self.field_choices[calc.id, p.key] = choice
+        if p.key in self.fields:
+            edit = self.fields[p.key][1]
+            edit.setText(edit.text())  # setText clears a line edit's undo
         text = self._own_text(calc, p)
         if text is None or self._inherits_family_value(calc, p):
             return  # a value the user didn't type keeps its quantity, shown converted
@@ -2075,9 +2092,12 @@ DIMENSION_PLURALS = {
 """How an announcement names the fields of a dimension that follow a pick (ADR-0024 §3)."""
 
 
-def _unit_fix_text(fix: UnitInTextError) -> str:
-    """Return what a field says about a unit typed in it: "Units go in the picker. Use 25 mm?"."""
-    if fix.choice is None:
+def _unit_fix_text(fix: UnitInTextError, *, offered: bool = True) -> str:
+    """Return what a field says about a unit typed in it: "Units go in the picker. Use 25 mm?".
+
+    A fix whose choice the picker doesn't ``offered`` is worded as one with none.
+    """
+    if fix.choice is None or not offered:
         return f"Units go in the picker: {fix.text!r} names {fix.shown}."
     if fix.choice == "":
         return f"This field takes a plain number, not {fix.shown}. Use {fix.number}?"
@@ -2323,9 +2343,9 @@ def result_html(
     # (ADR-0024 §5), "T 0.1046 in = 2.6568 mm", in a column only a table with one has.
     params = calc.params_for(result.method)
     in_set = {
-        p.key: "= " + value_parts(result.inputs[p.key], p.dimension, units, prefs).with_unit
+        p.key: "= " + shown.with_unit
         for p in params
-        if units.input_choice(p.key, p.dimension) != units.choice(p.dimension)
+        if (shown := input_in_set(p.key, result.inputs[p.key], p.dimension, units, prefs))
     }
     input_rows = []
     for p in params:

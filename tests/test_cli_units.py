@@ -80,7 +80,11 @@ def test_unit_reads_an_input_as_a_picked_field_does(capsys: pytest.CaptureFixtur
         (["--unit", "T", "T=3"], "Expected --unit NAME=ID"),
         (["--output-set", "inch"], "--output-set 'inch' isn't one of"),
         (["--output-unit", "BA=mm"], "has no unit of its own to pick"),
-        (["--output-unit", "XX=mm"], "Expected --output-unit KEY=ID"),
+        (["--output-unit", "XX=mm"], "has no output 'XX'; the outputs with their own unit"),
+        (["--output-unit", "ba=mm"], "BA/bend_allowance has no unit of its own"),
+        (["--output-unit", "=mm"], "Expected --output-unit KEY=ID"),
+        (["--unit", "T=", "T=3"], "give the unit or form to read thickness in"),
+        (["--output-set", "mm", "--output-set", "in"], "--output-set is given 2 times"),
     ],
 )
 def test_mistakes_are_refused(
@@ -208,6 +212,44 @@ def test_a_signed_step_shows_its_plus_in_json() -> None:
         assert step["shown"]["text"].startswith(sign), step
 
 
+def test_a_unit_for_an_input_the_method_doesn_t_use_is_refused_as_such(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """It's never advised as ``give it as c=VALUE``, which would then be refused."""
+    status, _out, err = _run(capsys, "run", "geometry.right_triangle", "--unit", "c=mm")
+    assert status == 2
+    assert "c/hypotenuse isn't an input of this method; its inputs are a/leg_a, b/leg_b" in err
+
+
+def test_an_output_with_its_own_picker_is_named_in_any_case(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from caddcalc import cli
+    from tests.test_output_picker import _Mixed
+
+    monkeypatch.setattr(cli, "default_registry", _mixed_registry)
+    for name in ("Z", "z", "own", "OWN"):
+        data = _json(capsys, "run", _Mixed.id, "--output-unit", f"{name}=cm")
+        assert data["outputs"]["own"]["shown"]["text"] == "5.0800 cm", name
+
+
+def _mixed_registry() -> Any:
+    from caddcalc.core import Registry
+    from tests.test_domains import ACME
+    from tests.test_output_picker import _Mixed
+
+    registry = Registry()
+    registry.register_domain(ACME)
+    registry.register(_Mixed)
+    return registry
+
+
+def test_a_unit_between_inputs_is_read(capsys: pytest.CaptureFixture[str]) -> None:
+    data = _json(capsys, "run", BEND, "T=0.1", "--unit", "R=mm", "R=3")
+    assert data["inputs"]["inside_radius"]["base"]["value"] == 3.0
+    assert data["inputs"]["thickness"]["base"]["value"] == 0.1 * 25.4
+
+
 def test_inputs_after_options_are_read(capsys: pytest.CaptureFixture[str]) -> None:
     """Before Python 3.13, argparse took a run's inputs only before its first option."""
     data = _json(capsys, "run", BEND, "--method", "course", "T=0.25", "--output-set", "mm", "R=4mm")
@@ -249,3 +291,34 @@ def test_an_input_in_a_form_is_listed_as_nearly_as_it_ran(
     assert exact["inputs"]["thickness"]["shown"]["text"] == "10'-2 3/16\""
     seconds = _json(capsys, "run", BEND, "--unit", "A=dms", "A=40 30 15.123")
     assert seconds["inputs"]["bend_angle"]["shown"]["text"] == "40°30′15.12″", "nearer than 40.50°"
+
+
+def test_an_input_written_in_a_form_s_marks_is_shown_in_that_form(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``d=10'-2"`` with no ``--unit`` is listed as ``10'-2"``, not 122 in."""
+    data = _json(capsys, "run", "geometry.circle", "d=10'-2\"")
+    assert data["inputs"]["diameter"]["shown"]["text"] == "10'-2\""
+
+
+def test_an_input_is_entered_as_typed_spaces_and_all(capsys: pytest.CaptureFixture[str]) -> None:
+    """``1 1/2`` replays as 1 1/2; ``11/2`` would be 5 1/2."""
+    data = _json(capsys, "run", BEND, "T=1 1/2")
+    assert data["inputs"]["thickness"]["entered"]["text"] == "1 1/2"
+
+
+def test_a_calculator_with_no_sets_shows_each_input_as_read(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    data = _json(capsys, "run", "conversions.length", "value=3cm")
+    assert data["output_set"] is None
+    assert data["inputs"]["value"]["shown"]["text"] == "3.0000 cm"
+
+
+def test_the_inputs_are_listed_in_their_own_choice_not_the_set_s(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    status, out, _err = _run(capsys, "run", BEND, "T=0.1", "--output-set", "mm", "--no-work")
+    assert status == 0
+    (line,) = [line for line in out.splitlines() if "Material thickness" in line]
+    assert "0.1000 in" in line

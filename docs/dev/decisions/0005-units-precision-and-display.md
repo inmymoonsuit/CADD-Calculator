@@ -77,13 +77,13 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
   The psi factor comes from the exact pound (0.453 592 37 kg), standard gravity
   (9.806 65 m/s²), and inch (25.4 mm), per NIST SP 811, Appendix B, so it isn't a
   rounded constant.
-* **The display unit follows the length preference:** ksi with inches or feet, MPa with
-  metric lengths. Drafters who work in inches read strengths in ksi, and metric
+* **The display unit follows the length preference** (superseded by ADR-0024, see the
+  amendment of 2026-10-19): ksi with inches or feet, MPa with metric lengths. Drafters who work in inches read strengths in ksi, and metric
   handbooks give MPa, so one choice sets both, and there's no separate stress control.
   `DisplayPrefs.stress_decimals` (1) keeps a converted strength from showing false
   precision.
 * **A bare number is read in its field's display unit, in every dimension**
-  (`formatting.entry_unit`). Before this, only lengths used the preference and every
+  (`formatting.entry_unit`; superseded by ADR-0024, see the amendment of 2026-10-19). Before this, only lengths used the preference and every
   other dimension used its base unit, which matched only because angle and ratio display
   in their base units. A stress field labelled ksi would have read "36" as 36 MPa.
 * `unit_suffix` names the display unit for every dimension but angle, which keeps its
@@ -111,3 +111,15 @@ Excel used IEEE-754 doubles, and the golden tests must match it.
   percent on one is refused as measuring something else. A ratio stays the dimension of
   a factor such as the K-factor. ADR-0019's amendment of the same date has the registry's
   side.
+
+### 2026-10-19: units on fields (ADR-0024 E6)
+
+* **Display follows the output picker's set,** not a length preference (ADR-0024 §5).
+  The length preference's rule is kept as the generator of the default sets, one per
+  length choice: an area in the square of the length's unit, stress in ksi beside inches
+  and feet and MPa beside metric units, angles in degrees (`registry.generated_sets`).
+* **A bare number is read in its field's picker's unit** (ADR-0024 §1, E2), in every
+  dimension. `formatting.entry_unit`, `display_unit` and `DisplayPrefs.length_unit` are
+  removed; `core.formatting` takes the units to show in as a `ShownUnits`.
+* **The three tiers stand:** a field's text is its intent, read exactly and rounded once
+  (`TypedValue.read`), and display text is never read back as intent.

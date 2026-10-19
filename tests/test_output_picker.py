@@ -8,7 +8,7 @@ import pytest
 
 from caddcalc.calculators import default_registry
 from caddcalc.core import Calculator, Dimension, Method, Output, Param, Registry, Verification
-from tests.qt_helpers import open_window, pick, settle, show_in
+from tests.qt_helpers import open_window, pick, settle, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -130,6 +130,45 @@ def test_a_set_changes_every_field_its_copy_its_speech_and_the_work_together() -
     window.close()
 
 
+def _inputs(window: Any) -> str:
+    text = window.output.toPlainText()
+    return text[text.index("Inputs") : text.index("Work")]
+
+
+@pytest.mark.parametrize("key", ["in_16", "in_64", "ft_in"])
+def test_a_set_in_an_inch_form_gives_inch_fields_no_second_value(key: str) -> None:
+    """``T 0.1046 in = 1/8"`` would be false: the form's unit is the field's (review M2)."""
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(window.fields["inside_radius"][1], "0.03")
+    show_in(window, key)
+    assert "=" not in _inputs(window)
+    window.close()
+
+
+def test_a_form_never_stands_for_an_input_it_rounds() -> None:
+    """In mm fields an ft-in set gives 0.1046 in, not ``= 0'-0 1/8"``; an exact 1/8" is one."""
+    window = open_window()
+    window.select_calculator(BEND)
+    pick(window, "thickness", "mm")
+    show_in(window, "ft_in")
+    type_into(window.fields["inside_radius"][1], "3.175")
+    inputs = _inputs(window)
+    assert "2.6568\nmm\n= 0.1046 in" in inputs
+    assert "3.1750\nmm\n= 0'-0 1/8\"" in inputs, "exactly 1/8 in"
+    window.close()
+
+
+def test_a_calculator_with_no_sets_gives_no_second_value() -> None:
+    """Its inputs aren't in a set the user can see (review L1)."""
+    window = open_window()
+    for calc_id, choice in (("conversions.length", "cm"), ("conversions.stress", "MPa")):
+        window.select_calculator(calc_id)
+        pick(window, "value", choice)
+        assert "=" not in _inputs(window), calc_id
+    window.close()
+
+
 def test_the_set_follows_the_length_fields_until_it_is_picked() -> None:
     window = open_window()
     window.select_calculator(BEND)
@@ -137,10 +176,10 @@ def test_the_set_follows_the_length_fields_until_it_is_picked() -> None:
     pick(window, "thickness", "mm")  # the first pick leads the untouched fields (§3)
     assert window.results.set_key == "mm"
     assert _shown(window, "bend_allowance") == "7.9213 mm"
-    pick(window, "inside_radius", "in")
-    assert window.results.set_key == "in", "two choices: the first set, its default"
-    pick(window, "inside_radius", "mm")
-    assert window.results.set_key == "mm"
+    pick(window, "inside_radius", "cm")
+    assert window.results.set_key == "mm", "two choices: the set it last followed"
+    pick(window, "thickness", "cm")
+    assert window.results.set_key == "cm"
 
     show_in(window, "ft_in")
     pick(window, "thickness", "in")
@@ -162,15 +201,30 @@ def test_changing_the_method_never_moves_the_set() -> None:
     window.close()
 
 
-def test_the_set_follows_every_length_field_not_only_the_method_s() -> None:
-    """A method without Y doesn't make X's choice the only one, so the set stays."""
+def test_the_set_follows_the_method_s_length_fields_only() -> None:
+    """Y, typed in mm but hidden by a method without it, doesn't hold the set in mm."""
     window = _acme_window(_Two.id)
     pick(window, "x", "mm")
-    pick(window, "y", "in")
-    assert window.results.set_key == "in", "two choices: the first set"
+    assert window.results.set_key == "mm", "Y followed X's first pick"
+    pick(window, "x", "in")
+    assert window.results.set_key == "mm", "two choices: the set it last followed"
     window.method_box.setCurrentIndex(window.method_box.findData("one"))
     assert window.method_key == "one" and "y" not in window.fields
-    assert window.results.set_key == "in"
+    assert window.results.set_key == "in", "X alone is shown, in inches"
+    window.method_box.setCurrentIndex(window.method_box.findData("both"))
+    assert window.results.set_key == "in", "and disagreeing again keeps it"
+    window.close()
+
+
+def test_the_set_followed_last_is_kept_per_calculator() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    pick(window, "thickness", "cm")
+    pick(window, "inside_radius", "mm")
+    window.select_calculator(RIGHT)
+    assert window.results.set_key == "in", "another calculator follows its own fields"
+    window.select_calculator(BEND)
+    assert window.results.set_key == "cm"
     window.close()
 
 
@@ -353,4 +407,41 @@ def test_the_picker_never_narrows_past_its_longest_label() -> None:
         picker.fontMetrics().horizontalAdvance(picker.itemText(i)) for i in range(picker.count())
     )
     assert picker.sizeHint().width() > longest
+    window.close()
+
+
+def test_the_user_s_set_is_for_that_calculator_only() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    show_in(window, "mm")
+    window.select_calculator(RIGHT)
+    assert window.results.set_key == "in"
+    window.select_calculator(BEND)
+    assert window.results.set_key == "mm"
+    window.close()
+
+
+def test_an_output_s_own_picker_steps_by_its_arrow_keys() -> None:
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+
+    window = _mixed_window()
+    picker = window.results.fields["own"].picker
+    picker.setFocus()
+    QTest.keyClick(picker, Qt.Key.Key_Down)
+    own = window.results.fields["own"]
+    assert own.picker.choice == "cm" and own.value.text() == "5.0800"
+    window.close()
+
+
+def test_a_failed_run_still_shows_the_set_followed() -> None:
+    """The set follows a pick made while the run fails, and the picker shows it."""
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(window.fields["thickness"][1], "abc")
+    pick(window, "inside_radius", "mm")
+    pick(window, "thickness", "mm")
+    assert window.result is None
+    assert window.results.set_key == "mm"
+    assert window.results.set_picker.currentData() == "mm"
     window.close()

@@ -65,7 +65,9 @@ sheet-metal and geometry input. `--unit NAME=ID` reads an input as a field picke
 unit or form does, with its arithmetic and its forms, `--unit L=ft_in L=10-2`; its text
 then names no unit. `--output-set` chooses the units the results show in, from the sets
 `caddcalc show` lists (the first is the default), and `--output-unit KEY=ID` a result
-with its own picker. Each input is shown in the unit it was given in. Numbers use "."
+with its own picker, named by its key or symbol as an input is. Each option is given
+once per input or result, and `--output-set` once; `--unit` can go before, between or
+after the inputs. Each input is shown in the unit it was given in. Numbers use "."
 as their decimal mark, in any language.
 
 Inputs can be given by symbol (`T`) or key (`thickness`). Anything you leave out uses the

@@ -1317,3 +1317,56 @@ When the runners came back, CI's first run of stop 2 (on 6d859c6) failed two job
   CLI and JSON alike.
 * **L4:** ADR-0019's amendment names results that carry a typed value. **Note 3** is
   KI-028.
+
+### 2026-10-19: the cloud review of stop 2, and S&R's re-check
+
+The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
+* **M1, a list closed by Escape or a click outside:** Qt closes the list then without
+  calling `hidePopup`, so the M-B fix's flag stayed set and the picker never settled
+  again. The flag is set only while `showPopup` runs; after that the list's visibility
+  says whether it's open. Tests close the list by Escape, by a click elsewhere on the
+  window, and as Qt closes a popup itself, then settle the step on Tab; another sends the
+  focus out while the list opens, as it comes natively.
+* **M2 and L1, the Inputs list's second value** (`formatting.input_in_set`): there's
+  none where the set's unit is the field's, compared by unit, not by choice, so an inch
+  field in `in_16` or `ft_in` has none, nor on a calculator with no sets. A form gives
+  way to its full unit where that's nearer the input, as the input's own value does
+  (S&R's L3 above), so it's never a rounded "=": `2.6568 mm = 0.1046 in` in the ft-in
+  set, and `3.1750 mm = 0'-0 1/8"`, which is exact.
+* **M6, a declared set in a form with no generated set** (`ft_in_32`, `ft_in_64`):
+  `ShownUnits.of` takes its other dimensions from the generated set of the form's full
+  unit, inches. Tested in core, the CLI and the window.
+* **§6's fallback, decided by the lanes:** while the length fields disagree, the set
+  stays on the one they last followed (`MainWindow.followed_sets`, per calculator), and
+  is the first set only before they've agreed on one. Only the method's fields count, so
+  a typed field another method hides doesn't hold the set. This replaces U2's "otherwise
+  the first set", and "every length input counts, so a method change can't move it":
+  a method change now can, to the set its own fields agree on. `results.md` says so.
+* **L3, decimal ties:** kept as KI-028, with the review's figures, not given the forms'
+  tie window, since that changes shown `in` and `mm` text E-3's golden holds.
+* **L4:** ADR-0005 and ADR-0006 have their ADR-0024 amendments, and ADR-0005's
+  `entry_unit` line is marked superseded.
+* **L5, the CLI:** `--unit` between inputs reads (`cli._parse`, tested); an
+  `--output-unit` name is matched exactly, then in any case, and an unknown one is named
+  with the results that have their own picker; an empty `--unit` ID, a `--unit` for an
+  input the method doesn't use, and a repeated `--output-set` are each refused as such.
+* **L6, stop 1's Lows:**
+  * `30'` in a bend angle is refused with the no-choice wording, as `3 μm` is, since
+    its picker offers no ′.
+  * A switch clears the switched field's undo, so Ctrl+Z can't bring back a text to be
+    read in the new unit.
+  * Feet alone in an ft-in field are read in feet (`CompoundForm.read_in`): `1'` is
+    304.8 mm, as `L=1'` is, where 12 in × 25.4 gave 304.79999999999995. `1'-0"` reads in
+    inches by both paths.
+  * A unit run on to its number is named from where the number ends: `3μm` names `μm`.
+  * Tests for pending text not following, the `finally` resyncs, the echo's recolour,
+    "Use 30°", and an offered unit not on the picker.
+* **L7:** a test for each surviving mutant listed.
+* **Notes:** a form's refusal quotes a minus sign as typed; `40d30m` in a DMS field is
+  refused as not DMS, since a unit of another dimension is taken as one only after a
+  number; the corpus compares zeros by sign.
+* **The corpus bound (S&R):** nudging every maths-library result, a 1-ulp difference,
+  macOS's against glibc, moves outputs by exactly 4 of the run's last places, so `ULPS`
+  = 4 had no margin, and 2 ulps reach 6. `ULPS` is 8, which holds a 2-ulp library and
+  allows at most 1.2 × 10⁻¹¹ relative; the pinning test passes 8 and fails 16.
+* 34 mutants, one for each guard of this round, are each killed.

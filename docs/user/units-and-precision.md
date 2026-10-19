@@ -41,9 +41,12 @@ no picker.
 * **A unit typed into the field is refused**, never guessed at: `25 mm` in a field set
   to inches says "Units go in the picker. Use 25 mm?", with a button that sets the
   picker to mm and the text to 25. A pasted feet-and-inches value offers ft-in. A unit
-  of another kind, such as `25 MPa` in a length, is refused with no offer.
+  of another kind, such as `25 MPa` in a length, is refused with no offer, and so is a
+  unit the picker doesn't list, such as `30'` (minutes of arc) in a bend angle.
 * **Switching a picker** re-reads the number you typed in the new unit: 25 stays 25,
-  now in millimeters, and switching back is the undo. A value you didn't type, such as
+  now in millimeters, and switching back is the undo. The field's own undo (Ctrl+Z)
+  starts again at the switch, since an earlier text would now read in the new unit. A
+  value you didn't type, such as
   a default, a family value or the course example, keeps its size and is shown
   converted. Each switch is shown in the status bar and said to screen readers.
 * **Your first switch of a picker on a calculator carries** to that calculator's other
@@ -53,7 +56,10 @@ no picker.
   long as the app is open.
 * **With the keyboard,** ↑ and ↓ on a closed picker step through its units, and its
   field is re-read at each step; the switch carries to the other fields, and is said,
-  once you press Enter or leave the picker.
+  once you press Enter or leave the picker. Opening the list and closing it with Escape
+  chooses nothing, so the step still settles when you leave.
+* **Feet alone,** `10'` in a field picked in ft-in, read as 10 ft, exactly as the
+  command line reads `L=10'`.
 * **The Inputs list under the results** gives each input in the unit its picker shows,
   and a value out of range is refused in that unit too: "must be less than 3.14159 rad"
   for a bend angle picked in rad. The **Show in** picker above the results sets the

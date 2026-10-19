@@ -77,6 +77,19 @@ class CompoundForm(ABC):
         del text, decimal  # a form that reads overrides this
         raise UsageError(f"{self.key!r} is shown only; a field can't be picked in it")
 
+    def read_in(self, text: str, decimal: str = ".") -> tuple[Fraction, str]:
+        """Return a field's ``text`` exactly, with the key symbol of the unit it's in.
+
+        That's ``full_unit``, unless the text gives only a unit of its own, which a value
+        is converted from as ``parse_quantity`` converts that unit: feet alone, ``1'``,
+        are 304.8 mm, as ``1 ft`` is, not 12 in × 25.4 (review L3 at stop 1).
+
+        Raises:
+            InputError: The text isn't written in the form.
+            UsageError: The form reads nothing (``reads`` is false).
+        """
+        return self.read(text, decimal), self.full_unit
+
     @abstractmethod
     def parse(self, text: str, decimal: str = ".") -> float | None:
         """Return ``text`` in base units, or ``None`` if it isn't written in this form.
@@ -346,8 +359,14 @@ class FeetInches(CompoundForm):
         ``1 3/16``. Feet are whole, and the inches after them under 12. One sign, at the
         front.
         """
+        exact, unit = self.read_in(text, decimal)
+        return exact * 12 if unit == "ft" else exact
+
+    @override
+    def read_in(self, text: str, decimal: str = ".") -> tuple[Fraction, str]:
+        """Read the text as ``read`` does: feet alone in feet, anything else in inches."""
         if not self.reads:
-            return super().read(text, decimal)  # a finer one is shown only
+            return super().read(text, decimal), self.full_unit  # a finer one is shown only
         if decimal == "." and "," in text:
             raise comma_error(text, decimal)
         sign, body = (text[0], text[1:]) if text[:1] in ("-", "+") else ("", text)
@@ -370,7 +389,8 @@ class FeetInches(CompoundForm):
             feet = int(m["feet"]) if "feet" in m.groupdict() and m["feet"] else 0
             if pattern is not bare and inches >= 12:
                 raise InputError(f"{text!r} has {m['inches']} inches; give inches under 12")
-            return -(feet * 12 + inches) if sign == "-" else feet * 12 + inches
+            exact, unit = (Fraction(feet), "ft") if not m["inches"] else (feet * 12 + inches, "in")
+            return (-exact if sign == "-" else exact), unit
         raise InputError(
             f"{text!r} isn't feet and inches: give whole feet, then the inches, as 10-2 3/16 "
             "or 10'-2 3/16\", or the inches alone; one sign, at the front"

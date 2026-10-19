@@ -477,7 +477,10 @@ def test_an_unfinished_expression_is_refused(text: str) -> None:
         read(text, "in", L)
 
 
-@pytest.mark.parametrize(("text", "named"), [("3 μm", "μm"), ("10 ft-in", "ft-in")])
+@pytest.mark.parametrize(
+    ("text", "named"),
+    [("3 μm", "μm"), ("10 ft-in", "ft-in"), ("3μm", "μm"), ("3)mm", "mm"), ('1-"', '"')],
+)
 def test_a_refused_unit_is_named_as_written(text: str, named: str) -> None:
     with pytest.raises(UnitInTextError) as refused:
         read(text, "in", L)
@@ -505,3 +508,30 @@ def _outcome(reading: Callable[..., float], *args: object) -> str:
         return reading(*args).hex()
     except InputError:
         return "refused"
+
+
+def test_feet_alone_read_alike_in_a_field_and_the_cli() -> None:
+    """``1'`` in an ft-in field is 1 × 304.8 mm, as ``X=1'`` is, not 12 × 25.4 (L3, stop 1)."""
+    rng = random.Random("feet alone")
+    texts = ["1'", "-1'", "0'", "400'", *(f"{rng.randrange(-4000, 4000)}'" for _ in range(3000))]
+    for text in texts:
+        assert value(text, "ft_in").hex() == parse_quantity(text, L).hex(), text
+    assert value("1'", "ft_in") == 304.8 and value("1'-0\"", "ft_in") == 12 * 25.4
+    assert value("1'-0\"", "ft_in").hex() == parse_quantity("1'-0\"", L).hex()
+
+
+@pytest.mark.parametrize(("text", "choice", "dimension"), [("−", "dms", A), ("−", "ft_in", L)])
+def test_a_form_s_refusal_quotes_a_minus_sign_as_typed(
+    text: str, choice: str, dimension: Dimension
+) -> None:
+    with pytest.raises(InputError, match=f"^{text!r} "):
+        read(text, choice, dimension)
+
+
+def test_a_dms_attempt_ending_in_a_letter_isn_t_refused_as_a_length() -> None:
+    """``40d30m`` is DMS mistyped, not metres; ``30m`` after a number is metres."""
+    with pytest.raises(InputError, match="isn't degrees, minutes and seconds"):
+        read("40d30m", "dms", A)
+    for text in ("30m", "0m"):
+        with pytest.raises(InputError, match="is a length, but an angle is expected"):
+            read(text, "dms", A)
