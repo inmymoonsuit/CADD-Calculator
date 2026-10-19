@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import override
 
 from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtWidgets import QLayout, QLayoutItem, QWidget, QWidgetItem
+from PySide6.QtWidgets import QFormLayout, QLayout, QLayoutItem, QWidget, QWidgetItem
 
 
 class ReflowLayout(QLayout):
@@ -148,3 +148,28 @@ class Reflow(QWidget):
     def stacked(self) -> bool:
         """Whether its widgets are one above another at its width."""
         return self._layout.stacked_at(self.width())
+
+
+class WrappingForm(QFormLayout):
+    """A form that puts each label above its field when the row doesn't fit beside it.
+
+    Qt decides that a row fits side by side without counting the gap between its label and
+    its field, then lays it out with the gap, so a row within the gap of fitting gets its
+    field squeezed (KI-031). The gap goes in each label's right margin instead, which Qt
+    counts, and the form's own horizontal spacing is none.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.gap = max(self.horizontalSpacing(), 0)
+        """The style's space between a label and its field, kept in the label."""
+        self.setHorizontalSpacing(0)
+
+    def add_row(self, text: str, field: QWidget | QLayout) -> None:
+        """Add a row of ``field`` after a label of ``text``."""
+        self.addRow(text, field)
+        item = self.itemAt(self.rowCount() - 1, QFormLayout.ItemRole.LabelRole)
+        label = item.widget() if item is not None else None
+        if label is not None:
+            label.setContentsMargins(0, 0, self.gap, 0)

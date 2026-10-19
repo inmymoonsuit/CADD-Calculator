@@ -34,9 +34,9 @@ from caddcalc.core.formatting import (
     ShownUnits,
     ValueParts,
     copy_output,
-    entry_text,
     format_output,
     output_parts,
+    picked_text,
     results_tsv,
     spoken_value,
     value_parts,
@@ -46,7 +46,6 @@ from caddcalc.core.units import (
     CompoundText,
     Dimension,
     Precision,
-    get_unit,
     parse_quantity,
     parse_quantity_detailed,
     registry,
@@ -134,7 +133,9 @@ def test_feet_and_inches_refuse_parts_that_dont_fit(typed: str, problem: str) ->
 def test_a_typed_feet_and_inches_keeps_its_text_and_reads_it_again() -> None:
     typed = TypedValue.parse("1'-4 3/16\"", L)
     assert typed.value == pytest.approx(16.1875 * IN) and typed.explicit_unit
-    assert entry_text(typed, get_unit("mm"), DisplayPrefs()) == "1'-4 3/16\"", "as typed"
+    picked = TypedValue.read("1'-4 3/16\"", "ft_in", L)
+    assert picked.value == typed.value
+    assert picked_text(picked, "ft_in", DisplayPrefs()) == "1'-4 3/16\"", "as typed"
 
 
 @pytest.mark.parametrize(

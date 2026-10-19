@@ -1,9 +1,10 @@
 # Geometry calculators
 
 Each Geometry calculator takes the dimensions that define a shape and gives every common
-property of it at once, so you don't choose "area" or "perimeter" first. Lengths can be
-typed in any unit, including feet and inches (`1'-4 3/16"`); areas show in the square of
-your length unit (in² or mm²), to 6 significant figures. Angles are in degrees.
+property of it at once, so you don't choose "area" or "perimeter" first. Each length has a
+picker for its unit, feet and inches included (`1'-4 3/16"`), and each angle one for
+degrees, degrees, minutes and seconds, or radians. Areas show in the square of the **Show
+in** set's length (in² or mm²), to 6 significant figures.
 
 Input that describes no real shape is refused with a message, never computed: every
 length must be greater than zero, and each calculator's own limits are below. A length

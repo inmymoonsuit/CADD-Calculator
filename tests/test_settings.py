@@ -31,8 +31,8 @@ from caddcalc.core.formatting import (
     DisplayPrefs,
     ShownUnits,
     describe_source,
-    entry_text,
     field_text,
+    picked_text,
     result_json,
 )
 from caddcalc.core.units import get_unit
@@ -41,7 +41,7 @@ OTHER = Domain(
     "other",
     "Other",
     "A second domain.",
-    settings=(Param("thickness", "T", "Thickness", Dimension.LENGTH),),
+    settings=(Param("thickness", "T", "Thickness", Dimension.LENGTH, unit="mm"),),
 )
 OTHER_K = Domain(
     "other_k",
@@ -107,10 +107,10 @@ INCHES, MILLIMETRES = ShownUnits.generated("in"), ShownUnits.generated("mm")
 PREFS = DisplayPrefs()
 
 
-def test_a_field_shows_the_users_text_while_its_unit_is_the_display_unit() -> None:
-    third = TypedValue.parse("1/3", Dimension.LENGTH, "in")
-    switches = [INCHES, MILLIMETRES, INCHES, MILLIMETRES, INCHES]
-    assert [entry_text(third, units.unit(Dimension.LENGTH), PREFS) for units in switches] == [
+def test_a_field_shows_the_users_text_while_it_is_picked_in_what_it_was_read_in() -> None:
+    third = TypedValue.read("1/3", "in", Dimension.LENGTH)
+    switches = ["in", "mm", "in", "mm", "in"]
+    assert [picked_text(third, choice, PREFS) for choice in switches] == [
         "1/3",
         "8.466667",
         "1/3",
@@ -123,19 +123,19 @@ def test_a_field_shows_the_users_text_while_its_unit_is_the_display_unit() -> No
 @pytest.mark.parametrize(
     ("text", "dimension", "default", "shown_in_mm"),
     [
-        ("3 mm", Dimension.LENGTH, "in", "3 mm"),
-        ('1-1/2"', Dimension.LENGTH, "mm", '1-1/2"'),
-        ("0.44", Dimension.RATIO, None, "0.44"),
-        ("44%", Dimension.RATIO, None, "44%"),
-        ("90", Dimension.ANGLE, None, "90"),
+        ("3 mm", Dimension.LENGTH, "in", "3"),
+        ('1-1/2"', Dimension.LENGTH, "mm", "38.1"),
+        ("44%", Dimension.RATIO, None, "0.44"),
         ("2", Dimension.LENGTH, "in", "50.8"),
     ],
 )
-def test_a_field_keeps_text_that_names_its_unit_or_needs_none(
+def test_a_value_not_typed_in_the_field_shows_converted_into_its_choice(
     text: str, dimension: Dimension, default: str | None, shown_in_mm: str
 ) -> None:
+    """A field holds a number only; its unit is its picker (ADR-0024 §1)."""
     entry = TypedValue.parse(text, dimension, default)
-    assert entry_text(entry, MILLIMETRES.unit(dimension), PREFS) == shown_in_mm
+    choice = "mm" if dimension is Dimension.LENGTH else ""
+    assert picked_text(entry, choice, PREFS) == shown_in_mm
 
 
 def test_field_text_is_the_display_value_without_trailing_zeros() -> None:
@@ -157,10 +157,10 @@ def test_nothing_is_set_at_first() -> None:
 
 def test_setting_text_keeps_intent_and_returns_a_new_model() -> None:
     empty = DomainSettings()
-    settings = empty.set_text(SHEET_METAL, "thickness", "1/3", "in")
+    settings = empty.set_text(SHEET_METAL, "thickness", "1/3")
     assert empty.get(SHEET_METAL, "thickness") is None, "the model is immutable"
     entry = settings.get(SHEET_METAL, "thickness")
-    assert entry == TypedValue.parse("1/3", Dimension.LENGTH, "in")
+    assert entry == TypedValue.read("1/3", "in", Dimension.LENGTH)
     assert settings.for_domain(SHEET_METAL).values == {"thickness": 1 / 3 * 25.4}
 
 
@@ -169,13 +169,13 @@ def test_settings_are_validated_against_the_domain() -> None:
     with pytest.raises(UsageError, match="no setting 'gauge'; its settings are: thickness"):
         settings.set_text(SHEET_METAL, "gauge", "12")
     with pytest.raises(OutOfRangeError, match="greater than 0"):
-        settings.set_text(SHEET_METAL, "thickness", "0", "in")
+        settings.set_text(SHEET_METAL, "thickness", "0")
     with pytest.raises(OutOfRangeError, match="at most 1"):
         settings.set_text(SHEET_METAL, "k_factor", "1.2")
-    with pytest.raises(InputError, match="Cannot read a value"):
-        settings.set_text(SHEET_METAL, "inside_radius", "abc", "in")
+    with pytest.raises(InputError, match="isn't a number"):
+        settings.set_text(SHEET_METAL, "inside_radius", "abc")
     with pytest.raises(InputError, match="'3 deg' is an angle, but a length is expected"):
-        settings.set_text(SHEET_METAL, "thickness", "3 deg", "in")
+        settings.set_text(SHEET_METAL, "thickness", "3 deg")
 
 
 def test_a_typed_value_of_another_dimension_is_refused() -> None:
@@ -200,9 +200,9 @@ def test_lookups_and_clears_reject_unknown_keys(method: str) -> None:
 def test_domains_are_independent_and_can_be_cleared() -> None:
     settings = (
         DomainSettings()
-        .set_text(SHEET_METAL, "thickness", "0.1046", "in")
+        .set_text(SHEET_METAL, "thickness", "0.1046")
         .set_text(SHEET_METAL, "k_factor", "0.44")
-        .set_text(OTHER, "thickness", "2 mm")
+        .set_text(OTHER, "thickness", "2")
     )
     assert set(settings.values(SHEET_METAL)) == {"thickness", "k_factor"}
     assert settings.for_domain(OTHER).values == {"thickness": 2.0}
@@ -355,3 +355,46 @@ def test_the_domain_values_carry_the_selections_in_effect() -> None:
 def test_every_dimension_has_its_name_with_an_article(dimension: Dimension) -> None:
     article, name = dimension.with_article.split()
     assert (article, name) == ("an" if name[0] in "aeiou" else "a", dimension.value)
+
+
+def test_a_setting_s_picker_starts_in_its_unit_and_reads_its_text_in_its_choice() -> None:
+    """ADR-0024 E-5: a settings field reads as a calculator field picked in its choice."""
+    settings = DomainSettings()
+    assert settings.field_choice(SHEET_METAL, "thickness") == "in"
+    assert settings.field_choice(SHEET_METAL, "k_factor") == ""
+    in_mm = settings.set_field_choice(SHEET_METAL, "thickness", "mm")
+    assert in_mm.field_choice(SHEET_METAL, "thickness") == "mm"
+    assert in_mm.set_text(SHEET_METAL, "thickness", "3").for_domain(SHEET_METAL).values == {
+        "thickness": 3.0
+    }
+    in_ft_in = settings.set_field_choice(SHEET_METAL, "thickness", "ft_in")
+    assert in_ft_in.set_text(SHEET_METAL, "thickness", "0-1/8").for_domain(SHEET_METAL).values == {
+        "thickness": 0.125 * 25.4
+    }
+    assert in_mm != settings, "the pickers are part of the model"
+    assert in_mm.clear_domain(SHEET_METAL).field_choice(SHEET_METAL, "thickness") == "mm", (
+        "Clear all clears values, not pickers"
+    )
+
+
+def test_a_setting_refuses_a_unit_in_its_text_and_a_choice_it_doesn_t_offer() -> None:
+    from caddcalc.core.units import UnitInTextError
+
+    with pytest.raises(UnitInTextError) as refused:
+        DomainSettings().set_text(SHEET_METAL, "thickness", "3 mm")
+    assert refused.value.choice == "mm" and refused.value.number == "3"
+    with pytest.raises(UsageError, match="offers in, ft_in, ft, mm, cm, m, not 'deg'"):
+        DomainSettings().set_field_choice(SHEET_METAL, "thickness", "deg")
+    with pytest.raises(UsageError, match="no setting 'gauge'"):
+        DomainSettings().field_choice(SHEET_METAL, "gauge")
+
+
+def test_a_picker_set_keeps_the_value_until_its_text_is_read_again() -> None:
+    """The model stores the choice; a front end re-reads the typed text (ADR-0024 §2)."""
+    typed = DomainSettings().set_text(SHEET_METAL, "thickness", "3")
+    picked = typed.set_field_choice(SHEET_METAL, "thickness", "mm")
+    assert picked.for_domain(SHEET_METAL).values == {"thickness": 3 * 25.4}
+    entry = picked.get(SHEET_METAL, "thickness")
+    assert entry is not None
+    again = picked.set_text(SHEET_METAL, "thickness", entry.text)
+    assert again.for_domain(SHEET_METAL).values == {"thickness": 3.0}

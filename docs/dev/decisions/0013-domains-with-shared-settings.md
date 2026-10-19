@@ -380,3 +380,17 @@ packages were found. Calculators within a family are still sorted by name.
 schema 1, which gives each input's source as before (`InputSource.to_dict`), beside its
 value in base units and as shown and, for an input the run was given, its text as
 entered. §5's promise holds: every input's source is in the JSON.
+
+### 2026-10-19: units on fields supersede §8's unit switch and §9's rules 3 and 5 (ADR-0024 U4)
+
+* **§8, GUI:** "switching units" and "on a unit switch, a bare number in it gains the unit
+  it was typed in" are superseded by ADR-0024: there's no window-wide unit switch. Each
+  field has its own picker, and switching it re-reads a typed number (ADR-0024 §2). A
+  family settings field has its picker too (ADR-0024 U2b).
+* **§9, rule 3:** "a field shows the user's own spelling while it names its unit or its
+  unit is the display unit" is superseded: a field holds a number only, and its unit is
+  its picker (ADR-0024 §1). Typed text is still kept beside the value, and shown while the
+  field is picked in what it was read in (`formatting.picked_text`).
+* **§9, rule 5:** "if an input ever accepts expressions, each term carries its own unit"
+  is superseded by ADR-0024 D7: no term carries a unit; all are in the picker's unit.
+* What stands: the three tiers, and that display text is never read back as intent.

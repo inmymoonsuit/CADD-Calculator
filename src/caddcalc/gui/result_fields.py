@@ -388,11 +388,19 @@ class ResultField(QWidget):
         """Return the menu of copy forms (R6), as ``MENU`` lists them."""
         menu = QMenu(self)
         point = decimal_separator(self.prefs) == "."
+        offered: set[str] = set()
         for form, text in MENU.items():
             if form is CopyForm.SHOWN and (point or self.parts is None):
                 continue
             if form is CopyForm.WITH_UNIT and self.parts is not None and self.parts.compound:
                 continue  # a compound form names its own units, so it'd copy the same
+            if self.amount is not None:
+                # Two items that copy the same text are one: an inch fraction such as
+                # 3/16" has no decimal mark, so its shown copy is its value (PR #1's Low 7).
+                copies = copy_output(self.output, self.amount, self.units, self.prefs, form)
+                if copies in offered:
+                    continue
+                offered.add(copies)
             if point or self.amount is None:
                 number = "" if self.parts is None else self.parts.number
                 label = text.format(number=number)
@@ -688,7 +696,8 @@ class ResultsPanel(QWidget):
         self.set_picker.clear()
         for unit_set in sets:
             name = _set_name(unit_set, shown)
-            self.set_picker.addItem(unit_set.label, unit_set.key)
+            # A declared label is marked for translation where it's declared (UnitSet).
+            self.set_picker.addItem(_(unit_set.label), unit_set.key)
             index = self.set_picker.count() - 1
             self.set_picker.setItemData(index, name, NAME_ROLE)
             self.set_picker.setItemData(index, name, Qt.ItemDataRole.ToolTipRole)

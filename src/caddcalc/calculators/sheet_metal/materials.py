@@ -860,7 +860,7 @@ _BASIS_WORDS = {Basis.SPEC_MINIMUM: "specification minimums", Basis.A_BASIS: "A-
 
 
 def _strength_fact(strength: Strength) -> Fact:
-    """State a material's strengths with their basis, in the display's stress unit."""
+    """State a material's strengths with their basis, in the unit their source states."""
     where = f", for sheet {strength.thicknesses}" if strength.thicknesses else ""
     text = (
         "F_tu {} (L) and {} (LT); F_ty {} (L) and {} (LT): "
@@ -868,7 +868,5 @@ def _strength_fact(strength: Strength) -> Fact:
     )
     if strength.note:
         text += f" {strength.note}"
-    quantities = tuple(
-        (value.value, Dimension.STRESS) for value in (*strength.ultimate, *strength.tensile_yield)
-    )
+    quantities = (*strength.ultimate, *strength.tensile_yield)
     return Fact("Strength", text, quantities, (strength.source.reference,))

@@ -210,8 +210,10 @@ at launch (rule C). Offscreen:
   ADR-0024 U2) holds at 16 px lines only, for now.
 * **At 14 px lines** (DejaVu Sans), the triangle, the right triangle, the polygon, the
   Length converter, the cone and the segment, with each of its methods, scroll.
-* **At 16 px lines**, the Length converter and the right triangle scroll, by design:
-  the maintainer approved them as long pages (ADR-0023, C2).
+* **At 16 px lines**, the right triangle scrolls, by design: the maintainer approved it
+  as a long page (ADR-0023, C2). The Length converter was one too until ADR-0024's U3
+  made it one value in and one out; it fits at 16 px lines now, and its figures at 14 and
+  15 px lines above are from before, for UI/UX to measure again.
 
 `test_no_calculator_page_scrolls_at_the_launch_size` checks every other page at the
 design's 16 px lines, and that its output picker stays put. ADR-0023's slice 1, paired rows,
@@ -222,44 +224,49 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
-### KI-029: The converters show every unit at once, with no output picker (Low)
+### KI-032: At exactly its preferred width, a form's wrapped help text is cut short (Low)
 
-ADR-0024 §7 splits the converters into one value in and one out, each with its picker,
-and Decimal to fraction and Fraction to decimal into converters of their own (E-6, U3).
-Until then each converter shows its value in every unit of its kind, each row in its own
-fixed unit, as ADR-0018's m2 built them. They have no output set, so the results' Show in
-picker is hidden on them and their Inputs list gives no second value; their input has a
-picker, as every input with a unit has. Resolved by E-6 and U3, in ADR-0024's stop 3.
+At one window width, where the family settings form is exactly as wide as it prefers,
+Qt lays it out with row heights it worked out for another width, so two settings' help
+texts get less height than their wrapped lines need. One pixel wider or narrower,
+they're whole. It's on main before ADR-0024's stop 3 too. Offscreen here at 9 pt, the
+thickness and K-factor help get 81 px of 104 and 117 px, 581 px past the least window
+on main; the Windows jobs saw the same at 396 px past it. Qt 6.12's
+`QFormLayout::setGeometry` (qformlayout.cpp) skips recomputing the heights at that
+width when it has a height cached for it, and lays the rows out from whatever width it
+last worked heights out for. The one reset Qt offers, `invalidate()`, lays the page out
+again, so calling it from `setGeometry` would need a guard against looping; that's for a
+decision, not done here. `tests/test_wrapping_form.py` checks Qt's behaviour; when it
+fails, the 400-width sweep there can check labels' heights too.
 
-### KI-028: A decimal half typed in one unit can show the odd last digit in another (Low)
+### KI-031: Qt squeezes a form's field when its row fits only without the gap (Low, worked around)
 
-A value is shown by rounding its double in the shown unit to the shown decimals, half to
-even. A value converted from another unit is the conversion's double, already rounded
-once, so at an exact decimal half it can land just over or under the half. 49.92751 mm is
-exactly 1.96565 in, which half to even shows as 1.9656, but its double in inches is
-1.9656500000000001, so it shows 1.9657 (S&R's Note 3 at ADR-0024's stop 2; it predates
-units on fields). Only a value exactly half-way at the shown decimals is affected, and by
-one unit in the last shown place. The inch fractions don't have it: they count a tie
-within the shown unit's last places as the tie (ADR-0019, amendments); the decimals could
-take the same window, which would change shown text everywhere it applies.
+A `QFormLayout` that wraps long rows (`WrapLongRows`, ADR-0021 §7) decides that a row
+fits side by side by its label's width and its field's least width, without the gap
+between them, then lays the row out with the gap. So within the gap's width of fitting,
+the row stays side by side and its field gets up to the gap less than its least width:
+a widget runs past the form's edge, and a row of widgets is squeezed. Qt 6.12's
+`QFormLayoutPrivate::setupVerticalLayoutData` and `setupHorizontalLayoutData`
+(qformlayout.cpp) are where. At stop 3 of ADR-0024 the Windows jobs, under Fusion at
+9 pt, gave the Sheet Metal settings page's unit pickers 52 px of their 55 at the least
+window size; offscreen here, its Gauge, Material and Temper boxes got 236 px of their
+242 at window widths 327 to 332 px past the least. Worked around
+by `gui.reflow.WrappingForm`, which keeps the gap in each label's right margin, where Qt
+counts it, and gives the form no horizontal spacing. `tests/test_wrapping_form.py`
+checks Qt's behaviour, the workaround, and the settings page at each of 400 widths;
+when Qt counts the gap, its first test fails, and the class can go.
 
-Every calculator's `cm`, `m` and `ft` output sets show it too (the cloud review of stop
-2, its Low 3): in the `m` set, a 0.5 mm diameter's radius, exactly 0.00025 m, shows
-`0.0003 m` where half to even gives `0.0002`, and 1/32 in shows `0.7937 mm`, not
-`0.7938`; the review counted 361 such cases. It's kept as a known issue rather than
-fixed at stop 2, since the window would change the `in` and `mm` text that E-3's
-neutrality golden holds, and a change to shown values is the maintainer's to approve.
+### KI-030: A decimal half converted through three roundings can land outside the tie window (Low)
 
-### KI-027: Settings fields still read units in their text (Low)
-
-ADR-0024's slices give calculator fields pickers first (U1). Until E-5 and U2b give a
-family settings page its own pickers, a settings field reads a unit typed with its
-number, `3 mm`, and a bare number in the Units box's unit, as before, while a calculator
-field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds of
-field are on different pages, and each page says how it reads (the user guide's Units
-and precision). With the Units box gone (U2), a settings page shows and reads in inches,
-degrees and ksi (`window._settings_units`), whatever the results are shown in, and its
-facts show strengths in ksi. Resolved by U2b, in ADR-0024's stop 3.
+A decimal shown to its places rounds a near-half as the half, half to even, when it's
+within two of its own last places of it (`formatting.round_tie`, as the inch fractions
+count a tie; KI-028, resolved). A half typed in inches and shown in feet goes through
+three roundings, as typed, into millimeters and into feet, and can land three last places
+off: 50 of 4,000 such halves in `tests/test_decimal_ties.py`, and 5 of 3,975 typed in
+inches and shown in meters. Those round as their value does, so about half of them show
+the odd last digit. Widening the window to three would take a value genuinely three of its
+last places off a half as a tie, which ADR-0019's amendments ruled out for the forms;
+counting it in the unit the value was typed in would need the typed unit at display.
 
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 
@@ -280,6 +287,36 @@ gives a leg and an area of 0, its sine under the doubles' range (the cloud revie
 PR #2, in the code before it too).
 
 ## Resolved
+
+### KI-028: A decimal half could show the odd last digit (resolved 2026-10-19)
+
+A value converted from a decimal half in another unit lands a little off the half, so it
+rounded as its double did: 49.92751 mm, exactly 1.96565 in, showed 1.9657, and in the
+cloud review's count 361 cm, m and ft cases did too, such as a 0.5 mm circle's radius
+showing 0.0003 m. Resolved by ADR-0024's stop 3: every decimal shown to its places or
+figures takes the inch fractions' tie window (`formatting.round_tie`), so a value within
+two of its own last places of a half is the half, to even: 1.9656 in, 0.0002 m, 0.7938
+mm for 1/32 in, and 0.6688 in for the course's 0.66875 in. `tests/test_decimal_ties.py`
+sweeps 4,000 halves in each of seven pairs of units. A half that three roundings put
+further off is KI-030.
+
+### KI-029: The converters showed every unit at once, with no output picker (resolved 2026-10-19)
+
+Each converter showed its value in every unit of its kind, a row per unit, with no
+output picker. Resolved by ADR-0024's E-6 and U3: Length, Fraction to decimal, Decimal
+to fraction, Angle, Area, and Stress and pressure each take one value and give one,
+in its own picker's unit, which follows the input's unit to its counterpart until
+picked (`Output.follows`); Decimal to fraction takes its fineness as a choice
+(`Param.allowed`). `tests/test_conversions.py` checks each.
+
+### KI-027: Settings fields read units in their text (resolved 2026-10-19)
+
+A family settings field read a unit typed with its number, and a bare number in the
+inch set, while a calculator field had a picker. Resolved by ADR-0024's E-5 and U2b:
+each setting with a unit has its picker, reads its text in the picked unit, and refuses
+a unit typed in it (`DomainSettings.field_choice`, `set_text`); a domain's setting is
+checked at registration as a calculator's parameter is, so it names its unit
+(`spec.check_param_choices`). A material's facts are in their source's units (Q13).
 
 ### KI-025: A count was shown as a ratio, with four decimals (resolved 2026-10-19)
 

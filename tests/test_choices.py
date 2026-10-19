@@ -93,8 +93,8 @@ class _Plates:
 
 
 SETTINGS = (
-    Param("thickness", "T", "Thickness", L, minimum=0.0, min_inclusive=False),
-    Param("inside_radius", "R", "Inside radius", L, minimum=0.0),
+    Param("thickness", "T", "Thickness", L, unit="mm", minimum=0.0, min_inclusive=False),
+    Param("inside_radius", "R", "Inside radius", L, unit="mm", minimum=0.0),
 )
 SHOP = Domain(
     "shop",
@@ -283,7 +283,7 @@ def test_a_derived_value_reaches_the_result_with_its_source_and_note() -> None:
 
 
 def test_a_set_value_beats_a_derived_one_and_clearing_it_restores_the_link() -> None:
-    settings = chosen().set_text(SHOP, "thickness", "1.5", "mm")
+    settings = chosen().set_text(SHOP, "thickness", "1.5")
     result = _Bend().run(settings=settings.for_domain(SHOP))
     assert (result.inputs["thickness"], result.source_of("thickness").kind) == (
         1.5,
@@ -297,9 +297,7 @@ def test_a_set_value_beats_a_derived_one_and_clearing_it_restores_the_link() -> 
 
 
 def test_the_note_appears_only_when_a_derived_value_is_used() -> None:
-    values = (
-        chosen().set_text(SHOP, "thickness", "1.5", "mm").set_text(SHOP, "inside_radius", "1", "mm")
-    )
+    values = chosen().set_text(SHOP, "thickness", "1.5").set_text(SHOP, "inside_radius", "1")
     assert _Bend().run(settings=values.for_domain(SHOP)).notes == ()
     explicit = _Bend().run(
         {"thickness": 1.0, "inside_radius": 1.0}, settings=chosen().for_domain(SHOP)

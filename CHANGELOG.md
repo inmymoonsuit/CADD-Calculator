@@ -18,14 +18,13 @@ All notable changes are recorded here. The format follows
   (`UnitSet`, `Calculator.output_sets`, generated one per length choice by default); an
   output may have its own picker (`Output.picks`). A parameter whose picker has no
   default unit is refused at registration, a plugin's included.
-- **The Conversions family (ADR-0018 §3),** after Geometry: Length, Angle, Area, and
-  Stress and pressure. Type one value in any unit of its kind and read it in every unit
-  at once, each row in its own unit whatever the unit system, to 6 significant figures,
-  with its own Copy button. Length also shows feet and inches, and the nearest 1/16,
-  1/32 and 1/64 inch, each with its error; Angle shows degrees, minutes and seconds. The
-  factors are the exact definitions (1 in = 25.4 mm, 1 ft² = 92 903.04 mm²), and each
-  converter is verified against NIST SP 811's Appendix B.8. See the user guide's
-  [Conversions](docs/user/calculators/conversions.md).
+- **The Conversions family (ADR-0018 §3, as ADR-0024 §7 splits it),** after Geometry:
+  Length, Fraction to decimal, Decimal to fraction, Angle, Area, and Stress and pressure.
+  Each takes one value and gives it in another unit, picked beside the result, to 6
+  significant figures; Decimal to fraction gives the nearest 1/16, 1/32 or 1/64 inch and
+  its error. The factors are the exact definitions (1 in = 25.4 mm, 1 ft² = 92 903.04
+  mm²), and each converter is verified against NIST SP 811's Appendix B.8. See the user
+  guide's [Conversions](docs/user/calculators/conversions.md).
 - `core.units.convert` converts an exact amount between units from their exact
   definitions: 1 psi is 6.894757293168361 kPa, rounded once. An output with a fixed unit
   may give its own precision (`Output.precision`), as the converters' error rows do.
@@ -398,6 +397,24 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A family settings row is never squeezed beside its label** (KI-031): within a few
+  pixels of fitting, a row stayed beside its label and its field lost those pixels,
+  cutting into a choice box at some window widths and, on Windows, into the unit
+  pickers at the least size. Such a row now goes below its label.
+- **A decimal half shows to even in every unit** (KI-028): 49.92751 mm is `1.9656 in`, a
+  0.5 mm circle's radius `0.0002 m`, and 1/32 in `0.7938 mm`, where each showed its
+  double's rounding. A value within two of its last places of a half is taken as the
+  half, as the inch fractions take one; the course's 0.66875 in bend allowance now shows
+  `0.6688 in`.
+- **A field's echo no longer widens the window's least size;** it hides when it doesn't
+  fit, as it always did. A plugin's declared output set is shown by its translated label,
+  in the results and in `caddcalc show`. A unit run on to a number with an exponent, as
+  `1e3)mm`, is named as `mm`.
+- **A converter's result near 10³⁰⁸ in feet and inches, an inch fraction or degrees,
+  minutes and seconds printed hundreds of digits;** past what a double holds of the form's
+  finest step, it's shown in inches or degrees to 6 significant figures. A number too
+  small to hold six figures, near 10⁻³²⁴, shows only the figures it holds, and a copy
+  menu no longer offers two items that copy the same text (PR #1's final review).
 - **Escape, or a click outside, on a picker's open list left it unable to settle:** a
   step taken before, and every step after, never carried to the other fields. Closing
   the list chooses nothing, and the step settles when you leave the picker.
@@ -561,6 +578,27 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The converters are one value in and one out** (ADR-0024 §7, E-6, U3): Length,
+  **Fraction to decimal** and **Decimal to fraction**, new, Angle, Area, and Stress and
+  pressure. Each takes a value in its input's picked unit and gives it in its result's
+  own picker's unit, which is the other system's counterpart (in → mm, mm → in, ksi →
+  MPa) until you pick it. Decimal to fraction takes its fineness, 1/16, 1/32 or 1/64, as
+  a choice, and gives the nearest fraction and its error. The CLI and JSON give each
+  converter's result as `value`, and `caddcalc show` lists a fineness's values and what
+  a result follows. KI-029 is resolved. For calculator authors: `Output.follows` and
+  `Output.counterparts`, `Param.allowed`, and `Output.precision` for an output with its
+  own picker.
+- **Each family setting with a unit has a picker** (ADR-0024 E-5, U2b), as a
+  calculator's inputs do, and its number is read in the unit the picker shows; a unit
+  typed in the field, as `3 mm`, is refused, with where it goes. Switching it re-reads
+  the number you typed, and a calculator shows an inherited setting in its own field's
+  unit. A material's facts are in the unit their source gives (Q13). KI-027 is
+  resolved. For calculator and plugin authors: `DomainSettings.set_text` reads in the
+  setting's picked choice (`field_choice`, `set_field_choice`) and no longer takes a
+  default unit; a domain's setting must name its unit (`Param.unit`), checked at
+  registration as a calculator's parameter is; `Fact.quantities` are the values as their
+  source states them (`TypedValue`); and `core.formatting.entry_text` is removed, for
+  `picked_text`.
 - **The command line's units (ADR-0024 E-4):** a bare number reads in the input's default
   unit, which `caddcalc show` now lists with each input's units and the calculator's
   output sets: inches and degrees for every sheet-metal and geometry input. `--unit
@@ -587,8 +625,7 @@ All notable changes are recorded here. The format follows
   chosen, it's yours for the session. Its accessible name is "Results units", its list names each set ("in 1/16 —
   inches, nearest 1/16"), the mouse wheel doesn't change it, and it adds no height. The Inputs list adds each input's
   value in the set's units where its picker shows another: `0.1046 in = 2.6568 mm`. A
-  result with its own picker (`Output.picks`) has it in its row. A family settings page
-  now shows and reads in inches, degrees and ksi until its fields get pickers (KI-027).
+  result with its own picker (`Output.picks`) has it in its row.
 - **The Inputs list and an input's range error are in the unit its picker shows**
   (ADR-0024 E4), not the Units box's: a bend angle picked in rad is listed as
   `1.5708 rad`, and refused as "must be less than 3.14159 rad". A value in radians shows
@@ -612,7 +649,7 @@ All notable changes are recorded here. The format follows
   in its list). A bend angle is picked in °, ° ′ ″ or rad. Degrees, minutes and seconds
   take hyphens between their parts (`40-30-15`), and the minus sign `−` never joins a
   mixed number. For calculator authors, a default with no unit in its text is in the
-  unit its picker starts in. Family settings fields read units in their text (KI-027).
+  unit its picker starts in.
 - **The command line suggests only names that can be given:** for the right
   triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
   `--method leg_angle`, which takes no side b, it suggests none and names that method's

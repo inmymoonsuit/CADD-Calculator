@@ -16,7 +16,15 @@ from caddcalc.core.errors import CaddCalcError, InputError, SpecError, UsageErro
 from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, UnitSet
+from caddcalc.core.spec import (
+    Method,
+    OutOfRangeError,
+    Output,
+    Param,
+    UnitSet,
+    check_param_choices,
+    check_picks,
+)
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
     Dimension,
@@ -514,7 +522,8 @@ class Calculator(ABC):
         _unique(cls.id, "output key", [o.key for o in cls.outputs])
         for o in cls.outputs:
             _check_output_unit(cls.id, o)
-            _check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
+            check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
+            _check_follows(cls, o)
             if o.picks and (o.unit or o.form):
                 raise SpecError(
                     f"{cls.id}: output {o.key!r} gives picks and a fixed unit or form; give one"
@@ -542,7 +551,12 @@ class Calculator(ABC):
                     raise SpecError(
                         f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
-            _check_param_choices(cls.id, p)
+            check_param_choices(cls.id, p)
+            values = [v for v, _label in p.allowed]
+            if len(set(values)) != len(values) or any(not lb.strip() for _v, lb in p.allowed):
+                raise SpecError(
+                    f"{cls.id}: parameter {p.key!r}'s allowed values must differ, each with a label"
+                )
 
 
 def _written(choice: str, dimension: Dimension) -> str:
@@ -551,41 +565,29 @@ def _written(choice: str, dimension: Dimension) -> str:
     return picked.written if isinstance(picked, Unit) else picked.symbol
 
 
-def _check_picks(
-    owner: str, dimension: Dimension, picks: tuple[str, ...], what: str, *, output: bool
-) -> None:
-    """Check that each id is a choice of ``dimension``, a field's or an output's."""
-    units = registry()
-    allowed = units.output_choices(dimension) if output else units.entry_choices(dimension)
-    _unique(owner, f"choice in {what}", list(picks))
-    for pick in picks:
-        if pick not in allowed:
-            known = ", ".join(c or "''" for c in allowed)
-            raise SpecError(
-                f"{owner}: {what} names {pick!r}, which isn't a choice for "
-                f"{dimension.with_article}; there's {known}"
-            )
+def _check_follows(cls: type[Calculator], output: Output) -> None:
+    """Check an output that follows an input: it has picks, and its counterparts are real.
 
-
-def _check_param_choices(owner: str, p: Param) -> None:
-    """Check a parameter's picker: its choices exist, and its default choice resolves.
-
-    A parameter with more than one choice needs a default choice: ``Param.unit``, or a
-    default that names its unit, as ``"0.1046 in"`` does (ADR-0024 E1).
+    Raises:
+        SpecError: It follows no input of its dimension, or has no picks, or a counterpart
+            names a choice the input doesn't offer or a pick the output doesn't have.
     """
-    _check_picks(owner, p.dimension, p.units, f"parameter {p.key!r}'s units", output=False)
-    choice = p.default_choice
-    if choice is None:
+    if not output.follows:
+        if output.counterparts:
+            raise SpecError(f"{cls.id}: output {output.key!r} has counterparts but follows nothing")
+        return
+    param = next((p for p in cls.params if p.key == output.follows), None)
+    if param is None or param.dimension is not output.dimension or not output.picks:
         raise SpecError(
-            f"{owner}: parameter {p.key!r} has no default unit for its picker: give "
-            "Param.unit, or a default that names its unit"
+            f"{cls.id}: output {output.key!r} follows {output.follows!r}, which must be an "
+            f"input of {output.dimension.with_article}, and needs picks to follow it in"
         )
-    if choice not in p.choices:
-        known = ", ".join(c or "''" for c in p.choices)
-        raise SpecError(
-            f"{owner}: parameter {p.key!r} starts its picker in {choice!r}, which it "
-            f"doesn't offer; it offers {known}"
-        )
+    for choice, pick in output.counterparts.items():
+        if choice not in param.choices or pick not in output.picks:
+            raise SpecError(
+                f"{cls.id}: output {output.key!r}'s counterpart {choice!r} → {pick!r} needs "
+                f"a choice {param.key!r} offers and one of the output's picks"
+            )
 
 
 def _check_sets(cls: type[Calculator]) -> None:
@@ -602,7 +604,7 @@ def _check_sets(cls: type[Calculator]) -> None:
                 f"{cls.id}: output set {unit_set.key!r} has no choice for {', '.join(missing)}"
             )
         for dimension, choice in unit_set.choices.items():
-            _check_picks(cls.id, dimension, (choice,), f"output set {unit_set.key!r}", output=True)
+            check_picks(cls.id, dimension, (choice,), f"output set {unit_set.key!r}", output=True)
 
 
 def _check_output_unit(owner: str, output: Output) -> None:
@@ -631,8 +633,10 @@ def _check_output_unit(owner: str, output: Output) -> None:
             )
         return
     if not output.unit:
-        if output.precision is not None:
-            raise SpecError(f"{owner}: output {output.key!r} gives a precision but no unit")
+        if output.precision is not None and not output.picks:
+            raise SpecError(
+                f"{owner}: output {output.key!r} gives a precision but no unit or picks of its own"
+            )
         return
     try:
         unit = get_unit(output.unit, output.dimension)

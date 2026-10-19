@@ -81,6 +81,10 @@ class Param:
     units: tuple[str, ...] = ()
     """The ids its picker offers, in order, where it offers fewer than its dimension's
     (``registry().entry_choices``); empty for all of them."""
+    allowed: tuple[tuple[float, str], ...] = ()
+    """The only values it takes, each with what a choice box shows for it, e.g.
+    ``((16, "1/16"), (32, "1/32"))`` for a fineness (ADR-0024 E7); empty for any value
+    in range. A front end offers them as a choice, not a field."""
 
     @property
     def choices(self) -> tuple[str, ...]:
@@ -147,7 +151,8 @@ class Param:
             source: Where the value came from, so an error can say so.
 
         Raises:
-            InputError: The value is not finite, or a count's isn't whole.
+            InputError: The value is not finite, a count's isn't whole, or it isn't one
+                of the ``allowed`` values.
             OutOfRangeError: The value is out of range.
         """
         if not math.isfinite(value):
@@ -161,6 +166,9 @@ class Param:
             raise InputError(f"{self.named} must be a whole number")
         if self.dimension is Dimension.COUNT and abs(value) >= COUNT_LIMIT:
             raise InputError(f"{self.named} must be under 2^53, to be held exactly")
+        if self.allowed and value not in {v for v, _label in self.allowed}:
+            labels = ", ".join(label for _v, label in self.allowed)
+            raise InputError(f"{self.named} must be one of {labels}")
 
 
 _RELATION = {
@@ -229,9 +237,10 @@ class Output:
     It's shown with ``precision`` if it gives one, else the registry's precision for that
     unit (``precision_for``)."""
     precision: Precision | None = None
-    """The precision a fixed-unit output is shown with, where the unit's own doesn't suit
-    it, such as an error shown to fixed decimals; ``None`` for the registry's. Only an
-    output with a ``unit`` may give one: a form has its own fineness."""
+    """The precision an output in a unit of its own is shown with, where the unit's own
+    doesn't suit it, such as an error to fixed decimals, or a converter's value to
+    significant figures; ``None`` for the registry's, or for a pick, its dimension's. Only
+    an output with a ``unit`` or ``picks`` may give one: a form has its own fineness."""
     form: str = ""
     """The key of a compound form it's always shown in, e.g. ``"ft_in"`` for feet and
     inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.
@@ -245,6 +254,16 @@ class Output:
     """The ids of its own picker's choices, the first its default, where it's shown in a
     choice of its own rather than its calculator's output set (ADR-0024 D3, E1); empty
     to follow the set. An output gives ``picks`` or a fixed ``unit`` or ``form``."""
+    follows: str = ""
+    """The key of the input whose choice it follows until it's picked, by
+    ``counterparts``, as a converter's output does (ADR-0024 §6, Q9); empty for none."""
+    counterparts: Mapping[str, str] = field(default_factory=dict, hash=False)
+    """The pick it shows for each choice of the input it ``follows``, e.g. ``{"in": "mm",
+    "mm": "in"}``: the other system's counterpart. A choice not named shows the first
+    pick."""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "counterparts", MappingProxyType(dict(self.counterparts)))
 
     @property
     def follows_set(self) -> bool:
@@ -324,3 +343,53 @@ class Method:
         """Display text, e.g. ``"verified at 90°"`` or ``"unverified · reproduces legacy"``."""
         verification = " ".join(filter(None, (self.verification.value, self.scope)))
         return verification + (" · reproduces legacy" if self.legacy else "")
+
+
+def check_picks(
+    owner: str, dimension: Dimension, picks: tuple[str, ...], what: str, *, output: bool
+) -> None:
+    """Check that each id is a choice of ``dimension``, a field's or an output's.
+
+    Raises:
+        SpecError: An id repeats, or isn't a choice of ``dimension``.
+    """
+    units = registry()
+    allowed = units.output_choices(dimension) if output else units.entry_choices(dimension)
+    seen: set[str] = set()
+    for pick in picks:
+        if pick in seen:
+            raise SpecError(f"{owner}: duplicate choice in {what} {pick!r}")
+        seen.add(pick)
+    for pick in picks:
+        if pick not in allowed:
+            known = ", ".join(c or "''" for c in allowed)
+            raise SpecError(
+                f"{owner}: {what} names {pick!r}, which isn't a choice for "
+                f"{dimension.with_article}; there's {known}"
+            )
+
+
+def check_param_choices(owner: str, p: Param, *, kind: str = "parameter") -> None:
+    """Check a parameter's picker: its choices exist, and its default choice resolves.
+
+    A parameter with more than one choice needs a default choice: ``Param.unit``, or a
+    default that names its unit, as ``"0.1046 in"`` does (ADR-0024 E1). A calculator's
+    parameters and a domain's settings are checked alike (E-5); a setting has no default,
+    so it names its unit, and ``kind`` names it so in a message: "setting".
+
+    Raises:
+        SpecError: A choice isn't one, or none resolves as the picker's first.
+    """
+    check_picks(owner, p.dimension, p.units, f"{kind} {p.key!r}'s units", output=False)
+    choice = p.default_choice
+    if choice is None:
+        raise SpecError(
+            f"{owner}: {kind} {p.key!r} has no default unit for its picker: give "
+            "Param.unit, or a default that names its unit"
+        )
+    if choice not in p.choices:
+        known = ", ".join(c or "''" for c in p.choices)
+        raise SpecError(
+            f"{owner}: {kind} {p.key!r} starts its picker in {choice!r}, which it "
+            f"doesn't offer; it offers {known}"
+        )

@@ -445,3 +445,115 @@ def test_a_failed_run_still_shows_the_set_followed() -> None:
     assert window.results.set_key == "mm"
     assert window.results.set_picker.currentData() == "mm"
     window.close()
+
+
+def test_a_converter_s_output_follows_its_input_s_unit_until_picked() -> None:
+    """ADR-0024 §6: in → mm and mm → in, in the output's own picker; then it's the user's."""
+    window = open_window()
+    window.select_calculator("conversions.length")
+    output = window.results.fields["value"]
+    assert window.results.set_picker.isHidden(), "no Show in: the output has its own picker"
+    assert output.picker is not None and output.picker.choice == "mm"
+    assert output.value.text() == "25.4000" and output.unit.isHidden()
+    pick(window, "value", "mm")
+    assert window.results.fields["value"].picker.choice == "in", "follows to the counterpart"
+    own = window.results.fields["value"].picker
+    index = own.choices.index("ft_in")
+    own.setCurrentIndex(index)
+    own.activated.emit(index)
+    pick(window, "value", "in")
+    assert window.results.fields["value"].picker.choice == "ft_in", "picked, it stays"
+    window.close()
+
+
+def test_decimal_to_fraction_s_fineness_is_a_choice_box() -> None:
+    """ADR-0024 §7: Fineness [1/16 ▾], not a field; the run takes the value chosen."""
+    window = open_window()
+    window.select_calculator("conversions.decimal_to_fraction")
+    assert "fineness" not in window.fields and "fineness" not in window.pickers
+    box = window.allowed_boxes["fineness"]
+    assert [box.itemText(i) for i in range(box.count())] == ["1/16", "1/32", "1/64"]
+    assert box.currentText() == "1/16" and box.accessibleName() == "Fineness"
+    type_into(window.fields["value"][1], "0.2")
+    assert window.results.fields["nearest"].value.text() == '3/16"'
+    box.setCurrentIndex(2)
+    box.activated.emit(2)
+    assert window.result.inputs["fineness"] == 64.0
+    assert window.results.fields["nearest"].value.text() == '13/64"'
+    assert "1/64" in window.output.toPlainText(), "listed by its label"
+    window.select_calculator(BEND)
+    window.select_calculator("conversions.decimal_to_fraction")
+    assert window.allowed_boxes["fineness"].currentText() == "1/64", "for the session"
+    from PySide6.QtCore import Qt
+
+    def next_stop(widget: Any) -> Any:
+        """The widget Tab moves to: the next in the chain that takes the focus by Tab."""
+        after = widget.nextInFocusChain()
+        while not after.focusPolicy() & Qt.FocusPolicy.TabFocus:
+            after = after.nextInFocusChain()
+        return after
+
+    stops = [window.fields["value"][1], window.pickers["value"], window.allowed_boxes["fineness"]]
+    assert [next_stop(stops[0]), next_stop(stops[1])] == stops[1:], "in Tab order"
+    window.close()
+
+
+def test_a_copy_menu_never_offers_the_same_text_twice() -> None:
+    """In a "," locale, a fraction's shown copy is its value: one item (PR #1's Low 7)."""
+    from caddcalc.core.formatting import NumberSymbols
+
+    window = open_window(symbols=NumberSymbols(","))
+    window.select_calculator("conversions.decimal_to_fraction")
+    field = window.results.fields["nearest"]
+    labels = [a.text() for a in field.context_menu().actions()]
+    assert len(labels) == len(set(labels)) and len(labels) == 2, labels
+    assert labels[-1] == "Copy 0.1875, in inches", "full precision names its unit"
+    error = window.results.fields["error"]
+    copies = [a.text() for a in error.context_menu().actions()]
+    assert copies == ["Copy -0.0025", "Copy -0,0025", "Copy -0.0025 in"], "full is the value here"
+    window.close()
+
+
+def test_a_declared_set_s_label_is_translated_where_it_s_shown(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``UnitSet.label`` is marked where it's declared, so the picker and ``show`` translate it."""
+    from caddcalc import cli
+    from caddcalc.core import i18n
+    from tests import pseudo_locale
+    from tests.test_shown_units import _Fine
+
+    template = tmp_path / "with_set.pot"
+    label = _Fine.output_sets[0].label
+    template.write_text(
+        pseudo_locale.TEMPLATE.read_text(encoding="utf-8") + f'\nmsgid "{label}"\nmsgstr ""\n',
+        encoding="utf-8",
+    )
+    use = i18n.use
+    use([pseudo_locale.LANGUAGE], directories=[pseudo_locale.write(tmp_path, template)])
+    try:
+        window = _acme_window_with(_Fine)
+        assert window.results.set_picker.itemText(0) == pseudo_locale.pseudo(label)
+        window.close()
+        monkeypatch.setattr(cli, "default_registry", lambda **_kw: _registry_with(_Fine))
+        # The command line chooses its language from its environment; keep the test's.
+        monkeypatch.setattr(cli.i18n, "use", lambda *_args, **_kw: None)
+        assert cli.main(["show", _Fine.id]) == 0
+        assert pseudo_locale.pseudo(label) in capsys.readouterr().out
+    finally:
+        use([])  # the real one: the patch above stands until the test ends
+
+
+def _registry_with(calc: type[Calculator]) -> Registry:
+    from tests.test_domains import ACME
+
+    registry = Registry()
+    registry.register_domain(ACME)
+    registry.register(calc)
+    return registry
+
+
+def _acme_window_with(calc: type[Calculator]) -> Any:
+    window = open_window(_registry_with(calc))
+    window.select_calculator(calc.id)
+    return window

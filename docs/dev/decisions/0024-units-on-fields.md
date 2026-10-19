@@ -1,6 +1,7 @@
 # ADR-0024: Units on fields
 
-* **Status:** **Accepted; not built.** UI/UX & Design wrote it, with Calculator
+* **Status:** **Accepted; built** in three stops, F0 to U4 (2026-10-19; the as-built
+  amendments below). UI/UX & Design wrote it, with Calculator
   Engine's sections, on 2026-10-19. Support & Review checked the final CLI and JSON (E5) for correctness: one Medium and three Lows, all folded in.
   * **D1–D6** are the maintainer's design decisions.
   * **D7, arithmetic,** is the maintainer's own decision (2026-10-19): "Let's go with the
@@ -1375,3 +1376,145 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   `parse_quantity`, where `3 - 1/2"` is a mixed number: 3.5 in, shown as 2.5. The typed
   amount is used now only where it gives the value the run used, and is base ÷ factor
   otherwise (`formatting._typed_amount`).
+
+### 2026-10-19: as built, E-5 and U2b (stop 3)
+
+* **A setting's picker** starts as a calculator field's does, by `Param.default_choice`.
+  A setting has no default, so one with a unit names it: `Param.unit="in"` on the sheet
+  metal thickness and inside radius (S&R's L3 at stop 1). `Domain.validate` runs the
+  same check as `validate_spec` does for a parameter (`spec.check_param_choices`, moved
+  from `calculator.py` with `check_picks`), worded for a setting, so a plugin family's
+  setting with no unit, or a unit it doesn't offer, is refused at registration like any
+  bad plugin.
+* **`DomainSettings`** stores each setting's picked choice (`field_choice`,
+  `set_field_choice`, which refuses a choice the setting doesn't offer), and `set_text`
+  reads in it with `TypedValue.read`, so a unit in the text is a `UnitInTextError`;
+  `default_unit` is gone. The pickers are part of the model's equality and survive a
+  rebuild of the page; Clear all clears the values and keeps the pickers, as a
+  calculator's fields keep theirs.
+* **The settings page** puts a `UnitPicker` after each setting with a unit, and a spacer
+  after one without, so the fields end in one column at one shared width, as on a
+  calculator page. A pick re-reads the typed text in the new choice (§2); text the new
+  choice refuses, such as `1'-4"` in mm, is kept, unapplied, with its problem, and the
+  value is unset. A value applied from a citation keeps its size and shows converted.
+  There's no follow on the page, so a step does what a pick does. The pick is said in the
+  status bar and to a screen reader. A unit typed in a setting is refused with "Units go
+  in the picker: '3 mm' names mm.", the no-choice wording, since the page has no fix
+  button. A range error names its bound in the setting's choice.
+* **Derived values** (a gauge's thickness) show in the setting's choice: the placeholder
+  as a number, beside the picker, and the about text with its unit, since prose has no
+  picker; the work is in the picked unit's units (`_setting_units`).
+* **Facts (Q13)** are in their source's unit: `Fact.quantities` are `TypedValue`s as the
+  source states them, shown with `unit_parts` in their own unit, never a picker's or a
+  set's. The built-in strengths are stated in ksi, so they read as before.
+* **Inherited values:** a calculator field that inherits a setting shows it converted
+  into its own choice (`picked_text`), with the same base value: 2.54 mm on the page
+  reads 0.1 on a field in inches, and runs at 2.54 mm.
+* **Removed:** `formatting.entry_text`, whose rule E6 supersedes; `picked_text` shows a
+  field's value. `_settings_units` stays only as the fallback for a page with no output
+  set, such as a note's stress on the settings page.
+* **Tests:** the model's choice, reading, refusal and equality; the page's pickers, their
+  accessible names, re-reading, kept refused text, the refusal's wording, inheritance
+  across units, a fact in MPa, and the pickers whole at the least window in English and
+  en_XA (group boxes left out, as the U1 amendment explains). 12 mutants, one for each
+  guard, are each killed.
+
+### 2026-10-19: as built, E-6 and U3 (stop 3)
+
+* **The converters** (`calculators/conversions/converters.py`): Length, Fraction to
+  decimal, Decimal to fraction, Angle, Area, and Stress and pressure, in that order. Each
+  unit-to-unit converter has input `value` and output `value`, an output with its own
+  picker (`Output.picks`) to six significant figures, so none has an output set or a Show
+  in picker. Length offers in, ft-in, ft, mm, cm and m; Fraction to decimal, the decimal
+  units, starting in inches, and reads a fraction in inches by default; Angle adds the
+  minute and second of arc; Stress adds GPa.
+* **Follow to the counterpart (§6, Q9)** is core: `Output.follows` names the input, and
+  `Output.counterparts` maps each of its choices to a pick (in → mm, mm → in, ft → m,
+  m → ft, ksi → MPa, MPa → ksi, ° → rad, rad → °). `ShownUnits.output_choice` shows the
+  user's pick, else the counterpart of the input's choice, else the first pick, so the
+  window and the CLI follow alike; the row's picker shows it (`_show_output_units`).
+  `validate_spec` refuses a follow of an input of another dimension, without picks, or a
+  counterpart that names a choice the input lacks or a pick the output lacks.
+  Fraction to decimal follows nothing: it's decimal inches until picked.
+* **Decimal to fraction** takes `value` and `fineness`, a count with `Param.allowed`
+  ((16, "1/16"), (32, "1/32"), (64, "1/64")): `Param.check` refuses any other value, a
+  window shows a choice box (`MainWindow.allowed_boxes`, in Tab order), and the Inputs
+  list, the CLI and JSON's `shown.text` give its label (`formatting.param_parts`).
+  `caddcalc show` lists the values. Its outputs are `nearest`, in the fixed form `in_64`,
+  and `error`, signed, in the set's unit, to the set's places (4 in inches), where the
+  Length converter's error rows had six.
+* **`Output.precision`** may be given by an output with picks; a picked unit shows with
+  it, a picked form as the form writes it.
+* **Overflow:** a value that would overflow in any unit its output can be picked in is
+  refused, as before: kPa beside MPa, and now arcsec beside the degree.
+* **PR #1's final review, Low 7:** a form whose finest step a double no longer holds,
+  past 2⁵³ steps (`CompoundForm.steps`: 16 an inch for ft-in to the 1/16, 360,000 a
+  degree for DMS to two places), shows in its full unit to six significant figures, not
+  150 digits (`formatting.choice_parts`); a subnormal is written to the figures its bits
+  hold (`format_significant`); and a copy menu drops an item that copies the same text
+  as one before it, as a fraction's shown copy is its value in a "," locale.
+* **Removed:** the all-units rows and their keys (`mm`, `nearest_16`, `error_16` and the
+  rest); `LONG_PAGES` loses `conversions.length`.
+* **E-3's golden** holds the new converters' text, captured from this commit; its other
+  840 entries are unchanged.
+* **Tests** (`tests/test_conversions.py`, rewritten): each converter's shape; every
+  counterpart, and a pick that sticks; 3/16 in → 0.1875 in and 4.7625 mm to 1e-15; 0.1875
+  in → 3/16" with an error of 0 at each fineness; DMS → rad; the ties, signs, the
+  extremes, and the three Low 7 items; the window's follow, choice box and copy menu.
+  15 mutants, one for each guard, are each killed.
+* **Native only** (UI/UX's): Length's page about 444 px and Decimal to fraction's about
+  528, both under 736.
+
+### 2026-10-19: the final reviews' Lows (stop 3)
+
+* **UI/UX's Low, the echo and the least width:** an echo that showed raised the window's
+  least width by its text margin (natively 475 → 529 px in English), since a line edit's
+  least size counts its text margins. `EchoField.minimumSizeHint` leaves them out, as the
+  echo hides when it doesn't fit. Offscreen, without the fix, typing `1-3/16` raises the
+  least window from 508 to 542 px; with it, it stays at 508.
+* **A declared set's label** is translated where it's shown: in the results' picker and
+  in `caddcalc show`, as `UnitSet.label`'s docstring says it's marked.
+* **The `--output-unit` guards** are tested on a built-in now that the converters have
+  their own pickers: an output named twice, a choice it doesn't offer, a malformed or
+  unknown name, any case, the follow until given, and the converter's Inputs line in the
+  field's own unit.
+* **The unit-naming heuristic** (`entry._last_word`) counts an exponent's `e` and a
+  degree or minute mark between numbers as part of the number: `1e3)mm` names "mm", and
+  `40d30m` in an inch field names "m".
+
+### 2026-10-19: KI-028 resolved, decided by the lanes (stop 3)
+
+* **The rule:** every decimal takes the forms' tie window (`formatting.round_tie`; ADR-0019's
+  amendment of this date): a value within two of its own last places of a half at the
+  shown places is the half, rounded to even. Python's formatting rounded each double as
+  it is.
+* **E-3's golden** changes in 2 runs, 3 strings, all held by their digests, and every one a
+  tie: Fraction to decimal's input scaled by 0.1, 0.01875 in, is listed `0.0188 in`, not
+  `0.0187 in`, with "." and with ",", and so is its CLI report's Inputs line. The other
+  961 runs are unchanged. The list comes from rendering every run both ways, the old
+  rounding reproducing the golden exactly.
+* **Other text that moves:** the published example's JSON, the course bend allowance at
+  T = 0.125 and R = 0.375, is exactly 0.66875 in and shows `0.6688 in`; `123.4575` to six
+  figures is `123.458`.
+* **The review's cases:** `tests/test_decimal_ties.py` sweeps 4,000 decimal halves in each
+  of seven pairs of units (cm, m and ft shown, mm, cm and in typed), each as the exact
+  decimal it is in the unit typed, and checks each within the window shows to even; it
+  includes the review's 0.5 mm circle (0.0002 m) and 1/32 in (0.7938 mm). Halves typed in
+  inches and shown in feet land three last places off in 50 of 4,000, and in meters in 5
+  of 3,975, outside the window: KI-030.
+
+### 2026-10-19: as built, U4 (stop 3, last)
+
+* **The glossary** gains "output units", "reads as" and "unit picker".
+* **The "What this supersedes" notes** have all landed: ADR-0005 and ADR-0006 (stop 2),
+  ADR-0013 §8 and §9's rules 3 and 5, ADR-0017 §4–5, ADR-0018 §3 and its m2 amendment
+  (U3), ADR-0019 §2, §3 and U3, and ADR-0023's amendment, which was written with this ADR.
+  ADR-0021 §3 needs none.
+* **The read-through:** the guides, the README, the roadmap and the CHANGELOG's
+  Unreleased entries now describe the app as built: no Units box, no unit system, every
+  field and result with its picker, settings with theirs, and the six converters. The
+  getting-started guide still named the Units box, which went in U2; it now names Show in.
+* **Test:** `tests/test_user_docs.py` checks that every link in the guides and the README
+  resolves, anchors included, and that none uses a retired word: the Units box,
+  `--units`, `--fraction`, "display unit" or "unit system". Its own probe: with the old
+  getting-started text, it fails.

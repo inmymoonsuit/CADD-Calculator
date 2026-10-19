@@ -344,3 +344,12 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   slice 1, paired rows, makes it hold at shorter ones (KI-024).
 * **The window still opens on the first built-in calculator,** and opens no other page
   while it's built, so no plugin's code runs before its calculator is chosen.
+
+### 2026-10-19: a wrapping form keeps its gap in its labels (KI-031)
+
+* **The settings form is a `WrappingForm`** (`gui/reflow.py`), still wrapping long rows
+  (§7). Qt decides a row fits beside its label without counting the gap between them,
+  then lays it out with the gap, so a row within the gap of fitting had its field
+  squeezed. On the Windows jobs, that was the settings page's unit pickers.
+* **The gap is each label's right margin,** and the form's own horizontal spacing is
+  none, so Qt's test counts it. A wrapped label is unchanged to see.

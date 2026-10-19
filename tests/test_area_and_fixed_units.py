@@ -296,7 +296,8 @@ def test_a_precision_is_some_decimal_places_or_at_least_one_significant_figure()
         (1e-6, 2, "0.0000010"),
         (1e-9, 2, "1.0e-09"),
         (0.125, 2, "0.12"),
-        (123.4575, 6, "123.457"),
+        (123.4575, 6, "123.458"),  # a decimal half, to even (KI-028, resolved)
+        (123.4574, 6, "123.457"),
         (0.375, 2, "0.38"),
         (5.0, 1, "5"),
     ],
@@ -429,7 +430,7 @@ def test_a_result_field_shows_copies_and_says_a_fixed_unit_with_no_code_of_its_o
     [
         (1e300, "1.00000e+300"),
         (-1e308, "-1.00000e+308"),
-        (5e-324, "4.94066e-324"),
+        (5e-324, "5e-324"),  # one bit, so one figure (PR #1's final review, Low 7)
         (1.23e-7, "1.23000e-07"),
         (9.999997e15, "1.00000e+16"),
         (1.23e-6, "0.00000123000"),

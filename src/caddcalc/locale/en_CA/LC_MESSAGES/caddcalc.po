@@ -18,13 +18,19 @@ msgstr ""
 "Generated-By: Babel 2.18.0\n"
 
 #: src/caddcalc/calculators/conversions/converters.py
-msgid ""
-"A length in inches, feet, millimeters, centimeters, meters, and feet and inches, and to the "
-"nearest 1/16, 1/32, and 1/64 inch, each with its error."
+msgid "A fraction, such as 3/16 or 1 3/16 inches, as a decimal, in any length unit."
 msgstr ""
 
 #: src/caddcalc/calculators/conversions/converters.py
-msgid "A stress or pressure in psi, ksi, kPa, and MPa."
+msgid "A length as its nearest 1/16, 1/32, or 1/64 inch, with the fraction's error."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "A length in another unit: inches, feet, millimeters, centimeters, meters, or feet and inches."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "A stress or pressure in another unit: psi, ksi, kPa, MPa, or GPa."
 msgstr ""
 
 #: src/caddcalc/gui/welcome.py
@@ -38,11 +44,13 @@ msgid "About {product}: version, license, and terms"
 msgstr ""
 
 #: src/caddcalc/calculators/conversions/converters.py
-msgid "An angle in degrees, radians, and degrees, minutes, and seconds."
+msgid "An angle in another unit: degrees, radians, or degrees, minutes, and seconds."
 msgstr ""
 
 #: src/caddcalc/calculators/conversions/converters.py
-msgid "An area in square inches, square feet, square millimeters, square centimeters, and square meters."
+msgid ""
+"An area in another unit: square inches, square feet, square millimeters, square centimeters, or "
+"square meters."
 msgstr ""
 
 #: src/caddcalc/calculators/conversions/converters.py
@@ -100,12 +108,20 @@ msgstr ""
 msgid "Conversions"
 msgstr ""
 
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Decimal to fraction"
+msgstr ""
+
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "Flat length of a formed segment"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "Flat-pattern length of one segment, dimensioned to the outside, with a bend at one or both ends."
+msgstr ""
+
+#: src/caddcalc/calculators/conversions/converters.py
+msgid "Fraction to decimal"
 msgstr ""
 
 #: src/caddcalc/calculators/geometry/domain.py
@@ -591,6 +607,27 @@ msgstr ""
 #, python-brace-format
 msgid "{numerator} {part} of an inch"
 msgstr ""
+
+#~ msgid ""
+#~ "A length in inches, feet, millimeters, centimeters, "
+#~ "meters, and feet and inches, and to the "
+#~ "nearest 1/16, 1/32, and 1/64 inch, each with "
+#~ "its error."
+#~ msgstr ""
+
+#~ msgid "A stress or pressure in psi, ksi, kPa, and MPa."
+#~ msgstr ""
+
+#~ msgid "An angle in another unit: degrees, degrees, minutes, and seconds, or radians."
+#~ msgstr ""
+
+#~ msgid "An angle in degrees, radians, and degrees, minutes, and seconds."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "An area in square inches, square feet, square "
+#~ "millimeters, square centimeters, and square meters."
+#~ msgstr ""
 
 #~ msgid ""
 #~ "Results are for drafting and education. Verify them"

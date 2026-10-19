@@ -81,7 +81,7 @@ def test_choosing_a_gauge_shows_the_derived_thickness_its_caution_and_work() -> 
     thickness = window.setting_fields["thickness"][1]
     assert (thickness.text(), thickness.placeholderText()) == (
         "",
-        "0.1046 in (12 ga, Manufacturers' Standard, steel sheet (nominal))",
+        "0.1046 (12 ga, Manufacturers' Standard, steel sheet (nominal))",
     )
     text = about(window, "thickness")
     assert f"From {GAUGE_SOURCE}: 0.1046 in" in text
@@ -196,7 +196,7 @@ def test_clear_all_returns_the_gauge_to_none() -> None:
 def test_the_gauges_work_is_true_in_millimetres() -> None:
     """The work's expression gives inches, so it shows inches, then the results' unit.
 
-    The settings page shows inches until its fields get pickers (KI-027).
+    The settings page shows it in the thickness picker's unit, inches unless picked.
     """
     window = open_window()
     pick(window, MSG, "12 ga")
