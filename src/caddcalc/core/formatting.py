@@ -362,9 +362,10 @@ def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValuePart
 
     Every front end presents outputs through here or ``format_output``, so an output's
     own presentation applies in one place. An output with a fixed unit, as a converter's
-    row has (ADR-0018 §3), is shown in it, whatever the display unit, to the registry's
-    precision for it; one with a compound form, in that form; and any other as
-    ``value_parts`` shows its dimension.
+    row has (ADR-0018 §3), is shown in it, whatever the display unit, to its own
+    ``Output.precision`` or else the registry's precision for the unit; one with a
+    compound form, in that form; and any other as ``value_parts`` shows its dimension. A
+    signed output (``Output.signed``) shows a plus sign above zero and no inch fraction.
     """
     if output.form:
         written = registry().compound(output.form).text(value, prefs.symbols.decimal)

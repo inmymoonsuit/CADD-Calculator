@@ -51,6 +51,7 @@ from caddcalc.core.formatting import DisplayPrefs, describe_note
 from caddcalc.core.units import parse_quantity
 from tests.helpers import run_inches
 
+LENGTH_ = Dimension.LENGTH
 IN2 = 25.4**2
 """A square inch in square millimetres: ``run_inches`` gives areas in mm²."""
 
@@ -539,6 +540,30 @@ def test_given_names_an_input_and_an_output(symbol: str, output: str, problem: s
     with pytest.raises(SpecError, match=problem):
         Bad().run()
     assert _Given().run().outputs["same"] == pytest.approx(25.4)
+
+
+@pytest.mark.parametrize("second", ["given", "calc", "record"])
+@pytest.mark.parametrize("first", ["given", "calc"])
+def test_an_output_is_given_a_value_once(first: str, second: str) -> None:
+    """A second write would hide the first and its work."""
+
+    class Twice(Circle):
+        id = "geometry.twice"
+
+        @override
+        def compute(self, ctx: Context) -> None:
+            for i, how in enumerate((first, second)):
+                if how == "given":
+                    ctx.given("D", output="diameter")
+                elif how == "calc":
+                    ctx.calc(f"d{i}", "D*1", label="D", dimension=LENGTH_, output="diameter")
+                else:
+                    ctx.record(
+                        f"d{i}", 1.0, label="D", dimension=LENGTH_, note="", output="diameter"
+                    )
+
+    with pytest.raises(SpecError, match="output 'diameter' is given a value twice"):
+        Twice().run(method="diameter")
 
 
 def test_given_refuses_an_output_of_another_dimension() -> None:

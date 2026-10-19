@@ -216,13 +216,11 @@ def test_cli_inputs_match_exactly_first_then_in_any_case() -> None:
         Verification,
     )
 
-    values = parse_inputs(RightTriangle(), ["a=3", "A=30", "C=5", "LEG_B=4"], "in")
-    assert values == {
-        "leg_a": pytest.approx(76.2),
-        "angle_a": 30,
-        "hypotenuse": pytest.approx(127),
-        "leg_b": pytest.approx(101.6),
-    }
+    calc = RightTriangle()
+    values = parse_inputs(calc, ["a=3", "A=30"], "in", "leg_angle")
+    assert values == {"leg_a": pytest.approx(76.2), "angle_a": 30}
+    values = parse_inputs(calc, ["C=5", "LEG_A=4"], "in", "leg_hypotenuse")
+    assert values == {"hypotenuse": pytest.approx(127), "leg_a": pytest.approx(101.6)}
 
     class Twins(Calculator):
         id = "test.twins"
@@ -258,3 +256,32 @@ def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_i
         parse_inputs(calc, ["B=30"], "in")
     (key,) = parse_inputs(calc, ["b=30"], "in")
     assert next(p for p in calc.params if p.key == key).symbol == "b"
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (
+            ["a=3", "A=30"],
+            "Method 'legs' of geometry.right_triangle doesn't use A=30; "
+            "its inputs are a/leg_a, b/leg_b",
+        ),
+        (
+            ["a=3", "c=5", "--method", "leg_angle"],
+            "Method 'leg_angle' of geometry.right_triangle doesn't use c=5; "
+            "its inputs are a/leg_a, A/angle_a",
+        ),
+        (["a=3", "b=4", "b=5"], "Input b/leg_b is given twice, as 'b=4' and 'b=5'; give it once"),
+        (["a=3", "leg_a=4"], "Input a/leg_a is given twice, as 'a=3' and 'leg_a=4'"),
+    ],
+)
+def test_the_cli_refuses_an_input_it_would_lose(
+    args: list[str], message: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An input the method doesn't use, or one given twice, was dropped or overwritten."""
+    from caddcalc.cli import main
+
+    assert main(["run", "geometry.right_triangle", *args]) == 2
+    err = capsys.readouterr().err
+    assert message in err and err.count("\n") == 1, err
+    assert main(["run", "geometry.right_triangle", "a=3", "A=30", "--method", "leg_angle"]) == 0

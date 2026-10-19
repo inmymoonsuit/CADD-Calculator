@@ -72,3 +72,9 @@ The front ends show the method, status, references, and a disclaimer next to eve
   either function, and every golden test passes unchanged.
 * `expr.tan_is_undefined` is the test `tand` refuses by, public so a calculator can
   refuse the same angle before another method computes from it (ADR-0018, fix round 2).
+
+### 2026-10-19: an output is given its value once (ADR-0018, fix round 3)
+
+* `Context.given`, `calc` and `record` refuse a second value for the same output with a
+  `SpecError`: the second silently replaced the first, and the work then showed a step
+  whose value wasn't the result. The cloud review of ADR-0018's m1 found it.

@@ -3,7 +3,9 @@
 * **Status:** **Accepted** (maintainer, 2026-10-17): the design, and the recommended option
   of every decision below. Phase 1 is built (§11); §5 to §8 describe it as built.
   **Superseded in part by [ADR-0014](0014-materials-and-reference-data.md)**, which plans
-  phase 2: at decision A (P), decision E (K and P), and §11's phase-2 list.
+  phase 2: at decision A (P), decision E (K and P), and §11's phase-2 list; and **in
+  part by [ADR-0018](0018-geometry-and-conversions.md)** §1 and its amendments, at §2's
+  family order (see the amendment below).
 * **Date:** 2026-10-17
 * **Reviewed by:** the Support & Review session (prior art, critique) and the Calculator
   Engine session (implementation), 2026-10-17
@@ -97,7 +99,8 @@ exports `DOMAIN` next to `CALCULATORS`.
   collide with future built-ins.
 * An unknown domain fails registration with a "did you mean" hint (decision G).
 * The display name comes from the `Domain`.
-* `Registry.by_domain()` returns `Domain` → calculators, sorted by name.
+* `Registry.by_domain()` returns `Domain` → calculators, sorted by name. (Superseded in
+  part: families are no longer sorted by name; see the amendment of 2026-10-19.)
 
 ### 3. Shared parameters are opt-in and validated
 
@@ -359,3 +362,13 @@ That is about 2% per bend.
 * **A per-user settings file** (in an earlier draft of this ADR, using `tomli-w` and
   `platformdirs` in a new services layer): it was dropped when the maintainer chose
   session-only settings.
+
+## Amendments
+
+### 2026-10-19: the order of the families (ADR-0018)
+
+§2 sorted families by name. ADR-0018 §1 lists Geometry and Conversions above Sheet
+Metal, so the families registered directly, the built-ins, come in the order
+`BUILTIN_DOMAINS` gives (ADR-0018's m1 amendment), and plugins' families after them,
+sorted by name, then ID (fix round 3), so their order never follows how the installed
+packages were found. Calculators within a family are still sorted by name.

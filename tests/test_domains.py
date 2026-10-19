@@ -296,6 +296,30 @@ def test_one_bad_item_does_not_drop_the_rest_of_a_plugin() -> None:
     assert [c.id for c in registry.by_domain()[ACME]] == ["acme.gadget", "acme.widget"]
 
 
+def test_plugin_families_follow_the_builtins_sorted_by_name() -> None:
+    """Never in the order the packages are found: that follows the file system."""
+
+    def plugin(domain_id: str, name: str) -> tuple[_FakeEntryPoint, _FakeEntryPoint]:
+        domain = Domain(domain_id, name, f"The {name} plugin.")
+        widget = type(
+            f"{domain_id}_widget",
+            (_AcmeWidget,),
+            {"id": f"{domain_id}.widget", "domain": domain_id},
+        )
+        return _FakeEntryPoint(domain_id, f"{domain_id}:DOMAIN", domain), _FakeEntryPoint(
+            domain_id, f"{domain_id}:Widget", widget
+        )
+
+    found = [plugin("zeta", "Zeta Tools"), plugin("mid", "middle tools"), plugin("alpha", "Alpha")]
+    builtins = [d.id for d in BUILTIN_DOMAINS]
+    for order in (found, found[::-1]):
+        registry = _with_plugins([d for d, _ in order], [c for _, c in order])
+        assert registry.plugin_errors == []
+        assert [d.id for d in registry.domains()] == [*builtins, "alpha", "mid", "zeta"]
+        assert [d.id for d in registry.by_domain()][-3:] == ["alpha", "mid", "zeta"]
+        assert [c.domain for c in registry][-3:] == ["alpha", "mid", "zeta"]
+
+
 def test_a_plugin_cannot_redefine_a_builtin_domain() -> None:
     impostor = Domain("sheet_metal", "Sheet Metal", "Not the built-in one.")
     registry = _with_plugins(domains=[_FakeEntryPoint("impostor", "x:DOMAIN", impostor)])

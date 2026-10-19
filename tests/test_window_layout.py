@@ -518,6 +518,28 @@ def test_no_plugin_page_opens_until_it_is_chosen(monkeypatch: pytest.MonkeyPatch
     window.close()
 
 
+@pytest.mark.usefixtures("qt")
+def test_the_window_opens_on_a_builtin_even_below_a_plugins_calculator() -> None:
+    """A plugin's calculator in a built-in family, sorted above every built-in one."""
+    from caddcalc.calculators import default_registry
+    from caddcalc.gui.window import ID_ROLE
+    from tests.test_domains import _AcmeWidget
+
+    class Aardvark(_AcmeWidget):
+        id = "geometry.aardvark"
+        name = "Aardvark"
+        domain = "geometry"
+
+    registry = default_registry(load_plugins=False)
+    registry.register(Aardvark)
+    window = open_window(registry)
+    family = window.tree.topLevelItem(0)
+    assert family.child(0).data(0, ID_ROLE) == "geometry.aardvark", "it sorts first"
+    assert window.calculator is not None
+    assert window.calculator.id == family.child(1).data(0, ID_ROLE) == "geometry.arc_sector"
+    window.close()
+
+
 LONG_PAGES = {"conversions.length", "geometry.right_triangle"}
 """Pages taller than the launch height at 9 pt, which scroll as a whole (rule C) until
 ADR-0023's layout contract replaces this list with a flag each page declares."""

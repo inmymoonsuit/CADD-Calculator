@@ -409,7 +409,8 @@ class MainWindow(QMainWindow):
 
         launch = self.launch_size()
         self.resize(round(launch.width), round(launch.height))
-        # It opens on the first built-in calculator, though a plugin's family sorts first.
+        # It opens on the first built-in calculator: a plugin's calculator in a built-in
+        # family can sort above it, and its code runs only once it's chosen.
         items = list(self._calculator_items())
         first = next((i for i in items if i.data(0, ID_ROLE) in builtin_ids()), None)
         first = first or next(iter(items), None)

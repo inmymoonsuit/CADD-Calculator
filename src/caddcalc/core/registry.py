@@ -113,15 +113,18 @@ class Registry:
             raise UnknownDomainError(f"No domain {domain_id!r}.{hint}") from None
 
     def domains(self) -> list[Domain]:
-        """Return every registered domain, in the order registered.
+        """Return every registered domain, those registered directly first.
 
         A front end lists them so: the built-ins in the order ``BUILTIN_DOMAINS`` gives,
-        general tools first (ADR-0018 §1), then plugins' as they load.
+        general tools first (ADR-0018 §1), then plugins' sorted by name, so their order
+        never depends on how the installed packages happen to be found.
         """
-        return list(self._domains.values())
+        direct = [d for d in self._domains.values() if d.id not in self._plugin_domain_ids]
+        plugins = [d for d in self._domains.values() if d.id in self._plugin_domain_ids]
+        return direct + sorted(plugins, key=lambda d: (d.name.casefold(), d.id))
 
     def __iter__(self) -> Iterator[Calculator]:
-        order = {domain_id: i for i, domain_id in enumerate(self._domains)}
+        order = {domain.id: i for i, domain in enumerate(self.domains())}
         return iter(sorted(self._items.values(), key=lambda c: (order[c.domain], c.name)))
 
     def __len__(self) -> int:

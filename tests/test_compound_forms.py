@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
-from typing import override
+from typing import Any, override
 
 import pytest
 
@@ -42,6 +42,7 @@ from caddcalc.core.i18n import use
 from caddcalc.core.units import (
     CompoundText,
     Dimension,
+    Precision,
     from_base,
     parse_quantity,
     parse_quantity_detailed,
@@ -486,10 +487,11 @@ def test_copy_all_keeps_a_compound_value_from_being_read_as_a_formula() -> None:
         ({"form": "chains"}, "has a bad form: No compound form 'chains'"),
         ({"form": "dms"}, "form 'dms' doesn't write a length"),
         ({"form": "ft_in", "unit": "in"}, "gives a unit and a form; give one"),
+        ({"form": "ft_in", "precision": Precision(6)}, "gives a precision and a form"),
     ],
 )
 def test_an_output_naming_a_form_it_cant_be_shown_in_is_a_definition_error(
-    changes: dict[str, str], problem: str
+    changes: dict[str, Any], problem: str
 ) -> None:
     class Bad(_Forms):
         outputs = (Output("ft_in", "FI", "Feet and inches", L, **changes),)

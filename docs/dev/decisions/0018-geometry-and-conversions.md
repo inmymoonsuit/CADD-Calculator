@@ -317,3 +317,28 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   circle to about 2 parts in 10¹², far finer than any drawing. Tests pin the odd
   polygon's note at N = 3, 5, 7, 9 and 13 and its absence at even N, and a count a hair
   off whole, such as 4 + 2⁻⁴⁰.
+
+### 2026-10-19: the cloud review's findings, fix round 3 (group E, CLI, core and window)
+
+* **The command line refuses an input it would lose** (the review's Major 2, second
+  half). An input the chosen method doesn't use was dropped, so `a=3 B=30 --method
+  leg_angle` ran with A at its default, and an input given twice kept the later value.
+  Both are now refused, exit 2, with one line naming the method and its inputs, such as
+  "Method 'legs' of geometry.right_triangle doesn't use A=30; its inputs are a/leg_a,
+  b/leg_b". A differential check ran 2,616 valid sheet-metal invocations (every method,
+  every subset of its inputs, by symbol, key and upper case, with `--units mm`, `--json`
+  and `--fraction 64`) on the commit before and after: every exit code and output is the
+  same. The 34 that give an unused or repeated input now exit 2.
+* **Plugin families follow the built-ins, sorted by name** (Minor 4; ADR-0013's
+  amendment): their order followed `importlib.metadata`, and so the file system.
+* **The window's "open on a built-in" guard is tested** (Minor 5): a plugin's
+  calculator in a built-in family, named to sort first, isn't the page the window opens
+  on. With plugin families now after the built-ins, that's the case the guard is for, and
+  its comment says so.
+* **One value per output** (ADR-0004's amendment), and **a form output can't give a
+  precision**: `_check_output_unit` refuses it, since a form has its own fineness, as it
+  already refused a precision with no unit.
+* **`get_unit` with a dimension that has neither unit** raises `UsageError` for a mark
+  the foot and the minute of arc share, such as `get_unit("'", Dimension.RATIO)`, which
+  gave the foot on main. It's kept, as the right answer, and declared in the CHANGELOG
+  (ADR-0019's u3b amendment has the lookup rule).

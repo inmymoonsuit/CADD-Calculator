@@ -371,3 +371,24 @@ def test_a_two_word_unit_reads_however_its_words_are_spaced(typed: str) -> None:
     from caddcalc.core.units import Dimension, parse_quantity
 
     assert parse_quantity(typed, Dimension.RATIO) == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize(
+    ("mark", "dimension"),
+    [
+        ("'", Dimension.RATIO),
+        ('"', Dimension.STRESS),
+        ("′", Dimension.RATIO),
+        ("″", Dimension.AREA),
+    ],
+)
+def test_a_mark_two_dimensions_share_needs_one_of_them(mark: str, dimension: Dimension) -> None:
+    """With a dimension that has neither, the foot's ' and the minute's are ambiguous.
+
+    It once gave the foot or the inch; it's refused since the minute and second of arc
+    share the marks (the CHANGELOG, Changed). With no dimension, a length wins.
+    """
+    with pytest.raises(UsageError, match="names units of several dimensions"):
+        get_unit(mark, dimension)
+    assert get_unit(mark).dimension is Dimension.LENGTH
+    assert get_unit(mark, Dimension.ANGLE).dimension is Dimension.ANGLE

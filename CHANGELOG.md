@@ -495,6 +495,19 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The command line refuses an input it would lose:** one given twice, or one the
+  chosen method doesn't use, such as `A=30` for the right triangle's two-legs method, is
+  refused, exit 2, naming the method's inputs. They were silently overwritten or dropped.
+  Every valid sheet-metal command line runs as before.
+- **Plugin families are listed after the built-ins, sorted by name,** whatever order the
+  installed packages are found in.
+- `get_unit` with a dimension that has neither unit raises `UsageError` for a mark the
+  foot and the minute of arc share: `get_unit("'", Dimension.RATIO)` gave the foot before
+  the minute and second of arc were added. With no dimension, `'` and `"` are still the
+  foot and inch.
+- For calculator authors: an output is given its value once (`Context.given`, `calc`
+  and `record` raise `SpecError` for a second), and an output in a compound form can't
+  give its own `precision`.
 - **The Length converter's errors show their sign,** `+0.002500 in`, and the error
   row's tooltip says it's the fraction less the value (`Output.signed`; a field's
   label shows its output's help as a tooltip).

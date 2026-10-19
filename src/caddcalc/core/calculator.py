@@ -133,7 +133,12 @@ class Context:
         dimension: Dimension,
         output: str | None = None,
     ) -> float:
-        """Evaluate ``expression``, record it as a step, and optionally store it as an output."""
+        """Evaluate ``expression``, record it as a step, and optionally store it as an output.
+
+        Raises:
+            SpecError: ``output`` has a value already, which would hide the first and its
+                work.
+        """
         values = {name: v for name, (v, _dim) in self.symbols.items()}
         result = expr.evaluate(expression, values)
         return self._record(Step(symbol, label, dimension, result, expression), output)
@@ -160,7 +165,8 @@ class Context:
 
         Raises:
             SpecError: ``symbol`` isn't an input of this run, ``output`` isn't an output
-                of the calculator, or the two measure different things.
+                of the calculator, the two measure different things, or the output has a
+                value already.
         """
         param = next((p for p in self.calculator.params if p.symbol == symbol), None)
         if param is None or param.key not in self.inputs:
@@ -172,6 +178,7 @@ class Context:
             raise SpecError(
                 f"{self.calculator.id}: input {symbol!r} isn't {declared.dimension.with_article}"
             )
+        self._claim(output)
         self.outputs[output] = self.inputs[param.key]
         return self.outputs[output]
 
@@ -243,11 +250,18 @@ class Context:
     def _record(self, step: Step, output: str | None) -> float:
         if step.symbol in self.symbols:
             raise SpecError(f"{self.calculator.id}: symbol {step.symbol!r} is defined twice")
+        if output is not None:
+            self._claim(output)
         self.symbols[step.symbol] = (step.value, step.dimension)
         self.steps.append(step)
         if output is not None:
             self.outputs[output] = step.value
         return step.value
+
+    def _claim(self, output: str) -> None:
+        """Check ``output`` has no value yet: a second would hide the first and its work."""
+        if output in self.outputs:
+            raise SpecError(f"{self.calculator.id}: output {output!r} is given a value twice")
 
 
 class ResultCheck(Protocol):
@@ -543,6 +557,11 @@ def _check_output_unit(owner: str, output: Output) -> None:
             raise SpecError(
                 f"{owner}: output {output.key!r}'s form {output.form!r} doesn't write "
                 f"{output.dimension.with_article}"
+            )
+        if output.precision is not None:
+            raise SpecError(
+                f"{owner}: output {output.key!r} gives a precision and a form; a form has "
+                "its own fineness"
             )
         return
     if not output.unit:

@@ -222,25 +222,45 @@ def _resolve_param(calc: Calculator, name: str) -> Param:
     return matches[0]
 
 
-def parse_inputs(calc: Calculator, items: Sequence[str], length_unit: str) -> dict[str, float]:
+def parse_inputs(
+    calc: Calculator, items: Sequence[str], length_unit: str, method: str | None = None
+) -> dict[str, float]:
     """Parse ``NAME=VALUE`` arguments into base-unit values keyed by parameter key.
 
     Args:
         calc: The calculator the inputs belong to.
         items: Arguments such as ``T=0.1046`` or ``thickness=3mm``.
         length_unit: The unit for lengths typed without one.
+        method: The method the inputs are for; ``None`` for the calculator's first.
 
     Raises:
-        InputError: An argument is malformed, names an unknown input, or has a bad value.
+        InputError: An argument is malformed, names an unknown input, has a bad value, or
+            gives an input twice or one the method doesn't use, which would be lost.
     """
     values: dict[str, float] = {}
+    given: dict[str, str] = {}
     for item in items:
         name, sep, text = item.partition("=")
         if not sep:
             raise InputError(f"Expected NAME=VALUE, got {item!r}")
         p = _resolve_param(calc, name.strip())
+        if p.key in given:
+            raise InputError(
+                f"Input {p.symbol}/{p.key} is given twice, as {given[p.key]!r} and {item!r}; "
+                "give it once"
+            )
+        given[p.key] = item
         default_unit = entry_unit(p.dimension, DisplayPrefs(length_unit=length_unit))
         values[p.key] = parse_quantity(text, p.dimension, default_unit)
+    chosen = calc.get_method(method)
+    used = calc.params_for(chosen.key)
+    unused = [given[key] for key in values if key not in {p.key for p in used}]
+    if unused:
+        inputs = ", ".join(f"{p.symbol}/{p.key}" for p in used)
+        raise InputError(
+            f"Method {chosen.key!r} of {calc.id} doesn't use {', '.join(unused)}; "
+            f"its inputs are {inputs}"
+        )
     return values
 
 
@@ -250,7 +270,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
         length_unit=args.units, decimals=args.decimals, fraction_denominator=args.fraction
     )
     try:
-        result = calc.run(parse_inputs(calc, args.inputs, args.units), method=args.method)
+        inputs = parse_inputs(calc, args.inputs, args.units, args.method)
+        result = calc.run(inputs, method=args.method)
     except CaddCalcError as exc:
         _write_cause(exc)
         return _fail(describe_error(exc, prefs))
