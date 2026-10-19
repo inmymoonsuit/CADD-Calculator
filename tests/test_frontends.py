@@ -126,12 +126,12 @@ def test_cli_reports_input_errors(capsys: pytest.CaptureFixture[str]) -> None:
 @pytest.mark.usefixtures("qt")
 def test_gui_results_mark_each_kind_of_note() -> None:
     from caddcalc.calculators.sheet_metal import FormedSegmentFlatLength
-    from caddcalc.core.formatting import DisplayPrefs
+    from caddcalc.core.formatting import DisplayPrefs, ShownUnits
     from caddcalc.gui.window import result_html
 
     calc = FormedSegmentFlatLength()
     result = calc.run({"formed_dimension": 1.0, "bend_angle_1": 120.0, "bend_angle_2": 90.0})
-    html = result_html(calc, result, DisplayPrefs())
+    html = result_html(calc, result, ShownUnits.generated(), DisplayPrefs())
     assert "icon:light/icon_error/alert-circle" in html, "an impossibility is marked as an error"
     assert "icon:light/icon_warning/alert-triangle" in html, "a warning is marked as one"
     assert "<b>Not makeable: </b>The flat length" in html

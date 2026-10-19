@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from caddcalc.core.formatting import POINT, DisplayPrefs, output_parts
+from caddcalc.core.formatting import POINT, DisplayPrefs, ShownUnits, output_parts
 from tests.qt_helpers import open_window, results_text, settle, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
@@ -37,7 +37,9 @@ def test_a_field_shows_its_output_as_the_core_presents_it() -> None:
     assert result is not None and calc is not None
     for output in calc.outputs:
         field = window.results.fields[output.key]
-        parts = output_parts(output, result.outputs[output.key], DisplayPrefs())
+        parts = output_parts(
+            output, result.outputs[output.key], ShownUnits.generated(), DisplayPrefs()
+        )
         assert field.parts == parts
         assert (field.value.text(), field.unit.text()) == (parts.number, parts.unit)
         assert field.copy_button.isEnabled()
@@ -78,7 +80,8 @@ def test_the_document_lists_notes_strongest_first() -> None:
         Note(NoteKind.WARNING, "Warning note."),
         Note(NoteKind.LIMIT_EXCEEDED, "Limit note.", (Reference("Shop handbook"),)),
     )
-    text = plain(result_html(calc, replace(result, notes=notes), window.prefs))
+    units = window._units_for(calc)
+    text = plain(result_html(calc, replace(result, notes=notes), units, window.prefs))
     order = [text.index(f"{name} note.") for name in ("Limit", "Warning", "Gap")]
     assert order == sorted(order)
     window.close()
@@ -116,7 +119,8 @@ def test_the_work_is_set_in_the_platforms_fixed_width_face() -> None:
     window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
     assert window.calculator is not None and window.result is not None
-    html = result_html(window.calculator, window.result, window.prefs)
+    units = window._units_for(window.calculator)
+    html = result_html(window.calculator, window.result, units, window.prefs)
     assert f"<h3>Work</h3><p style=\"font-family: '{fixed}'\">" in html
     window.close()
 
@@ -651,7 +655,9 @@ def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
     result = window.result
     from dataclasses import replace
 
-    html = result_html(window.calculator, replace(result, notes=(note,)), window.prefs, scheme)
+    calc = window.calculator
+    units = window._units_for(calc)
+    html = result_html(calc, replace(result, notes=(note,)), units, window.prefs, scheme)
     assert "<small>" not in html
     assert f"color:{color}'>default<" in html and f"color:{color}'>Sources: Shop handbook<" in html
     window.close()

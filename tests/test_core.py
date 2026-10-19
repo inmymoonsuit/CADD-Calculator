@@ -37,9 +37,8 @@ from caddcalc.core import (
 )
 from caddcalc.core.formatting import (
     DisplayPrefs,
+    ShownUnits,
     describe_note,
-    display_unit,
-    entry_unit,
     format_value,
     render_step,
     to_fraction,
@@ -48,6 +47,7 @@ from caddcalc.core.formatting import (
 from caddcalc.core.units import BASE_UNITS, get_unit, to_base, units_for
 
 L, A, R, S = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO, Dimension.STRESS
+IN, MM = ShownUnits.generated("in"), ShownUnits.generated("mm")
 KSI_IN_MPA = 6.894757293168361
 """1 ksi in MPa: 1000 lbf (0.45359237 kg × 9.80665 m/s², exact) over 0.0254² m² (exact)."""
 
@@ -94,11 +94,8 @@ def test_every_dimension_has_its_units_and_wording(dimension: Dimension) -> None
     assert get_unit(BASE_UNITS[dimension], dimension).dimension is dimension
     assert units_for(dimension)
     for unit in ("in", "mm"):
-        assert display_unit(dimension, DisplayPrefs(length_unit=unit)).dimension is dimension
+        assert ShownUnits.generated(unit).unit(dimension).dimension is dimension
     assert dimension.with_article.endswith(dimension.value)
-    for unit in ("in", "mm"):
-        prefs = DisplayPrefs(length_unit=unit)
-        assert entry_unit(dimension, prefs) == display_unit(dimension, prefs).symbol
 
 
 def test_stress_units_come_from_the_exact_pound_and_inch() -> None:
@@ -115,17 +112,16 @@ def test_stress_units_come_from_the_exact_pound_and_inch() -> None:
 )
 def test_stress_follows_the_length_preference(length_unit: str, shown: str, suffix: str) -> None:
     """One choice sets both: inch-pound lengths show ksi, metric lengths MPa."""
-    prefs = DisplayPrefs(length_unit=length_unit)
-    assert format_value(to_base(42, "ksi"), S, prefs) == shown
-    assert unit_suffix(S, prefs) == suffix
+    units = ShownUnits.generated(length_unit)
+    assert format_value(to_base(42, "ksi"), S, units, DisplayPrefs()) == shown
+    assert unit_suffix(units.unit(S)) == suffix
 
 
 def test_a_bare_number_is_read_in_the_display_unit() -> None:
     """A field labelled ksi reads "36" as 36 ksi, not 36 of the base unit (MPa)."""
-    prefs = DisplayPrefs(length_unit="in")
-    assert parse_quantity("36", S, entry_unit(S, prefs)) == pytest.approx(36 * KSI_IN_MPA)
-    assert parse_quantity("0.5", L, entry_unit(L, prefs)) == pytest.approx(12.7)
-    assert parse_quantity("90", A, entry_unit(A, prefs)) == 90.0
+    assert parse_quantity("36", S, IN.unit(S).symbol) == pytest.approx(36 * KSI_IN_MPA)
+    assert parse_quantity("0.5", L, IN.unit(L).symbol) == pytest.approx(12.7)
+    assert parse_quantity("90", A, IN.unit(A).symbol) == 90.0
 
 
 def test_fraction_display() -> None:
@@ -136,9 +132,9 @@ def test_fraction_display() -> None:
 
 
 def test_format_value_converts_and_rounds_only_for_display() -> None:
-    prefs = DisplayPrefs(length_unit="in", decimals=3, fraction_denominator=64)
-    assert format_value(25.4, L, prefs) == '1.000 in  (≈ 1")'
-    assert format_value(25.4, L, DisplayPrefs(length_unit="mm", decimals=1)) == "25.4 mm"
+    prefs = DisplayPrefs(decimals=3, fraction_denominator=64)
+    assert format_value(25.4, L, IN, prefs) == '1.000 in  (≈ 1")'
+    assert format_value(25.4, L, MM, DisplayPrefs(decimals=1)) == "25.4 mm"
 
 
 # --- expressions --------------------------------------------------------------------------
@@ -187,7 +183,8 @@ class _Demo(Calculator):
 def test_run_uses_defaults_and_records_steps() -> None:
     result = _Demo().run()
     assert result.outputs["doubled"] == pytest.approx(50.8)
-    assert render_step(result.steps[0], result, DisplayPrefs()) == ("2·X", "2·1.0000", "2.0000 in")
+    work = render_step(result.steps[0], result, IN, DisplayPrefs())
+    assert work == ("2·X", "2·1.0000", "2.0000 in")
     assert result.to_dict()["outputs"]["doubled"] == {
         "value": pytest.approx(50.8),
         "unit": "mm",
@@ -260,7 +257,7 @@ def test_notes_carry_a_kind_references_and_subjects() -> None:
 )
 def test_notes_are_worded_once_for_every_front_end(note: Note, wording: tuple[str, ...]) -> None:
     """ADR-0017 F1: the lead, then the detail, then the sources, each its own part."""
-    assert describe_note(note, DisplayPrefs()).lines == wording
+    assert describe_note(note, IN, DisplayPrefs()).lines == wording
 
 
 def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_json() -> None:
@@ -271,10 +268,10 @@ def test_a_notes_fields_are_filled_in_the_display_units_and_in_base_units_in_jso
         quantities={"R": (25.4, Dimension.LENGTH), "T": (50.8, Dimension.LENGTH)},
         phrases={"material": "brass {not a field}"},
     )
-    text = describe_note(note, DisplayPrefs())
+    text = describe_note(note, IN, DisplayPrefs())
     assert text.lead == "Radius 1.0000 in is under 2.0000 in for brass {not a field}."
     assert text.detail == "Nothing joined: brass {not a field} {as} written."
-    metric = describe_note(note, DisplayPrefs(length_unit="mm"))
+    metric = describe_note(note, MM, DisplayPrefs())
     assert metric.lead.startswith("Radius 25.4000 mm is under 50.8000 mm")
     data = note.to_dict()
     assert data["text"] == "Radius 25.4 mm is under 50.8 mm for brass {not a field}."
@@ -574,7 +571,7 @@ def test_every_method_runs_on_defaults_and_renders(calc: Calculator) -> None:
     for method in calc.methods:
         result = calc.run(method=method.key)
         for step in result.steps:
-            render_step(step, result, DisplayPrefs())
+            render_step(step, result, IN, DisplayPrefs())
         for key, value in result.outputs.items():
             assert math.isfinite(value), f"{calc.id}/{method.key}: {key} is not finite"
 
@@ -809,9 +806,9 @@ def test_work_in_its_own_unit_is_shown_in_it_then_in_the_display_unit() -> None:
         substitution={"w": "70", "c": "0", "B": "41.82"},
         expression_unit="in",
     )
-    inches = render_step(step, None, DisplayPrefs())
+    inches = render_step(step, None, IN, DisplayPrefs())
     assert inches == ("(w + c) / 16 / B", "(70 + 0) / 16 / 41.82", "0.1046 in")
-    millimetres = render_step(step, None, DisplayPrefs(length_unit="mm"))
+    millimetres = render_step(step, None, MM, DisplayPrefs())
     assert millimetres[1:] == ("(70 + 0) / 16 / 41.82", "0.1046 in = 2.6568 mm")
 
 
@@ -858,8 +855,8 @@ def test_a_stated_value_is_shown_as_stated_in_either_unit() -> None:
         expression_unit="in",
         stated="0.109375 in",
     )
-    assert render_step(step, None, DisplayPrefs())[2] == "0.109375 in"
-    assert render_step(step, None, DisplayPrefs(length_unit="mm"))[2] == ("0.109375 in = 2.7781 mm")
+    assert render_step(step, None, IN, DisplayPrefs())[2] == "0.109375 in"
+    assert render_step(step, None, MM, DisplayPrefs())[2] == ("0.109375 in = 2.7781 mm")
     with pytest.raises(SpecError, match="needs an expression_unit"):
         Step("T", "Thickness", Dimension.LENGTH, 2.778125, "t", stated="0.109375 in")
     with pytest.raises(SpecError, match="isn't its value in in"):
@@ -880,10 +877,11 @@ def test_a_methods_notes_name_their_values_and_read_in_the_users_format() -> Non
     method = Method(
         "m", "M", "S", Verification.UNVERIFIED, notes=("gives {a}",), quantities={"a": angle}
     )
-    assert method_notes(method, DisplayPrefs()) == ("gives 132.70°",)
-    assert method_notes(method, DisplayPrefs(symbols=NumberSymbols(","))) == ("gives 132,70°",)
+    assert method_notes(method, IN, DisplayPrefs()) == ("gives 132.70°",)
+    comma = DisplayPrefs(symbols=NumberSymbols(","))
+    assert method_notes(method, IN, comma) == ("gives 132,70°",)
     plain = Method("m", "M", "S", Verification.UNVERIFIED, notes=("braces {kept}",))
-    assert method_notes(plain, DisplayPrefs()) == ("braces {kept}",), "no values: plain text"
+    assert method_notes(plain, IN, DisplayPrefs()) == ("braces {kept}",), "no values: plain text"
     for notes in (("gives {b}",), ("gives {}",), ("gives {a:.2f}",)):
         with pytest.raises(SpecError):
             Method("m", "M", "S", Verification.UNVERIFIED, notes=notes, quantities={"a": angle})

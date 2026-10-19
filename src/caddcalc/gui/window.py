@@ -82,29 +82,29 @@ from caddcalc.core.formatting import (
     HEADED,
     DisplayPrefs,
     NumberSymbols,
+    ShownUnits,
     choice_text,
     describe_error,
     describe_note,
     describe_override,
     describe_setting_uses,
     describe_source,
-    display_unit,
     echo,
     entry_text,
-    entry_unit,
     format_output,
     format_value,
+    input_parts,
     method_notes,
     picked_text,
     render_step,
     unit_suffix,
-    value_parts,
 )
 from caddcalc.core.i18n import _
 from caddcalc.core.spec import named
 from caddcalc.core.units import (
     CLOSE_UP_SYMBOLS,
     Dimension,
+    Unit,
     UnitInTextError,
     base_text,
     parse_quantity_detailed,
@@ -333,6 +333,8 @@ class MainWindow(QMainWindow):
         self.branding = branding
         self.app_actions = actions if actions is not None else AppActions(branding, self)
         self.prefs = DisplayPrefs(symbols=number_symbols() if symbols is None else symbols)
+        self.shown_units = ShownUnits.generated()
+        """The output set results are shown in, chosen in the Units box."""
         self.calculator: Calculator | None = None
         """The calculator whose page is shown, if one is."""
         self.domain: Domain | None = None
@@ -816,9 +818,9 @@ class MainWindow(QMainWindow):
     def _on_units_changed(self, unit: str) -> None:
         self._apply_setting_edits()
         self._finish_field_edits()
-        prefs = replace(self.prefs, length_unit=unit)
-        self._name_pending_units(prefs)
-        self.prefs = prefs
+        units = ShownUnits.generated(unit)
+        self._name_pending_units(units)
+        self.shown_units = units
         if self.domain is not None:
             self._rebuild_domain_form()
         else:
@@ -1017,6 +1019,17 @@ class MainWindow(QMainWindow):
     def _choice(self, calc: Calculator, p: Param) -> str:
         """Return the unit or form ``p``'s field is picked in on ``calc``: set, or its default."""
         return self.field_choices.get((calc.id, p.key), p.default_choice or "")
+
+    def _units_for(self, calc: Calculator | None = None) -> ShownUnits:
+        """Return the units a calculator's results are shown in: the set, and its fields'."""
+        calc = self.calculator if calc is None else calc
+        if calc is None:
+            return self.shown_units
+        return self.shown_units.with_inputs({p.key: self._choice(calc, p) for p in calc.params})
+
+    def _setting_unit(self, setting: Param) -> Unit:
+        """Return the unit a family setting is shown and read in (known-issues KI-027)."""
+        return self.shown_units.unit(setting.dimension)
 
     @property
     def _decimal(self) -> str:
@@ -1474,7 +1487,14 @@ class MainWindow(QMainWindow):
             own = self._own_value(calc, p)
             text = self.field_notices.get((calc.id, key), "")
             if inherited is not None and not self._inherits(calc, p) and own is not None:
-                text = describe_override(domain.name, inherited.value, own, p.dimension, self.prefs)
+                text = describe_override(
+                    domain.name,
+                    inherited.value,
+                    own,
+                    p.dimension,
+                    self._choice(calc, p),
+                    self.prefs,
+                )
             note.setText(text)
             note.setVisible(bool(text))
         return problems
@@ -1514,9 +1534,12 @@ class MainWindow(QMainWindow):
             )
             for key, outline in strongest(result.notes, self.fields).items():
                 _set_outline(self.fields[key][1], outline)
-            self.results.show_result(result, self.prefs)
+            units = self._units_for(calc)
+            self.results.show_result(result, units, self.prefs)
             self.output.setHtml(
-                result_html(calc, result, self.prefs, current_scheme(), include_results=False)
+                result_html(
+                    calc, result, units, self.prefs, current_scheme(), include_results=False
+                )
             )
             self.result = result
         except Exception as exc:  # noqa: BLE001
@@ -1526,14 +1549,15 @@ class MainWindow(QMainWindow):
         """Show why there's no result: an input to fix, or a calculation that failed."""
         _write_bug(exc)
         if isinstance(exc, InputError):
-            self._show_failure([describe_error(exc, self.prefs)], CHECK_INPUTS)
+            self._show_failure([describe_error(exc, self._units_for(), self.prefs)], CHECK_INPUTS)
         else:
-            self._show_failure([_failure_text(exc, self.prefs)], CALCULATION_FAILED)
+            message = _failure_text(exc, self._units_for(), self.prefs)
+            self._show_failure([message], CALCULATION_FAILED)
 
     def _show_failure(self, errors: list[str], heading: str) -> None:
         """Blank the results, and show why there are none in the work."""
         self.result = None
-        self.results.show_result(None, self.prefs)
+        self.results.show_result(None, self.shown_units, self.prefs)
         self.output.setHtml(_error_html(errors, current_scheme(), heading))
 
     # --- domain settings page -------------------------------------------------------------
@@ -1568,13 +1592,13 @@ class MainWindow(QMainWindow):
                 edit.setText(pending)
                 edit.setModified(True)
             elif (entry := self.domain_settings.get(domain, setting.key)) is not None:
-                edit.setText(entry_text(entry, self.prefs))
+                edit.setText(entry_text(entry, self._setting_unit(setting), self.prefs))
             edit.setToolTip(setting.help)
             edit.textEdited.connect(_slot(self._on_setting_edited, setting.key))
             edit.editingFinished.connect(_slot(self._apply_setting, setting.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
-            field.addWidget(QLabel(unit_suffix(setting.dimension, self.prefs).strip()))
+            field.addWidget(QLabel(unit_suffix(self._setting_unit(setting)).strip()))
             about = QLabel()
             about.setTextFormat(Qt.TextFormat.RichText)
             about.setWordWrap(True)
@@ -1621,7 +1645,7 @@ class MainWindow(QMainWindow):
         self.settings_box.hide()
         QTimer.singleShot(0, self, self._clear_failed_settings)
         color = role_color("text_error", current_scheme())
-        message = escape(_failure_text(exc, self.prefs))
+        message = escape(_failure_text(exc, self.shown_units, self.prefs))
         self.domain_note.setText(
             f"<p style='color:{color}'><b>The settings couldn't be shown:</b></p>"
             f"<ul><li>{message}</li></ul>"
@@ -1775,7 +1799,8 @@ class MainWindow(QMainWindow):
             if derived is None:
                 edit.setPlaceholderText("not set")
             else:
-                shown = entry_text(_derived_entry(derived, setting.dimension), self.prefs)
+                entry = _derived_entry(derived, setting.dimension)
+                shown = entry_text(entry, self._setting_unit(setting), self.prefs)
                 edit.setPlaceholderText(f"{shown} ({derived.source.label})")
             uses = self.registry.setting_uses(domain.id, key)
             self.setting_abouts[key].setText(
@@ -1791,6 +1816,7 @@ class MainWindow(QMainWindow):
                         setting,
                         derived,
                         overridden=key in family.values,
+                        units=self.shown_units,
                         prefs=self.prefs,
                         scheme=current_scheme(),
                     ),
@@ -1803,7 +1829,7 @@ class MainWindow(QMainWindow):
         selections = self._selections(domain)
         if self.facts_label is not None:
             facts = domain.facts(selections)
-            self.facts_label.setText(_facts_html(facts, self.prefs))
+            self.facts_label.setText(_facts_html(facts, self.shown_units, self.prefs))
             self.settings_form.setRowVisible(self.facts_label, bool(facts))
         offered = domain.starting_values(selections)
         for key, row in self.start_rows.items():
@@ -1837,7 +1863,7 @@ class MainWindow(QMainWindow):
         )
         self.pending_settings.pop((domain.id, start.setting), None)
         _setting, edit = self.setting_fields[start.setting]
-        edit.setText(entry_text(start.entry, self.prefs))
+        edit.setText(entry_text(start.entry, self._setting_unit(_setting), self.prefs))
         edit.setModified(False)
         self._refresh_domain_details()
         self._show_setting_problems()
@@ -1847,13 +1873,13 @@ class MainWindow(QMainWindow):
         domain = self.domain
         if domain is None or not text.strip():
             return None
-        default_unit = entry_unit(setting.dimension, self.prefs)
+        default_unit = self._setting_unit(setting).symbol
         try:
             self.domain_settings.set_text(
                 domain, setting.key, text, default_unit, decimal=self._decimal
             )
         except InputError as exc:
-            message = describe_error(exc, self.prefs)
+            message = describe_error(exc, self.shown_units, self.prefs)
             if isinstance(exc, OutOfRangeError):  # a range error already names the setting
                 return message
             return f"{named(setting.label, setting.symbol)}: {message}"
@@ -1877,7 +1903,7 @@ class MainWindow(QMainWindow):
         text = edit.text()
         if self._setting_problem(setting, text) is None:
             if text.strip():
-                default_unit = entry_unit(setting.dimension, self.prefs)
+                default_unit = self._setting_unit(setting).symbol
                 updated = self.domain_settings.set_text(
                     domain, key, text, default_unit, decimal=self._decimal
                 )
@@ -1896,7 +1922,7 @@ class MainWindow(QMainWindow):
         for key in list(self.setting_fields):
             self._apply_setting(key)
 
-    def _name_pending_units(self, new_prefs: DisplayPrefs) -> None:
+    def _name_pending_units(self, new_units: ShownUnits) -> None:
         """Before the display unit changes, give unapplied unitless text its unit.
 
         Unapplied text is read in the display unit when it is applied, so "5" typed in
@@ -1909,7 +1935,7 @@ class MainWindow(QMainWindow):
         for (domain_id, key), text in list(self.pending_settings.items()):
             dimension = self.registry.domain(domain_id).setting(key).dimension
             self.pending_settings[domain_id, key] = _name_unit(
-                text, dimension, self.prefs, new_prefs
+                text, dimension, self.shown_units, new_units, self.prefs.symbols.decimal
             )
 
     @_settings_boundary
@@ -1994,10 +2020,10 @@ def _error_html(errors: list[str], scheme: Scheme = "light", heading: str = CHEC
     )
 
 
-def _failure_text(exc: Exception, prefs: DisplayPrefs) -> str:
+def _failure_text(exc: Exception, units: ShownUnits, prefs: DisplayPrefs) -> str:
     """Return a failure's message for users: caddcalc's own as worded, else its type too."""
     if isinstance(exc, CaddCalcError):
-        return describe_error(exc, prefs)
+        return describe_error(exc, units, prefs)
     return f"Unexpected error: {type(exc).__name__}: {exc}"
 
 
@@ -2046,16 +2072,15 @@ def _with_unit(fix: UnitInTextError) -> str:
     return f"{fix.number}{fix.shown}" if joined else f"{fix.number} {fix.shown}"
 
 
-def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayPrefs) -> str:
+def _name_unit(text: str, dimension: Dimension, old: ShownUnits, new: ShownUnits, mark: str) -> str:
     """Return ``text`` with the unit it was typed in, if the switch would change its meaning.
 
-    Only a bare number, in a dimension whose display unit changes, gains its unit.
+    Only a bare number, in a dimension whose shown unit changes, gains its unit.
     """
-    typed_in = display_unit(dimension, old)
-    if typed_in == display_unit(dimension, new):
+    typed_in = old.unit(dimension)
+    if typed_in == new.unit(dimension):
         return text
     try:
-        mark = old.symbols.decimal
         parsed = parse_quantity_detailed(text, dimension, typed_in.symbol, decimal=mark)
     except InputError:
         return text
@@ -2081,22 +2106,24 @@ def _derived_html(
     derived: DerivedValue | None,
     *,
     overridden: bool,
+    units: ShownUnits,
     prefs: DisplayPrefs,
     scheme: Scheme = "light",
 ) -> str:
     """Return what a choice derives for a setting: the value, its source, caution, and work."""
     if derived is None:
         return ""
-    value = escape(entry_text(_derived_entry(derived, setting.dimension), prefs))
+    unit = units.unit(setting.dimension)
+    value = escape(entry_text(_derived_entry(derived, setting.dimension), unit, prefs))
     source = escape(describe_source(derived.source))
     if overridden:
         lines = [f"<b>Overrides</b> {value} from {source}. Clear the field to use that value."]
     else:
         lines = [f"<b>From {source}:</b> {value}"]
     if derived.note is not None:
-        lines.append(_note_html(derived.note, prefs, scheme))
+        lines.append(_note_html(derived.note, units, prefs, scheme))
     if derived.work is not None:
-        symbolic, numeric, shown = render_step(derived.work, None, prefs)
+        symbolic, numeric, shown = render_step(derived.work, None, units, prefs)
         work = " = ".join(x for x in (f"{setting.symbol}", symbolic, numeric, shown) if x)
         if derived.work.note:
             work += f" ({derived.work.note})"
@@ -2104,11 +2131,11 @@ def _derived_html(
     return "<br>".join(lines)
 
 
-def _facts_html(facts: Sequence[Fact], prefs: DisplayPrefs) -> str:
-    """Return a domain's facts about its selections, quantities in display units."""
+def _facts_html(facts: Sequence[Fact], units: ShownUnits, prefs: DisplayPrefs) -> str:
+    """Return a domain's facts about its selections, quantities in the shown units."""
     lines = []
     for fact in facts:
-        text = fact.text.format(*(format_value(v, d, prefs) for v, d in fact.quantities))
+        text = fact.text.format(*(format_value(v, d, units, prefs) for v, d in fact.quantities))
         cited = "; ".join(f"{r.short}: {r.scope}" if r.scope else r.short for r in fact.references)
         source = f"<br><small>{escape(cited)}</small>" if cited else ""
         lines.append(f"<b>{escape(fact.heading)}:</b> {escape(text)}{source}")
@@ -2184,13 +2211,13 @@ def _secondary(text: str, scheme: Scheme) -> str:
     return f"<span style='color:{secondary_text(scheme)}'>{escape(text)}</span>"
 
 
-def _note_html(note: Note, prefs: DisplayPrefs, scheme: Scheme = "light") -> str:
+def _note_html(note: Note, units: ShownUnits, prefs: DisplayPrefs, scheme: Scheme = "light") -> str:
     """Return a note as rich text: its heading and lead, its detail, then its sources.
 
     The sources are in the secondary text colour, at the body's size (ADR-0017,
     amendments): the palette's muted role is under 4.5:1 for words.
     """
-    text = describe_note(note, prefs)
+    text = describe_note(note, units, prefs)
     first = escape(text.lead)
     if text.heading:
         first = f"<b>{escape(HEADED.format(heading=text.heading, lead=''))}</b>{first}"
@@ -2243,6 +2270,7 @@ def fixed_family() -> str:
 def result_html(
     calc: Calculator,
     result: Result,
+    units: ShownUnits,
     prefs: DisplayPrefs,
     scheme: Scheme = "light",
     *,
@@ -2251,12 +2279,13 @@ def result_html(
     """Return the results as rich text: results, notes, inputs, work, and method.
 
     The window shows the results in their own fields (ADR-0017), so it leaves them out;
-    the whole document stays available, for export and for print.
+    the whole document stays available, for export and for print. Each input is shown in
+    its field's choice where ``units`` names one, and everything else in the set's.
     """
     method = calc.get_method(result.method)
     rows = "".join(
         f"<tr><td><b>{escape(o.symbol)}</b></td><td>{escape(o.label)}</td>"
-        f"<td align='right'><b>{escape(format_output(o, result.outputs[o.key], prefs))}"
+        f"<td align='right'><b>{escape(format_output(o, result.outputs[o.key], units, prefs))}"
         "</b></td></tr>"
         for o in calc.outputs
     )
@@ -2265,7 +2294,8 @@ def result_html(
         # The kind's icon marks each note; there's no list bullet as well (F2).
         warn = "".join(
             f"<tr><td valign='top'>{_img(*_NOTE_ICONS[note.kind], scheme)}</td>"
-            f"<td{_text_style(note.kind, scheme)}>{_note_html(note, prefs, scheme)}</td></tr>"
+            f"<td{_text_style(note.kind, scheme)}>"
+            f"{_note_html(note, units, prefs, scheme)}</td></tr>"
             for note in strongest_first(result.notes)
         )
         parts.append(
@@ -2277,7 +2307,7 @@ def result_html(
     # set smaller after them (F3).
     input_rows = []
     for p in calc.params_for(result.method):
-        shown = value_parts(result.inputs[p.key], p.dimension, prefs)
+        shown = input_parts(p.key, result.inputs[p.key], p.dimension, units, prefs)
         number, unit = (shown.with_unit, "") if shown.unit_close_up else (shown.number, shown.unit)
         source = _secondary(describe_source(result.source_of(p.key)), scheme)
         input_rows.append(
@@ -2288,7 +2318,7 @@ def result_html(
     parts.append(f"<h3>Inputs</h3><table cellpadding='4'>{''.join(input_rows)}</table>")
     work = []
     for step in result.steps:
-        symbolic, numeric, value = render_step(step, result, prefs)
+        symbolic, numeric, value = render_step(step, result, units, prefs)
         lines = [f"{step.symbol} = {symbolic}"]
         if numeric:
             lines.append(f"= {numeric}")
@@ -2300,7 +2330,7 @@ def result_html(
     parts.append(f"<h3>Work</h3><p style=\"font-family: '{family}'\">")
     parts.append("<br><br>".join(work) + "</p>")
     refs = "".join(f"<li>{escape(str(r))}</li>" for r in method.references)
-    notes = "".join(f"<li>{escape(n)}</li>" for n in method_notes(method, prefs))
+    notes = "".join(f"<li>{escape(n)}</li>" for n in method_notes(method, units, prefs))
     parts.append(
         f"<h3>Method</h3><p><b>{escape(method.label)}</b>: {escape(method.summary)}<br>"
         f"Status: <b>{escape(method.status)}</b></p>"

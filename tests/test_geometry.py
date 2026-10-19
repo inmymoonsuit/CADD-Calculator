@@ -48,7 +48,7 @@ from caddcalc.core import (
     SpecError,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_note
+from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_note
 from caddcalc.core.units import parse_quantity
 from tests.helpers import run_inches
 
@@ -416,7 +416,7 @@ def test_an_odd_polygon_says_what_a_caliper_reads() -> None:
     reading = (result.outputs["across_flats"] + result.outputs["across_corners"]) / 2
     assert note.quantities["reading"] == (pytest.approx(reading), Dimension.LENGTH)
     assert note.subjects == ("sides", "across_flats", "across_corners")
-    text = describe_note(note, DisplayPrefs()).lead
+    text = describe_note(note, ShownUnits.generated(), DisplayPrefs()).lead
     assert "a caliper held from a flat to the opposite corner reads 1.5388 in" in text
     assert "r + R" in text
     assert RegularPolygon().run({"sides": 6}, "side").notes == (), "even: flats are parallel"
@@ -558,9 +558,10 @@ def test_areas_are_shown_in_the_square_of_the_length_unit() -> None:
     calc = Rectangle()
     result = calc.run()
     area = calc.output("area")
-    assert format_output(area, result.outputs["area"], DisplayPrefs()) == "12.0000 in²"
-    prefs = DisplayPrefs(length_unit="mm")
-    assert format_output(area, result.outputs["area"], prefs) == "7741.92 mm²"
+    inches, millimetres = ShownUnits.generated("in"), ShownUnits.generated("mm")
+    assert format_output(area, result.outputs["area"], inches, DisplayPrefs()) == "12.0000 in²"
+    prefs = DisplayPrefs()
+    assert format_output(area, result.outputs["area"], millimetres, prefs) == "7741.92 mm²"
 
 
 def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixture[str]) -> None:

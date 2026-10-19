@@ -619,3 +619,32 @@ def test_a_pick_keeps_the_undo_of_the_fields_it_didnt_change() -> None:
     assert window.pickers["inside_radius"].choice == "in", "typed in, so set"
     assert field(window, "inside_radius").isUndoAvailable()
     window.close()
+
+
+def test_the_inputs_are_shown_in_each_field_s_choice_not_the_results_units() -> None:
+    """The Inputs block says each input as its field reads it (ADR-0024 E4)."""
+    window = open_window()
+    window.select_calculator(BEND)
+    window.units_box.setCurrentText("mm")
+    pick(window, "thickness", "in")  # the first pick leads the untouched fields
+    pick(window, "bend_angle", "rad")
+    text = window.output.toPlainText()
+    inputs = text[text.index("Inputs") : text.index("Work")]
+    assert "Material thickness\n0.1046\nin" in inputs
+    assert "Bend angle\n1.5708\nrad" in inputs, "a radian to its own four places"
+    assert "BA Bend allowance" in results_text(window) and "mm" in results_text(window)
+    window.close()
+
+
+def test_a_range_error_names_the_bound_in_the_field_s_choice() -> None:
+    """The user types in the field's unit, so its bound is in that unit too."""
+    window = open_window()
+    window.select_calculator(BEND)
+    window.units_box.setCurrentText("mm")
+    pick(window, "bend_angle", "rad")
+    type_into(field(window, "bend_angle"), "4")
+    assert "must be less than 3.14159 rad" in window.output.toPlainText()
+    pick(window, "bend_angle", "deg")
+    type_into(field(window, "bend_angle"), "200")
+    assert "must be less than 180°" in window.output.toPlainText()
+    window.close()

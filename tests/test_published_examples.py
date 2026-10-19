@@ -32,7 +32,7 @@ from caddcalc.calculators.sheet_metal import (
 )
 from caddcalc.calculators.sheet_metal.common import EDD5_BEND_ALLOWANCE, MH31_FIG13
 from caddcalc.core import Calculator, Dimension, Reference, Verification, parse_quantity
-from caddcalc.core.formatting import CopyForm, DisplayPrefs, copy_output
+from caddcalc.core.formatting import CopyForm, DisplayPrefs, ShownUnits, copy_output
 from tests.helpers import run_inches
 
 
@@ -114,7 +114,9 @@ def test_edd5_cone_sector_rule_on_one_surface() -> None:
 def _full(calc: Calculator, typed: str, dimension: Dimension, row: str) -> str:
     """A converter's row for ``typed``, copied at full precision (ten digits)."""
     result = calc.run({"value": parse_quantity(typed, dimension)})
-    return copy_output(calc.output(row), result.outputs[row], DisplayPrefs(), CopyForm.FULL)
+    return copy_output(
+        calc.output(row), result.outputs[row], ShownUnits.generated(), DisplayPrefs(), CopyForm.FULL
+    )
 
 
 def test_sp811_b8_inch_and_foot() -> None:

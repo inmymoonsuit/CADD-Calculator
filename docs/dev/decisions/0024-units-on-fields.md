@@ -1115,3 +1115,48 @@ UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
 * Seventeen mutants, one for each of these guards and for each of the review's surviving
   ones, are each killed.
 
+
+### 2026-10-19: as built, E-3
+
+* **`ShownUnits`** (`core.formatting`) is an output set resolved: a choice for every
+  dimension, each output's pick, each input's field choice, and the set's key. It's
+  built by `ShownUnits.generated(length)` or `ShownUnits.of(unit_set, picks=…,
+  inputs=…)`, which takes a declared set's missing dimensions, such as a note's stress,
+  from the generated set for its length; one missing a dimension is refused, and its
+  mappings are read-only. `unit(dimension)` is a form's full unit, which the work, notes
+  and messages use.
+* **What takes it,** after `DisplayPrefs`'s place: `value_parts`, `format_value`,
+  `output_parts`, `format_output`, `copy_text`, `copy_output`, `results_tsv`,
+  `render_step`, `describe_note`, `method_notes`, `describe_error`, the CLI's
+  `format_result`, and the window's results panel and document. `input_parts` and
+  `format_input` show an input in its field's choice; `describe_override` takes the
+  field's choice, `entry_text` a unit, and `unit_suffix` a unit. `DisplayPrefs.length_unit`,
+  `display_unit`, `entry_unit` and `display_value` are removed.
+* **Neutrality:** zero differences. The golden is captured at 68e01ee, the head before
+  E-3, with its own API, rather than at c7b1772, so F0's declared changes don't count
+  (engineering log). It's every built-in calculator and method, in the `in` set with
+  "." and "," and the `mm` set, run on the defaults, with each input out of range, and
+  with each input scaled by 0.01, 0.1, 10 and 100: 912 runs, 312 of them refused and 60
+  with notes. Each output is shown, said and copied in every form but the fraction,
+  with the tab-separated rows, the work, the notes, the method's notes, the inputs, the
+  CLI's report and each error message. The 240 unscaled runs are held in full text and
+  the 672 scaled ones by digest (`tests/test_shown_units_neutral.py`).
+* **New, each tested:** the `ft_in` and `in_16` sets show lengths in their forms and areas
+  in in²; a declared set shows angles in DMS; the work reads `2 · 8.0938` and
+  `16.1875 in` in `ft_in`; a fixed-unit output ignores every set; the Inputs list and a
+  range error are in each field's choice, in the window and in `core`.
+* **An output with its own picker never follows the set.** Until it's picked, it shows in
+  its first pick, as E1's declaration says; a pick it doesn't offer is a `UsageError`.
+* **A unit too coarse for its dimension's places declares its own** (`Unit.decimals`):
+  the radian, at 4. At the angle's 2 places, 90° picked in rad was listed `1.57 rad`,
+  0.01 rad being 0.57°. No generated set has the radian, so neutrality holds.
+* **Until U2:** the Units box sets the window's set, `ShownUnits.generated("in")` or
+  `("mm")`, and a settings field shows and reads in its unit (KI-027). **Until E-4:**
+  `--units` names the CLI's generated set, a bare number reads in its unit, and the
+  `(≈ 5/16")` hint stays.
+* **Low 3,** the tie window's unit, stays the shown unit: ADR-0019's amendment of this
+  date.
+* Eleven mutants, one for each guard (the first pick, the refused pick, every
+  dimension, read-only mappings, the set by its length, the input's choice, the range
+  error's unit, a unit's decimals, the window's field choices, the settings' unit and
+  the CLI's bare number), are each killed. Offscreen: 2,251 tests pass.

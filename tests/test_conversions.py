@@ -22,6 +22,7 @@ from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
     NumberSymbols,
+    ShownUnits,
     copy_output,
     format_output,
     output_parts,
@@ -31,20 +32,26 @@ from caddcalc.core.formatting import (
 from caddcalc.core.units import convert, get_unit, parse_quantity
 
 L, A, S, AR = Dimension.LENGTH, Dimension.ANGLE, Dimension.STRESS, Dimension.AREA
+IN = ShownUnits.generated()
 
 
-def _shown(calc: Calculator, typed: str, prefs: DisplayPrefs | None = None) -> dict[str, str]:
+def _shown(
+    calc: Calculator,
+    typed: str,
+    prefs: DisplayPrefs | None = None,
+    units: ShownUnits = IN,
+) -> dict[str, str]:
     """Each row's text for ``typed``, as every front end shows it."""
     prefs = prefs or DisplayPrefs()
     (param,) = calc.params
     result = calc.run({"value": parse_quantity(typed, param.dimension)})
-    return {o.key: format_output(o, result.outputs[o.key], prefs) for o in calc.outputs}
+    return {o.key: format_output(o, result.outputs[o.key], units, prefs) for o in calc.outputs}
 
 
 def _copied(calc: Calculator, typed: str, row: str, form: CopyForm = CopyForm.FULL) -> str:
     (param,) = calc.params
     result = calc.run({"value": parse_quantity(typed, param.dimension)})
-    return copy_output(calc.output(row), result.outputs[row], DisplayPrefs(), form)
+    return copy_output(calc.output(row), result.outputs[row], IN, DisplayPrefs(), form)
 
 
 def test_conversions_comes_after_geometry_with_one_converter_per_kind() -> None:
@@ -89,10 +96,11 @@ def test_a_typed_fraction_reads_as_its_exact_conversion_at_every_shown_digit() -
 
 @pytest.mark.parametrize("length", ["in", "mm", "ft", "m"])
 def test_every_row_keeps_its_unit_whatever_the_unit_system(length: str) -> None:
-    prefs = DisplayPrefs(length_unit=length, decimals=1, fraction_denominator=None)
-    assert _shown(LengthConverter(), "1 in", prefs) == _shown(LengthConverter(), "1 in")
-    assert _shown(AreaConverter(), "1 ft²", prefs) == _shown(AreaConverter(), "1 ft²")
-    assert _shown(StressConverter(), "1 psi", prefs) == _shown(StressConverter(), "1 psi")
+    units = ShownUnits.generated(length)
+    prefs = DisplayPrefs(decimals=1, fraction_denominator=None)
+    for calc, typed in ((LengthConverter(), "1 in"), (AreaConverter(), "1 ft²")):
+        assert _shown(calc, typed, prefs, units) == _shown(calc, typed), calc.id
+    assert _shown(StressConverter(), "1 psi", prefs, units) == _shown(StressConverter(), "1 psi")
 
 
 def test_the_length_rows() -> None:
@@ -152,7 +160,9 @@ def test_the_length_work_shows_each_fraction_and_its_error() -> None:
 def test_a_nearest_fraction_is_spoken_in_words() -> None:
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity("1.19 in", L)})
-    parts = output_parts(calc.output("nearest_16"), result.outputs["nearest_16"], DisplayPrefs())
+    parts = output_parts(
+        calc.output("nearest_16"), result.outputs["nearest_16"], IN, DisplayPrefs()
+    )
     assert spoken_value(parts) == "1 and 3 sixteenths inches"
 
 
@@ -177,7 +187,9 @@ def test_an_error_shows_its_sign_both_ways_and_says_it() -> None:
         ("0.3125 in", "0.000000", "0.000000 inches"),
     ):
         result = calc.run({"value": parse_quantity(typed, L)})
-        parts = output_parts(calc.output("error_16"), result.outputs["error_16"], DisplayPrefs())
+        parts = output_parts(
+            calc.output("error_16"), result.outputs["error_16"], IN, DisplayPrefs()
+        )
         assert (parts.number, spoken_value(parts)) == (shown, spoken), typed
         assert _copied(calc, typed, "error_16", CopyForm.VALUE) == shown, "as shown"
     assert calc.output("error_16").help.endswith(
@@ -191,11 +203,11 @@ def test_every_negative_is_spoken_minus() -> None:
     """A plain value says its sign by the template a compound form's uses."""
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity("-0.31 in", L)})
-    parts = output_parts(calc.output("mm"), result.outputs["mm"], DisplayPrefs())
+    parts = output_parts(calc.output("mm"), result.outputs["mm"], IN, DisplayPrefs())
     assert spoken_value(parts) == "minus 7.87400 millimeters"
-    assert spoken_value(value_parts(-25.4, L, DisplayPrefs())) == "minus 1.0000 inches"
-    assert spoken_value(value_parts(-30.0, A, DisplayPrefs())) == "minus 30.00 degrees"
-    assert spoken_value(value_parts(-0.25, Dimension.RATIO, DisplayPrefs())) == "minus 0.2500"
+    assert spoken_value(value_parts(-25.4, L, IN, DisplayPrefs())) == "minus 1.0000 inches"
+    assert spoken_value(value_parts(-30.0, A, IN, DisplayPrefs())) == "minus 30.00 degrees"
+    assert spoken_value(value_parts(-0.25, Dimension.RATIO, IN, DisplayPrefs())) == "minus 0.2500"
 
 
 def test_a_negative_keeps_its_sign_in_every_row() -> None:
@@ -241,7 +253,9 @@ def test_a_comma_locale_shows_its_mark_and_copies_a_point() -> None:
     assert _shown(LengthConverter(), "1 in", prefs)["mm"] == "25,4000 mm"
     calc = LengthConverter()
     result = calc.run({"value": 25.4})
-    assert copy_output(calc.output("mm"), result.outputs["mm"], prefs, CopyForm.VALUE) == "25.4000"
+    assert (
+        copy_output(calc.output("mm"), result.outputs["mm"], IN, prefs, CopyForm.VALUE) == "25.4000"
+    )
 
 
 def test_each_converter_is_verified_against_sp_811_for_its_scope() -> None:
@@ -285,12 +299,12 @@ def test_a_half_way_length_takes_the_even_fraction_in_every_row() -> None:
 @pytest.mark.parametrize("typed", ["3/32 in", "2.38125 mm", "7/32 in", "5.55625 mm"])
 def test_the_hint_and_the_nearest_rows_round_a_tie_alike(typed: str) -> None:
     """The ``(≈ …")`` hint beside the inch row and the nearest 1/16 inch agree on a tie."""
-    prefs = DisplayPrefs(length_unit="in", fraction_denominator=16)
+    prefs = DisplayPrefs(fraction_denominator=16)
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity(typed, L)})
-    hint = output_parts(calc.output("in"), result.outputs["in"], prefs).fraction
+    hint = output_parts(calc.output("in"), result.outputs["in"], IN, prefs).fraction
     nearest = copy_output(
-        calc.output("nearest_16"), result.outputs["nearest_16"], prefs, CopyForm.VALUE
+        calc.output("nearest_16"), result.outputs["nearest_16"], IN, prefs, CopyForm.VALUE
     )
     assert f'{hint}"' == nearest.replace("0-", ""), typed
     assert hint in ("1/8", "1/4"), typed
@@ -300,8 +314,11 @@ def test_an_error_row_takes_no_fraction_hint() -> None:
     prefs = DisplayPrefs(fraction_denominator=64)
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity("0.31 in", L)})
-    assert output_parts(calc.output("error_16"), result.outputs["error_16"], prefs).fraction is None
-    assert output_parts(calc.output("in"), result.outputs["in"], prefs).fraction == "5/16"
+    assert (
+        output_parts(calc.output("error_16"), result.outputs["error_16"], IN, prefs).fraction
+        is None
+    )
+    assert output_parts(calc.output("in"), result.outputs["in"], IN, prefs).fraction == "5/16"
 
 
 def test_a_value_and_its_negative_show_the_same_error_digits() -> None:
@@ -313,7 +330,7 @@ def test_a_value_and_its_negative_show_the_same_error_digits() -> None:
             for sign in ("", "-"):
                 result = calc.run({"value": parse_quantity(sign + text, L)})
                 rows = [calc.output(f"error_{d}") for d in (16, 32, 64)]
-                errors = [format_output(o, result.outputs[o.key], DisplayPrefs()) for o in rows]
+                errors = [format_output(o, result.outputs[o.key], IN, DisplayPrefs()) for o in rows]
                 shown.append([e.lstrip("+-") for e in errors])
             assert shown[0] == shown[1], text
 
@@ -331,7 +348,7 @@ def test_no_row_is_ever_infinite_or_not_a_number(calc: type[Calculator], value: 
         assert "is too large to show in kPa: its size must be under 1.79769e+308 kPa" in str(exc)
         return
     for output in calc.outputs:
-        text = format_output(output, result.outputs[output.key], DisplayPrefs())
+        text = format_output(output, result.outputs[output.key], IN, DisplayPrefs())
         assert "inf" not in text and "nan" not in text, (output.key, text)
 
 
@@ -409,9 +426,9 @@ def test_an_errors_work_line_shows_its_sign_as_its_row_does() -> None:
     for typed, shown in cases:
         result = calc.run({"value": parse_quantity(typed, L)})
         step = next(s for s in result.steps if s.symbol == "E16")
-        assert step.signed and render_step(step, result, DisplayPrefs())[2] == shown, typed
+        assert step.signed and render_step(step, result, IN, DisplayPrefs())[2] == shown, typed
     n16 = next(s for s in result.steps if s.symbol == "N16")
-    assert not n16.signed and render_step(n16, result, DisplayPrefs())[2] == "0.3125 in"
+    assert not n16.signed and render_step(n16, result, IN, DisplayPrefs())[2] == "0.3125 in"
     assert "signed" not in result.to_dict()["steps"][0], "JSON's shape is unchanged"
 
 
@@ -421,7 +438,7 @@ def test_the_tsv_keeps_a_plus_value_a_number_and_full_precision_drops_the_plus()
 
     calc = LengthConverter()
     result = calc.run({"value": parse_quantity("0.31 in", L)})
-    rows = results_tsv(calc, result, DisplayPrefs()).splitlines()
+    rows = results_tsv(calc, result, IN, DisplayPrefs()).splitlines()
     row = next(r for r in rows if r.startswith("E16"))
     assert row.split("\t")[2] == "+0.002500", row
     assert _copied(calc, "0.31 in", "error_16", CopyForm.FULL) == "0.0025"

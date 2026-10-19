@@ -16,6 +16,19 @@ Template:
 
 ---
 
+## 2026-10-19: E-3's neutrality golden in full text, and from c7b1772
+**Tried:** holding E-3 to every built-in calculator's text written with the length
+preference, captured as ADR-0024's E8 says, from c7b1772, and in full: 912 runs, the
+defaults, each input out of range, and each input scaled by 0.01 to 100.
+**Outcome:** changed before E-3 was committed.
+**Why:** c7b1772 is before F0, so F0's declared changes would count as differences E-3
+didn't make. The full text was 1.45 MB, nearly all of it the 672 scaled runs, which
+are there for the 60 runs whose notes the defaults never raise.
+**Instead:** captured at 68e01ee, the head before E-3, with that commit's own API; the
+240 default and out-of-range runs in full text, to read a difference by, and each
+scaled run as the SHA-256 of its canonical JSON (`tests/data/e3_neutrality.json`,
+310 KB).
+
 ## 2026-10-19: Following a pick with every untouched picker, at every step
 **Tried:** in U1, the first change to a dimension's picker carried to the calculator's
 other pickers of that dimension, each "moving under §2's rules", and a closed picker's

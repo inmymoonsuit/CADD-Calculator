@@ -34,7 +34,7 @@ from caddcalc.core import (
     nominal,
     parse_table,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_note
+from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_note
 from caddcalc.core.refdata import MAX_CITE_ONLY_PER_PUBLICATION
 
 ACCESSED = datetime.date(2026, 10, 17)
@@ -122,7 +122,7 @@ def test_a_short_title_names_a_reference_in_labels_and_falls_back_to_the_full_on
 def test_a_note_names_each_sources_scope() -> None:
     bench = Reference("AC 43.13-1B", locator="Table 4-6", scope="aerospace bench practice")
     note = Note(NoteKind.LIMIT_EXCEEDED, "Too tight.", (bench, Reference("TO 1-1A-9")))
-    assert describe_note(note, DisplayPrefs()).lines == (
+    assert describe_note(note, ShownUnits.generated(), DisplayPrefs()).lines == (
         "Limit exceeded: Too tight.",
         "Sources: AC 43.13-1B, Table 4-6: aerospace bench practice · TO 1-1A-9",
     )

@@ -44,7 +44,7 @@ from caddcalc.core import (
     ValueOrigin,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_error, describe_source
+from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_error, describe_source
 from caddcalc.core.provenance import InputSource
 
 L = Dimension.LENGTH
@@ -305,7 +305,7 @@ def test_an_out_of_range_derived_value_names_its_source() -> None:
     with pytest.raises(OutOfRangeError) as caught:
         _Bend().run(settings=chosen("std:2").for_domain(SHOP))
     assert caught.value.source.kind is SourceKind.DERIVED
-    assert describe_error(caught.value, DisplayPrefs(length_unit="mm")) == (
+    assert describe_error(caught.value, ShownUnits.generated("mm"), DisplayPrefs()) == (
         "Thickness (T) from plate 2, Standard (nominal) is 4 mm, but this calculator needs at "
         "most 3 mm. Override it in this calculator."
     )

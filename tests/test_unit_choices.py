@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+import tests.units_as_it_was as old
 from caddcalc.calculators import default_registry
 from caddcalc.calculators.geometry import RightTriangle
 from caddcalc.calculators.sheet_metal import BendAllowance
@@ -25,7 +26,6 @@ from caddcalc.core import (
     UsageError,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, display_unit
 from caddcalc.core.units import registry
 
 L, A, R, S, AREA, C = (
@@ -87,14 +87,16 @@ def test_the_generated_sets_are_one_per_length_choice() -> None:
     assert keys == ["in", "in_16", "in_32", "in_64", "ft_in", "ft", "mm", "cm", "m"]
 
 
-@pytest.mark.parametrize("length", ["in", "mm", "ft", "cm", "m"])
-def test_a_generated_set_shows_what_the_length_preference_showed(length: str) -> None:
-    """E-3's neutrality rests on it: the in and mm sets are today's display units."""
+@pytest.mark.parametrize(
+    ("length", "square"),
+    [("in", "in²"), ("mm", "mm²"), ("ft", "ft²"), ("cm", "cm²"), ("m", "m²")],
+)
+def test_a_generated_set_shows_what_the_length_preference_showed(length: str, square: str) -> None:
+    """E-3's neutrality rests on it: the in and mm sets are the old display units."""
     choices = dict(registry().generated_sets())[length]
-    prefs = DisplayPrefs(length_unit=length)
-    assert {d: choices[d] for d in Dimension} == {
-        d: display_unit(d, prefs).symbol for d in Dimension
-    }
+    shown = {d: choices[d] for d in (L, A, R, S)}
+    assert shown == {d: old.display_unit(old.Dimension(d.value), length).symbol for d in shown}
+    assert (choices[AREA], choices[C]) == (square, ""), "the length's square; a count is bare"
 
 
 @pytest.mark.parametrize("form", ["in_16", "in_32", "in_64", "ft_in"])

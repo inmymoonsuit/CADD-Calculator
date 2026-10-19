@@ -8,7 +8,7 @@ from typing import Any, override
 
 import pytest
 
-from caddcalc.core.formatting import POINT, DisplayPrefs, results_tsv
+from caddcalc.core.formatting import POINT, DisplayPrefs, ShownUnits, results_tsv
 from tests.qt_helpers import open_window, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
@@ -143,7 +143,8 @@ def test_copy_all_copies_spreadsheet_rows_from_its_button_and_the_window_keys() 
     from caddcalc.gui.result_fields import COPY_ALL_KEYS
 
     window = _bend_window()
-    expected = results_tsv(window.calculator, window.result, window.prefs)
+    units = window._units_for(window.calculator)
+    expected = results_tsv(window.calculator, window.result, units, window.prefs)
     window.results.copy_all_button.click()
     assert _clipboard().text() == expected
     assert window.statusBar().currentMessage() == "Copied all results to the clipboard"
@@ -365,6 +366,6 @@ def test_a_plugin_calculator_copies_with_no_code_of_its_own() -> None:
     field.copy_button.click()
     assert _clipboard().text() == "1.0000"
     assert window.results.copy_all() == results_tsv(
-        window.calculator, window.result, DisplayPrefs()
+        window.calculator, window.result, ShownUnits.generated(), DisplayPrefs()
     )
     window.close()

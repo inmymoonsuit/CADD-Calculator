@@ -27,7 +27,13 @@ from caddcalc.core import (
     ValueOrigin,
     parse_quantity_detailed,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_source, entry_text, field_text
+from caddcalc.core.formatting import (
+    DisplayPrefs,
+    ShownUnits,
+    describe_source,
+    entry_text,
+    field_text,
+)
 from caddcalc.core.units import get_unit
 
 OTHER = Domain(
@@ -96,13 +102,14 @@ def test_a_typed_value_may_differ_from_its_parse_by_one_ulp() -> None:
     assert TypedValue(nudged, "1/3", get_unit("in"), explicit_unit=False).value == nudged
 
 
-INCHES, MILLIMETRES = DisplayPrefs(length_unit="in"), DisplayPrefs(length_unit="mm")
+INCHES, MILLIMETRES = ShownUnits.generated("in"), ShownUnits.generated("mm")
+PREFS = DisplayPrefs()
 
 
 def test_a_field_shows_the_users_text_while_its_unit_is_the_display_unit() -> None:
     third = TypedValue.parse("1/3", Dimension.LENGTH, "in")
     switches = [INCHES, MILLIMETRES, INCHES, MILLIMETRES, INCHES]
-    assert [entry_text(third, prefs) for prefs in switches] == [
+    assert [entry_text(third, units.unit(Dimension.LENGTH), PREFS) for units in switches] == [
         "1/3",
         "8.466667",
         "1/3",
@@ -126,13 +133,14 @@ def test_a_field_shows_the_users_text_while_its_unit_is_the_display_unit() -> No
 def test_a_field_keeps_text_that_names_its_unit_or_needs_none(
     text: str, dimension: Dimension, default: str | None, shown_in_mm: str
 ) -> None:
-    assert entry_text(TypedValue.parse(text, dimension, default), MILLIMETRES) == shown_in_mm
+    entry = TypedValue.parse(text, dimension, default)
+    assert entry_text(entry, MILLIMETRES.unit(dimension), PREFS) == shown_in_mm
 
 
 def test_field_text_is_the_display_value_without_trailing_zeros() -> None:
-    assert field_text(0.1046 * 25.4, Dimension.LENGTH, MILLIMETRES) == "2.65684"
-    assert field_text(25.4, Dimension.LENGTH, INCHES) == "1"
-    assert field_text(0.0, Dimension.RATIO, INCHES) == "0"
+    assert field_text(0.1046 * 25.4, MILLIMETRES.unit(Dimension.LENGTH), PREFS) == "2.65684"
+    assert field_text(25.4, INCHES.unit(Dimension.LENGTH), PREFS) == "1"
+    assert field_text(0.0, INCHES.unit(Dimension.RATIO), PREFS) == "0"
 
 
 def test_nothing_is_set_at_first() -> None:

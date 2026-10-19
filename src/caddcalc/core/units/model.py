@@ -102,6 +102,10 @@ class Unit:
     """The key symbol of the unit this one is a power of, e.g. ``"in"`` for in², in a
     dimension declared as a power of another (``DimensionSpec.derivation``). Its factor
     is then that unit's exact factor to the power, which the registry checks."""
+    decimals: int | None = None
+    """The decimal places a value picked in it is shown with, in place of its dimension's
+    preference, for a unit too coarse for those places: the radian, since 0.01 rad is
+    over half a degree. ``None`` takes the preference."""
 
     def __post_init__(self) -> None:
         if not self.written:

@@ -15,6 +15,7 @@ from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
     NumberSymbols,
+    ShownUnits,
     copy_output,
     describe_error,
     entry_text,
@@ -27,10 +28,11 @@ from caddcalc.core.formatting import (
 )
 from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import OutOfRangeError
-from caddcalc.core.units import Dimension, TypedValue, parse_quantity
+from caddcalc.core.units import Dimension, TypedValue, get_unit, parse_quantity
 
 COMMA = NumberSymbols(",")
 IN_COMMA = DisplayPrefs(symbols=COMMA)
+IN = ShownUnits.generated("in")
 INCH = 25.4
 LENGTH, ANGLE, RATIO = Dimension.LENGTH, Dimension.ANGLE, Dimension.RATIO
 
@@ -48,29 +50,29 @@ def test_a_decimal_mark_is_one_character_but_a_digit_sign_or_space(mark: str) ->
 
 
 def test_numbers_on_screen_take_the_locales_decimal_mark() -> None:
-    assert value_parts(0.3119 * INCH, LENGTH, IN_COMMA).number == "0,3119"
-    assert format_value(0.3119 * INCH, LENGTH, IN_COMMA) == "0,3119 in"
-    assert format_value(-0.25 * INCH, LENGTH, IN_COMMA) == "-0,2500 in", "an ASCII minus"
-    assert format_value(132.7, ANGLE, IN_COMMA) == "132,70°"
-    assert format_value(0.44, RATIO, IN_COMMA) == "0,4400"
-    assert format_value(1234.5 * INCH, LENGTH, IN_COMMA) == "1234,5000 in", "no grouping"
+    assert value_parts(0.3119 * INCH, LENGTH, IN, IN_COMMA).number == "0,3119"
+    assert format_value(0.3119 * INCH, LENGTH, IN, IN_COMMA) == "0,3119 in"
+    assert format_value(-0.25 * INCH, LENGTH, IN, IN_COMMA) == "-0,2500 in", "an ASCII minus"
+    assert format_value(132.7, ANGLE, IN, IN_COMMA) == "132,70°"
+    assert format_value(0.44, RATIO, IN, IN_COMMA) == "0,4400"
+    assert format_value(1234.5 * INCH, LENGTH, IN, IN_COMMA) == "1234,5000 in", "no grouping"
     with_fraction = DisplayPrefs(fraction_denominator=64, symbols=COMMA)
-    assert format_value(0.3119 * INCH, LENGTH, with_fraction) == '0,3119 in  (≈ 5/16")'
-    assert field_text(2.65684, LENGTH, DisplayPrefs(length_unit="mm", symbols=COMMA)) == "2,65684"
-    assert field_text(25.4, LENGTH, IN_COMMA) == "1", "no mark when there are no decimals"
+    assert format_value(0.3119 * INCH, LENGTH, IN, with_fraction) == '0,3119 in  (≈ 5/16")'
+    assert field_text(2.65684, get_unit("mm"), IN_COMMA) == "2,65684"
+    assert field_text(25.4, get_unit("in"), IN_COMMA) == "1", "no mark when there are no decimals"
 
 
 def test_work_is_typeset_in_the_locales_mark_and_its_note_left_as_written() -> None:
     _calc, result = _bend()
     for step in result.steps:
-        point = render_step(step, result, DisplayPrefs())
-        comma = render_step(step, result, IN_COMMA)
+        point = render_step(step, result, IN, DisplayPrefs())
+        comma = render_step(step, result, IN, IN_COMMA)
         assert comma[1:] == tuple(
             None if line is None else typeset(line, COMMA) for line in point[1:]
         )
         lines = [line for line in comma[1:] if line is not None]
         assert not any(re.search(r"\d\.\d", line) for line in lines), lines
-    first = render_step(result.steps[0], result, IN_COMMA)
+    first = render_step(result.steps[0], result, IN, IN_COMMA)
     assert first[0] == "(0,64·T + 1,57·R)·A/90" and first[2] == "0,3119 in"
 
 
@@ -95,12 +97,12 @@ def test_copy_writes_a_point_and_copy_all_and_the_shown_form_the_locales_mark() 
     calc, result = _bend()
     output = calc.outputs[0]
     value = result.outputs[output.key]
-    assert copy_output(output, value, IN_COMMA, CopyForm.VALUE) == "0.3119"
-    assert copy_output(output, value, IN_COMMA, CopyForm.WITH_UNIT) == "0.3119 in"
-    assert "," not in copy_output(output, value, IN_COMMA, CopyForm.FULL)
-    assert copy_output(output, value, IN_COMMA, CopyForm.SHOWN) == "0,3119"
-    assert copy_output(output, value, DisplayPrefs(), CopyForm.SHOWN) == "0.3119"
-    rows = results_tsv(calc, result, IN_COMMA)
+    assert copy_output(output, value, IN, IN_COMMA, CopyForm.VALUE) == "0.3119"
+    assert copy_output(output, value, IN, IN_COMMA, CopyForm.WITH_UNIT) == "0.3119 in"
+    assert "," not in copy_output(output, value, IN, IN_COMMA, CopyForm.FULL)
+    assert copy_output(output, value, IN, IN_COMMA, CopyForm.SHOWN) == "0,3119"
+    assert copy_output(output, value, IN, DisplayPrefs(), CopyForm.SHOWN) == "0.3119"
+    rows = results_tsv(calc, result, IN, IN_COMMA)
     assert rows.splitlines()[0] == "BA\tBend allowance\t0,3119\tin"
 
 
@@ -110,8 +112,8 @@ def test_a_range_errors_bound_is_shown_in_the_locales_mark() -> None:
     error = OutOfRangeError(
         thickness, 1.0, bound=0.5 * INCH, above=True, source=InputSource(SourceKind.EXPLICIT)
     )
-    assert "0,5 in" in describe_error(error, IN_COMMA)
-    assert "0.5 in" in describe_error(error, DisplayPrefs())
+    assert "0,5 in" in describe_error(error, IN, IN_COMMA)
+    assert "0.5 in" in describe_error(error, IN, DisplayPrefs())
 
 
 @pytest.mark.parametrize(
@@ -160,13 +162,15 @@ def test_a_typed_value_keeps_the_mark_it_was_read_with() -> None:
 
 def test_a_field_shows_the_users_text_as_typed_and_the_apps_in_the_locales_mark() -> None:
     """Text the app writes, such as a default, follows the locale (ADR-0020 §4)."""
+    inch = get_unit("in")
     default = TypedValue.parse("0.0625", LENGTH, "in")
-    assert entry_text(default, IN_COMMA) == "0,0625"
-    assert entry_text(default, DisplayPrefs()) == "0.0625"
+    assert entry_text(default, inch, IN_COMMA) == "0,0625"
+    assert entry_text(default, inch, DisplayPrefs()) == "0.0625"
     stated = TypedValue.parse("1.5875 mm", LENGTH)
-    assert entry_text(stated, IN_COMMA) == "0,0625", "the field's unit, in the locale's mark"
+    assert entry_text(stated, inch, IN_COMMA) == "0,0625", "the field's unit, in the locale's mark"
     for typed in ("0.0625", "0,0625"):
-        assert entry_text(TypedValue.parse(typed, LENGTH, "in", decimal=","), IN_COMMA) == typed
+        entry = TypedValue.parse(typed, LENGTH, "in", decimal=",")
+        assert entry_text(entry, inch, IN_COMMA) == typed
 
 
 def test_a_family_setting_reads_the_locales_mark() -> None:

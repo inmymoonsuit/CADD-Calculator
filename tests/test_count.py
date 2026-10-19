@@ -12,6 +12,7 @@ from caddcalc.core import Dimension, InputError
 from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
+    ShownUnits,
     copy_text,
     field_text,
     format_value,
@@ -25,12 +26,12 @@ COUNT = Dimension.COUNT
 
 
 def test_a_count_shows_and_copies_without_decimals() -> None:
-    prefs = DisplayPrefs()
-    assert format_value(6.0, COUNT, prefs) == "6"
-    assert field_text(6.0, COUNT, prefs) == "6"
+    units, prefs = ShownUnits.generated(), DisplayPrefs()
+    assert format_value(6.0, COUNT, units, prefs) == "6"
+    assert field_text(6.0, units.unit(COUNT), prefs) == "6"
     forms = (CopyForm.VALUE, CopyForm.SHOWN, CopyForm.WITH_UNIT, CopyForm.FULL)
-    assert {copy_text(6.0, COUNT, prefs, form) for form in forms} == {"6"}
-    assert spoken_value(value_parts(6.0, COUNT, prefs)) == "6"
+    assert {copy_text(6.0, COUNT, units, prefs, form) for form in forms} == {"6"}
+    assert spoken_value(value_parts(6.0, COUNT, units, prefs)) == "6"
 
 
 @pytest.mark.parametrize(

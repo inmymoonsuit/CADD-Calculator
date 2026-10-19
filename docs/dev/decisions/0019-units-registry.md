@@ -453,3 +453,22 @@ way. The window is counted in the shown unit because a value shown isn't always 
 typed: a result has no typed unit. ADR-0024's output sets name the shown unit; whether
 an entered value's typed unit should count instead goes with E-3.
 
+### 2026-10-19: the shown unit, decided (ADR-0024 E-3)
+
+* **The window stays counted in the shown unit's last place.** A result has no typed
+  unit, so the shown unit is the only one that serves every value.
+* **From E-3, a field's value is typed in the unit it's shown in.** The Inputs list
+  shows each input in its field's choice (ADR-0024 E4), and a field refuses a unit in
+  its text (Q5). So a value is shown in an inch form only when its field is picked in
+  that form, whose full unit is the inch: the case the table above counts as none,
+  against main's 268.
+* **What's left:** a value typed in one unit and shown in an inch form. That's a family
+  setting typed `254.99218750000009 mm` and inherited into a field picked in ft-in, and
+  the command line's Inputs lines until E-4. These are the table's mm, m and ft rows,
+  each value at least three of its own last places from a 1/64 tie and under 10⁻¹⁴ in
+  from it (two of the inch's last places at 24 in are 7.1 × 10⁻¹⁵ in). No
+  value typed as a tie is missed by either count.
+* Counting in the typed unit would need the typed unit carried with every value to
+  every place it's shown, a result's included, which has none. That's a second rule
+  for those rows alone.
+

@@ -26,7 +26,7 @@ from caddcalc.core import (
     SourceKind,
     ValueOrigin,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_note, value_parts
+from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_note, value_parts
 
 IN = 25.4
 PRACTICE = "Form across the grain where possible"
@@ -64,17 +64,18 @@ def notes(result: Result, kind: NoteKind) -> list[Note]:
     return [n for n in result.notes if n.kind is kind]
 
 
-def said(note: Note, prefs: DisplayPrefs | None = None) -> str:
+def said(note: Note, prefs: DisplayPrefs | None = None, length: str = "in") -> str:
     """The note as users read it: heading and lead, detail, and sources, one per line."""
-    return "\n".join(describe_note(note, prefs or DisplayPrefs()).lines)
+    units = ShownUnits.generated(length)
+    return "\n".join(describe_note(note, units, prefs or DisplayPrefs()).lines)
 
 
-def lead(note: Note, prefs: DisplayPrefs | None = None) -> str:
-    return describe_note(note, prefs or DisplayPrefs()).lead
+def lead(note: Note, prefs: DisplayPrefs | None = None, length: str = "in") -> str:
+    return describe_note(note, ShownUnits.generated(length), prefs or DisplayPrefs()).lead
 
 
 def detail(note: Note) -> str:
-    return describe_note(note, DisplayPrefs()).detail
+    return describe_note(note, ShownUnits.generated(), DisplayPrefs()).detail
 
 
 def rule_of_thumb(result: Result) -> bool:
@@ -429,13 +430,14 @@ def test_a_limit_lead_keeps_its_scope_words_within_its_budget(
     """
     data = load_materials(MATERIAL_TABLE.load())
     name = data.by_key[material].tempers[0].name
-    prefs = DisplayPrefs(length_unit=unit, fraction_denominator=fraction)
+    prefs = DisplayPrefs(fraction_denominator=fraction)
+    units = ShownUnits.generated(unit)
     (limit,) = notes(bend(thickness, radius, material), LIMIT)
-    text = lead(limit, prefs)
+    text = lead(limit, prefs, unit)
     assert "the recommended minimum this check uses" in text, "the scope words"
     assert f"for {name} at " in text, "the material named as the data names it"
     assert limit.phrases["practice"] in text and "practice" in limit.phrases["practice"]
-    shown = [value_parts(v, d, prefs).with_unit for v, d in limit.quantities.values()]
+    shown = [value_parts(v, d, units, prefs).with_unit for v, d in limit.quantities.values()]
     own = len(text) - sum(map(len, shown)) - len(name) - len(limit.phrases["practice"])
     assert own <= LEAD_WORDS, "the template's own words"
     if (material, unit, fraction) == ("al:6061", "in", None):
@@ -450,7 +452,7 @@ def test_a_notes_values_are_named_fields_shown_in_the_display_units() -> None:
     fractions = DisplayPrefs(fraction_denominator=64)
     assert "≈" not in said(limit, fractions), "no fraction inside a sentence"
     assert "inside radius 0.0500 in is below 0.1600 in," in lead(limit, fractions)
-    assert "1.2700 mm" in lead(limit, DisplayPrefs(length_unit="mm"))
+    assert "1.2700 mm" in lead(limit, DisplayPrefs(), "mm")
     data = limit.to_dict()
     assert data["quantities"]["R"] == {"value": 0.05 * IN, "unit": "mm", "dimension": "length"}
     assert "1.27 mm" in data["text"], "JSON fills the fields in base units"

@@ -90,6 +90,7 @@ def _unit(
     close_up: bool = False,
     fractions: bool = False,
     primary: bool = False,
+    decimals: int | None = None,
 ) -> Unit:
     """Declare a built-in unit, citing SP 811 at ``locator``, and 24 FR 5348 if ``primary``.
 
@@ -112,6 +113,7 @@ def _unit(
         close_up=close_up,
         fractions=fractions,
         sources=(source, YARD_POUND) if primary else (source,),
+        decimals=decimals,
     )
 
 
@@ -254,6 +256,7 @@ UNITS: tuple[Unit, ...] = (
         SI,
         "Table 3 (radian)",
         aliases=("radian", "radians"),
+        decimals=4,  # 0.0001 rad is under the degree's 0.01°
     ),
     _unit("", ("ratio", ""), RATIO, Fraction(1), NONE, "§7.10 (the unit one)"),
     _unit("", ("count", ""), COUNT, Fraction(1), NONE, "§7.10 (the unit one)"),

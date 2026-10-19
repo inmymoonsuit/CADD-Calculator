@@ -31,6 +31,7 @@ from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
     NumberSymbols,
+    ShownUnits,
     ValueParts,
     copy_output,
     entry_text,
@@ -47,6 +48,7 @@ from caddcalc.core.units import (
     Dimension,
     Precision,
     from_base,
+    get_unit,
     parse_quantity,
     parse_quantity_detailed,
     registry,
@@ -134,7 +136,7 @@ def test_feet_and_inches_refuse_parts_that_dont_fit(typed: str, problem: str) ->
 def test_a_typed_feet_and_inches_keeps_its_text_and_reads_it_again() -> None:
     typed = TypedValue.parse("1'-4 3/16\"", L)
     assert typed.value == pytest.approx(16.1875 * IN) and typed.explicit_unit
-    assert entry_text(typed, DisplayPrefs(length_unit="mm")) == "1'-4 3/16\"", "as typed"
+    assert entry_text(typed, get_unit("mm"), DisplayPrefs()) == "1'-4 3/16\"", "as typed"
 
 
 @pytest.mark.parametrize(
@@ -192,7 +194,7 @@ def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: st
     The nearest fraction, feet and inches, the ``(≈ …")`` hint and ``to_fraction`` all
     round by one rule, so they agree on every tie (ADR-0019, amendments).
     """
-    prefs = DisplayPrefs(length_unit="in", fraction_denominator=denominator)
+    inches, prefs = ShownUnits.generated("in"), DisplayPrefs(fraction_denominator=denominator)
     for odd in range(1, 4 * 12 * 2 * denominator, 2):
         half = Fraction(odd, 2 * denominator)
         text = (
@@ -205,7 +207,7 @@ def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: st
             value = sign * parse_quantity(text, L)
             assert nearest_inches(value, denominator) == sign * expected, (sign, text)
             hint = _copied_fraction(sign * expected)
-            assert value_parts(value, L, prefs).fraction == hint, (sign, text)
+            assert value_parts(value, L, inches, prefs).fraction == hint, (sign, text)
             assert to_fraction(from_base(value, "in"), denominator) == hint, (sign, text)
             if denominator == 16:
                 again = parse_quantity(FeetInches(16).text(value).copied, L)
@@ -460,14 +462,14 @@ def test_an_output_in_a_compound_form_is_shown_copied_and_spoken_in_it() -> None
     calc = _Forms()
     result = calc.run()
     out = calc.output("ft_in")
-    prefs = DisplayPrefs(length_unit="mm", symbols=NumberSymbols(","))
-    parts = output_parts(out, result.outputs["ft_in"], prefs)
+    units, prefs = ShownUnits.generated("mm"), DisplayPrefs(symbols=NumberSymbols(","))
+    parts = output_parts(out, result.outputs["ft_in"], units, prefs)
     expected = CompoundText("1'-4 3/16\"", "1'4-3/16\"", "1 foot 4 and 3 sixteenths inches")
     assert parts == ValueParts("1'-4 3/16\"", "", None, expected)
-    assert format_output(out, result.outputs["ft_in"], prefs) == "1'-4 3/16\""
+    assert format_output(out, result.outputs["ft_in"], units, prefs) == "1'-4 3/16\""
     assert spoken_value(parts) == "1 foot 4 and 3 sixteenths inches"
     copies = {
-        form: copy_output(out, result.outputs["ft_in"], prefs, form)
+        form: copy_output(out, result.outputs["ft_in"], units, prefs, form)
         for form in CopyForm
         if form is not CopyForm.FRACTION
     }
@@ -478,15 +480,15 @@ def test_an_output_in_a_compound_form_is_shown_copied_and_spoken_in_it() -> None
         CopyForm.FULL: "16.1875",
     }
     with pytest.raises(UsageError, match="without a fraction"):
-        copy_output(out, result.outputs["ft_in"], prefs, CopyForm.FRACTION)
-    dms = output_parts(calc.output("dms"), result.outputs["dms"], prefs)
+        copy_output(out, result.outputs["ft_in"], units, prefs, CopyForm.FRACTION)
+    dms = output_parts(calc.output("dms"), result.outputs["dms"], units, prefs)
     assert dms.number == "-0°30′0,00″" and dms.unit == ""
-    assert copy_output(calc.output("dms"), -0.5, prefs, CopyForm.VALUE) == "-0d30'0.00\""
+    assert copy_output(calc.output("dms"), -0.5, units, prefs, CopyForm.VALUE) == "-0d30'0.00\""
 
 
 def test_copy_all_keeps_a_compound_value_from_being_read_as_a_formula() -> None:
     calc = _Forms()
-    rows = results_tsv(calc, calc.run(), DisplayPrefs()).splitlines()
+    rows = results_tsv(calc, calc.run(), ShownUnits.generated(), DisplayPrefs()).splitlines()
     assert rows == [
         "FI\tFeet and inches\t1'-4 3/16\"\t",
         "D\tDegrees, minutes, seconds\t'-0°30′0.00″\t",

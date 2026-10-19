@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, override
@@ -26,9 +25,9 @@ from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
     NumberSymbols,
+    ShownUnits,
     ValueParts,
     copy_output,
-    display_unit,
     format_output,
     format_significant,
     format_value,
@@ -141,10 +140,11 @@ def test_the_typed_forms_are_input_only_and_display_writes_sp_811s_symbol() -> N
 
 @pytest.mark.parametrize(("length", "square"), SQUARES.items())
 def test_an_area_is_shown_in_the_square_of_the_length_choice(length: str, square: str) -> None:
-    prefs = DisplayPrefs(length_unit=length, fraction_denominator=64)
-    assert display_unit(AREA, prefs).symbol == square
-    assert unit_suffix(AREA, prefs) == f" {square}"
-    parts = value_parts(get_unit(square).factor, AREA, prefs)
+    units = ShownUnits.generated(length)
+    prefs = DisplayPrefs(fraction_denominator=64)
+    assert units.unit(AREA).symbol == square
+    assert unit_suffix(units.unit(AREA)) == f" {square}"
+    parts = value_parts(get_unit(square).factor, AREA, units, prefs)
     assert parts == ValueParts("1.00000", square), "never with an inch fraction"
     assert prefs.precision_for(AREA) == Precision(6, significant=True), "there's no preference"
     with pytest.raises(UsageError, match="area is shown to significant figures"):
@@ -165,13 +165,18 @@ def test_an_area_shows_six_significant_figures_whatever_its_size(
     value: float, length: str, shown: str
 ) -> None:
     """4 decimals would give 6451.6000 mm² and 0.0065 m²."""
-    assert format_value(value, AREA, DisplayPrefs(length_unit=length, decimals=2)) == shown
+    units = ShownUnits.generated(length)
+    assert format_value(value, AREA, units, DisplayPrefs(decimals=2)) == shown
 
 
 def test_an_area_reads_the_users_decimal_mark_and_says_its_unit_in_full() -> None:
     prefs = DisplayPrefs(symbols=NumberSymbols(","))
-    assert format_value(92903.04 * 2.5, AREA, replace(prefs, length_unit="ft")) == "2,50000 ft²"
-    assert spoken_value(value_parts(645.16, AREA, DisplayPrefs())) == "1.00000 square inches"
+    feet = ShownUnits.generated("ft")
+    assert format_value(92903.04 * 2.5, AREA, feet, prefs) == "2,50000 ft²"
+    inches = ShownUnits.generated()
+    assert (
+        spoken_value(value_parts(645.16, AREA, inches, DisplayPrefs())) == "1.00000 square inches"
+    )
     assert spoken_value(ValueParts("1", "ft²")) == "1 square foot"
     assert spoken_value(ValueParts("2", "ft²")) == "2 square feet"
 
@@ -332,23 +337,25 @@ def test_a_fixed_unit_output_is_shown_in_it_whatever_the_preference() -> None:
     calc = _Rows()
     result = calc.run()
     for length in ("in", "mm", "ft"):
-        prefs = DisplayPrefs(length_unit=length, decimals=2)
-        shown = {o.key: output_parts(o, result.outputs[o.key], prefs) for o in calc.outputs}
+        units, prefs = ShownUnits.generated(length), DisplayPrefs(decimals=2)
+        shown = {o.key: output_parts(o, result.outputs[o.key], units, prefs) for o in calc.outputs}
         assert shown["mm"] == ValueParts("25.4000", "mm"), "six significant figures"
         assert shown["in"] == ValueParts("1.00000", "in")
         assert shown["area"] == ValueParts("0.00694444", "ft²")
         assert shown["angle"] == ValueParts("3.14159", "rad")
-        assert shown["shown"] == value_parts(25.4, L, prefs), "the others follow the preference"
+        assert shown["shown"] == value_parts(25.4, L, units, prefs), (
+            "the others follow the preference"
+        )
 
 
 def test_a_fixed_inch_row_shows_the_fraction_when_its_preferred() -> None:
     calc = _Rows()
     output = calc.output("in")
-    prefs = DisplayPrefs(length_unit="mm", fraction_denominator=16)
-    parts = output_parts(output, 7.9375, prefs)
+    units, prefs = ShownUnits.generated("mm"), DisplayPrefs(fraction_denominator=16)
+    parts = output_parts(output, 7.9375, units, prefs)
     assert parts == ValueParts("0.312500", "in", "5/16")
-    assert format_output(output, 7.9375, prefs) == '0.312500 in  (≈ 5/16")'
-    assert output_parts(calc.output("mm"), 7.9375, prefs).fraction is None
+    assert format_output(output, 7.9375, units, prefs) == '0.312500 in  (≈ 5/16")'
+    assert output_parts(calc.output("mm"), 7.9375, units, prefs).fraction is None
 
 
 def test_a_fixed_unit_output_copies_in_its_own_unit() -> None:
@@ -356,7 +363,7 @@ def test_a_fixed_unit_output_copies_in_its_own_unit() -> None:
     output = calc.output("mm")
     prefs = DisplayPrefs(symbols=NumberSymbols(","))
     copies = {
-        form: copy_output(output, 1 / 3, prefs, form)
+        form: copy_output(output, 1 / 3, ShownUnits.generated(), prefs, form)
         for form in CopyForm
         if form.name != "FRACTION"
     }
@@ -368,7 +375,11 @@ def test_a_fixed_unit_output_copies_in_its_own_unit() -> None:
     }
     assert (
         copy_output(
-            calc.output("in"), 7.9375, DisplayPrefs(fraction_denominator=16), CopyForm.FRACTION
+            calc.output("in"),
+            7.9375,
+            ShownUnits.generated("mm"),
+            DisplayPrefs(fraction_denominator=16),
+            CopyForm.FRACTION,
         )
         == '5/16"'
     )
@@ -377,7 +388,7 @@ def test_a_fixed_unit_output_copies_in_its_own_unit() -> None:
 def test_fixed_rows_tabulate_and_go_to_json_in_base_units() -> None:
     calc = _Rows()
     result = calc.run()
-    rows = results_tsv(calc, result, DisplayPrefs(length_unit="mm")).splitlines()
+    rows = results_tsv(calc, result, ShownUnits.generated("mm"), DisplayPrefs()).splitlines()
     assert rows[0] == "MM\tMillimeters\t25.4000\tmm"
     assert rows[1] == "IN\tInches\t1.00000\tin"
     assert rows[3] == "SQ\tSquare\t0.00694444\tft²"

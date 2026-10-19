@@ -24,7 +24,7 @@ from caddcalc.core import (
     UsageError,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_error, describe_source
+from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_error, describe_source
 
 L = Dimension.LENGTH
 SHOP = Domain(
@@ -147,7 +147,7 @@ def test_an_out_of_range_domain_value_fails_and_names_its_source() -> None:
         "Thickness (T) from Shop settings is 50 mm, but this calculator needs at most 10 mm. "
         "Override it in this calculator."
     )
-    assert describe_error(error, DisplayPrefs(length_unit="in")) == (
+    assert describe_error(error, ShownUnits.generated("in"), DisplayPrefs()) == (
         "Thickness (T) from Shop settings is 1.9685 in, but this calculator needs at most "
         "0.393701 in. Override it in this calculator."
     )
@@ -158,9 +158,9 @@ def test_an_out_of_range_explicit_value_is_worded_in_display_units() -> None:
         _Plate().run({"thickness": 0.0})
     assert caught.value.source.kind is SourceKind.EXPLICIT
     assert str(caught.value) == "Thickness (T) must be greater than 0 mm"
-    inches = describe_error(caught.value, DisplayPrefs(length_unit="in"))
+    inches = describe_error(caught.value, ShownUnits.generated("in"), DisplayPrefs())
     assert inches == "Thickness (T) must be greater than 0 in"
-    assert describe_error(InputError("plain"), DisplayPrefs()) == "plain"
+    assert describe_error(InputError("plain"), ShownUnits.generated(), DisplayPrefs()) == "plain"
 
 
 def test_settings_from_another_domain_are_refused_as_api_misuse() -> None:

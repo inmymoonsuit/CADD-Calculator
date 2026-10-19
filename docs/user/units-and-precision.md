@@ -54,6 +54,9 @@ no picker.
 * **With the keyboard,** ↑ and ↓ on a closed picker step through its units, and its
   field is re-read at each step; the switch carries to the other fields, and is said,
   once you press Enter or leave the picker.
+* **The Inputs list under the results** gives each input in the unit its picker shows,
+  and a value out of range is refused in that unit too: "must be less than 3.14159 rad"
+  for a bend angle picked in rad. The Units box sets how the results show.
 
 ## Typing with the unit in the text
 

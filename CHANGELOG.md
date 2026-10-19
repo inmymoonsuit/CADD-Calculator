@@ -533,6 +533,15 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The Inputs list and an input's range error are in the unit its picker shows**
+  (ADR-0024 E4), not the Units box's: a bend angle picked in rad is listed as
+  `1.5708 rad`, and refused as "must be less than 3.14159 rad". A value in radians shows
+  4 decimals, where other angles show 2. Everything else shows as before, character for
+  character, in inches and in millimetres. For calculator authors: `core.formatting`
+  takes the units to show in as a `ShownUnits` (an output set, with each output's pick
+  and each input's choice), and `DisplayPrefs.length_unit`, `display_unit` and
+  `entry_unit` are removed; an output with its own picker shows in its first pick until
+  it's picked.
 - **Each calculator input with a unit has a unit picker after it** (ADR-0024 U1), and
   the number is read in the unit it shows. Fields take fractions, mixed numbers and
   exact arithmetic (`2 × 1 3/16`), with AutoCAD's rule that `1-3/16` is one and three

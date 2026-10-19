@@ -22,12 +22,12 @@ from caddcalc.core import CaddCalcError, Calculator, InputError, Param, Result, 
 from caddcalc.core.formatting import (
     DISCLAIMER,
     DisplayPrefs,
+    ShownUnits,
     describe_error,
     describe_note,
     describe_source,
-    entry_unit,
+    format_input,
     format_output,
-    format_value,
     method_notes,
     render_step,
 )
@@ -182,7 +182,7 @@ def _cmd_show(args: argparse.Namespace) -> int:
     for m in calc.methods:
         print(f"  {m.key:<14} {m.label}  [{m.status}]")
         print(f"         {m.summary}")
-        for note in method_notes(m, DisplayPrefs()):
+        for note in method_notes(m, ShownUnits.generated(), DisplayPrefs()):
             print(f"         Note: {note}")
         for ref in m.references:
             print(f"         Ref: {ref}")
@@ -238,7 +238,7 @@ def parse_inputs(
     Args:
         calc: The calculator the inputs belong to.
         items: Arguments such as ``T=0.1046`` or ``thickness=3mm``.
-        length_unit: The unit for lengths typed without one.
+        length_unit: The output set whose units values typed without one are read in.
         method: The method the inputs are for; ``None`` for the calculator's first.
 
     Raises:
@@ -247,6 +247,7 @@ def parse_inputs(
     """
     chosen = calc.get_method(method)
     used = calc.params_for(chosen.key)
+    units = ShownUnits.generated(length_unit)
     values: dict[str, float] = {}
     given: dict[str, str] = {}
     for item in items:
@@ -260,8 +261,7 @@ def parse_inputs(
                 "give it once"
             )
         given[p.key] = item
-        default_unit = entry_unit(p.dimension, DisplayPrefs(length_unit=length_unit))
-        values[p.key] = parse_quantity(text, p.dimension, default_unit)
+        values[p.key] = parse_quantity(text, p.dimension, units.unit(p.dimension).symbol)
     unused = [given[key] for key in values if key not in {p.key for p in used}]
     if unused:
         inputs = ", ".join(f"{p.symbol}/{p.key}" for p in used)
@@ -274,19 +274,18 @@ def parse_inputs(
 
 def _cmd_run(args: argparse.Namespace) -> int:
     calc = default_registry().get(args.calculator)
-    prefs = DisplayPrefs(
-        length_unit=args.units, decimals=args.decimals, fraction_denominator=args.fraction
-    )
+    units = ShownUnits.generated(args.units)
+    prefs = DisplayPrefs(decimals=args.decimals, fraction_denominator=args.fraction)
     try:
         inputs = parse_inputs(calc, args.inputs, args.units, args.method)
         result = calc.run(inputs, method=args.method)
     except CaddCalcError as exc:
         _write_cause(exc)
-        return _fail(describe_error(exc, prefs))
+        return _fail(describe_error(exc, units, prefs))
     if args.json:
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
         return 0
-    print(format_result(calc, result, prefs, show_work=not args.no_work))
+    print(format_result(calc, result, units, prefs, show_work=not args.no_work))
     return 0
 
 
@@ -295,9 +294,14 @@ LABEL_WIDTH = 32
 
 
 def format_result(
-    calc: Calculator, result: Result, prefs: DisplayPrefs, *, show_work: bool = True
+    calc: Calculator,
+    result: Result,
+    units: ShownUnits,
+    prefs: DisplayPrefs,
+    *,
+    show_work: bool = True,
 ) -> str:
-    """Render a result as plain text: inputs, work, results, notes, and status."""
+    """Render a result as plain text, in ``units``: inputs, work, results, notes, status."""
     method = calc.get_method(result.method)
     params = calc.params_for(result.method)
     # The label column is as wide as its longest label, and at least LABEL_WIDTH.
@@ -305,13 +309,13 @@ def format_result(
     width = max(LABEL_WIDTH, *(len(label) for label in labels))
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in params:
-        value = format_value(result.inputs[p.key], p.dimension, prefs)
+        value = format_input(p.key, result.inputs[p.key], p.dimension, units, prefs)
         source = describe_source(result.source_of(p.key))
         lines.append(f"  {p.symbol:<6} {p.label:<{width}} {value}  ({source})")
     if show_work:
         lines += ["", "Work"]
         for step in result.steps:
-            symbolic, numeric, value = render_step(step, result, prefs)
+            symbolic, numeric, value = render_step(step, result, units, prefs)
             lines.append(f"  {step.symbol} = {symbolic}")
             pad = " " * (len(step.symbol) + 3)
             if numeric:
@@ -321,12 +325,12 @@ def format_result(
                 lines.append(f"  {pad}({step.note})")
     lines += ["", "Results"]
     for o in calc.outputs:
-        value = format_output(o, result.outputs[o.key], prefs)
+        value = format_output(o, result.outputs[o.key], units, prefs)
         lines.append(f"  {o.symbol:<6} {o.label:<{width}} {value}")
     if result.notes:
         lines += ["", "Notes"]
         for note in result.notes:
-            first, *rest = describe_note(note, prefs).lines
+            first, *rest = describe_note(note, units, prefs).lines
             lines += [f"  ! {first}", *(f"      {line}" for line in rest)]
     lines += ["", f"Method status: {method.status}. {_(DISCLAIMER)}"]
     return "\n".join(lines)

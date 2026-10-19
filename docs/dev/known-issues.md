@@ -229,7 +229,9 @@ family settings page its own pickers, a settings field reads a unit typed with i
 number, `3 mm`, and a bare number in the Units box's unit, as before, while a calculator
 field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds of
 field are on different pages, and each page says how it reads (the user guide's Units
-and precision). The Units box still sets how results show until U2. Resolved by U2b.
+and precision). The Units box sets how results show, and the unit a settings field
+shows and reads a bare number in, until U2 removes it; from U2 to U2b, settings show and
+read in inches (`MainWindow._setting_unit`). Resolved by U2b.
 
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 

@@ -58,6 +58,7 @@ from caddcalc.core.formatting import (
     DISCLAIMER,
     CopyForm,
     DisplayPrefs,
+    ShownUnits,
     ValueParts,
     copy_output,
     decimal_separator,
@@ -236,7 +237,9 @@ class ResultField(QWidget):
         self.amount: float | None = None
         """The value it shows, in base units, which it copies from; ``None`` for none."""
         self.prefs = DisplayPrefs()
-        """The display preferences it shows and copies its value in."""
+        """How it writes its value's numbers."""
+        self.units = ShownUnits.generated()
+        """The unit or form it shows and copies its value in."""
         self.outline: Outline | None = None
         """The strongest outline of the notes that concern this output, if any."""
         self.hovered = False
@@ -290,10 +293,16 @@ class ResultField(QWidget):
             font.setFeature(QFont.Tag("tnum"), 1)  # every digit one width, so columns align
         return font
 
-    def set_value(self, amount: float | None, prefs: DisplayPrefs, outline: Outline | None) -> None:
-        """Show ``amount``, in base units, in ``prefs``; ``None`` shows no value."""
-        self.amount, self.prefs = amount, prefs
-        parts = None if amount is None else output_parts(self.output, amount, prefs)
+    def set_value(
+        self,
+        amount: float | None,
+        units: ShownUnits,
+        prefs: DisplayPrefs,
+        outline: Outline | None,
+    ) -> None:
+        """Show ``amount``, in base units, in ``units``; ``None`` shows no value."""
+        self.amount, self.units, self.prefs = amount, units, prefs
+        parts = None if amount is None else output_parts(self.output, amount, units, prefs)
         self.show_parts(parts, outline)
 
     def show_parts(self, parts: ValueParts | None, outline: Outline | None) -> None:
@@ -338,7 +347,7 @@ class ResultField(QWidget):
             return None
         if form is CopyForm.FRACTION and self.parts.fraction is None:
             return None
-        text = copy_output(self.output, self.amount, self.prefs, form)
+        text = copy_output(self.output, self.amount, self.units, self.prefs, form)
         QGuiApplication.clipboard().setText(text)
         self.copied_state.start()
         self.copied.emit(COPIED.format(symbol=self.output.symbol, text=text))
@@ -364,11 +373,11 @@ class ResultField(QWidget):
             else:
                 # Two decimal marks are on offer, so each item says what it copies,
                 # "Copy 0.3119" beside "Copy 0,3119" (UI/UX's i4 review).
-                copied = copy_output(self.output, self.amount, self.prefs, form)
+                copied = copy_output(self.output, self.amount, self.units, self.prefs, form)
                 label = MENU[CopyForm.SHOWN].format(number=copied)
             if form is CopyForm.FULL and self.parts is not None and self.parts.compound:
                 # A compound form's full precision is a decimal in the form's own unit.
-                unit = output_unit(self.output, self.prefs).spoken("2")  # its plural
+                unit = output_unit(self.output, self.units).spoken("2")  # its plural
                 label = FULL_IN.format(unit=unit) if point else f"{label}, in {unit}"
             action = menu.addAction(label)
             action.setEnabled(self.parts is not None)
@@ -482,6 +491,8 @@ class ResultsPanel(QWidget):
         self.result: Result | None = None
         """The result the fields show, which Copy all copies; ``None`` for none."""
         self.prefs = DisplayPrefs()
+        self.units = ShownUnits.generated()
+        """The units the fields show their values in: the output picker's set."""
         self.fields: dict[str, ResultField] = {}
         top, sides = self.tokens.panel_inset
         column = QVBoxLayout(self)
@@ -569,20 +580,21 @@ class ResultsPanel(QWidget):
         self._sync_copy_all()
         self.updateGeometry()
 
-    def show_result(self, result: Result | None, prefs: DisplayPrefs) -> None:
-        """Show ``result``'s outputs, outlined by its notes; ``None`` blanks every field."""
+    def show_result(self, result: Result | None, units: ShownUnits, prefs: DisplayPrefs) -> None:
+        """Show ``result``'s outputs in ``units``, outlined by its notes; ``None`` blanks them."""
         calc = self.calculator
         if calc is None:
             return
-        self.result, self.prefs = result, prefs
+        self.result, self.units, self.prefs = result, units, prefs
         if result is None:
             for field in self.fields.values():
-                field.set_value(None, prefs, None)
+                field.set_value(None, units, prefs, None)
         else:
             outlines = strongest(result.notes, self.fields)
             for output in calc.outputs:
                 field = self.fields[output.key]
-                field.set_value(result.outputs[output.key], prefs, outlines.get(output.key))
+                amount = result.outputs[output.key]
+                field.set_value(amount, units, prefs, outlines.get(output.key))
         self._align()
         self._sync_copy_all()
 
@@ -590,7 +602,7 @@ class ResultsPanel(QWidget):
         """Copy every output as tab-separated rows (R2); ``None`` while there's no result."""
         if self.calculator is None or self.result is None:
             return None
-        text = results_tsv(self.calculator, self.result, self.prefs)
+        text = results_tsv(self.calculator, self.result, self.units, self.prefs)
         QGuiApplication.clipboard().setText(text)
         self.copy_all_state.start()
         self._announce(COPIED_ALL)

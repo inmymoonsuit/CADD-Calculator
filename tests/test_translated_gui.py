@@ -238,7 +238,7 @@ def test_the_disclaimer_is_translated_everywhere_it_is_shown(tmp_path: Path) -> 
 
     from caddcalc.calculators import default_registry
     from caddcalc.cli import format_result
-    from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs
+    from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs, ShownUnits
     from caddcalc.gui.actions import about_html
     from caddcalc.gui.branding import Branding
 
@@ -250,4 +250,6 @@ def test_the_disclaimer_is_translated_everywhere_it_is_shown(tmp_path: Path) -> 
     window.close()
     assert html.escape(translated) in about_html(Branding())
     calc = default_registry(load_plugins=False).get("sheet_metal.bend_allowance")
-    assert format_result(calc, calc.run(), DisplayPrefs()).endswith(f". {translated}")
+    assert format_result(calc, calc.run(), ShownUnits.generated(), DisplayPrefs()).endswith(
+        f". {translated}"
+    )

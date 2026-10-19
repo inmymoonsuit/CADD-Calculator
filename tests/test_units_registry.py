@@ -338,7 +338,7 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     """
     from caddcalc.calculators import REFERENCE_TABLES
     from caddcalc.calculators.sheet_metal import BendAllowance
-    from caddcalc.core.formatting import DisplayPrefs, format_value
+    from caddcalc.core.formatting import DisplayPrefs, ShownUnits, format_value
     from caddcalc.core.refdata import load_table
     from caddcalc.core.units import unit_registry
 
@@ -351,7 +351,7 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
         assert registry() is forced
         assert get_unit("in").name == "inch", "with no dimension given, a length"
         assert get_unit("in", L).name == "inch" and get_unit("in", A).name == "incline"
-        assert format_value(25.4, L, DisplayPrefs()) == "1.0000 in"
+        assert format_value(25.4, L, ShownUnits.generated(), DisplayPrefs()) == "1.0000 in"
         parsed = parse_quantity_detailed("3", L, "in")
         assert (parsed.value, parsed.unit.symbol) == (pytest.approx(76.2), "in")
         for spec in REFERENCE_TABLES:
