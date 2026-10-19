@@ -48,10 +48,10 @@ def test_the_launch_size_fits_each_work_area_centred(
 
 
 def test_the_launch_height_is_a_fixed_number_of_lines() -> None:
-    """The window is never sized to its content (ADR-0021, the interim amendment).
+    """The window is never sized to its content (ADR-0021, amendments; KI-024).
 
-    ``launch_lines`` is main's launch height at 9 pt Segoe UI, whose lines are 16 px, so
-    it's 738 px there, and in proportion in any other font.
+    ``launch_lines`` gives 738 px at 9 pt Segoe UI, whose lines are 16 px, and the same
+    number of lines in any other font.
     """
     layout = ui_style().layout
     assert launch_size(layout, 5.5, 16, 5).height == 738, "Windows at 9 pt"
@@ -570,7 +570,7 @@ def test_no_calculator_page_scrolls_at_the_launch_size(qt: Any, calc_id: str) ->
     """At the design's lines, every page fits the launch size but the long ones.
 
     It fits with each of its methods; a long page scrolls as a whole, rule C (ADR-0021,
-    the interim amendment). The fields' heights are in pixels, so with lines shorter than
+    amendments). The fields' heights are in pixels, so with lines shorter than
     the design's a page may scroll at launch (KI-024): the window is never sized to its
     content. A page that fits never shows a scroll bar when its method changes, which
     would narrow it and move the Units box (UI/UX's M1).

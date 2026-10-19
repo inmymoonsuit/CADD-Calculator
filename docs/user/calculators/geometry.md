@@ -19,8 +19,8 @@ Handbook's rounded constants.
 
 **For students:** the *Machinery's Handbook Pocket Companion* (32nd edition, Industrial
 Press, 2024) covers the same figures more briefly: "Dimensions of Plane Figures",
-pp. 1–6, "Segments of Circles", pp. 7–9, for the arc, and the triangles, pp. 16–19. Each method lists it last, as "see also"; the
-31st edition is the source of record.
+pp. 1–6, "Segments of Circles", pp. 7–9, for the arc, and the triangles, pp. 16–19. Each
+method lists it last, as "see also"; the 31st edition is the source of record.
 
 None of these methods is marked *verified* yet: that needs a published worked example
 in the test suite (see the user guide's [status table](../index.md#how-to-read-a-result)).
@@ -68,9 +68,9 @@ angles opposite a and b. Give any two of them, as long as one is a length:
 | The hypotenuse and an angle | c and A |
 
 An acute angle must be greater than 0° and less than 90°; one so near 90°, within about
-6e-11°, that its tangent can't be computed is refused as 90° is, in either angle method. Two angles alone fix no size,
-so they aren't a method. You get all three sides, both acute angles, the area and the
-perimeter.
+6e-11°, that its tangent can't be computed counts as 90° and is refused, in either angle
+method. Two angles alone fix no size, so they aren't a method. You get all three sides,
+both acute angles, the area and the perimeter.
 
 ## Regular polygon
 

@@ -580,7 +580,7 @@ class MainWindow(QMainWindow):
 
         That's the list at its launch width, its handle, and a page at its cap, by
         ``launch_lines`` line spacings: never sized to the pages, so a taller page scrolls
-        as a whole (ADR-0021 §3 and its interim amendment).
+        as a whole (ADR-0021 §3, amendments; KI-024).
         """
         font = self.font()
         handle = self.splitter.handleWidth()

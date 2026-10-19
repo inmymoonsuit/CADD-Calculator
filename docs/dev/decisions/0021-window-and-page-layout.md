@@ -322,9 +322,9 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   units, so it scales with Windows' text size as before.
 * **A page taller than that scrolls as a whole** (rule C). At the design's 16 px lines,
   two built-in pages do: the Length converter, as the ruling says, and the right
-  triangle, whose seven fields need about 771 px offscreen and 786 px natively at 9 pt
-  (UI/UX's measurement, relayed by the project manager with the ruling's correction:
-  both pages are on the list). Main's 738 px came from the segment calculator's
+  triangle, whose seven fields need about 771 px offscreen and 786 px natively at 9 pt.
+  The maintainer approved both as declared long pages on 2026-10-19, in ADR-0023's C2
+  ("Approved"). Main's 738 px came from the segment calculator's
   K-factor page, which needs 738, through the tallest-page term; the right triangle
   didn't exist on main, so it was never measured against it. Nothing changes for the
   segment page. The fit test names the two in a test-local list of long pages, which
@@ -334,7 +334,13 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   and a redesign of the segment page's A1/A2 row that it would need. Neither is built.
 * **With shorter lines, more pages scroll at launch,** as KI-024 first found: the
   fields' heights are in pixels. Offscreen here at 9 pt, the launch height is 692 px
-  (15 px lines; 996 before) or 646 px with DejaVu Sans (14 px lines; 990 before), and the
-  cone, segment and polygon pages scroll as well. KI-024 records it.
+  with Inter's 15 px lines (996 before), where the cone and the segment's K-factor page
+  scroll as well, or 646 px with DejaVu Sans' 14 px lines (990 before), where the cone,
+  the segment, the triangle and the polygon do. KI-024 lists them.
+* **The Units box stays put as the method changes only at 16 px lines, for now.** At
+  15 px lines the segment's course page fits and its K-factor page scrolls, so choosing
+  the K-factor moves the Units box 14 px; at 14 px lines both scroll, and it doesn't
+  move. The M1 promise of the amendment above holds at the design's lines; ADR-0023's
+  slice 1, paired rows, makes it hold at shorter ones (KI-024).
 * **The window still opens on the first built-in calculator,** and opens no other page
   while it's built, so no plugin's code runs before its calculator is chosen.

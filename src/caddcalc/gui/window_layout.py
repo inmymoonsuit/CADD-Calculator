@@ -49,7 +49,7 @@ def launch_size(tokens: LayoutTokens, unit: float, line: float, handle: float) -
     """Return the window's preferred content size: the list, its handle, and a full page.
 
     Its height is ``launch_lines`` line spacings. The window is never sized to its content:
-    a page taller than that scrolls as a whole (ADR-0021, the interim amendment).
+    a page taller than that scrolls as a whole (ADR-0021 §3, amendments; KI-024).
 
     Args:
         tokens: The layout tokens.

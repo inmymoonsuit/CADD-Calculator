@@ -1,8 +1,9 @@
 """The circle, the rectangle, the regular polygon, and the arc and sector (ADR-0018 §2).
 
 Each calculator gives every property of its shape at once, from the dimensions that
-define it. Formulas are MH31's "Dimensions of Plane Figures" (printed pp. 75-82); the
-sagitta is arranged to keep its digits, as the method's notes say.
+define it. Formulas are MH31's "Dimensions of Plane Figures" (printed pp. 75-80) and
+"Polygons" (pp. 81-82); the sagitta is arranged to keep its digits, as the method's notes
+say.
 """
 
 from __future__ import annotations

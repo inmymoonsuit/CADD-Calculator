@@ -16,6 +16,22 @@ Template:
 
 ---
 
+## 2026-10-19: A launch height taken from the tallest built-in page
+**Tried:** sizing the window at launch to the tallest built-in calculator page, with
+each of its methods, at the launch width (ADR-0021 §3's tallest-page term, added for
+KI-024 and widened to every method on UI/UX's M1), so no page scrolled at launch even
+with a font of shorter lines than Windows'. The window laid out every built-in page
+before it opened, behind an isolation boundary for a page that raised.
+**Outcome:** reverted in PR #1 (`7623cb3`), on the maintainer's ruling (ADR-0021's
+amendment of 2026-10-19).
+**Why:** ADR-0018's Length converter, with twelve rows, made itself the tallest page,
+so the window grew for everyone: offscreen at 9 pt from 765 to 996 px. A window sized to
+its content grows with every long page a family adds, and laying out every page at
+launch ran every calculator's code before it was chosen.
+**Instead:** the launch height is `launch_lines` line spacings, 738 px at 9 pt, and a
+longer page scrolls as a whole (rule C). ADR-0023's layout contract has a page declare
+that it's long; until it's built, the layout test lists the long pages (KI-024).
+
 ## 2026-10-18: Converting a converter's rows in exact arithmetic
 **Tried:** showing each fixed-unit row by converting the value's double to the row's unit
 in exact arithmetic and rounding once (`float(Fraction(value) / unit.exact)`), as

@@ -500,7 +500,8 @@ def results_tsv(calc: Calculator, result: Result, prefs: DisplayPrefs) -> str:
     leading apostrophe, which spreadsheets take as "this is text" (OWASP, "CSV
     Injection"). So does one starting with ``"``, which a paste might take as the start of
     a quoted field. A tab or line break, which OWASP also lists, is already a space here.
-    The value cell never gets one, a negative number must paste as a number, unless it's
+    The value cell never gets one, a negative number or a signed error's "+0.002500" must
+    paste as a number, unless it's
     a compound form, such as ``-1'-4"``, which is text.
     """
     rows = []

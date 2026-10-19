@@ -50,8 +50,9 @@ properties together, so the user doesn't have to choose "area" or "perimeter" fi
 
 * **Formulas** go through `ctx.calc` and show their work (ADR-0004). Each method cites
   *Machinery's Handbook*, 31st ed. (MH31), Mathematics: "Dimensions of Plane Figures"
-  (printed pp. 75–82) and "Solution of Triangles" (pp. 96–101); the DLMF §4.42 is a second
-  source for the triangles. Citing a formula in a method is not reference data, so
+  (printed pp. 75–80), "Polygons" (pp. 81–82) and "Solution of Triangles" (pp. 96–101,
+  p. 101 under the running head "Solution of Oblique Triangles"); the DLMF §4.42 is a
+  second source for the triangles. Citing a formula in a method is not reference data, so
   ADR-0014's cap doesn't apply (ADR-0014 D7 amendment). Constants are computed with
   `math.pi` and `math.radians`, not the Handbook's rounded ones.
 * **For students, the Geometry help points to** the *Machinery's Handbook Pocket
@@ -273,8 +274,9 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   hasn't, so it's left.
 * **An angle that's 90° to the arithmetic is refused in both angle methods** (S&R's
   Note 3). Within about 6e-11° of 90°, `tand(A)` is undefined, so `leg_angle` failed in
-  its work while `hypotenuse_angle` gave, for c = 1 mm, a leg b of 8.7e-13 mm. Both now refuse it before
-  computing, as the range refuses 90°: "Angle A (opposite a) (A) must be less than 90°".
+  its work while `hypotenuse_angle` gave, for c = 1 mm, a leg b of 8.7e-13 mm. Both now
+  refuse it before computing, saying since fix round 4: "Angle A (opposite a) is so near
+  90° that it counts as 90° to the arithmetic: give an angle further below 90°".
 * **The locators** (S&R's Note 1): MH31's "Dimensions of Plane Figures" is printed
   pp. 75–80, and the table of regular polygons on p. 82 is under "Polygons", pp. 81–82,
   cited so; p. 101's running head is "Solution of Oblique Triangles". The arc's methods

@@ -548,11 +548,10 @@ All notable changes are recorded here. The format follows
   industry best practice before manufacturing." It's shown under the results, after the
   command line's results, and in About. The maintainer chose it: "Sounds like the best
   wording so far. I like it" (ADR-0020, amendments).
-- **The window opens at main's launch height again, 738 px at 9 pt,** and is never
-  sized to its content (ADR-0021, the interim amendment, on the maintainer's ruling,
-  pending ADR-0023). A page taller than that, such as the Length converter or the right
-  triangle, scrolls as a whole. The window no longer lays out every calculator page
-  before it opens.
+- **The window opens at one height whatever calculator it shows,** 738 px with
+  Windows' 9 pt text and in proportion at other text sizes. A page taller than the
+  window, such as the Length converter or the right triangle, scrolls as a whole; the
+  window doesn't grow to fit it (ADR-0021, amendments).
 - **Families are listed in their declared order,** general tools first: Geometry, then
   Conversions, then Sheet Metal, with a plugin's families after the built-ins, sorted by
   name. They were all sorted by name.
@@ -574,9 +573,6 @@ All notable changes are recorded here. The format follows
 - A method's status says what its verification covers, and its tooltip names the source,
   or says why the method isn't verified there. The status keeps one width, so changing
   the method no longer shifts the row.
-- The window opens tall enough for every built-in calculator with any of its methods.
-  Choosing the K-factor in Flat length of a formed segment no longer brings a scroll bar,
-  which moved the Units box; on Windows at 9 pt the window opens 2 px taller, at 738 px.
 - Citations of *Machinery's Handbook* move from the 29th edition to the 31st (2020): the
   course formula (p. 1421), the angle rule and its worked example (p. 1421, Fig. 13), and
   the 41.82 steel basis (Table 2, p. 2706), so the gauge table is version 3. The
@@ -584,10 +580,8 @@ All notable changes are recorded here. The format follows
 - **The window and page layout (ADR-0021).** The window opens centred on the welcome
   card's screen, sized to fit it, and in Windows follows the user's text size, read at
   startup: every size is in text units, so larger text makes the whole layout larger in
-  proportion. The window opens tall enough for the tallest built-in calculator page,
-  so none scrolls at launch, even with a font of shorter lines than Windows'. The
-  page is capped at a comfortable width, left-aligned beside the list, with plain
-  background beyond it; the list can't be dragged shut.
+  proportion. The page is capped at a comfortable width, left-aligned beside the list,
+  with plain background beyond it; the list can't be dragged shut.
 - The disclaimer moves from the status bar to the last line under the results, wrapped,
   never cut off; the status bar keeps passing messages such as "Copied". The method box
   shows the method's name, with its status beside it, or under it when narrow; the open
