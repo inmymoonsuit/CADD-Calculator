@@ -45,7 +45,7 @@ def k_source(window: Any) -> str:
 
 
 def test_an_unticked_copy_of_an_applied_k_keeps_its_citation_and_note() -> None:
-    """Review M1: the copy credits the starting value and carries its prompt."""
+    """The copy credits the starting value and carries its prompt."""
     window = open_window()
     applied = apply_faa_k(window)
     open_k_factor_bend(window)
@@ -63,7 +63,7 @@ def test_an_unticked_copy_of_an_applied_k_keeps_its_citation_and_note() -> None:
 
 
 def test_an_unticked_copy_of_an_applied_k_warns_for_another_material() -> None:
-    """Review 2b.7d: the copy keeps its citation, so the material check sees it too."""
+    """The copy keeps its citation, so the material check sees it too."""
     window = open_window()
     apply_faa_k(window)
     choose(window, "Stainless steel", "ss:304")
@@ -76,7 +76,7 @@ def test_an_unticked_copy_of_an_applied_k_warns_for_another_material() -> None:
 
 
 def test_an_unticked_copy_of_a_gauge_thickness_keeps_the_gauge_warning() -> None:
-    """Review L5: the copy keeps the gauge table as its source's reference."""
+    """The copy keeps the gauge table as its source's reference."""
     window = open_window()
     choose(window, "Aluminum", "al:5052")
     systems, gauges = window.choice_rows["gauge"]
@@ -97,7 +97,7 @@ def test_an_unticked_copy_of_a_gauge_thickness_keeps_the_gauge_warning() -> None
 
 
 def test_choice_boxes_dont_widen_the_settings_page() -> None:
-    """Review L6: a box sized to its longest option made the page scroll sideways."""
+    """A box sized to its longest option would make the page scroll sideways."""
     from PySide6.QtWidgets import QComboBox
 
     window = open_window()
@@ -110,13 +110,13 @@ def test_choice_boxes_dont_widen_the_settings_page() -> None:
     policy = QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
     assert all(box.sizeAdjustPolicy() == policy for box in boxes)
     assert len({box.sizeHint().width() for box in boxes}) == 1, "options don't size a box"
-    # 1224 px before, with the offscreen platform's wide fallback glyphs; 619 natively.
+    # A bound loose enough for the offscreen platform's wide fallback glyphs.
     assert window.domain_page.widget().minimumSizeHint().width() <= 1000
     window.close()
 
 
 def test_a_calculators_own_k_overrides_an_applied_one() -> None:
-    """Review M1: an overriding field's own value runs, with no origin left over."""
+    """An overriding field's own value runs, with no origin left over."""
     window = open_window()
     open_k_factor_bend(window)
     window.inherit_boxes["k_factor"].setChecked(False)
@@ -185,12 +185,15 @@ def test_the_facts_show_the_materials_rule_strengths_and_notes() -> None:
     window.close()
 
 
-@pytest.mark.parametrize(("unit", "shown"), [("in", "F_tu 42.0 ksi"), ("mm", "F_tu 289.6 MPa")])
-def test_strengths_follow_the_length_unit(unit: str, shown: str) -> None:
+def test_strengths_are_in_ksi_whatever_the_results_show() -> None:
+    """The settings page shows inch-pound units until its fields get pickers (KI-027)."""
+    from tests.qt_helpers import show_in
+
     window = open_window()
-    window.units_box.setCurrentIndex(window.units_box.findText(unit))
+    window.select_calculator("sheet_metal.bend_allowance")
+    show_in(window, "mm")
     choose(window, "Aluminum", "al:6061")
-    assert shown in facts(window)
+    assert "F_tu 42.0 ksi" in facts(window) and "MPa" not in facts(window)
     window.close()
 
 

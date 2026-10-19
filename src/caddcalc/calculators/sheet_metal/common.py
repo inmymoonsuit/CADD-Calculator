@@ -105,6 +105,9 @@ def bend_angle(
         maximum=180.0,
         max_inclusive=False,
         help="Angle bent through, measured from flat (0° = no bend, 90° = square bend).",
+        # A bend is given in degrees, in degrees, minutes and seconds, or in radians;
+        # a minute or a second of arc alone isn't a unit a bend is given in.
+        units=("deg", "dms", "rad"),
     )
 
 

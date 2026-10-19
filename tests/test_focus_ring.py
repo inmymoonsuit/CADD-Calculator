@@ -104,12 +104,13 @@ def _raised(monkeypatch: pytest.MonkeyPatch) -> list[BaseException]:
 def test_a_rebuild_while_the_ring_shows_leaves_results_live(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """S&R's k5 H1: units changed while an outlined input has focus rebuild the form."""
+    """A method changed while an outlined input has focus rebuilds the form."""
     raised = _raised(monkeypatch)
     window = _outlined_window()
     _focus(window.fields["thickness"][1])
     assert window.focus_ring.isVisible()
-    window.units_box.setCurrentText("mm")  # rebuilds the form, deleting the ringed input
+    window.method_box.setCurrentIndex(1)  # rebuilds the form, deleting the ringed input
+    window.method_box.setCurrentIndex(0)
     assert window.focus_ring.target is None or window.focus_ring.target in [
         e for _p, e in window.fields.values()
     ]
@@ -125,7 +126,7 @@ def test_a_rebuild_while_the_ring_shows_leaves_results_live(
 
 @pytest.mark.parametrize("ringing", [False, True])
 def test_the_ring_is_deleted_with_its_window(ringing: bool) -> None:
-    """S&R's k5 M1: the window owns the ring, so it never outlives it (KI-019)."""
+    """The window owns the ring, so it never outlives it (KI-019)."""
     from PySide6.QtCore import QEvent
     from PySide6.QtWidgets import QApplication
     from shiboken6 import isValid
@@ -144,7 +145,7 @@ def test_the_ring_is_deleted_with_its_window(ringing: bool) -> None:
 def test_closing_the_window_while_an_outlined_input_has_focus_is_clean(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """S&R's lifecycle set: close with the ring showing, then use another window."""
+    """The ring's lifecycle: close with the ring showing, then use another window."""
     from PySide6.QtCore import QEvent
     from PySide6.QtWidgets import QApplication
 

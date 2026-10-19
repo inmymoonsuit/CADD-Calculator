@@ -271,14 +271,14 @@ def test_a_plural_form_needs_a_whole_count(count: object) -> None:
         ("de_DE.UTF-8", "de_DE"),
         ("FR", "fr"),
         ("", ""),
-        # A script is kept only where it isn't the language's usual one (S&R's i1 L4).
+        # A script is kept only where it isn't the language's usual one.
         ("zh-Hant-TW", "zh_Hant_TW"),
         ("sr-Latn-RS", "sr_Latn_RS"),
         ("sr-Cyrl-RS", "sr_RS"),
         ("sr@latin", "sr_Latn"),
         ("sr_RS@latin", "sr_Latn_RS"),
         ("de_DE@euro", "de_DE"),
-        # No language at all: the source (S&R's i1 L5).
+        # No language at all: the source.
         ("C", ""),
         ("POSIX", ""),
         ("C.UTF-8", ""),
@@ -322,7 +322,7 @@ def test_the_usual_scripts_are_cldrs() -> None:
 
 
 def test_a_lookup_begun_before_a_new_choice_never_answers_for_it(tmp_path: Path) -> None:
-    """S&R's i1 L2: a catalog read under the old choice is cached under the old choice."""
+    """A catalog read under the old choice is cached under the old choice."""
     import threading
 
     folder = shipped(tmp_path, "en_001")
@@ -351,7 +351,7 @@ def test_a_lookup_begun_before_a_new_choice_never_answers_for_it(tmp_path: Path)
 
 
 def test_nothing_is_translated_at_import_time() -> None:
-    """S&R's i1: text is translated where it's shown, never where it's declared (§1).
+    """Text is translated where it's shown, never where it's declared (§1).
 
     A call at module or class level would run as the module is imported, before a front
     end has chosen the language.
@@ -457,7 +457,7 @@ def test_every_translation_keeps_its_sources_placeholders() -> None:
 
 
 def test_a_plurals_forms_are_checked_one_by_one() -> None:
-    """S&R's i1 L1: "one inch" may leave out the count; "inches" may not."""
+    """A plural's one form, "one inch", may leave out the count; "inches" may not."""
     tools = tooling()
     catalog = Catalog(locale="en_GB", domain="caddcalc")
     catalog.add(("{n} inch", "{n} inches"), ("one inch", "{n} inches"))
@@ -509,7 +509,7 @@ def test_a_plurals_forms_are_checked_one_by_one() -> None:
     ],
 )
 def test_marked_text_names_its_fields(text: str, refused: bool) -> None:
-    """S&R's i1 L1, i4b L1 and i5b: a field named by position or printf can't be reordered.
+    """A field named by position or printf can't be reordered.
 
     That holds for a field nested in another's format spec too, which Python fills one
     level deep. Unbalanced braces can't be read for fields at all, so they're refused.
@@ -548,7 +548,7 @@ field (``Method.quantities``)."""
 
 
 def test_the_calculators_prose_holds_no_number_of_the_apps_own() -> None:
-    """UI/UX's i4 L2: the string sweep, over method notes and summaries, and help texts."""
+    """The string sweep, over method notes and summaries, and help texts."""
     from caddcalc.calculators import default_registry
 
     registry = default_registry(load_plugins=False)
@@ -562,7 +562,7 @@ def test_the_calculators_prose_holds_no_number_of_the_apps_own() -> None:
 
 
 def test_the_shipped_languages_are_those_with_a_compiled_catalog(tmp_path: Path) -> None:
-    """A packaged build reports them, so one that left a catalog out fails (i5)."""
+    """A packaged build reports them, so one that left a catalog out fails."""
     assert i18n.shipped_languages(tmp_path / "none") == ()
     assert i18n.shipped_languages(tmp_path) == ()
     written = tooling().compile_catalogs(tmp_path)
@@ -575,7 +575,7 @@ def test_the_shipped_languages_are_those_with_a_compiled_catalog(tmp_path: Path)
 def test_compiling_no_catalog_fails_rather_than_ship_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """S&R's i5 L2: with no .po, a wheel or a build would ship no catalogs, unnoticed."""
+    """With no .po, a wheel or a build would ship no catalogs, unnoticed."""
     tools = tooling()
     monkeypatch.setattr(tools, "LOCALE", tmp_path / "locale")
     with pytest.raises(tools.CatalogError, match="no catalog to compile"):
@@ -586,7 +586,7 @@ def test_compiling_no_catalog_fails_rather_than_ship_none(
 
 
 def test_a_translation_keeps_the_fields_nested_in_a_format_spec() -> None:
-    """S&R's i5b L2: ``{width}`` in ``{value:{width}}`` is a field like any other."""
+    """``{width}`` in ``{value:{width}}`` is a field like any other."""
     tools = tooling()
     catalog = Catalog(locale="en_GB", domain="caddcalc")
     catalog.add("{value:{width}} wide", "{value:{width}} broad")
@@ -597,7 +597,7 @@ def test_a_translation_keeps_the_fields_nested_in_a_format_spec() -> None:
 
 
 def test_a_wheel_carries_each_compiled_catalog_and_nothing_else(tmp_path: Path) -> None:
-    """S&R's i5b note: CI checks the built wheel, as the frozen build checks its folder."""
+    """CI checks the built wheel, as the frozen build checks its folder."""
     import zipfile
 
     tools = tooling()

@@ -108,3 +108,15 @@ kept 0.3119 under the new method, a stale result again.
   where it failed; an input the user can fix stays a one-line message.
 * **The error hook** writes to stderr only, from the application's `aboutToQuit` on, as
   well as while it closes down, so no box shows during teardown (KI-019).
+
+### 2026-10-19: plugins and units on fields (ADR-0024 E6)
+
+* A plugin calculator needs no change to get unit pickers: its parameters' default texts
+  give their units, and its outputs get the generated output sets.
+* A plugin length parameter with a bare-number default needs `Param.unit` (or
+  `Param.units`), since a bare number has no unit for its picker to start in. Without
+  one it fails `validate_spec` with a message naming `Param.unit`, and is skipped and
+  listed in `plugin_errors` like any plugin that fails to load; it never stops startup.
+* Plugin code that formatted with `DisplayPrefs.length_unit`, `entry_unit` or
+  `display_unit` moves to `core.formatting.ShownUnits`. A plugin may declare its own
+  output sets (`Calculator.output_sets`), including one in a finer feet-and-inches form.

@@ -1162,3 +1162,12 @@ materials table, and the gauge table's version 2 is re-verified. Its Lows, as bu
   as "Sheet Metal Gauge Conversion Cart" (p. 1453), isn't cited: its inch and
   millimetre columns disagree in places, and its stainless column isn't the steel
   Manufacturers' Standard Gage (`docs/dev/research/materials-data-sources.md`).
+
+### 2026-10-19: notes in JSON's schema 1 (ADR-0024 E-4)
+
+`Note.to_dict` is removed with `Result.to_dict`. A note in `formatting.result_json` keeps
+its `kind`, `references` (each `Reference.to_dict`, which stays, with its scope and
+short title) and `subjects`; its `text` and `detail` are filled as shown, in the run's
+output set, as the window shows them, and each of its `quantities` gives its value in
+base units and as shown. "Existing references and `to_dict` keep working" above means
+`Reference.to_dict`.

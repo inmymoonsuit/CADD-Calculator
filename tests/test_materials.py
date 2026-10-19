@@ -200,7 +200,7 @@ def test_edd5_defines_only_its_one_cite_only_value() -> None:
 
 
 def test_bending_practice_is_cited_to_the_current_edition() -> None:
-    """Review L4: the 2015 edition is kept only for its generic annealed stainless row."""
+    """The 2015 edition is kept only for its generic annealed stainless row."""
     practice = materials().practice.source
     assert (practice.id, practice.publication.id, practice.reference.locator) == (
         "to_bending_practice",
@@ -260,7 +260,7 @@ def test_the_loader_refuses_malformed_rows(old: str, new: str, message: str) -> 
         edited(old, new)
 
 
-# --- The material and temper choices (2b.5) -----------------------------------------------
+# --- The material and temper choices (ADR-0014 §3) ---------------------------------------
 
 
 def test_the_domain_offers_material_then_its_temper() -> None:
@@ -294,7 +294,7 @@ def test_a_material_selects_its_only_temper_and_follows_a_change() -> None:
 
 
 def test_each_temper_is_keyed_by_its_material() -> None:
-    """Review L1: a material change can never carry a temper across silently."""
+    """A material change can never carry a temper across silently."""
     keys = [t.key for m in materials().materials for t in m.tempers]
     assert len(set(keys)) == len(keys)
     with pytest.raises(SpecError, match="belongs to 'al:5052' and 'al:6061'"):
@@ -302,7 +302,7 @@ def test_each_temper_is_keyed_by_its_material() -> None:
 
 
 def test_every_condition_naming_a_choice_is_an_option_the_domain_offers() -> None:
-    """Review M3: catches a typo such as "al:6O61" in any shipped table."""
+    """It catches a typo such as "al:6O61" in any shipped table."""
     choices = {c.key: c for c in DOMAIN.choices}
     checked = 0
     for spec in REFERENCE_TABLES:
@@ -316,7 +316,7 @@ def test_every_condition_naming_a_choice_is_an_option_the_domain_offers() -> Non
 
 
 def test_a_material_sets_no_value() -> None:
-    """ADR-0014 M2: the material informs checks; the user's values stay in charge."""
+    """ADR-0014 §3: the material informs checks; the user's values stay in charge."""
     settings = DomainSettings().set_choice(DOMAIN, "material", "al:6061")
     values = settings.for_domain(DOMAIN)
     assert dict(values.derived) == {}

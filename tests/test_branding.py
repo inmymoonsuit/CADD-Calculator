@@ -556,7 +556,7 @@ raise SystemExit(main(sys.argv[1:]))
 def test_a_failed_startup_ends_the_app_with_status_1(
     tmp_path: Path, args: list[str], part: str
 ) -> None:
-    """Review M1: run apart, under a timeout, so a regression can't hang the suite.
+    """Run apart, under a timeout, so a regression can't hang the suite.
 
     The main window fails as it's built, or before, as its shell is made for the card
     to be owned by: either way the app says so, and ends with status 1.
@@ -589,7 +589,7 @@ def test_a_failed_startup_ends_the_app_with_status_1(
 def test_build_checks_every_catalog_ours_and_qts_is_bundled(
     build_script: ModuleType, tmp_path: Path
 ) -> None:
-    """ADR-0009's checklist: each language's .mo, and every qtbase_*.qm (i5)."""
+    """ADR-0009's checklist: each language's .mo, and every qtbase_*.qm."""
     missing = build_script.missing_catalogs(tmp_path)
     assert "caddcalc/locale/en_001/LC_MESSAGES/caddcalc.mo" in missing
     assert "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.mo" in missing
@@ -608,7 +608,7 @@ def test_build_checks_every_catalog_ours_and_qts_is_bundled(
 def test_the_build_fails_with_no_catalog_to_check(
     build_script: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S&R's i5 L2: with no .po, there'd be no list of ours to check the build against."""
+    """With no .po, there'd be no list of ours to check the build against."""
     monkeypatch.setattr(build_script, "CATALOGS", tmp_path / "locale")
     with pytest.raises(build_script.BuildError, match="no catalog to check"):
         build_script.missing_catalogs(tmp_path)
@@ -616,7 +616,7 @@ def test_the_build_fails_with_no_catalog_to_check(
 
 @pytest.mark.gui
 def test_no_build_ships_the_catalogs_sources(build_script: ModuleType, tmp_path: Path) -> None:
-    """The .po and .pot stay in the sdist; the app reads only the .mo (i5b)."""
+    """The .po and .pot stay in the sdist; the app reads only the .mo."""
     import fnmatch
 
     args = build_script.nuitka_args(None)

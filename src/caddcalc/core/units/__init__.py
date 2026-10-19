@@ -7,6 +7,7 @@ here still.
 """
 
 from caddcalc.core.units.compound import CompoundForm, CompoundText
+from caddcalc.core.units.entry import UnitInTextError, evaluate
 from caddcalc.core.units.model import (
     CLOSE_UP_SYMBOLS,
     Derivation,
@@ -56,6 +57,7 @@ __all__ = [
     "Precision",
     "TypedValue",
     "Unit",
+    "UnitInTextError",
     "UnitRegistry",
     "UnitSystem",
     "base_text",
@@ -63,6 +65,7 @@ __all__ = [
     "build_registry",
     "clear_registry",
     "convert",
+    "evaluate",
     "from_base",
     "get_unit",
     "parse_number",

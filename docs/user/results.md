@@ -14,6 +14,37 @@ inputs and the notes, work, and method. The command line prints the same values 
 Each field shows one result: its symbol, its name, its value, its unit, and a copy
 button.
 
+## Show in: the results' units
+
+The **Show in** picker, between the Results title and Copy all, sets the units every
+result is shown in. Its choices are sets, one per length unit: `in`, `in 1/16`, `in
+1/32` and `in 1/64` (inches to the nearest fraction, as `5/16"`), `ft-in`, `ft`, `mm`,
+`cm` and `m`. Each names what the calculator shows: the right triangle's are `in · ° ·
+in²` and the like, since areas are the square of the length unit, and stresses follow
+the system, ksi beside inches and MPa beside metric units. Angles are in degrees.
+
+The open list names each set, as `in 1/16 · ° · in² — inches, nearest 1/16; degrees;
+square inches`, and a screen reader says the chosen set's name. The mouse wheel never
+changes it; click it, or use the keyboard.
+
+* **Until you choose a set, it follows your inputs:** while every length input the
+  method shows has the same unit picked, the results show in it. Pick mm for the
+  thickness, and the other lengths and the results follow. While the lengths disagree,
+  as with the thickness in mm and the radius in cm, the results stay in the set they
+  last followed. An input another method uses, hidden for now, doesn't count. Once you
+  choose a set, it's yours for the session, on that calculator.
+* **What follows the set:** the fields, Copy, Copy all, what a screen reader says, and
+  the work. The Inputs list gives each input in its own picker's unit, then in the
+  set's where the unit differs: `0.1046 in = 2.6568 mm`. An inch field has no second
+  value in an inch-fraction set, whose unit is inches too. Where a fraction or feet and
+  inches would round an input, it's given in the form's unit instead: `2.6568 mm =
+  0.1046 in`, never `= 0'-0 1/8"`. A calculator with no Show in picker gives no second
+  value.
+* **Some results keep their own unit,** such as each row of a unit converter, and a
+  result with its own picker in its row is set there. A calculator whose every result
+  has its own unit has no Show in picker.
+* In a narrow window, the picker and Copy all move under the title.
+
 * Values are rounded for display only, and line up on their decimal points, so a mix of
   lengths (4 decimals) and angles (2 decimals) is easy to read. A degree sign sits
   against its number: `132.70°`.
@@ -39,8 +70,6 @@ button.
     rounding, in the display unit, such as `0.311864`; for feet and inches, a decimal in
     inches, and for degrees, minutes and seconds, in degrees, as the item says ("Copy
     full precision, in inches")
-  * **Copy fraction** (not in the desktop app yet, which has no fraction setting):
-    `5/16"`, or `1-5/16"`. The inch mark keeps a spreadsheet from reading it as a date.
 * **Copy all:** the button beside the Results title copies every result as rows for a
   spreadsheet, one per result: symbol, name, value, and unit, in columns. A name a
   spreadsheet would take for a formula, such as one starting with `=`, is kept as text.

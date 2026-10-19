@@ -7,6 +7,17 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- For calculator authors (ADR-0024 E1, E2): a field's text is read in the unit or form
+  its picker chooses, by `TypedValue.read(text, choice, dimension)`. It takes numbers,
+  fractions, mixed numbers and exact arithmetic (+ − × ÷ and parentheses), with
+  AutoCAD's mixed-number rule: `1-3/16` is 1 3/16, `1 - 3/16` is 13/16. Feet and inches
+  read as `10-2 3/16` or `10'-2 3/16"`, a bare number as inches, and degrees, minutes
+  and seconds as `40 30 15`. A text that names a unit is refused with its fix
+  (`UnitInTextError`). A parameter declares its picker's choices (`Param.unit`,
+  `Param.units`; its default's unit otherwise), and a calculator its output sets
+  (`UnitSet`, `Calculator.output_sets`, generated one per length choice by default); an
+  output may have its own picker (`Output.picks`). A parameter whose picker has no
+  default unit is refused at registration, a plugin's included.
 - **The Conversions family (ADR-0018 §3),** after Geometry: Length, Angle, Area, and
   Stress and pressure. Type one value in any unit of its kind and read it in every unit
   at once, each row in its own unit whatever the unit system, to 6 significant figures,
@@ -22,8 +33,9 @@ All notable changes are recorded here. The format follows
   sides), Right triangle, Regular polygon, and Arc and sector. Each gives every property
   of its shape at once, cites *Machinery's Handbook* (31st ed.), and points students to
   the *Pocket Companion* (32nd ed.). Input that describes no shape is refused, such as a
-  flat triangle or a hypotenuse no longer than its leg. Triangle angles all come from the
-  law of cosines, a deliberate departure from the Handbook's three-sides procedure, and
+  flat triangle or a hypotenuse no longer than its leg. Triangle angles all come from
+  Kahan's arrangement of the law of cosines, a deliberate departure from the Handbook's
+  three-sides procedure, and
   the formulas are arranged to keep their digits for needle-thin triangles and small
   arcs. See the user guide's [Geometry calculators](docs/user/calculators/geometry.md).
 - `Context.given` reports an input as an output, unchanged, for a method that takes as
@@ -82,8 +94,7 @@ All notable changes are recorded here. The format follows
 - **Copying results (ADR-0017).** Each result field's copy button copies its value as
   shown, without its unit, ready for a spreadsheet cell or a CAD dimension box; so do
   Space, Enter, and Ctrl+C (Cmd+C) on the focused button. Its menu (right-click or the
-  Menu key) also copies with the unit, at full precision, or, while a fraction shows,
-  as `5/16"`. **Copy all**, beside the Results title or Ctrl+Shift+C (Cmd+Shift+C),
+  Menu key) also copies with the unit, or at full precision. **Copy all**, beside the Results title or Ctrl+Shift+C (Cmd+Shift+C),
   copies every output as rows for a spreadsheet, with any text cell that a spreadsheet
   would read as a formula kept as text. A check shows on the button for a moment, and
   the status bar and screen readers say what was copied.
@@ -97,7 +108,7 @@ All notable changes are recorded here. The format follows
   outline; the Tabler copy and check icons; and spoken unit names ("inches") for
   screen readers.
 - `core.formatting` shows a value in parts, for copying it (the coming result fields):
-  `value_parts()` gives its number, its unit, and its inch fraction, and `format_value()`
+  `value_parts()` gives its number and its unit, and `format_value()`
   now joins them, unchanged. `copy_text()` gives the clipboard text: the number as shown,
   the number with its unit, or full precision (10 significant digits), always plain
   decimals with an ASCII minus and no negative zero. `results_tsv()` gives a result's
@@ -387,6 +398,58 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **Escape, or a click outside, on a picker's open list left it unable to settle:** a
+  step taken before, and every step after, never carried to the other fields. Closing
+  the list chooses nothing, and the step settles when you leave the picker.
+- **The Inputs list printed false equalities in inch-fraction and feet-and-inches sets,**
+  such as `0.1046 in = 1/8"`. An input has no second value where the set's unit is its
+  field's, a form gives way to its unit where it would round the input (`= 0.1046 in`),
+  and a calculator with no Show in picker, such as a converter, gives none.
+- **A calculator's own output set in a finer feet-and-inches form** (`ft_in_32`,
+  `ft_in_64`) passed registration, then failed in the app and on the command line; it
+  shows now, with its other units taken from the inch set.
+- `30'`, `30"` and `30 arcmin` in a bend angle offered "Use 30′?" with no button; a unit
+  its picker doesn't list is refused with no offer. A picker switch also clears its
+  field's undo, which would otherwise read an earlier text in the new unit.
+- Feet alone, `1'` in a feet-and-inches field, read a last place apart from the command
+  line's `L=1'`; both read 304.8 mm now. A refused unit run on to its number, `3μm`, is
+  named as `μm`; a refused form quotes a minus sign as typed; and `40d30m` in a DMS field
+  is refused as not degrees, minutes and seconds rather than as a length.
+- **The command line:** an unknown `--output-unit` name is named in its message, and a
+  result is named in any case as an input is; `--unit` with an empty unit, or for an
+  input the method doesn't use, is refused as such; a repeated `--output-set` is refused
+  as the other repeated options are.
+- **JSON gives `output_set: null` for a calculator with no output sets,** such as a
+  converter, and an input's `shown.value` is the number as typed (`T=3` is 3), and
+  always agrees with its `base`: `value=3 - 1/2"` gives 3.5, as the command line reads it.
+- **An input read in feet and inches is listed as it ran:** `0'-0.1046"` is listed
+  `0.1046 in`, not rounded to `0'-0 1/8"`; one the form shows exactly stays in the form.
+- A result's label no longer draws a pixel past its edge where it elides, as on macOS.
+- **The command line read no input given after an option on Python 3.12,** as in
+  `run CALC --method course T=0.25`; it reads them wherever they're given now.
+- **A degrees-minutes-seconds field left at a sign ran at 0°:** `-`, `+` or an empty
+  text now isn't finished, as in any other field, and so are `40-` and `40-30-`; a
+  hyphen after a mark, `40°-30′`, is refused.
+- **Opening a unit picker's list after an arrow-key step moved the other fields** to the
+  step's unit before anything was chosen. Only the choice made in the list leads now.
+- **A Geometry length outside 10⁻⁷⁰ mm to 10⁷⁰ mm is refused, plainly** (KI-026). A 3-4-5
+  triangle of 3·10⁻⁸² mm had an area of 0, and one of 3·10⁻¹⁶² mm angles 9 % off; at
+  3·10⁻¹⁶⁵ mm it divided by zero, a circle that small had an area of 0, and a triangle of
+  3·10⁷⁷ mm said its area "does not give a finite number".
+- **A value three units in its last place off a half-way inch fraction rounds as itself:**
+  `-11.976562500000005 in` is 11 63/64" to the 1/64, not the even 11 31/32". The two units
+  in the last place that make a typed half-way value a tie are counted in inches, the
+  unit it's shown in, not in millimeters, where they were up to four of an inch's.
+- **A fraction or mixed number typed with its unit reads exactly, rounded once:**
+  `3 78/100 mm` is 3.78 mm, not 3.7800000000000002, and `-0` reads as 0. Feet and
+  inches, and degrees, minutes and seconds, read exactly too, so a value read on the
+  command line is bit for bit the one a field reads.
+- `tand(-0.0)` and `sind(-0.0)`, and their zeros at multiples of 180°, are signed as IEEE
+  754's `tanPi` and `sinPi` sign them: `tand(-0.0)` is -0.0, not 0.0.
+- A label that ends in parentheses takes its symbol inside them: "Across flats
+  (inscribed circle, AF) must be greater than 0", not "(inscribed circle) (AF)".
+- "1 and a half inches" and "4 and 3 sixteenths inches" are plural pairs for translators,
+  their form following the whole value, as 1.5 and 4.1875, as a unit's name does.
 - **A right triangle's hypotenuse equal to its leg is refused in any units:** `a=39 in`
   with `c=990.6 mm` gave a leg of 0 and an angle of 90°.
 - **A half-way value typed in meters or as a fraction of a foot takes the even
@@ -401,9 +464,6 @@ All notable changes are recorded here. The format follows
 - **A stress too large for its kPa or psi row is refused,** never shown as `inf`; a
   number too large to calculate with, such as `1e308 ft`, is refused as too large, not
   as "not a finite number".
-- **The `(≈ …")` beside an inch value rounds as every inch fraction does,** so it
-  agrees with feet and inches and the nearest 1/16, 1/32 and 1/64 inch on a tie: 7/32 in
-  is 1/4" in each. An error row has no `(≈ …")`.
 - **The polygon's number of sides is at most 1 000 000,** refused plainly past that,
   where 1e300 failed with internal text.
 - **A whole circle's chord is exactly 0,** not 2.4e-15 in: `sind` is exactly 0 at a
@@ -488,8 +548,6 @@ All notable changes are recorded here. The format follows
 - **A window given an empty registry.** `MainWindow(registry=...)` replaced a registry with
   domains but no calculators by the built-in one, because an empty registry is falsy. It
   now keeps the registry it's given.
-- **A negative zero in an inch fraction.** A tiny negative length showed `(≈ -0")`; it now
-  shows `(≈ 0")`.
 - The app, and the test suite, could crash on exit after the window closed (KI-019): the
   window's own widgets held it through their signal connections, so it was torn down
   during interpreter exit. Every CI job failed from it. The `caddcalc-gui` command also
@@ -503,8 +561,62 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The command line's units (ADR-0024 E-4):** a bare number reads in the input's default
+  unit, which `caddcalc show` now lists with each input's units and the calculator's
+  output sets: inches and degrees for every sheet-metal and geometry input. `--unit
+  NAME=ID` reads an input as a field picked in that unit or form does (`--unit L=ft_in
+  L=10-2`), refusing a unit in its text and a comma. `--output-set SET` (the first by
+  default) and `--output-unit KEY=ID` choose the results' units, and each input is
+  shown in the unit it was given in. **`--units` and `--fraction` are removed**, and
+  with them the `(≈ 5/16")` hint, in the app too: `--output-set in_16` and the app's
+  `in 1/16` replace them. A `--unit` without its input, twice for one input, or with a
+  unit it doesn't offer is refused, as is an `--output-unit` for a result with no
+  picker of its own.
+- **JSON is schema 1:** every input, result and step gives its value in base units and
+  as shown, a form adds its `copied` text, a given input adds `entered`, and the top
+  level has `schema` and `output_set`. For calculator authors, `Result.to_dict` and
+  `Note.to_dict` are replaced by `core.formatting.result_json`, and
+  `DisplayPrefs.fraction_denominator`, `CopyForm.FRACTION`, `to_fraction` and
+  `Unit.fractions` are removed.
+- **The Units box is gone; the results have a Show in picker** (ADR-0024 U2), between
+  their title and Copy all. It offers a set per length unit, `in`, `in 1/16`, `in 1/32`,
+  `in 1/64`, `ft-in`, `ft`, `mm`, `cm` and `m`, labelled by what the calculator shows
+  (`in · ° · in²` on the right triangle), and sets the fields, Copy, Copy all, speech
+  and the work together. Until you choose one, it follows the method's length inputs
+  while they share a unit, and stays on the set it last followed while they don't; once
+  chosen, it's yours for the session. Its accessible name is "Results units", its list names each set ("in 1/16 —
+  inches, nearest 1/16"), the mouse wheel doesn't change it, and it adds no height. The Inputs list adds each input's
+  value in the set's units where its picker shows another: `0.1046 in = 2.6568 mm`. A
+  result with its own picker (`Output.picks`) has it in its row. A family settings page
+  now shows and reads in inches, degrees and ksi until its fields get pickers (KI-027).
+- **The Inputs list and an input's range error are in the unit its picker shows**
+  (ADR-0024 E4), not the Units box's: a bend angle picked in rad is listed as
+  `1.5708 rad`, and refused as "must be less than 3.14159 rad". A value in radians shows
+  4 decimals, where other angles show 2. Everything else shows as before, character for
+  character, in inches and in millimetres. For calculator authors: `core.formatting`
+  takes the units to show in as a `ShownUnits` (an output set, with each output's pick
+  and each input's choice), and `DisplayPrefs.length_unit`, `display_unit` and
+  `entry_unit` are removed; an output with its own picker shows in its first pick until
+  it's picked.
+- **Each calculator input with a unit has a unit picker after it** (ADR-0024 U1), and
+  the number is read in the unit it shows. Fields take fractions, mixed numbers and
+  exact arithmetic (`2 × 1 3/16`), with AutoCAD's rule that `1-3/16` is one and three
+  sixteenths while `1 - 3/16` is thirteen sixteenths; feet and inches with their marks
+  optional (`10-2 3/16`, a bare `10` being inches); and degrees, minutes and seconds as
+  `40 30 15`. What the text reads as shows at the field's end, `= 1 3/16 in`, and is
+  the field's accessible description. **A unit typed into a calculator field is
+  refused**, with a button that moves it into the picker: `25 mm` offers "Use 25 mm".
+  Switching a picker re-reads the number you typed and converts a value you didn't;
+  your first switch carries to the calculator's other fields of that kind that show a
+  value you didn't type, once the choice settles (Enter, leaving the picker, or a choice
+  in its list). A bend angle is picked in °, ° ′ ″ or rad. Degrees, minutes and seconds
+  take hyphens between their parts (`40-30-15`), and the minus sign `−` never joins a
+  mixed number. For calculator authors, a default with no unit in its text is in the
+  unit its picker starts in. Family settings fields read units in their text (KI-027).
 - **The command line suggests only names that can be given:** for the right
-  triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?".
+  triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
+  `--method leg_angle`, which takes no side b, it suggests none and names that method's
+  inputs, a/leg_a and A/angle_a.
 - A result's help reaches the keyboard: screen readers say it after the copy button's
   value. An error's work line shows its sign, `+0.0025 in`, as its row does.
 - **Speech, in words a drafter says:** "1 foot and a quarter inch", "a half inch", "1
@@ -526,7 +638,9 @@ All notable changes are recorded here. The format follows
 - **The command line refuses an input it would lose:** one given twice, or one the
   chosen method doesn't use, such as `A=30` for the right triangle's two-legs method, is
   refused, exit 2, naming the method's inputs. They were silently overwritten or dropped.
-  Every valid sheet-metal command line runs as before.
+  A sheet-metal command line that gave such an input is refused too: `K=0.44` for the
+  bend allowance's default course method, which takes no K, needs `--method` naming a
+  method that uses it. Every other sheet-metal command line runs as before.
 - **Plugin families are listed after the built-ins, sorted by name,** whatever order the
   installed packages are found in.
 - `get_unit` with a dimension that has neither unit raises `UsageError` for a mark the
@@ -546,8 +660,7 @@ All notable changes are recorded here. The format follows
 - **The disclaimer is one line for every family,** in the maintainer's words, marked for
   translation: "Verify results and test according to your organization's policies or
   industry best practice before manufacturing." It's shown under the results, after the
-  command line's results, and in About. The maintainer chose it: "Sounds like the best
-  wording so far. I like it" (ADR-0020, amendments).
+  command line's results, in About, and in the README (ADR-0020, amendments).
 - **The window opens at one height whatever calculator it shows,** 738 px with
   Windows' 9 pt text and in proportion at other text sizes. A page taller than the
   window, such as the Length converter or the right triangle, scrolls as a whole; the

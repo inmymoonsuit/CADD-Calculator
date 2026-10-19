@@ -92,7 +92,7 @@ def test_the_doc_quotes_every_token() -> None:
 
 
 def test_the_doc_quotes_no_token_that_isnt_there() -> None:
-    """The other way: a doc row for a removed or renamed token fails (UI/UX's k2b L5)."""
+    """The other way: a doc row for a removed or renamed token fails."""
     doc = SPEC.read_text(encoding="utf-8")
     quoted = re.findall(r"^\| `(\w+)\.(\w+)` \|", doc, flags=re.MULTILINE)
     tables = shipped()

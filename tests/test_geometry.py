@@ -28,6 +28,7 @@ from caddcalc.calculators.geometry import (
 from caddcalc.calculators.geometry.common import (
     DLMF_TRIANGLES,
     KAHAN_NEEDLE,
+    LENGTH_SCALE,
     MH31,
     MH31_LAW_OF_COSINES,
     MH31_THREE_SIDES,
@@ -47,7 +48,7 @@ from caddcalc.core import (
     SpecError,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_note
+from caddcalc.core.formatting import DisplayPrefs, ShownUnits, describe_note
 from caddcalc.core.units import parse_quantity
 from tests.helpers import run_inches
 
@@ -192,13 +193,13 @@ def test_every_angle_keeps_its_digits_in_any_order_of_the_sides(
 
 
 def test_a_cosine_that_rounds_past_one_needs_no_clamp() -> None:
-    """The half-angle formula gives the true 7.1e-7° where a clamped cosine gave 0°.
+    """The half-angle formula gives the true 7.1e-7° where a clamped cosine would give 0°.
 
     These sides' cosine of A, by the law of cosines, is 1.0000000000000002, which acos
     refuses.
     """
     a, b, c = 0.07165433510563943, 4.478911887913045, 4.550566223018663
-    assert (b**2 + c**2 - a**2) / (2 * b * c) > 1, "the case a clamp was for"
+    assert (b**2 + c**2 - a**2) / (2 * b * c) > 1, "the case a clamp would cover"
     angle = Triangle().run({"side_a": a, "side_b": b, "side_c": c}).outputs["angle_a"]
     assert angle == pytest.approx(7.100719745227329808326018e-7, rel=1e-12, abs=0)
 
@@ -206,7 +207,7 @@ def test_a_cosine_that_rounds_past_one_needs_no_clamp() -> None:
 def test_a_cosine_that_rounds_past_minus_one_is_a_flat_triangle() -> None:
     """80.572, 10.817 and 91.389 make the cosine of C −1.0000000000000002; they're flat."""
     a, b, c = 80.572, 10.817, 91.389
-    assert (a**2 + b**2 - c**2) / (2 * a * b) < -1, "the case a clamp was for"
+    assert (a**2 + b**2 - c**2) / (2 * a * b) < -1, "the case a clamp would cover"
     with pytest.raises(InputError, match="These sides make no triangle"):
         Triangle().run({"side_a": a, "side_b": b, "side_c": c})
 
@@ -345,7 +346,7 @@ def test_an_angle_that_is_90_to_the_arithmetic_is_refused_in_either_method(metho
         ("Side a", "a", "Side a"),
         ("Number of sides", "N", "Number of sides (N)"),
         ("K-factor", "K", "K-factor (K)"),
-        ("Across flats (inscribed circle)", "AF", "Across flats (inscribed circle) (AF)"),
+        ("Across flats (inscribed circle)", "AF", "Across flats (inscribed circle, AF)"),
     ],
 )
 def test_a_label_that_names_its_symbol_is_not_given_it_twice(
@@ -415,7 +416,7 @@ def test_an_odd_polygon_says_what_a_caliper_reads() -> None:
     reading = (result.outputs["across_flats"] + result.outputs["across_corners"]) / 2
     assert note.quantities["reading"] == (pytest.approx(reading), Dimension.LENGTH)
     assert note.subjects == ("sides", "across_flats", "across_corners")
-    text = describe_note(note, DisplayPrefs()).lead
+    text = describe_note(note, ShownUnits.generated(), DisplayPrefs()).lead
     assert "a caliper held from a flat to the opposite corner reads 1.5388 in" in text
     assert "r + R" in text
     assert RegularPolygon().run({"sides": 6}, "side").notes == (), "even: flats are parallel"
@@ -489,6 +490,38 @@ def test_every_length_is_finite_and_greater_than_zero(
         calc().run({key: bad}, method)
 
 
+@pytest.mark.parametrize(("calc", "method", "key"), LENGTH_INPUTS)
+@pytest.mark.parametrize(
+    ("bad", "size"), [(LENGTH_SCALE[0] / 2, "small"), (LENGTH_SCALE[1] * 2, "large")]
+)
+def test_every_length_outside_the_scale_is_refused_plainly(
+    calc: type[Calculator], method: str, key: str, bad: float, size: str
+) -> None:
+    """Past the scale a product of lengths under- or overflows, and the work is wrong."""
+    with pytest.raises(
+        InputError,
+        match=rf"too {size} to work with: Geometry lengths are "
+        r"from 1e-70 mm to 1e70 mm\.$",
+    ):
+        calc().run({key: bad}, method)
+
+
+@pytest.mark.parametrize("scale", [LENGTH_SCALE[0], LENGTH_SCALE[1] / 5])
+def test_a_triangle_at_either_end_of_the_scale_keeps_its_digits(scale: float) -> None:
+    """At either end of the scale every product of the lengths is a normal double."""
+    a, b, c = 3 * scale, 4 * scale, 5 * scale
+    outputs = Triangle().run({"side_a": a, "side_b": b, "side_c": c}).outputs
+    assert outputs["angle_a"] == pytest.approx(A_345, rel=1e-15)
+    assert outputs["angle_b"] == pytest.approx(B_345, rel=1e-15)
+    assert outputs["angle_c"] == pytest.approx(90.0, rel=1e-15)
+    assert outputs["area"] == pytest.approx(6 * scale**2, rel=1e-15)
+    right = RightTriangle().run({"leg_a": a, "hypotenuse": c}, "leg_hypotenuse").outputs
+    assert right["leg_b"] == pytest.approx(b, rel=1e-15)
+    assert right["angle_a"] == pytest.approx(A_345, rel=1e-15)
+    circle = Circle().run({"diameter": c}, "diameter").outputs
+    assert circle["area"] == pytest.approx(math.pi * c**2 / 4, rel=1e-15)
+
+
 def test_every_method_cites_the_handbook_and_points_students_to_the_pocket_companion() -> None:
     for calc in CALCULATORS:
         for m in calc.methods:
@@ -525,9 +558,10 @@ def test_areas_are_shown_in_the_square_of_the_length_unit() -> None:
     calc = Rectangle()
     result = calc.run()
     area = calc.output("area")
-    assert format_output(area, result.outputs["area"], DisplayPrefs()) == "12.0000 in²"
-    prefs = DisplayPrefs(length_unit="mm")
-    assert format_output(area, result.outputs["area"], prefs) == "7741.92 mm²"
+    inches, millimetres = ShownUnits.generated("in"), ShownUnits.generated("mm")
+    assert format_output(area, result.outputs["area"], inches, DisplayPrefs()) == "12.0000 in²"
+    prefs = DisplayPrefs()
+    assert format_output(area, result.outputs["area"], millimetres, prefs) == "7741.92 mm²"
 
 
 def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixture[str]) -> None:
@@ -545,12 +579,11 @@ def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixtur
         == 0
     )
     data = json.loads(capsys.readouterr().out)
-    assert data["outputs"]["area"] == {
-        "value": pytest.approx(6 * IN2),
-        "unit": "mm²",
-        "dimension": "area",
-    }
-    assert data["outputs"]["hypotenuse"]["value"] == pytest.approx(127)
+    area = data["outputs"]["area"]
+    assert area["dimension"] == "area" and area["base"]["unit"] == "mm²"
+    assert area["base"]["value"] == pytest.approx(6 * IN2)
+    assert area["shown"]["unit"] == "in²" and area["shown"]["value"] == pytest.approx(6)
+    assert data["outputs"]["hypotenuse"]["base"]["value"] == pytest.approx(127)
     assert main(["run", "geometry.right_triangle", "a=5", "C=4", "--method", "leg_hypotenuse"]) != 0
     assert "must be longer than the leg" in capsys.readouterr().err
 

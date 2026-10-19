@@ -205,22 +205,79 @@ at launch (rule C). Offscreen:
 
 * **At 15 px lines** (Inter), the right triangle, the Length converter, the cone, and
   the segment with its K-factor method scroll. The segment's course method fits, so
-  choosing the K-factor brings a scroll bar and moves the Units box 14 px: ADR-0021's
-  promise that the Units box stays put as the method changes (UI/UX's M1) holds at 16 px
-  lines only, for now.
+  choosing the K-factor brings a scroll bar and moves the output picker: ADR-0021's
+  promise that it stays put as the method changes (UI/UX's M1, the Units box's until
+  ADR-0024 U2) holds at 16 px lines only, for now.
 * **At 14 px lines** (DejaVu Sans), the triangle, the right triangle, the polygon, the
   Length converter, the cone and the segment, with each of its methods, scroll.
 * **At 16 px lines**, the Length converter and the right triangle scroll, by design:
   the maintainer approved them as long pages (ADR-0023, C2).
 
 `test_no_calculator_page_scrolls_at_the_launch_size` checks every other page at the
-design's 16 px lines, and that its Units box stays put. ADR-0023's slice 1, paired rows,
+design's 16 px lines, and that its output picker stays put. ADR-0023's slice 1, paired rows,
 shortens the pages so they fit at shorter lines too.
 
 **History.** An earlier resolution sized the launch window to the tallest built-in page,
 with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 2026-10-19
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
+
+### KI-029: The converters show every unit at once, with no output picker (Low)
+
+ADR-0024 §7 splits the converters into one value in and one out, each with its picker,
+and Decimal to fraction and Fraction to decimal into converters of their own (E-6, U3).
+Until then each converter shows its value in every unit of its kind, each row in its own
+fixed unit, as ADR-0018's m2 built them. They have no output set, so the results' Show in
+picker is hidden on them and their Inputs list gives no second value; their input has a
+picker, as every input with a unit has. Resolved by E-6 and U3, in ADR-0024's stop 3.
+
+### KI-028: A decimal half typed in one unit can show the odd last digit in another (Low)
+
+A value is shown by rounding its double in the shown unit to the shown decimals, half to
+even. A value converted from another unit is the conversion's double, already rounded
+once, so at an exact decimal half it can land just over or under the half. 49.92751 mm is
+exactly 1.96565 in, which half to even shows as 1.9656, but its double in inches is
+1.9656500000000001, so it shows 1.9657 (S&R's Note 3 at ADR-0024's stop 2; it predates
+units on fields). Only a value exactly half-way at the shown decimals is affected, and by
+one unit in the last shown place. The inch fractions don't have it: they count a tie
+within the shown unit's last places as the tie (ADR-0019, amendments); the decimals could
+take the same window, which would change shown text everywhere it applies.
+
+Every calculator's `cm`, `m` and `ft` output sets show it too (the cloud review of stop
+2, its Low 3): in the `m` set, a 0.5 mm diameter's radius, exactly 0.00025 m, shows
+`0.0003 m` where half to even gives `0.0002`, and 1/32 in shows `0.7937 mm`, not
+`0.7938`; the review counted 361 such cases. It's kept as a known issue rather than
+fixed at stop 2, since the window would change the `in` and `mm` text that E-3's
+neutrality golden holds, and a change to shown values is the maintainer's to approve.
+
+### KI-027: Settings fields still read units in their text (Low)
+
+ADR-0024's slices give calculator fields pickers first (U1). Until E-5 and U2b give a
+family settings page its own pickers, a settings field reads a unit typed with its
+number, `3 mm`, and a bare number in the Units box's unit, as before, while a calculator
+field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds of
+field are on different pages, and each page says how it reads (the user guide's Units
+and precision). With the Units box gone (U2), a settings page shows and reads in inches,
+degrees and ksi (`window._settings_units`), whatever the results are shown in, and its
+facts show strengths in ksi. Resolved by U2b, in ADR-0024's stop 3.
+
+### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
+
+A double holds about 10⁻³⁰⁸ to 10³⁰⁸ at full precision. Heron's and Kahan's formulas
+multiply up to four lengths, so a smaller length's work underflows and loses its digits.
+Offscreen, for a 3-4-5 triangle scaled by 10ⁿ mm, the area loses digits from n = -80 and
+is 0 at -82; the angles lose digits from -155, are 9 % off at -162, and divide by zero
+at -165; a circle's area loses digits from -155 and is 0 at -162. A larger triangle's
+area overflows at n = 77. Every Geometry calculator refuses a length outside
+`LENGTH_SCALE`, 10⁻⁷⁰ mm to 10⁷⁰ mm, with a plain message (`geometry.common.check_scale`),
+before its work. Scaling the sides by the largest before each formula would lift the
+limit for the angles, but not for an area, which is the square of a length, and it would
+put the scale into every step of the shown work; no drawing comes near the limit.
+`test_every_length_outside_the_scale_is_refused_plainly` and
+`test_a_triangle_at_either_end_of_the_scale_keeps_its_digits` check both ends. The scale
+bounds lengths only: an angle as tiny as 1e-300°, with a hypotenuse of 1e-70 mm, still
+gives a leg and an area of 0, its sine under the doubles' range (the cloud review of
+PR #2, in the code before it too).
 
 ## Resolved
 

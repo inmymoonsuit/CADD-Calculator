@@ -145,12 +145,24 @@ msgstr ""
 msgid "Regular polygon"
 msgstr ""
 
+#. the output picker's accessible name, said by a screen reader (ADR-0024 §5).
+#: src/caddcalc/gui/result_fields.py
+msgid "Results units"
+msgstr ""
+
 #: src/caddcalc/calculators/geometry/triangles.py
 msgid "Right triangle"
 msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/domain.py
 msgid "Sheet Metal"
+msgstr ""
+
+#. the label before the output picker, "Show in: [in]", in the
+#. results' header.
+#: src/caddcalc/gui/result_fields.py
+msgctxt "results header"
+msgid "Show in:"
 msgstr ""
 
 #: src/caddcalc/calculators/geometry/shapes.py
@@ -243,12 +255,32 @@ msgid_plural "degrees"
 msgstr[0] ""
 msgstr[1] ""
 
+#. a picker's choice for an angle, as 40°30′15″.
+#: src/caddcalc/core/units/compound.py
+msgid "degrees, minutes and seconds"
+msgstr ""
+
 #: src/caddcalc/core/units/compound.py
 msgctxt "fraction"
 msgid "eighth"
 msgid_plural "eighths"
 msgstr[0] ""
 msgstr[1] ""
+
+#. a picker's choice for a length, as 1'-4 3/16".
+#: src/caddcalc/core/units/compound.py
+msgid "feet and inches"
+msgstr ""
+
+#. a picker's choice for lengths shown in feet and inches to 1/32 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "feet and inches, nearest 1/32"
+msgstr ""
+
+#. a picker's choice for lengths shown in feet and inches to 1/64 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "feet and inches, nearest 1/64"
+msgstr ""
 
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
@@ -277,6 +309,21 @@ msgid "inch"
 msgid_plural "inches"
 msgstr[0] ""
 msgstr[1] ""
+
+#. a picker's choice for lengths shown as the nearest 1/16 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "inches, nearest 1/16"
+msgstr ""
+
+#. a picker's choice for lengths shown as the nearest 1/32 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "inches, nearest 1/32"
+msgstr ""
+
+#. a picker's choice for lengths shown as the nearest 1/64 inch.
+#: src/caddcalc/core/units/compound.py
+msgid "inches, nearest 1/64"
+msgstr ""
 
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
@@ -360,6 +407,13 @@ msgid "radian"
 msgid_plural "radians"
 msgstr[0] ""
 msgstr[1] ""
+
+#. a field's accessible description: what its text reads as, e.g. "reads as 1
+#. and 3 sixteenths inches".
+#: src/caddcalc/core/formatting.py
+#, python-brace-format
+msgid "reads as {value}"
+msgstr ""
 
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
@@ -465,45 +519,67 @@ msgstr ""
 #. whole inches and 1/2 inch, spoken, e.g. "1 and a half inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a half inches"
-msgstr ""
+msgid_plural "{inches} and a half inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/4 inch, spoken, e.g. "1 and a quarter inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a quarter inches"
-msgstr ""
+msgid_plural "{inches} and a quarter inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/16 inch, spoken, e.g. "1 and a sixteenth inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a sixteenth inches"
-msgstr ""
+msgid_plural "{inches} and a sixteenth inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/64 inch, spoken, e.g. "1 and a sixty-fourth inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a sixty-fourth inches"
-msgstr ""
+msgid_plural "{inches} and a sixty-fourth inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/32 inch, spoken, e.g. "1 and a thirty-second inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and a thirty-second inches"
-msgstr ""
+msgid_plural "{inches} and a thirty-second inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. whole inches and 1/8 inch, spoken, e.g. "1 and an eighth inches".
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and an eighth inches"
-msgstr ""
+msgid_plural "{inches} and an eighth inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. a mixed number of inches, spoken, e.g. "4 and 3 sixteenths inches"; {part}
-#. is the fraction's denominator as a word, such as "sixteenths".
+#. is the fraction's denominator as a word, such as "sixteenths". The form follows the
+#. whole value as a decimal, 4.1875, so English's two forms are the same.
 #: src/caddcalc/core/units/compound.py
 #, python-brace-format
+msgctxt "inches spoken"
 msgid "{inches} and {numerator} {part} inches"
-msgstr ""
+msgid_plural "{inches} and {numerator} {part} inches"
+msgstr[0] ""
+msgstr[1] ""
 
 #. a number and its unit, spoken, e.g. "4 inches" or "30 minutes".
 #: src/caddcalc/core/units/compound.py
@@ -530,5 +606,26 @@ msgstr ""
 #~ msgstr ""
 
 #~ msgid "{first} {second}"
+#~ msgstr ""
+
+#~ msgid "{inches} and a half inches"
+#~ msgstr ""
+
+#~ msgid "{inches} and a quarter inches"
+#~ msgstr ""
+
+#~ msgid "{inches} and a sixteenth inches"
+#~ msgstr ""
+
+#~ msgid "{inches} and a sixty-fourth inches"
+#~ msgstr ""
+
+#~ msgid "{inches} and a thirty-second inches"
+#~ msgstr ""
+
+#~ msgid "{inches} and an eighth inches"
+#~ msgstr ""
+
+#~ msgid "{inches} and {numerator} {part} inches"
 #~ msgstr ""
 

@@ -80,9 +80,15 @@ token, so the specification can't drift from the code.
   Copy keys (Ctrl+C, Cmd+C on macOS) on the focused button. The value copied is the one
   the field shows now: with no result, every button is disabled and nothing copies.
 * **The context menu,** by right-click or the Menu key: "Copy value", "Copy with unit"
-  (`0.3119 in`), "Copy full precision" (the display unit, unrounded, at most 10
-  significant digits), and "Copy fraction" (`5/16"`, or `1-5/16"`), only while a
-  fraction shows. It opens as a popup, never a nested event loop.
+  (`0.3119 in`), and "Copy full precision" (the shown unit, unrounded, at most 10
+  significant digits). A value in an inch-fraction set copies as `5/16"`, the inch mark
+  keeping a spreadsheet from reading a date. It opens as a popup, never a nested event
+  loop.
+* **Show in,** the output picker between the title and Copy all, sets the units every
+  field, copy, Copy all, speech and the work are in (ADR-0024 §5, U2). Its accessible
+  name is "Results units"; it and Copy all go under the title when the panel is too
+  narrow for the three, and it's hidden for a calculator with no output sets. A result
+  with its own picker (`Output.picks`) has it in its row, in place of its unit.
 * **Copy all,** the button beside the title, or Ctrl+Shift+C (Cmd+Shift+C) anywhere in
   the window while a calculator's results show: one tab-separated row per output,
   symbol, label, value, unit, for a spreadsheet. A text cell a spreadsheet would read

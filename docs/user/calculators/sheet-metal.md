@@ -20,8 +20,10 @@ default. Settings last until you close the app; nothing is saved.
 A value applies when you press Enter or leave the field. As you type, text that can't be
 used is outlined in red and explained. It isn't applied, so the setting keeps the value
 it had, and the text stays, with its explanation, until you fix it or clear the field.
-If you switch units meanwhile, a number typed without a unit gains the unit you typed it
-in, so "5" becomes "5 in" and keeps its meaning.
+A settings field still reads a unit typed with its number, as `3 mm`, and a bare number
+in the **Units** box's unit, until settings get pickers of their own (KI-027). If you
+switch units meanwhile, a number typed without a unit gains the unit you typed it in, so
+"5" becomes "5 in" and keeps its meaning.
 
 In the table, a calculator named alone uses the setting in every method; otherwise the
 methods that use it follow the colon.
@@ -102,8 +104,7 @@ Under the Temper row, **Facts** shows, for the chosen material and temper:
   say why they have none.
 * **Bending practice:** form across the grain where possible, and bend a test piece first.
 * **Strength:** the tensile strengths, ultimate (F_tu) and yield (F_ty), along (L) and
-  across (LT) the rolling direction, with their basis and source. They show in ksi when
-  the unit system is `in`, and MPa when it's `mm`.
+  across (LT) the rolling direction, with their basis and source, in ksi.
 
 ### K-factor starting values
 

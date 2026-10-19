@@ -66,7 +66,7 @@ def _run(tmp_path: Path, github: bool) -> list[str]:
 def test_each_failure_is_an_annotation_on_its_line(tmp_path: Path) -> None:
     """The failed assert's own line; for a raise outside the project, the test's line.
 
-    A setup error with no exception, a missing fixture, gives its "E " line (S&R's note).
+    A setup error with no exception, a missing fixture, gives its "E " line.
     """
     lines = [line for line in _run(tmp_path, github=True) if line.startswith("::error ")]
     assert lines == [

@@ -80,7 +80,6 @@ def test_symbols_keep_their_case_and_only_degrees_minutes_seconds_are_close_up()
     assert {u.symbol for u in UNITS if u.symbol != u.symbol.lower()} == {"MPa", "kPa", "GPa"}
     assert {u.written for u in UNITS if u.close_up} == {"°", "′", "″"}
     assert get_unit("%").close_up is False, "the percent sign is spaced (§7.10.2)"
-    assert {u.symbol for u in UNITS if u.fractions} == {"in"}
 
 
 def _fresh() -> UnitRegistry:
@@ -177,7 +176,7 @@ def test_names_are_unique_within_a_dimension_and_the_parser_knows_which() -> Non
     minute, second = test.find("arcmin"), test.find("arcsec")
     assert test.find("′", A) is minute and test.find("′", L).symbol == "ft"
     assert test.find('"', A) is second and test.find('"', L).symbol == "in"
-    assert test.find("′").symbol == "ft", "with no dimension given, a length (S&R's u3 L1)"
+    assert test.find("′").symbol == "ft", "with no dimension given, a length"
     assert test.ending("30′", A) == (minute, 1) and test.ending("30′", L)[0].symbol == "ft"
     assert (minute.exact, second.exact) == (Fraction(1, 60), Fraction(1, 3600))
     assert (minute.written, second.written, minute.close_up) == ("′", "″", True)
@@ -185,7 +184,7 @@ def test_names_are_unique_within_a_dimension_and_the_parser_knows_which() -> Non
 
 @pytest.mark.parametrize(("mark", "symbol"), [("'", "ft"), ("′", "ft"), ('"', "in"), ("″", "in")])
 def test_a_lookup_with_no_dimension_still_finds_the_foot_and_inch(mark: str, symbol: str) -> None:
-    """S&R's u3 L1: get_unit, to_base and from_base are public, and read them as before."""
+    """``get_unit``, ``to_base`` and ``from_base`` are public: with no dimension, a length."""
     from caddcalc.core.units import from_base, to_base
 
     unit = get_unit(mark)
@@ -279,7 +278,7 @@ def _incline(*names: str) -> Unit:
 
 
 def test_a_plugin_cant_take_a_built_in_name_in_another_dimension() -> None:
-    """S&R's u1 M1: "in" for an angle would make every inch lookup ambiguous (U2)."""
+    """A plugin's "in" for an angle would make every inch lookup ambiguous (U2)."""
 
     def entry_points(*, group: str) -> list[_EntryPoint]:
         assert group == "caddcalc.units"
@@ -331,14 +330,14 @@ def test_a_name_two_units_share_with_no_length_needs_a_dimension() -> None:
 def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """S&R's u1 M1, the other way: core names the dimension wherever it knows it.
+    """The other way: core names the dimension wherever it knows it.
 
     Two built-ins of different dimensions may share a name (the foot and the arcminute
-    will), so with one forced in, inches still show and every shipped table still loads.
+    do), so with one forced in, inches still show and every shipped table still loads.
     """
     from caddcalc.calculators import REFERENCE_TABLES
     from caddcalc.calculators.sheet_metal import BendAllowance
-    from caddcalc.core.formatting import DisplayPrefs, format_value
+    from caddcalc.core.formatting import DisplayPrefs, ShownUnits, format_value
     from caddcalc.core.refdata import load_table
     from caddcalc.core.units import unit_registry
 
@@ -351,7 +350,7 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
         assert registry() is forced
         assert get_unit("in").name == "inch", "with no dimension given, a length"
         assert get_unit("in", L).name == "inch" and get_unit("in", A).name == "incline"
-        assert format_value(25.4, L, DisplayPrefs()) == "1.0000 in"
+        assert format_value(25.4, L, ShownUnits.generated(), DisplayPrefs()) == "1.0000 in"
         parsed = parse_quantity_detailed("3", L, "in")
         assert (parsed.value, parsed.unit.symbol) == (pytest.approx(76.2), "in")
         for spec in REFERENCE_TABLES:
@@ -367,7 +366,7 @@ def test_a_name_shared_across_dimensions_still_formats_and_loads_tables(
     "typed", ["50 per cent", "50 per  cent", "50 per\u00a0cent", "50 Per Cent"]
 )
 def test_a_two_word_unit_reads_however_its_words_are_spaced(typed: str) -> None:
-    """S&R's i3 L2: two spaces, or a no-break space, between "per" and "cent" read as one."""
+    """Two spaces, or a no-break space, between "per" and "cent" read as one."""
     from caddcalc.core.units import Dimension, parse_quantity
 
     assert parse_quantity(typed, Dimension.RATIO) == pytest.approx(0.5)
@@ -385,8 +384,8 @@ def test_a_two_word_unit_reads_however_its_words_are_spaced(typed: str) -> None:
 def test_a_mark_two_dimensions_share_needs_one_of_them(mark: str, dimension: Dimension) -> None:
     """With a dimension that has neither, the foot's ' and the minute's are ambiguous.
 
-    It once gave the foot or the inch; it's refused since the minute and second of arc
-    share the marks (the CHANGELOG, Changed). With no dimension, a length wins.
+    It's refused, since the minute and second of arc share the marks (the CHANGELOG,
+    Changed). With no dimension, a length wins.
     """
     with pytest.raises(UsageError, match="names units of several dimensions"):
         get_unit(mark, dimension)

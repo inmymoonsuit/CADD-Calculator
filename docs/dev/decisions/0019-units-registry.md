@@ -426,3 +426,53 @@ six significant figures), and the new messages left unmarked until the sweep.
 * Tests sweep every tie to 4 ft typed in metres and as foot fractions, and 20,000 DMS
   ties; a value three units over a half rounds as itself, and the capped case holds.
   Mutants of one and four units, and of no cap, each fail them.
+
+### 2026-10-19: a tie counted in the unit it's shown in (PR #1's follow-ups)
+
+* `round_half_even` takes the unit a value is shown in, `INCH_MM` for feet and inches
+  and the nearest inch fraction, and counts `TIE_ULPS` in that unit's last place, not in
+  the base unit's. In millimeters two units could be four of an inch's, so a value
+  typed three of its own last places off a half, `-11.976562500000005 in`, was taken as
+  the tie; it's now 11 63/64" to the 1/64, as itself.
+* Either window holds every typed tie, since each of the two roundings on the way in is
+  under one unit in the shown unit's last place, times the factor. Offscreen, 520,115
+  half-way values to 2,000 in, typed exactly as decimals in in, mm, cm, m and ft to the
+  1/16, 1/32 and 1/64, are all ties under both; the existing sweeps of metres, foot
+  fractions and 20,000 DMS ties pass unchanged. A test pins the example, and the mutant
+  that counts in millimeters fails it.
+
+### 2026-10-19: what the shown unit's window moves (PR #2's cloud review)
+
+Counting `TIE_ULPS` in the inch's last place, as the amendment above does, moves the gap
+rather than closing it. The cloud review counted values 3 or more of their own last
+places from a 1/64 tie that the window pulls to it, over every k/128 in up to ±24 in
+typed 11 ways: on main, 268 typed in inches, 258 in cm and 346 in ft; here, none in
+inches or cm, 86 in ft, and 108 each in mm and m, such as `-254.99218750000009 mm`, which
+now shows `-10 1/32"` for the `-10 3/64"` it is nearest. No typed tie is missed either
+way. The window is counted in the shown unit because a value shown isn't always one
+typed: a result has no typed unit. ADR-0024's output sets name the shown unit; whether
+an entered value's typed unit should count instead goes with E-3.
+
+### 2026-10-19: the shown unit, decided (ADR-0024 E-3)
+
+* **The window stays counted in the shown unit's last place.** A result has no typed
+  unit, so the shown unit is the only one that serves every value.
+* **From E-3, a field's value is typed in the unit it's shown in.** The Inputs list
+  shows each input in its field's choice (ADR-0024 E4), and a field refuses a unit in
+  its text (Q5). So a value is shown in an inch form only when its field is picked in
+  that form, whose full unit is the inch: the case the table above counts as none,
+  against main's 268.
+* **What's left:** a value typed in one unit and shown in an inch form. That's a family
+  setting typed `254.99218750000009 mm` and inherited into a field picked in ft-in, and
+  the command line's Inputs lines until E-4. These are the table's mm, m and ft rows,
+  each value at least three of its own last places from a 1/64 tie and under 10⁻¹⁴ in
+  from it (two of the inch's last places at 24 in are 7.1 × 10⁻¹⁵ in). No
+  value typed as a tie is missed by either count.
+* **And a result that carries a typed value,** shown in an inch form: a Length
+  converter's nearest-fraction rows, and an output that passes an input through, such as
+  a circle's diameter, in an `in_N` or `ft_in` set. A value typed in mm is pulled to a
+  tie there under the same bound, 10⁻¹⁴ in from it (S&R's L4 at ADR-0024's stop 2).
+* Counting in the typed unit would need the typed unit carried with every value to
+  every place it's shown, a result's included, which has none. That's a second rule
+  for those rows alone.
+

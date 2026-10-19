@@ -31,6 +31,7 @@ from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
     NumberSymbols,
+    ShownUnits,
     ValueParts,
     copy_output,
     entry_text,
@@ -38,7 +39,6 @@ from caddcalc.core.formatting import (
     output_parts,
     results_tsv,
     spoken_value,
-    to_fraction,
     value_parts,
 )
 from caddcalc.core.i18n import use
@@ -46,7 +46,7 @@ from caddcalc.core.units import (
     CompoundText,
     Dimension,
     Precision,
-    from_base,
+    get_unit,
     parse_quantity,
     parse_quantity_detailed,
     registry,
@@ -134,7 +134,7 @@ def test_feet_and_inches_refuse_parts_that_dont_fit(typed: str, problem: str) ->
 def test_a_typed_feet_and_inches_keeps_its_text_and_reads_it_again() -> None:
     typed = TypedValue.parse("1'-4 3/16\"", L)
     assert typed.value == pytest.approx(16.1875 * IN) and typed.explicit_unit
-    assert entry_text(typed, DisplayPrefs(length_unit="mm")) == "1'-4 3/16\"", "as typed"
+    assert entry_text(typed, get_unit("mm"), DisplayPrefs()) == "1'-4 3/16\"", "as typed"
 
 
 @pytest.mark.parametrize(
@@ -189,10 +189,10 @@ def test_a_value_half_way_between_two_fractions_takes_the_even_one(
 def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: str) -> None:
     """Each odd 1/(2d) inch to 4 ft, typed in inches or exactly in mm, either sign.
 
-    The nearest fraction, feet and inches, the ``(≈ …")`` hint and ``to_fraction`` all
-    round by one rule, so they agree on every tie (the reviews' Major 5).
+    The nearest fraction, feet and inches, and the inch-fraction set all round by one
+    rule, so they agree on every tie (ADR-0019, amendments).
     """
-    prefs = DisplayPrefs(length_unit="in", fraction_denominator=denominator)
+    fractions, prefs = ShownUnits.generated(f"in_{denominator}"), DisplayPrefs()
     for odd in range(1, 4 * 12 * 2 * denominator, 2):
         half = Fraction(odd, 2 * denominator)
         text = (
@@ -204,16 +204,16 @@ def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: st
         for sign in (1, -1):
             value = sign * parse_quantity(text, L)
             assert nearest_inches(value, denominator) == sign * expected, (sign, text)
-            hint = _copied_fraction(sign * expected)
-            assert value_parts(value, L, prefs).fraction == hint, (sign, text)
-            assert to_fraction(from_base(value, "in"), denominator) == hint, (sign, text)
+            written = value_parts(value, L, fractions, prefs).compound
+            assert written is not None, (sign, text)
+            assert written.copied == f'{_copied_fraction(sign * expected)}"', (sign, text)
             if denominator == 16:
                 again = parse_quantity(FeetInches(16).text(value).copied, L)
                 assert nearest_inches(again, 16) == sign * expected, (sign, text)
 
 
 def _copied_fraction(inches: Fraction) -> str:
-    """An inch fraction as the hint writes it, e.g. ``1-1/8`` or ``-3/16``."""
+    """An inch fraction as a copy writes it, before its mark, e.g. ``1-1/8`` or ``-3/16``."""
     whole, part = divmod(abs(inches), 1)
     text = "-".join(t for t in (str(whole) if whole else "", str(part) if part else "") if t)
     return ("-" if inches < 0 else "") + (text or "0")
@@ -263,7 +263,7 @@ def test_a_fineness_is_a_drafting_fraction_and_whole_inches_have_none() -> None:
     ],
 )
 def test_feet_and_inches_are_spoken_in_words(inches: float, spoken: str) -> None:
-    """A zero part isn't said, and a negative is "minus" (UI/UX's u3 L2 and L3)."""
+    """A zero part isn't said, and a negative is "minus"."""
     assert FeetInches(16).text(inches * IN).spoken == spoken
 
 
@@ -388,13 +388,20 @@ def test_seconds_are_shown_in_the_locales_mark_and_copied_with_a_point() -> None
 def test_degrees_minutes_and_seconds_are_spoken_in_words(
     degrees: float, fineness: int, spoken: str
 ) -> None:
-    """A zero part isn't said, and a negative is "minus" (UI/UX's u3 L2 and L3)."""
+    """A zero part isn't said, and a negative is "minus"."""
     assert DegreesMinutesSeconds(fineness).text(degrees).spoken == spoken
 
 
 def test_the_forms_are_registered_for_their_dimensions_only() -> None:
     units = registry()
-    assert [f.key for f in units.compounds_for(L)] == ["ft_in", "in_16", "in_32", "in_64"]
+    assert [f.key for f in units.compounds_for(L)] == [
+        "in_16",
+        "in_32",
+        "in_64",
+        "ft_in",
+        "ft_in_32",
+        "ft_in_64",
+    ]
     assert [f.key for f in units.compounds_for(A)] == ["dms"]
     assert units.compounds_for(Dimension.AREA) == ()
     assert (units.compound("ft_in").fineness, units.compound("dms").fineness) == (16, 2)
@@ -410,7 +417,8 @@ def test_registering_a_form_is_checked() -> None:
         test.register(unit)
     test.register_compound(FeetInches())
     with pytest.raises(SpecError, match="the key is taken"):
-        test.register_compound(FeetInches(64))
+        test.register_compound(FeetInches())
+    assert FeetInches(64).key == "ft_in_64", "a finer one is a form of its own"
 
     class Furlongs(FeetInches):
         key = "fur"
@@ -432,7 +440,7 @@ class _Forms(Calculator):
     summary = "Shows a length in feet and inches and an angle in DMS."
     params = (
         Param("length", "X", "Length", L, default="16.1875 in"),
-        Param("angle", "B", "Angle", A, default="-0.5"),
+        Param("angle", "B", "Angle", A, default="-0.5 deg"),
     )
     outputs = (
         Output("ft_in", "FI", "Feet and inches", L, form="ft_in"),
@@ -452,16 +460,14 @@ def test_an_output_in_a_compound_form_is_shown_copied_and_spoken_in_it() -> None
     calc = _Forms()
     result = calc.run()
     out = calc.output("ft_in")
-    prefs = DisplayPrefs(length_unit="mm", symbols=NumberSymbols(","))
-    parts = output_parts(out, result.outputs["ft_in"], prefs)
+    units, prefs = ShownUnits.generated("mm"), DisplayPrefs(symbols=NumberSymbols(","))
+    parts = output_parts(out, result.outputs["ft_in"], units, prefs)
     expected = CompoundText("1'-4 3/16\"", "1'4-3/16\"", "1 foot 4 and 3 sixteenths inches")
-    assert parts == ValueParts("1'-4 3/16\"", "", None, expected)
-    assert format_output(out, result.outputs["ft_in"], prefs) == "1'-4 3/16\""
+    assert parts == ValueParts("1'-4 3/16\"", "", expected)
+    assert format_output(out, result.outputs["ft_in"], units, prefs) == "1'-4 3/16\""
     assert spoken_value(parts) == "1 foot 4 and 3 sixteenths inches"
     copies = {
-        form: copy_output(out, result.outputs["ft_in"], prefs, form)
-        for form in CopyForm
-        if form is not CopyForm.FRACTION
+        form: copy_output(out, result.outputs["ft_in"], units, prefs, form) for form in CopyForm
     }
     assert copies == {
         CopyForm.VALUE: "1'4-3/16\"",
@@ -469,16 +475,14 @@ def test_an_output_in_a_compound_form_is_shown_copied_and_spoken_in_it() -> None
         CopyForm.WITH_UNIT: "1'4-3/16\"",
         CopyForm.FULL: "16.1875",
     }
-    with pytest.raises(UsageError, match="without a fraction"):
-        copy_output(out, result.outputs["ft_in"], prefs, CopyForm.FRACTION)
-    dms = output_parts(calc.output("dms"), result.outputs["dms"], prefs)
+    dms = output_parts(calc.output("dms"), result.outputs["dms"], units, prefs)
     assert dms.number == "-0°30′0,00″" and dms.unit == ""
-    assert copy_output(calc.output("dms"), -0.5, prefs, CopyForm.VALUE) == "-0d30'0.00\""
+    assert copy_output(calc.output("dms"), -0.5, units, prefs, CopyForm.VALUE) == "-0d30'0.00\""
 
 
 def test_copy_all_keeps_a_compound_value_from_being_read_as_a_formula() -> None:
     calc = _Forms()
-    rows = results_tsv(calc, calc.run(), DisplayPrefs()).splitlines()
+    rows = results_tsv(calc, calc.run(), ShownUnits.generated(), DisplayPrefs()).splitlines()
     assert rows == [
         "FI\tFeet and inches\t1'-4 3/16\"\t",
         "D\tDegrees, minutes, seconds\t'-0°30′0.00″\t",
@@ -546,18 +550,17 @@ def test_a_result_field_shows_copies_and_says_a_compound_form_with_no_code_of_it
     feet.copy_button.click()
     assert QGuiApplication.clipboard().text() == "1'4-3/16\""
     # A compound form names its own units, so "with unit" would copy the same text, and
-    # its full precision is a decimal in the form's own unit, which the item names.
-    for units in ("in", "mm"):
-        window.units_box.setCurrentText(units)
-        feet, dms = window.results.fields["ft_in"], window.results.fields["dms"]
-        for field, unit, full in ((feet, "inches", "16.1875"), (dms, "degrees", "-0.5")):
-            menu = field.context_menu()
-            assert [a.text() for a in menu.actions()] == [
-                "Copy value",
-                f"Copy full precision, in {unit}",
-            ], units
-            menu.actions()[1].trigger()
-            assert QGuiApplication.clipboard().text() == full, (units, unit)
+    # its full precision is a decimal in the form's own unit, which the item names. Every
+    # output has its own form, so there's no output set to show them in.
+    assert window.results.set_picker.isHidden()
+    for field, unit, full in ((feet, "inches", "16.1875"), (dms, "degrees", "-0.5")):
+        menu = field.context_menu()
+        assert [a.text() for a in menu.actions()] == [
+            "Copy value",
+            f"Copy full precision, in {unit}",
+        ]
+        menu.actions()[1].trigger()
+        assert QGuiApplication.clipboard().text() == full, unit
     window.close()
 
 
@@ -576,7 +579,7 @@ class _Mixed(_Forms):
 @pytest.mark.gui
 @pytest.mark.usefixtures("qt")
 def test_feet_and_inches_sit_flush_right_and_dms_aligns_on_its_seconds_point() -> None:
-    """UI/UX's u3 M1: with no point to align on, feet and inches end at the column's edge."""
+    """With no point to align on, feet and inches end at the column's edge."""
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QFontMetricsF
 
@@ -702,17 +705,29 @@ def test_a_tie_in_seconds_takes_the_even_hundredth() -> None:
 
 
 def test_a_count_three_units_in_the_last_place_from_a_half_is_no_tie() -> None:
-    """The tolerance is two units in the last place: three is a value, not a typed tie."""
+    """The tolerance is two units in the inch's last place: three is a value, not a tie."""
     from caddcalc.core.units.compound import TIE_ULPS
 
     assert TIE_ULPS == 2
     tie = parse_quantity("1/32 in", L)  # between 0 and 1/16: a tie takes 0, the even one
-    scale = Fraction(16) / Fraction("25.4")
+    inch = Fraction("25.4")
     value = tie
-    while (Fraction(value) * scale - Fraction(1, 2)) / (Fraction(math.ulp(value)) * scale) < 3:
+    while (Fraction(value) / inch - Fraction(1, 32)) / Fraction(math.ulp(value / inch)) < 3:
         value = math.nextafter(value, math.inf)
     assert nearest_inches(tie, 16) == 0
     assert nearest_inches(value, 16) == Fraction(1, 16), "three units over: it rounds up"
+
+
+def test_a_value_typed_three_of_its_own_last_places_off_a_half_isnt_a_tie() -> None:
+    """In millimetres it's within two of their last places, yet it isn't taken as the tie."""
+    typed = parse_quantity("-11.976562500000005 in", L)
+    half = Fraction(766 * 2 + 1, 128)  # 11 61/64 and a half 64th, inches
+    off = (abs(Fraction(typed)) / Fraction("25.4") - half) / Fraction(math.ulp(typed / 25.4))
+    in_mm = (abs(Fraction(typed)) - half * Fraction("25.4")) / Fraction(math.ulp(typed))
+    assert 2 < off < 4 and in_mm <= 2, (off, in_mm)
+    assert nearest_inches(typed, 64) == -Fraction(767, 64), "it rounds as itself"
+    assert nearest_inches(parse_quantity("-11.9765625 in", L), 64) == -Fraction(766, 64)
+    assert FeetInches(64).text(typed).shown == "-0'-11 63/64\""
 
 
 def test_a_value_too_large_for_its_finest_part_is_never_all_ties() -> None:
@@ -725,3 +740,32 @@ def test_a_value_too_large_for_its_finest_part_is_never_all_ties() -> None:
 
     assert Fraction(1, 4) == TIE_CAP
     assert DegreesMinutesSeconds(2).text(2.0**33 + 2.0**-6).shown == "8589934592°0′56.25″"
+
+
+@pytest.mark.parametrize(
+    ("inches", "spoken"),
+    [
+        (1.5, "1 and a half [other]"),
+        (1.1875, "1 and 3 sixteenths [other]"),
+        (1.0625, "1 and a sixteenth [other]"),
+    ],
+)
+def test_a_mixed_number_of_inches_takes_its_plural_form_from_the_whole_value(
+    tmp_path: Path, inches: float, spoken: str
+) -> None:
+    """1 and a half is 1.5, which English counts as other: never the whole inch's one."""
+    from babel.messages.catalog import Catalog
+
+    from caddcalc.core.units.compound import INCHES_MIXED_SPOKEN, ONE_PART_SPOKEN
+    from tests.catalogs import tooling
+
+    catalog = Catalog(locale="en_GB", domain="caddcalc")
+    for pair, phrase in [
+        (ONE_PART_SPOKEN[2], "{inches} and a half"),
+        (ONE_PART_SPOKEN[16], "{inches} and a sixteenth"),
+        (INCHES_MIXED_SPOKEN, "{inches} and {numerator} {part}"),
+    ]:
+        catalog.add(pair, (f"{phrase} [one]", f"{phrase} [other]"), context="inches spoken")
+    tooling().compile_to(catalog, tmp_path / "en_GB" / "LC_MESSAGES" / "caddcalc.mo")
+    use(["en_GB"], directories=[tmp_path])
+    assert FeetInches(16).text(inches * IN).spoken == spoken

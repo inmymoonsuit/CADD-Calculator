@@ -12,9 +12,11 @@ from caddcalc.core import Dimension, InputError
 from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
+    ShownUnits,
     copy_text,
     field_text,
     format_value,
+    result_json,
     spoken_value,
     value_parts,
 )
@@ -25,12 +27,12 @@ COUNT = Dimension.COUNT
 
 
 def test_a_count_shows_and_copies_without_decimals() -> None:
-    prefs = DisplayPrefs()
-    assert format_value(6.0, COUNT, prefs) == "6"
-    assert field_text(6.0, COUNT, prefs) == "6"
+    units, prefs = ShownUnits.generated(), DisplayPrefs()
+    assert format_value(6.0, COUNT, units, prefs) == "6"
+    assert field_text(6.0, units.unit(COUNT), prefs) == "6"
     forms = (CopyForm.VALUE, CopyForm.SHOWN, CopyForm.WITH_UNIT, CopyForm.FULL)
-    assert {copy_text(6.0, COUNT, prefs, form) for form in forms} == {"6"}
-    assert spoken_value(value_parts(6.0, COUNT, prefs)) == "6"
+    assert {copy_text(6.0, COUNT, units, prefs, form) for form in forms} == {"6"}
+    assert spoken_value(value_parts(6.0, COUNT, units, prefs)) == "6"
 
 
 @pytest.mark.parametrize(
@@ -59,15 +61,17 @@ def test_the_cli_and_json_show_a_count_whole(capsys: pytest.CaptureFixture[str])
     assert "= 6·1.0000\n" in out and "6.0000·" not in out, "the work shows it whole"
     assert main(["run", "geometry.regular_polygon", "N=6", "a=1in", "--json"]) == 0
     sides = json.loads(capsys.readouterr().out)["inputs"]["sides"]
-    assert sides == {**sides, "value": 6, "unit": "", "dimension": "count"}
-    assert isinstance(sides["value"], int)
+    assert sides["dimension"] == "count" and sides["base"] == {"value": 6, "unit": ""}
+    assert isinstance(sides["base"]["value"], int) and isinstance(sides["shown"]["value"], int)
+    assert sides["shown"]["text"] == "6"
     assert main(["run", "geometry.regular_polygon", "N=600 %", "a=1in"]) != 0
     assert "is a ratio, but a count is expected" in capsys.readouterr().err
 
 
 def test_a_count_runs_as_the_whole_number_it_is() -> None:
     result = RegularPolygon().run({"sides": parse_quantity("6", COUNT), "side": 1.0}, "side")
-    assert result.to_dict()["inputs"]["sides"]["value"] == 6
+    data = result_json(RegularPolygon(), result, ShownUnits.generated(), DisplayPrefs())
+    assert data["inputs"]["sides"]["base"]["value"] == 6
     with pytest.raises(InputError, match=r"Number of sides \(N\) must be a whole number"):
         RegularPolygon().run({"sides": 6.5, "side": 1.0}, "side")
 

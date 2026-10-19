@@ -45,7 +45,7 @@ def hook(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 def test_the_tool_loads_by_its_path_under_its_own_name(
     hook: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S&R's i5 note: an installed ``i18n``, as python-i18n has, can't stand in for it."""
+    """An installed ``i18n``, as python-i18n has, can't stand in for it."""
     other = ModuleType("i18n")
     monkeypatch.setitem(sys.modules, "i18n", other)
     tool = hook.catalog_tool(ROOT)
@@ -84,7 +84,7 @@ def test_a_wheel_takes_each_compiled_catalog(hook: ModuleType) -> None:
 def test_no_catalog_fails_the_wheel(
     hook: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """S&R's i5 L2: with no .po, the wheel fails, rather than ship with no catalogs."""
+    """With no .po, the wheel fails, rather than ship with no catalogs."""
     (tmp_path / "scripts").mkdir()
     shutil.copy2(ROOT / "scripts" / "i18n.py", tmp_path / "scripts" / "i18n.py")
     (tmp_path / "src" / "caddcalc" / "locale").mkdir(parents=True)

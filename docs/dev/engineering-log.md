@@ -16,6 +16,76 @@ Template:
 
 ---
 
+## 2026-10-19: Knowing a picker's list is open by overriding hidePopup
+**Tried:** for M-B at stop 2, the picker set `_listing` in `showPopup` and cleared it in
+an overridden `hidePopup`, so the focus its list takes didn't settle a step.
+**Outcome:** replaced after the cloud review of stop 2 (M1).
+**Why:** Escape, and Qt closing the popup for a click outside it, close the list without
+calling `hidePopup`, so `_listing` stayed set and the picker never settled again.
+**Instead:** `_listing` is set only while `showPopup` runs, and after that the list's own
+visibility says whether it's open (`unit_picker.UnitPicker`).
+
+## 2026-10-19: The CLI corpus's outputs to 4 last places of the run
+**Tried:** holding the corpus's outputs and steps to 4 units in the last place of a run's
+largest value, from the most CI's macOS logs had shown (2).
+**Outcome:** raised to 8 after S&R's native re-check of stop 2.
+**Why:** S&R nudged every maths-library result: a 1-ulp difference, which is macOS's
+against glibc, moves outputs by exactly 4.00 of the run's last places, so 4 had no
+margin, and 2 ulps reach 6.
+**Instead:** 8 (`tests/test_cli_corpus.py`, `ULPS`), which holds a 2-ulp library and
+still allows at most 1.2 × 10⁻¹¹ relative; the inputs stay bit for bit.
+
+## 2026-10-19: E-3's neutrality golden in full text, and from c7b1772
+**Tried:** holding E-3 to every built-in calculator's text written with the length
+preference, captured as ADR-0024's E8 says, from c7b1772, and in full: 912 runs, the
+defaults, each input out of range, and each input scaled by 0.01 to 100.
+**Outcome:** changed before E-3 was committed.
+**Why:** c7b1772 is before F0, so F0's declared changes would count as differences E-3
+didn't make. The full text was 1.45 MB, nearly all of it the 672 scaled runs, which
+are there for the 60 runs whose notes the defaults never raise.
+**Instead:** captured at 68e01ee, the head before E-3, with that commit's own API; the
+240 default and out-of-range runs in full text, to read a difference by, and each
+scaled run as the SHA-256 of its canonical JSON (`tests/data/e3_neutrality.json`,
+310 KB).
+
+## 2026-10-19: Following a pick with every untouched picker, at every step
+**Tried:** in U1, the first change to a dimension's picker carried to the calculator's
+other pickers of that dimension, each "moving under §2's rules", and a closed picker's
+↑/↓ step was a change.
+**Outcome:** replaced after UI/UX's native review of U1 (H2, M1).
+**Why:** §2 re-reads a typed number in the new unit, so a field the user had typed
+0.06 in became 0.06 mm when another field was picked in mm, silently, by a factor of
+25.4. And the first arrow-key step, from in to ft-in, led the others there.
+**Instead:** a field the user typed in never follows; only values the user didn't type
+follow, converted. A step re-reads only its own field; the follow and the
+announcement run when the choice settles (ADR-0024 §3, as amended).
+
+## 2026-10-19: Recognizing a form before a unit in a field's text
+**Tried:** for a field's text that names a unit (ADR-0024 Q5), reading it first by each
+form's grammar with its marks optional, to offer ft-in for `5'9`, then by the unit
+ending it.
+**Outcome:** replaced before E-1 was committed.
+**Why:** with the marks optional, feet and inches read `1-3/16"` as inches with their
+mark, so the fix offered was "pick ft-in" where the text is plainly 1 3/16 in.
+**Instead:** a form's marked grammar first (`1'-4"`), then a number and the unit ending
+it (`1-3/16"` → pick in), and only then a form with its marks optional (`5'9`).
+
+## 2026-10-19: Counting a tie's last places in millimeters
+**Tried:** taking a count within `TIE_ULPS` = 2 units in the last place of a half as
+the half, with the units counted in the base unit's last place, millimeters (ADR-0019's
+amendment of fix round 4).
+**Outcome:** replaced in PR #1's follow-ups (ADR-0019's amendment of the same date).
+**Why:** a millimeter's last place is up to two of an inch's, so the window was up to
+four units of the inch a value was typed in, and `-11.976562500000005 in`, three off a
+half, was taken as the tie.
+**Instead:** count them in the shown unit's last place, inches for an inch fraction. A
+sweep of 520,115 typed ties in five units finds none missed either way. The window moved
+rather than closed, though: values 3 or more of their own last places from a tie are
+pulled to it on main when typed in in (268), cm (258) and ft (346), and here when typed
+in ft (86), mm (108) and m (108), as `-254.99218750000009 mm` is (the cloud review of
+PR #2; ADR-0019's amendment). Counting in the typed unit would close it, but a value
+shown isn't always one typed.
+
 ## 2026-10-19: A launch height taken from the tallest built-in page
 **Tried:** sizing the window at launch to the tallest built-in calculator page, with
 each of its methods, at the launch width (ADR-0021 §3's tallest-page term, added for

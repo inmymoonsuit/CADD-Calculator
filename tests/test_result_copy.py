@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from itertools import pairwise
 from typing import Any, override
 
 import pytest
 
-from caddcalc.core.formatting import POINT, DisplayPrefs, results_tsv
-from tests.qt_helpers import open_window, type_into
+from caddcalc.core.formatting import POINT, DisplayPrefs, ShownUnits, results_tsv
+from tests.qt_helpers import open_window, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -85,8 +84,8 @@ def test_the_platforms_copy_keys_copy_the_focused_fields_value() -> None:
     window.close()
 
 
-def test_the_context_menu_offers_each_form_and_the_fraction_only_when_shown() -> None:
-    """R6: value, with unit, full precision, and the fraction as 5/16" when it's shown."""
+def test_the_context_menu_offers_each_form() -> None:
+    """R6: value, with unit, and full precision; an inch fraction copies with its mark."""
     window = _bend_window()
     field = window.results.fields["bend_allowance"]
     menu = field.context_menu()
@@ -96,11 +95,11 @@ def test_the_context_menu_offers_each_form_and_the_fraction_only_when_shown() ->
     assert _clipboard().text() == "0.3119 in"
     menu.actions()[2].trigger()
     assert _clipboard().text() == "0.311864", "the display unit, unrounded, 10 digits at most"
-    window.prefs = replace(window.prefs, fraction_denominator=16)
-    window.recompute()
+    show_in(window, "in_16")
+    field = window.results.fields["bend_allowance"]
     menu = field.context_menu()
-    assert [a.text() for a in menu.actions()][-1] == "Copy fraction"
-    menu.actions()[-1].trigger()
+    assert menu.actions()[0].text() == "Copy value"
+    menu.actions()[0].trigger()
     assert _clipboard().text() == '5/16"', "with the inch mark, so it isn't read as a date"
     window.close()
 
@@ -143,7 +142,8 @@ def test_copy_all_copies_spreadsheet_rows_from_its_button_and_the_window_keys() 
     from caddcalc.gui.result_fields import COPY_ALL_KEYS
 
     window = _bend_window()
-    expected = results_tsv(window.calculator, window.result, window.prefs)
+    units = window._units_for(window.calculator)
+    expected = results_tsv(window.calculator, window.result, units, window.prefs)
     window.results.copy_all_button.click()
     assert _clipboard().text() == expected
     assert window.statusBar().currentMessage() == "Copied all results to the clipboard"
@@ -211,12 +211,18 @@ def _next_tab_stop(widget: Any) -> Any:
 
 
 def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
-    """Inputs, each copy button, Copy all, then the document (UI/UX's k4 M3)."""
+    """Each input and its picker, the output picker, each copy button, Copy all, the document."""
     from PySide6.QtCore import Qt
 
     window = _bend_window()
-    stops = [edit for _p, edit in window.fields.values()]
-    stops += [f.copy_button for f in window.results.fields.values()]
+    stops = [
+        stop
+        for key, (_p, edit) in window.fields.items()
+        for stop in (edit, window.pickers.get(key))
+        if stop is not None
+    ]
+    assert len(stops) == 2 * len(window.fields), "every bend input has a unit"
+    stops += [window.results.set_picker, *(f.copy_button for f in window.results.fields.values())]
     stops += [window.results.copy_all_button, window.output]
     for before, after in pairwise(stops):
         assert _next_tab_stop(before) is after, (before, after)
@@ -225,7 +231,7 @@ def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
 
 
 def test_a_focused_copy_button_draws_no_focus_of_its_own() -> None:
-    """Its field's ring is the one focus indicator (UI/UX's k4 M2).
+    """Its field's ring is the one focus indicator.
 
     Whether a style draws a tool button's focus varies by style and platform, so this
     checks what the button asks its style to draw: a field's button never asks for
@@ -288,7 +294,7 @@ def _pixels_tab_changes(button: Any, before: Any) -> int:
 
 @pytest.mark.parametrize("style_name", ["Fusion", "windows11"])
 def test_tabbing_to_a_copy_button_paints_no_focus_but_the_ring(style_name: str) -> None:
-    """The painting itself (UI/UX's k6 L2): a field's button is unchanged; Copy all isn't."""
+    """The painting itself: a field's button is unchanged; Copy all isn't."""
     from PySide6.QtWidgets import QApplication, QStyleFactory
 
     style = QStyleFactory.create(style_name)
@@ -298,18 +304,18 @@ def test_tabbing_to_a_copy_button_paints_no_focus_but_the_ring(style_name: str) 
     window.show()
     window.activateWindow()
     QApplication.processEvents()
-    last_input = list(window.fields.values())[-1][1]
+    before = window.results.set_picker  # the output picker is the stop before the fields
     fields = list(window.results.fields.values())
     for button in (fields[0].copy_button, window.results.copy_all_button):
         button.setStyle(style)
-    assert _pixels_tab_changes(fields[0].copy_button, last_input) == 0
+    assert _pixels_tab_changes(fields[0].copy_button, before) == 0
     copy_all = window.results.copy_all_button
     assert _pixels_tab_changes(copy_all, fields[-1].copy_button) > 0, "the style's own focus"
     window.close()
 
 
 def test_the_copied_message_stays_long_enough_to_read(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The check shows for copied_ms; the status bar's words for longer (UI/UX's k4 L1)."""
+    """The check shows for copied_ms; the status bar's words for longer."""
     from caddcalc.gui.ui_style import ui_style
 
     tokens = ui_style().result_field
@@ -358,6 +364,6 @@ def test_a_plugin_calculator_copies_with_no_code_of_its_own() -> None:
     field.copy_button.click()
     assert _clipboard().text() == "1.0000"
     assert window.results.copy_all() == results_tsv(
-        window.calculator, window.result, DisplayPrefs()
+        window.calculator, window.result, ShownUnits.generated(), DisplayPrefs()
     )
     window.close()

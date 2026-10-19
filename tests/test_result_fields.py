@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from caddcalc.core.formatting import POINT, DisplayPrefs, output_parts
+from caddcalc.core.formatting import POINT, DisplayPrefs, ShownUnits, output_parts
 from tests.qt_helpers import open_window, results_text, settle, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
@@ -37,7 +37,9 @@ def test_a_field_shows_its_output_as_the_core_presents_it() -> None:
     assert result is not None and calc is not None
     for output in calc.outputs:
         field = window.results.fields[output.key]
-        parts = output_parts(output, result.outputs[output.key], DisplayPrefs())
+        parts = output_parts(
+            output, result.outputs[output.key], ShownUnits.generated(), DisplayPrefs()
+        )
         assert field.parts == parts
         assert (field.value.text(), field.unit.text()) == (parts.number, parts.unit)
         assert field.copy_button.isEnabled()
@@ -78,7 +80,8 @@ def test_the_document_lists_notes_strongest_first() -> None:
         Note(NoteKind.WARNING, "Warning note."),
         Note(NoteKind.LIMIT_EXCEEDED, "Limit note.", (Reference("Shop handbook"),)),
     )
-    text = plain(result_html(calc, replace(result, notes=notes), window.prefs))
+    units = window._units_for(calc)
+    text = plain(result_html(calc, replace(result, notes=notes), units, window.prefs))
     order = [text.index(f"{name} note.") for name in ("Limit", "Warning", "Gap")]
     assert order == sorted(order)
     window.close()
@@ -116,7 +119,8 @@ def test_the_work_is_set_in_the_platforms_fixed_width_face() -> None:
     window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
     assert window.calculator is not None and window.result is not None
-    html = result_html(window.calculator, window.result, window.prefs)
+    units = window._units_for(window.calculator)
+    html = result_html(window.calculator, window.result, units, window.prefs)
     assert f"<h3>Work</h3><p style=\"font-family: '{fixed}'\">" in html
     window.close()
 
@@ -275,7 +279,9 @@ def test_every_field_shows_in_full_at_the_default_size(calc_id: str) -> None:
     window = _shown_at(1100, 720, calc_id)
     panel = window.results
     assert not isinstance(panel, QAbstractScrollArea)
-    assert not panel.findChildren(QScrollBar), "the results have no scroll bar of their own"
+    # The output picker's list has its own, in its popup window, not in the panel.
+    bars = [bar for bar in panel.findChildren(QScrollBar) if bar.window() is window]
+    assert not bars, "the results have no scroll bar of their own"
     # Its height follows its width, as the disclaimer's wrapped lines do (ADR-0021 §7).
     assert panel.hasHeightForWidth()
     assert panel.height() == panel.heightForWidth(panel.width())
@@ -399,7 +405,10 @@ def test_the_title_lines_up_with_the_frames_and_the_spacing_is_as_documented() -
     panel = window.results
     first, second = list(panel.fields.values())[:2]
     frame_left = first.x() + round(first.frame.left())
-    assert panel.title.x() + panel.title.contentsRect().left() == frame_left
+    from PySide6.QtCore import QPoint
+
+    title = panel.title.mapTo(panel, QPoint(panel.title.contentsRect().left(), 0)).x()
+    assert title == frame_left
     gap = (second.y() + round(second.frame.top())) - (first.y() + round(first.frame.bottom()))
     assert gap == round(tokens.stack_gap + 2 * ring)
     assert frame_left == round(tokens.panel_inset[1] + ring)
@@ -483,7 +492,7 @@ def test_a_field_draws_its_border_and_its_outline(
 
 
 def test_the_results_title_is_the_size_of_the_documents_headings() -> None:
-    """The panel's title reads as one of the document's headings (UI/UX's k3 review)."""
+    """The panel's title reads as one of the document's headings."""
     from PySide6.QtGui import QTextCursor
 
     window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
@@ -503,7 +512,7 @@ def test_the_results_title_is_the_size_of_the_documents_headings() -> None:
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_the_document_has_the_fields_surface(scheme: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """In dark, the document matched neither the fields nor the window (UI/UX's k3 review)."""
+    """Light or dark, the document has the fields' surface."""
     from PySide6.QtCore import QPoint
 
     from caddcalc.gui import result_fields
@@ -541,7 +550,7 @@ def _runs(colors: list[str], color: str) -> tuple[list[int], list[int]]:
 
 
 def test_a_dashed_outline_reads_eight_on_and_four_off() -> None:
-    """Flat caps: the pattern's 4 and 2 line widths, not 10 and 2 (UI/UX's k3 review)."""
+    """Flat caps: the pattern's 4 and 2 line widths, not 10 and 2."""
     from caddcalc.core import NoteKind
     from caddcalc.gui.icons import role_color
     from caddcalc.gui.outlines import note_outline
@@ -563,7 +572,7 @@ def test_a_dashed_outline_reads_eight_on_and_four_off() -> None:
 
 
 def test_the_focus_ring_is_even_and_whole_at_150_percent() -> None:
-    """Each side: the same gap and the same ring, in whole device pixels (k3 review L4)."""
+    """Each side: the same gap and the same ring, in whole device pixels."""
     from PySide6.QtCore import QSize, Qt
     from PySide6.QtGui import QImage
 
@@ -601,7 +610,7 @@ def test_the_focus_ring_is_even_and_whole_at_150_percent() -> None:
 
 
 def test_the_window_never_shrinks_below_a_title_a_method_row_and_one_field() -> None:
-    """The k3b page scroll let the window shrink to a sliver (UI/UX's k3b check)."""
+    """The window can't shrink to a sliver when the page scrolls."""
     from caddcalc.gui.ui_style import ui_style
 
     tokens = ui_style().result_field
@@ -635,7 +644,7 @@ def test_the_panel_fills_the_page_up_to_the_pages_cap() -> None:
 
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
-    """Sources in the Inputs grid and on a note's last line (UI/UX's k4 M1)."""
+    """Sources in the Inputs grid and on a note's last line."""
     from caddcalc.core import Note, NoteKind, Reference
     from caddcalc.gui.style_tokens import contrast, luminance, palette_color
     from caddcalc.gui.ui_style import secondary_text
@@ -645,20 +654,22 @@ def test_sources_are_body_size_and_lighter_yet_readable(scheme: str) -> None:
     background = palette_color("background", scheme)
     assert contrast(luminance(color), luminance(background)) >= 4.5
     expected = {"light": "#646662", "dark": "#BCBEBC"}[scheme]
-    assert color == expected, "UI/UX's figures: 5.80:1 and 8.32:1"
+    assert color == expected, "5.80:1 and 8.32:1"
     window = _shown_at(1100, 720, "sheet_metal.bend_allowance")
     note = Note(NoteKind.LIMIT_EXCEEDED, "Too tight.", (Reference("Shop handbook"),))
     result = window.result
     from dataclasses import replace
 
-    html = result_html(window.calculator, replace(result, notes=(note,)), window.prefs, scheme)
+    calc = window.calculator
+    units = window._units_for(calc)
+    html = result_html(calc, replace(result, notes=(note,)), units, window.prefs, scheme)
     assert "<small>" not in html
     assert f"color:{color}'>default<" in html and f"color:{color}'>Sources: Shop handbook<" in html
     window.close()
 
 
 def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
-    """The label's tooltip is the output's help, the user guide's sentence (UI/UX's L1)."""
+    """The label's tooltip is the output's help, the user guide's sentence."""
     from caddcalc.gui.name_tips import tip_text
 
     window = open_window()
@@ -666,7 +677,7 @@ def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
     window.select_calculator("conversions.length")
     settle(window)
     _param, value = window.fields["value"]
-    type_into(value, "0.31 in")
+    type_into(value, "0.31")
     field = window.results.fields["error_16"]
     help_text = "The nearest fraction less the value: positive where the fraction is longer"
     assert field.output.help.startswith(help_text)
@@ -679,3 +690,26 @@ def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
     field.label.resize(8, field.label.height())
     assert field.label.toolTip() == tip_text(field.output.label, field.output.help), "elided"
     window.close()
+
+
+@pytest.mark.usefixtures("qt")
+def test_an_elided_label_fits_its_text_at_every_width() -> None:
+    """It elides until its text fits by its own size hint's measure, as macOS's needs."""
+    from PySide6.QtWidgets import QApplication, QWidget
+
+    from caddcalc.gui.result_fields import _ElidedLabel
+
+    parent = QWidget()
+    parent.resize(400, 60)
+    parent.show()
+    for text in ("Hypotenuse", "Area of the right triangle", "Bend allowance"):
+        label = _ElidedLabel(text, parent)
+        label.show()
+        wide = []
+        for width in range(16, 260):
+            label.resize(width, 20)
+            QApplication.processEvents()
+            if label.minimumSizeHint().width() > width:
+                wide.append(width)
+        assert wide == [], text
+    parent.close()

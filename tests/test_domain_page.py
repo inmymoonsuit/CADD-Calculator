@@ -9,7 +9,7 @@ import pytest
 from caddcalc.calculators import default_registry
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
 from caddcalc.core import Dimension, Domain, Param, TypedValue
-from tests.qt_helpers import open_window, page_text, plain, type_into
+from tests.qt_helpers import open_window, page_text, plain, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -115,8 +115,11 @@ def test_a_typo_never_applies_a_passing_prefix_and_stays_visible() -> None:
             window.select_calculator("sheet_metal.bend_allowance"),
             window.select_domain("sheet_metal"),
         ),
-        lambda: window.units_box.setCurrentText("mm"),
-        lambda: window.units_box.setCurrentText("in"),
+        lambda: (
+            window.select_calculator("sheet_metal.bend_allowance"),
+            show_in(window, "mm"),
+            window.select_domain("sheet_metal"),
+        ),
     ):
         leave_and_return()
         _setting, field = window.setting_fields["k_factor"]
@@ -141,18 +144,30 @@ def test_unreadable_text_is_explained_with_the_setting_name() -> None:
     window.close()
 
 
-def test_a_typed_setting_keeps_the_users_text_across_unit_switches() -> None:
+def _length_labels(window: Any) -> set[str]:
+    """The unit labels after the page's length fields."""
+    from PySide6.QtWidgets import QLabel
+
+    labels = window.settings_box.findChildren(QLabel)
+    return {label.text() for label in labels if label.text() in ("in", "mm", "ft", "cm", "m")}
+
+
+def test_a_setting_shows_and_reads_in_inches_whatever_the_results_show() -> None:
+    """Until its fields get pickers, a bare number on the page is inches (KI-027)."""
     window = open_window()
     window.select_domain("sheet_metal")
     type_into(window.setting_fields["thickness"][1], "0.1046")
     typed = TypedValue.parse("0.1046", Dimension.LENGTH, "in")
     assert window.domain_settings.get(SHEET_METAL, "thickness") == typed
-
     type_into(window.setting_fields["inside_radius"][1], "3 mm")
-    for unit, shown in (("mm", "2.65684"), ("in", "0.1046"), ("mm", "2.65684"), ("in", "0.1046")):
-        window.units_box.setCurrentText(unit)
-        assert window.setting_fields["thickness"][1].text() == shown
-        assert window.setting_fields["inside_radius"][1].text() == "3 mm"
+    assert _length_labels(window) == {"in"}
+
+    window.select_calculator("sheet_metal.bend_allowance")
+    show_in(window, "mm")
+    window.select_domain("sheet_metal")
+    assert window.setting_fields["thickness"][1].text() == "0.1046"
+    assert window.setting_fields["inside_radius"][1].text() == "3 mm"
+    assert _length_labels(window) == {"in"}
     assert window.domain_settings.get(SHEET_METAL, "thickness") == typed, "display never re-read"
     window.close()
 
@@ -186,8 +201,8 @@ def test_leaving_the_page_applies_text_typed_without_enter() -> None:
     window.close()
 
 
-def test_refused_unitless_text_keeps_the_unit_it_was_typed_in() -> None:
-    """A refused "5" in inches must not become an accepted 5 mm after a switch to mm."""
+def test_refused_text_stays_as_typed_and_unapplied() -> None:
+    """A refused "5" stays refused, as typed, whatever the results are shown in."""
     registry = default_registry(load_plugins=False)
     registry.register_domain(PLATE)
     window = open_window(registry)
@@ -197,16 +212,19 @@ def test_refused_unitless_text_keeps_the_unit_it_was_typed_in() -> None:
     assert "Width (W) must be at most" in plain(window.domain_note.text())
 
     for step in (
-        lambda: window.units_box.setCurrentText("mm"),
+        lambda: (
+            window.select_calculator("sheet_metal.bend_allowance"),
+            show_in(window, "mm"),
+            window.select_domain("plate"),
+        ),
         lambda: (
             window.select_calculator("sheet_metal.bend_allowance"),
             window.select_domain("plate"),
         ),
-        lambda: window.units_box.setCurrentText("in"),
     ):
         step()
         _setting, width = window.setting_fields["width"]
-        assert width.text() == "5 in"
+        assert width.text() == "5"
         assert "border" in width.styleSheet()
         assert window.setting_fields["gap"][1].text() == "abc"
         assert window.domain_settings.get(PLATE, "width") is None, "never applied"

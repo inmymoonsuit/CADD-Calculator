@@ -33,7 +33,7 @@ def _sind(deg: float) -> float:
     as IEEE 754's ``sinPi`` does (IEEE 754-2019, §9.2).
     """
     if math.fmod(deg, 180.0) == 0.0:
-        return 0.0
+        return math.copysign(0.0, deg)  # sinPi's signed zero: -0 at -180°, as at -0°
     return math.sin(math.radians(deg))
 
 
@@ -52,12 +52,15 @@ def tan_is_undefined(deg: float) -> bool:
 def _tand(deg: float) -> float:
     """Tangent of an angle in degrees, refusing angles where it is undefined.
 
-    It's exactly 0 at a whole multiple of 180°, as ``_sind`` is.
+    It's exactly 0 at a whole multiple of 180°, as ``_sind`` is, signed as IEEE 754's
+    ``tanPi`` is: +0 at an even multiple and -0 at an odd one, and the other way round
+    for a negative angle, so ``-0.0`` keeps its sign (IEEE 754-2019, §9.2.1).
     """
     if tan_is_undefined(deg):
         raise ValueError(f"tan is undefined at {deg:g}°")
     if math.fmod(deg, 180.0) == 0.0:
-        return 0.0  # as sind is (_sind)
+        odd = math.fmod(deg, 360.0) != 0.0
+        return math.copysign(0.0, -deg if odd else deg)
     return math.tan(math.radians(deg))
 
 

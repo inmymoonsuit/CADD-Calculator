@@ -28,7 +28,16 @@ from caddcalc.core import (
     expr,
     parse_table,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_note, describe_source, render_step
+from caddcalc.core.formatting import (
+    DisplayPrefs,
+    ShownUnits,
+    describe_note,
+    describe_source,
+    render_step,
+    result_json,
+)
+
+INCHES, MILLIMETRES = ShownUnits.generated("in"), ShownUnits.generated("mm")
 
 GAUGES = load_gauges(GAUGE_TABLE.load())
 SYSTEMS = {system.id: system for system in GAUGES.systems}
@@ -98,19 +107,19 @@ def test_a_derived_thickness_shows_its_work_ahead_of_the_calculators() -> None:
         result.inputs["thickness"],
     )
     assert work.note == "0.1046150167… in before rounding to 4 decimal places"
-    symbolic, numeric, _ = render_step(work, result, DisplayPrefs())
+    symbolic, numeric, _ = render_step(work, result, INCHES, DisplayPrefs())
     assert (symbolic, numeric) == ("(w + c) / 16 / B", "(70 + 0) / 16 / 41.82")
     assert result.steps[1:] == BendAllowance().run().steps
-    step = result.to_dict()["steps"][0]
+    step = result_json(BendAllowance(), result, INCHES, DisplayPrefs())["steps"][0]
     assert step["substitution"] == {"w": "70", "c": "0", "B": "41.82"}
     assert (step["expression_unit"], step["stated"]) == ("in", "0.1046 in")
-    millimetres = render_step(work, result, DisplayPrefs(length_unit="mm"))
+    millimetres = render_step(work, result, MILLIMETRES, DisplayPrefs())
     assert millimetres[1:] == ("(70 + 0) / 16 / 41.82", "0.1046 in = 2.6568 mm")
 
     awg = DomainSettings().set_choice(DOMAIN, "gauge", "awg:0000").for_domain(DOMAIN)
     work = BendAllowance().run(settings=awg).steps[0]
     assert (
-        render_step(work, result, DisplayPrefs())[1]
+        render_step(work, result, INCHES, DisplayPrefs())[1]
         == "0.005 · (0.46 / 0.005) ^ ((36 - (-3)) / 39)"
     )
     uss = DomainSettings().set_choice(DOMAIN, "gauge", "uss:26").for_domain(DOMAIN)
@@ -174,7 +183,7 @@ def test_choosing_a_gauge_derives_the_thickness_with_its_caution() -> None:
     assert gauged.source_of("thickness").kind is SourceKind.DERIVED
     (note,) = gauged.notes
     assert (note.kind, note.subjects) == (NoteKind.WARNING, ("thickness",))
-    assert describe_note(note, DisplayPrefs()).lines == (
+    assert describe_note(note, INCHES, DisplayPrefs()).lines == (
         "Nominal thickness; mill tolerances apply (see ASTM A568/A568M, 2025, rev. a). Check "
         "the material's specification or measure before cutting.",
         "Sources: Gauge systems, version 3 · ASTM A568/A568M, 2025, rev. a, scope: general "
@@ -248,12 +257,12 @@ def test_malformed_gauge_content_is_refused(old: str, new: str, message: str) ->
 def test_the_work_shows_the_stated_thickness_never_a_rounded_one(
     key: str, stated: str, millimetres: str
 ) -> None:
-    """Review M3: US Standard 12 ga's work said 0.1094 in, and 40 AWG's 0.0031 in."""
+    """US Standard 12 ga's work says 0.109375 in, never 0.1094 in; 40 AWG's, 0.00314 in."""
     settings = DomainSettings().set_choice(DOMAIN, "gauge", key).for_domain(DOMAIN)
     result = BendAllowance().run(settings=settings)
     work = result.steps[0]
     assert work.stated == stated
-    assert render_step(work, result, DisplayPrefs())[2] == stated
-    assert render_step(work, result, DisplayPrefs(length_unit="mm"))[2] == (
+    assert render_step(work, result, INCHES, DisplayPrefs())[2] == stated
+    assert render_step(work, result, MILLIMETRES, DisplayPrefs())[2] == (
         f"{stated} = {millimetres}"
     )

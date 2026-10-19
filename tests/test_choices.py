@@ -44,7 +44,13 @@ from caddcalc.core import (
     ValueOrigin,
     Verification,
 )
-from caddcalc.core.formatting import DisplayPrefs, describe_error, describe_source
+from caddcalc.core.formatting import (
+    DisplayPrefs,
+    ShownUnits,
+    describe_error,
+    describe_source,
+    result_json,
+)
 from caddcalc.core.provenance import InputSource
 
 L = Dimension.LENGTH
@@ -269,7 +275,8 @@ def test_a_derived_value_reaches_the_result_with_its_source_and_note() -> None:
         SourceKind.DERIVED,
         "plate 1, Standard (nominal), Plates, version 1",
     )
-    assert result.to_dict()["inputs"]["thickness"]["source"]["kind"] == "derived"
+    data = result_json(_Bend(), result, ShownUnits.generated(), DisplayPrefs())
+    assert data["inputs"]["thickness"]["source"]["kind"] == "derived"
     assert result.notes == (replace(CAUTION, subjects=("thickness", "inside_radius")),), (
         "one note, naming both inputs that took a value from the choice"
     )
@@ -305,7 +312,7 @@ def test_an_out_of_range_derived_value_names_its_source() -> None:
     with pytest.raises(OutOfRangeError) as caught:
         _Bend().run(settings=chosen("std:2").for_domain(SHOP))
     assert caught.value.source.kind is SourceKind.DERIVED
-    assert describe_error(caught.value, DisplayPrefs(length_unit="mm")) == (
+    assert describe_error(caught.value, ShownUnits.generated("mm"), DisplayPrefs()) == (
         "Thickness (T) from plate 2, Standard (nominal) is 4 mm, but this calculator needs at "
         "most 3 mm. Override it in this calculator."
     )
@@ -499,7 +506,7 @@ def test_a_kept_dependent_may_be_offered_under_another_parent_selection() -> Non
 
 
 class _Undeclared:
-    """The reviewer's probe: choice "u" declares no parent but reads "a" to decide."""
+    """Choice "u" declares no parent but reads "a" to decide."""
 
     def __init__(self) -> None:
         self.seen: list[tuple[str, dict[str, str]]] = []

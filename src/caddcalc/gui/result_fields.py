@@ -41,6 +41,7 @@ from PySide6.QtGui import (
     QResizeEvent,
 )
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QMenu,
@@ -53,11 +54,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from caddcalc.core import Calculator, Output, Result
+from caddcalc.core import Calculator, Dimension, Output, Result, UnitSet
 from caddcalc.core.formatting import (
     DISCLAIMER,
     CopyForm,
     DisplayPrefs,
+    ShownUnits,
     ValueParts,
     copy_output,
     decimal_separator,
@@ -66,13 +68,22 @@ from caddcalc.core.formatting import (
     results_tsv,
     spoken_value,
 )
-from caddcalc.core.i18n import _
+from caddcalc.core.i18n import N_, _, pgettext
 from caddcalc.gui.icons import current_scheme, icon, role_color
 from caddcalc.gui.name_tips import tip_text
 from caddcalc.gui.outlines import Outline, strongest
 from caddcalc.gui.painting import frame_within, on_device_pixels, stroke
+from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.text_units import text_unit
 from caddcalc.gui.ui_style import ResultFieldTokens, secondary_text, ui_style
+from caddcalc.gui.unit_picker import (
+    NAME_ROLE,
+    ChoiceItems,
+    UnitPicker,
+    WheelGuard,
+    choice_name,
+    choice_symbol,
+)
 from caddcalc.gui.window_layout import chars
 
 NO_VALUE = "—"
@@ -81,6 +92,10 @@ NO_VALUE_TIP = "No value to copy"
 NO_VALUE_SPOKEN = "no value"
 """What a screen reader says in place of a value while there's none."""
 TITLE = "Results"
+# Translators: the output picker's accessible name, said by a screen reader (ADR-0024 §5).
+RESULTS_UNITS = N_("Results units")
+SET_ROLE = Qt.ItemDataRole.UserRole
+"""The item data that holds an output set's key."""
 FIELD_NAME = "{label}, {symbol}: {value}"
 """A field's accessible name, e.g. "Bend allowance, BA: 0.3119 inches"."""
 VALUE_SPOKEN = "{symbol}: {value}"
@@ -99,10 +114,9 @@ MENU = {
     CopyForm.SHOWN: "Copy {number}",
     CopyForm.WITH_UNIT: "Copy with unit",
     CopyForm.FULL: "Copy full precision",
-    CopyForm.FRACTION: "Copy fraction",
 }
-"""The context menu's copy forms (R6), in order. The fraction is there only when it's
-shown, and the number as shown, e.g. "Copy 0,3119", only where the decimal mark isn't "."
+"""The context menu's copy forms (R6), in order. The number as shown, e.g. "Copy 0,3119",
+is there only where the decimal mark isn't "."
 (ADR-0020 §4): "Copy value" writes "." for CAD. Where it isn't, every item is named by
 what it copies, such as "Copy 0.3119" and "Copy 0.3119 in"."""
 
@@ -112,7 +126,7 @@ as feet and inches copy in inches; "Copy {number}, in {unit}" where both marks a
 offer."""
 
 
-def _announce(widget: QWidget, message: str) -> None:
+def announce(widget: QWidget, message: str) -> None:
     """Tell screen readers ``message``, politely, as the status bar shows it (R4)."""
     event = QAccessibleAnnouncementEvent(widget, message)
     event.setPoliteness(QAccessible.AnnouncementPoliteness.Polite)
@@ -133,14 +147,26 @@ class _ElidedLabel(QLabel):
         self._elide()
 
     def _elide(self) -> None:
-        shown = self.fontMetrics().elidedText(
-            self.full_text, Qt.TextElideMode.ElideRight, self.width()
-        )
+        # Elided to the width the label's own size hint measures text by, its bounding
+        # box, which can be a pixel wider than the advance elidedText fits, as on macOS:
+        # so the text it shows always fits it, and never draws past its edge.
+        metrics = self.fontMetrics()
+        width = self.width()
+        shown = metrics.elidedText(self.full_text, Qt.TextElideMode.ElideRight, width)
+        while width > 0 and self._needs(shown) > self.width():
+            width -= 1
+            shown = metrics.elidedText(self.full_text, Qt.TextElideMode.ElideRight, width)
         self.setText(shown)
         if shown != self.full_text:
             self.setToolTip(tip_text(self.full_text, self.help_text))
         else:
             self.setToolTip(self.help_text)
+
+    def _needs(self, text: str) -> int:
+        """The width the label asks for to show ``text``, as its size hint measures it."""
+        size = self.fontMetrics().size(Qt.TextFlag.TextSingleLine, text)
+        margins = self.contentsMargins()
+        return size.width() + margins.left() + margins.right() + 2 * self.margin()
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:
@@ -223,9 +249,11 @@ class ResultField(QWidget):
 
     Attributes:
         copied: Emitted with the status message after the field copies.
+        picked: Emitted with the choice's id when the user changes its own picker.
     """
 
     copied = Signal(str)
+    picked = Signal(str)
 
     def __init__(self, output: Output, tokens: ResultFieldTokens, parent: QWidget) -> None:
         super().__init__(parent)
@@ -236,7 +264,9 @@ class ResultField(QWidget):
         self.amount: float | None = None
         """The value it shows, in base units, which it copies from; ``None`` for none."""
         self.prefs = DisplayPrefs()
-        """The display preferences it shows and copies its value in."""
+        """How it writes its value's numbers."""
+        self.units = ShownUnits.generated()
+        """The unit or form it shows and copies its value in."""
         self.outline: Outline | None = None
         """The strongest outline of the notes that concern this output, if any."""
         self.hovered = False
@@ -261,8 +291,12 @@ class ResultField(QWidget):
         self.value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.unit = QLabel(self)
-        self.fraction = QLabel(self)
-        self.fraction.hide()
+        self.picker: UnitPicker | None = None
+        """Its own unit picker, in place of its unit, if it declares one (``Output.picks``)."""
+        if output.picks:
+            self.picker = UnitPicker(output.label, output.picks, output.dimension, self)
+            self.picker.picked.connect(self.picked)
+            self.picker.stepped.connect(self.picked)
         self.copy_button = _CopyButton(self, ringed=True)
         self.copy_button.setAutoRaise(True)
         button = round(tokens.button_size)
@@ -274,8 +308,10 @@ class ResultField(QWidget):
         self.copy_button.clicked.connect(self._on_clicked)
         self.copy_button.setAccessibleName(COPY.format(label=output.label))
         self.copied_state = _CopiedState(self.copy_button, tokens)
-        for widget in (self.symbol, self.label, self.value, self.unit, self.fraction):
-            row.addWidget(widget)
+        for widget in (self.symbol, self.label, self.value, self.unit, self.picker):
+            if widget is not None:
+                row.addWidget(widget)
+        self.unit.setVisible(self.picker is None)
         row.setStretch(row.indexOf(self.label), 1)
         row.addWidget(self.copy_button)
         self.setMinimumHeight(round(tokens.min_height + 2 * ring))
@@ -290,10 +326,16 @@ class ResultField(QWidget):
             font.setFeature(QFont.Tag("tnum"), 1)  # every digit one width, so columns align
         return font
 
-    def set_value(self, amount: float | None, prefs: DisplayPrefs, outline: Outline | None) -> None:
-        """Show ``amount``, in base units, in ``prefs``; ``None`` shows no value."""
-        self.amount, self.prefs = amount, prefs
-        parts = None if amount is None else output_parts(self.output, amount, prefs)
+    def set_value(
+        self,
+        amount: float | None,
+        units: ShownUnits,
+        prefs: DisplayPrefs,
+        outline: Outline | None,
+    ) -> None:
+        """Show ``amount``, in base units, in ``units``; ``None`` shows no value."""
+        self.amount, self.units, self.prefs = amount, units, prefs
+        parts = None if amount is None else output_parts(self.output, amount, units, prefs)
         self.show_parts(parts, outline)
 
     def show_parts(self, parts: ValueParts | None, outline: Outline | None) -> None:
@@ -303,15 +345,12 @@ class ResultField(QWidget):
             self.amount = None
             self.value.setText(NO_VALUE)
             self.unit.setText("")
-            self.fraction.hide()
             self.copy_button.setEnabled(False)
             self.copy_button.setToolTip(NO_VALUE_TIP)
         else:
             close_up = parts.unit_close_up  # "132.70°", as the document writes it
             self.value.setText(parts.with_unit if close_up else parts.number)
             self.unit.setText("" if close_up else parts.unit)
-            self.fraction.setText("" if parts.fraction is None else f'(≈ {parts.fraction}")')
-            self.fraction.setVisible(parts.fraction is not None)
             self.copy_button.setEnabled(True)
             self.copy_button.setToolTip(COPY.format(label=self.output.label))
         spoken = NO_VALUE_SPOKEN if parts is None else spoken_value(parts)
@@ -336,9 +375,7 @@ class ResultField(QWidget):
         """
         if self.amount is None or self.parts is None:
             return None
-        if form is CopyForm.FRACTION and self.parts.fraction is None:
-            return None
-        text = copy_output(self.output, self.amount, self.prefs, form)
+        text = copy_output(self.output, self.amount, self.units, self.prefs, form)
         QGuiApplication.clipboard().setText(text)
         self.copied_state.start()
         self.copied.emit(COPIED.format(symbol=self.output.symbol, text=text))
@@ -352,8 +389,6 @@ class ResultField(QWidget):
         menu = QMenu(self)
         point = decimal_separator(self.prefs) == "."
         for form, text in MENU.items():
-            if form is CopyForm.FRACTION and (self.parts is None or self.parts.fraction is None):
-                continue
             if form is CopyForm.SHOWN and (point or self.parts is None):
                 continue
             if form is CopyForm.WITH_UNIT and self.parts is not None and self.parts.compound:
@@ -364,11 +399,11 @@ class ResultField(QWidget):
             else:
                 # Two decimal marks are on offer, so each item says what it copies,
                 # "Copy 0.3119" beside "Copy 0,3119" (UI/UX's i4 review).
-                copied = copy_output(self.output, self.amount, self.prefs, form)
+                copied = copy_output(self.output, self.amount, self.units, self.prefs, form)
                 label = MENU[CopyForm.SHOWN].format(number=copied)
             if form is CopyForm.FULL and self.parts is not None and self.parts.compound:
                 # A compound form's full precision is a decimal in the form's own unit.
-                unit = output_unit(self.output, self.prefs).spoken("2")  # its plural
+                unit = output_unit(self.output, self.units).spoken("2")  # its plural
                 label = FULL_IN.format(unit=unit) if point else f"{label}, in {unit}"
             action = menu.addAction(label)
             action.setEnabled(self.parts is not None)
@@ -388,7 +423,7 @@ class ResultField(QWidget):
         """Take the current light or dark scheme's colours and icon."""
         scheme = current_scheme()
         color = role_color(self.tokens.text_role, scheme)
-        for label in (self.symbol, self.label, self.value, self.unit, self.fraction):
+        for label in (self.symbol, self.label, self.value, self.unit):
             label.setStyleSheet(f"color: {color};")
         self.copied_state.restyle()
         self.update()
@@ -468,12 +503,21 @@ class ResultsPanel(QWidget):
     their values, or blanks them all while the inputs have no result, so an old answer
     can't be read, or copied, after its inputs changed (ADR-0017 §1, §4).
 
+    The output picker, "Show in:", sits in the header between the title and Copy all,
+    and moves under the title when the panel is too narrow for the three (ADR-0024 §5).
+    It offers the calculator's output sets, and it's hidden for a calculator with none.
+
     Attributes:
         announced: Emitted with each copy's status message, once screen readers have
             been told it.
+        set_picked: Emitted with a set's key when the user picks it in the output picker.
+        output_picked: Emitted with an output's key and its choice's id when the user
+            changes that output's own picker.
     """
 
     announced = Signal(str)
+    set_picked = Signal(str)
+    output_picked = Signal(str, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -482,6 +526,8 @@ class ResultsPanel(QWidget):
         self.result: Result | None = None
         """The result the fields show, which Copy all copies; ``None`` for none."""
         self.prefs = DisplayPrefs()
+        self.units = ShownUnits.generated()
+        """The units the fields show their values in: the output picker's set."""
         self.fields: dict[str, ResultField] = {}
         top, sides = self.tokens.panel_inset
         column = QVBoxLayout(self)
@@ -504,13 +550,35 @@ class ResultsPanel(QWidget):
         self.copy_all_button.setToolTip(COPY_ALL_TIP.format(keys=keys))
         self.copy_all_button.clicked.connect(self.copy_all)
         self.copy_all_state = _CopiedState(self.copy_all_button, self.tokens)
-        # The title and Copy all sit in line with the fields' frames, inside the focus
-        # ring's room.
+        # Translators: the label before the output picker, "Show in: [in]", in the
+        # results' header.
+        self.show_in = QLabel(pgettext("results header", "Show in:"), self)
+        self.set_picker = _SetPicker(self._header_line, self)
+        self.set_picker.setAccessibleName(_(RESULTS_UNITS))
+        self.set_picker.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.set_picker.setItemDelegate(ChoiceItems(self.set_picker))
+        self.show_in.setBuddy(self.set_picker)
+        self.set_picker.activated.connect(self._on_set_activated)
+        self.set_picker.currentIndexChanged.connect(self._name_set)
+        # A wheel over a picker would change the units without a click (UI/UX's M2).
+        self._wheel_guard = WheelGuard(self)
+        self.set_picker.installEventFilter(self._wheel_guard)
+        controls = QWidget(self)
+        row = QHBoxLayout(controls)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(self.show_in)
+        row.addWidget(self.set_picker)
+        row.addStretch(1)
+        row.addWidget(self.copy_all_button)
+        # The title and the controls sit in line with the fields' frames, inside the focus
+        # ring's room; the controls go under the title when the two don't fit side by side.
         ring = round(self.tokens.focus_width + self.tokens.focus_gap)
+        self.header = Reflow(self)
+        self.header.add(self.title, 1)
+        self.header.add(controls)
         header = QHBoxLayout()
         header.setContentsMargins(ring, 0, ring, 0)
-        header.addWidget(self.title, 1)
-        header.addWidget(self.copy_all_button)
+        header.addWidget(self.header)
         column.addLayout(header)
         self._column = QVBoxLayout()
         self._column.setSpacing(round(self.tokens.stack_gap))
@@ -528,6 +596,10 @@ class ResultsPanel(QWidget):
         self.setMaximumWidth(chars(cap, text_unit(self.font())))
         self.restyle()
         self._sync_copy_all()
+
+    def _header_line(self) -> int:
+        """The header row's height without the picker: the title's and Copy all's."""
+        return max(self.title.sizeHint().height(), self.copy_all_button.sizeHint().height())
 
     # Its height is its height at its width, as the disclaimer wraps; Qt's own hint takes
     # the disclaimer at a guessed width, which the page's fit would then wrongly trust.
@@ -562,43 +634,99 @@ class ResultsPanel(QWidget):
         self.calculator = calc
         self.result = None
         self.fields = {o.key: ResultField(o, self.tokens, self) for o in calc.outputs}
-        for field in self.fields.values():
+        for key, field in self.fields.items():
             self._column.addWidget(field)
             field.copied.connect(self._announce)
+            field.picked.connect(lambda choice, key=key: self.output_picked.emit(key, choice))
+            if field.picker is not None:
+                field.picker.installEventFilter(self._wheel_guard)
+        self._offer_sets(calc)
         self._align()
         self._sync_copy_all()
         self.updateGeometry()
 
-    def show_result(self, result: Result | None, prefs: DisplayPrefs) -> None:
-        """Show ``result``'s outputs, outlined by its notes; ``None`` blanks every field."""
+    def show_result(self, result: Result | None, units: ShownUnits, prefs: DisplayPrefs) -> None:
+        """Show ``result``'s outputs in ``units``, outlined by its notes; ``None`` blanks them."""
         calc = self.calculator
         if calc is None:
             return
-        self.result, self.prefs = result, prefs
+        self.result, self.units, self.prefs = result, units, prefs
         if result is None:
             for field in self.fields.values():
-                field.set_value(None, prefs, None)
+                field.set_value(None, units, prefs, None)
         else:
             outlines = strongest(result.notes, self.fields)
             for output in calc.outputs:
                 field = self.fields[output.key]
-                field.set_value(result.outputs[output.key], prefs, outlines.get(output.key))
+                amount = result.outputs[output.key]
+                field.set_value(amount, units, prefs, outlines.get(output.key))
         self._align()
         self._sync_copy_all()
+
+    @property
+    def set_key(self) -> str:
+        """The key of the set the output picker shows; empty for a calculator with none."""
+        return str(self.set_picker.currentData(SET_ROLE) or "")
+
+    def show_set(self, key: str) -> None:
+        """Show the set with ``key`` in the output picker, as code sets it: no signal."""
+        index = self.set_picker.findData(key, SET_ROLE)
+        if index >= 0:
+            self.set_picker.setCurrentIndex(index)
+
+    def show_pick(self, key: str, choice: str) -> None:
+        """Show ``choice`` in output ``key``'s own picker, as code sets it: no signal."""
+        picker = self.fields[key].picker if key in self.fields else None
+        if picker is not None and choice in picker.choices:
+            picker.set_choice(choice)
+
+    def _offer_sets(self, calc: Calculator) -> None:
+        """Offer ``calc``'s output sets, each by its label, and named in its list (Q3)."""
+        sets = calc.unit_sets()
+        shown = list(dict.fromkeys(o.dimension for o in calc.outputs if o.follows_set))
+        self.set_picker.blockSignals(True)
+        self.set_picker.clear()
+        for unit_set in sets:
+            name = _set_name(unit_set, shown)
+            self.set_picker.addItem(unit_set.label, unit_set.key)
+            index = self.set_picker.count() - 1
+            self.set_picker.setItemData(index, name, NAME_ROLE)
+            self.set_picker.setItemData(index, name, Qt.ItemDataRole.ToolTipRole)
+        self.set_picker.blockSignals(False)
+        self._name_set()
+        self.show_in.setVisible(bool(sets))
+        self.set_picker.setVisible(bool(sets))
+
+    def _name_set(self, *_args: object) -> None:
+        """Say the set by its name, and show it as the tooltip, as a field's picker does."""
+        name = str(self.set_picker.currentData(NAME_ROLE) or "")
+        self.set_picker.setAccessibleDescription(name)
+        self.set_picker.setToolTip(name)
+
+    def _on_set_activated(self, _index: int) -> None:
+        self.set_picked.emit(self.set_key)
 
     def copy_all(self) -> str | None:
         """Copy every output as tab-separated rows (R2); ``None`` while there's no result."""
         if self.calculator is None or self.result is None:
             return None
-        text = results_tsv(self.calculator, self.result, self.prefs)
+        text = results_tsv(self.calculator, self.result, self.units, self.prefs)
         QGuiApplication.clipboard().setText(text)
         self.copy_all_state.start()
         self._announce(COPIED_ALL)
         return text
 
     def focus_chain(self) -> list[QWidget]:
-        """The panel's stops for Tab, in order: each field's copy button, then Copy all."""
-        return [*(f.copy_button for f in self.fields.values()), self.copy_all_button]
+        """The panel's stops for Tab, in order.
+
+        That's the output picker, each field's own picker and copy button, then Copy all.
+        """
+        stops: list[QWidget] = [self.set_picker] if self.set_picker.isVisibleTo(self) else []
+        for field in self.fields.values():
+            if field.picker is not None:
+                stops.append(field.picker)
+            stops.append(field.copy_button)
+        return [*stops, self.copy_all_button]
 
     def restyle(self) -> None:
         """Take the current light or dark scheme's colours and icons."""
@@ -608,7 +736,7 @@ class ResultsPanel(QWidget):
             field.restyle()
 
     def _announce(self, message: str) -> None:
-        _announce(self, message)
+        announce(self, message)
         self.announced.emit(message)
 
     def _sync_copy_all(self) -> None:
@@ -645,6 +773,45 @@ class ResultsPanel(QWidget):
             field.symbol.setFixedWidth(symbol)
             field.unit.setFixedWidth(math.ceil(unit))
             field.value.setFixedWidth(math.ceil(value))
+
+
+class _SetPicker(QComboBox):
+    """The output picker, as tall as the header's row is without it, at most.
+
+    A picker is a field's height, taller than the title and Copy all, so the header, and
+    every page with it, would grow by the difference, and a page that fit at launch would
+    scroll (UI/UX's M1 at stop 2). Its text still has a line's height. It's never narrower
+    than its longest label, as a field's picker never is, so the least window keeps it
+    whole.
+    """
+
+    def __init__(self, line: Callable[[], int], parent: QWidget) -> None:
+        super().__init__(parent)
+        self._line = line
+
+    @override
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        return QSize(hint.width(), min(hint.height(), self._line()))
+
+    @override
+    def minimumSizeHint(self) -> QSize:
+        """As ``sizeHint``: it never narrows past its longest label, which would clip."""
+        return self.sizeHint()
+
+
+def _set_name(unit_set: UnitSet, dimensions: list[Dimension]) -> str:
+    """Return an output set's name, from its choices' names for the dimensions shown.
+
+    For example "inches, nearest 1/16; degrees; square inches", translated where it's
+    shown, as each choice's name is.
+    """
+    names = [
+        choice_name(unit_set.choices[d], d)
+        for d in dimensions
+        if d in unit_set.choices and choice_symbol(unit_set.choices[d], d)
+    ]
+    return "; ".join(names)
 
 
 def _least(label: QLabel) -> int:

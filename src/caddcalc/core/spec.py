@@ -13,7 +13,15 @@ from caddcalc.core.errors import InputError, SpecError
 from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.units import Dimension, Precision, base_text, parse_quantity
+from caddcalc.core.units import (
+    CompoundForm,
+    Dimension,
+    Precision,
+    base_text,
+    parse_quantity,
+    parse_quantity_detailed,
+    registry,
+)
 from caddcalc.core.units.model import COUNT_LIMIT
 
 
@@ -35,10 +43,13 @@ def named(label: str, symbol: str) -> str:
 
     "Side a" and "Angle A (opposite a)" name their symbols already, so a message or a
     field says "Side a", not "Side a (a)". A symbol inside a word, such as K in
-    "K-factor", isn't named by it.
+    "K-factor", isn't named by it. A label that ends in parentheses takes the symbol
+    inside them: "Across flats (inscribed circle, AF)", never two pairs.
     """
     if re.search(rf"(?<![\w-]){re.escape(symbol)}(?![\w-])", label):
         return label
+    if label.endswith(")") and "(" in label:
+        return f"{label[:-1]}, {symbol})"
     return f"{label} ({symbol})"
 
 
@@ -64,10 +75,60 @@ class Param:
     """Method keys that use this parameter. Empty means all methods."""
     shared: bool = False
     """Inherit the domain setting with the same key when the user has set it (ADR-0013)."""
+    unit: str = ""
+    """The id of the unit or form its field's picker starts in, e.g. ``"mm"`` or
+    ``"ft_in"`` (ADR-0024 E1); empty for the unit ``default`` names."""
+    units: tuple[str, ...] = ()
+    """The ids its picker offers, in order, where it offers fewer than its dimension's
+    (``registry().entry_choices``); empty for all of them."""
+
+    @property
+    def choices(self) -> tuple[str, ...]:
+        """The ids its field's picker offers; a unitless one has its unnamed unit alone."""
+        return self.units or registry().entry_choices(self.dimension)
+
+    @property
+    def default_choice(self) -> str | None:
+        """The id its picker starts in: ``unit``, else the unit or form ``default`` names.
+
+        A field with one choice, as a ratio's is, starts in it, and a default written in
+        a form that reads, as ``1'-4"`` is, starts it in that form. ``None`` means none can
+        be resolved, which ``Calculator.validate_spec`` refuses.
+        """
+        if self.unit:
+            return self.unit
+        if len(self.choices) == 1:
+            return self.choices[0]
+        if self.default is None:
+            return None
+        for form in registry().compounds_for(self.dimension):
+            try:
+                written = form.reads and form.parse(self.default.strip()) is not None
+            except InputError:
+                written = False
+            if written and form.key in self.choices:
+                return form.key
+        try:
+            parsed = parse_quantity_detailed(self.default, self.dimension)
+        except InputError:
+            return None
+        return parsed.unit.symbol if parsed.explicit_unit else None
 
     def default_value(self) -> float | None:
-        """Return the default in base units, or ``None`` if there is no default."""
-        return None if self.default is None else parse_quantity(self.default, self.dimension)
+        """Return the default in base units, or ``None`` if there is no default.
+
+        A default with no unit in its text is in the unit its picker starts in
+        (``default_choice``), as a number typed in the field would be: ``"0.1046"`` with
+        ``unit="in"`` is 0.1046 in, never 0.1046 mm.
+        """
+        if self.default is None:
+            return None
+        choice = self.default_choice
+        unit = None
+        if choice is not None and choice in self.choices:  # else validate_spec refuses it
+            picked = registry().choice(choice, self.dimension)
+            unit = picked.full_unit if isinstance(picked, CompoundForm) else picked.symbol
+        return parse_quantity(self.default, self.dimension, unit)
 
     def used_by(self, method_key: str) -> bool:
         """Return whether the method ``method_key`` uses this parameter."""
@@ -180,6 +241,35 @@ class Output:
     above zero gets a plus sign, as ``+0.002500 in``, in its row and its work line, and it
     takes no inch fraction hint. A compound form writes its own sign, so an output in one
     can't be signed."""
+    picks: tuple[str, ...] = ()
+    """The ids of its own picker's choices, the first its default, where it's shown in a
+    choice of its own rather than its calculator's output set (ADR-0024 D3, E1); empty
+    to follow the set. An output gives ``picks`` or a fixed ``unit`` or ``form``."""
+
+    @property
+    def follows_set(self) -> bool:
+        """Whether it's shown in its calculator's output set: no fixed unit, form or picks."""
+        return not (self.unit or self.form or self.picks)
+
+
+@dataclass(frozen=True)
+class UnitSet:
+    """A choice of the units a calculator's results are shown in (ADR-0024 E1, §5).
+
+    A calculator's output picker offers its sets; each names one choice for each
+    dimension its outputs use.
+    """
+
+    key: str
+    """Its public id, e.g. ``"in"``, ``"mm"`` or ``"in_dms"``, as ``--output-set`` takes."""
+    label: str
+    """What the picker shows for it, e.g. ``"in · ° · in²"``, or a declared name marked
+    for translation, e.g. ``N_("Inches and DMS")``."""
+    choices: Mapping[Dimension, str]
+    """The id of a unit or form for each dimension, e.g. ``{LENGTH: "in", AREA: "in²"}``."""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "choices", MappingProxyType(dict(self.choices)))
 
 
 @dataclass(frozen=True)

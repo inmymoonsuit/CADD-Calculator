@@ -14,7 +14,7 @@ from caddcalc.core import i18n
 from tests import pseudo_locale
 from tests.catalogs import shipped
 from tests.pseudo_locale import LANGUAGE, pseudo
-from tests.qt_helpers import open_window, settle
+from tests.qt_helpers import open_window, settle, show_in
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -73,7 +73,7 @@ def test_a_result_says_its_unit_in_the_language_text_is_shown_in(
     window = open_window()
     window.select_calculator("sheet_metal.bend_allowance")
     window.method_box.setCurrentIndex(window.method_box.findData("course"))
-    window.units_box.setCurrentText("mm")
+    show_in(window, "mm")
     field = window.results.fields["bend_allowance"]
     # The pseudo-locale marks the measure's template too: "⟦7.9213 ⟦millimeters⟧ …⟧".
     assert f" {spoken}" in field.accessibleName(), field.accessibleName()
@@ -238,7 +238,7 @@ def test_the_disclaimer_is_translated_everywhere_it_is_shown(tmp_path: Path) -> 
 
     from caddcalc.calculators import default_registry
     from caddcalc.cli import format_result
-    from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs
+    from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs, ShownUnits
     from caddcalc.gui.actions import about_html
     from caddcalc.gui.branding import Branding
 
@@ -250,4 +250,6 @@ def test_the_disclaimer_is_translated_everywhere_it_is_shown(tmp_path: Path) -> 
     window.close()
     assert html.escape(translated) in about_html(Branding())
     calc = default_registry(load_plugins=False).get("sheet_metal.bend_allowance")
-    assert format_result(calc, calc.run(), DisplayPrefs()).endswith(f". {translated}")
+    assert format_result(calc, calc.run(), ShownUnits.generated(), DisplayPrefs()).endswith(
+        f". {translated}"
+    )

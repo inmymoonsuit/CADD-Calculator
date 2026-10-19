@@ -1,4 +1,4 @@
-"""The gauge picker, and derived values on calculator pages (ADR-0014 §2, review M3).
+"""The gauge picker, and derived values on calculator pages (ADR-0014 §2).
 
 Skipped when PySide6 is not installed.
 """
@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from caddcalc.calculators.sheet_metal import DOMAIN as SHEET_METAL
-from tests.qt_helpers import open_window, plain, results_text, type_into
+from tests.qt_helpers import open_window, plain, results_text, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -194,13 +194,17 @@ def test_clear_all_returns_the_gauge_to_none() -> None:
 
 
 def test_the_gauges_work_is_true_in_millimetres() -> None:
-    """The work's expression gives inches, so it shows inches, then the display unit."""
+    """The work's expression gives inches, so it shows inches, then the results' unit.
+
+    The settings page shows inches until its fields get pickers (KI-027).
+    """
     window = open_window()
-    window.units_box.setCurrentText("mm")
     pick(window, MSG, "12 ga")
-    assert "= (70 + 0) / 16 / 41.82 = 0.1046 in = 2.6568 mm" in about(window, "thickness")
+    assert "= (70 + 0) / 16 / 41.82 = 0.1046 in" in about(window, "thickness")
+    assert "mm" not in about(window, "thickness")
 
     window.select_calculator(BEND)
+    show_in(window, "mm")
     shown = result(window)
     assert "= (70 + 0) / 16 / 41.82\n" in shown
     assert "= 0.1046 in = 2.6568 mm\n" in shown
@@ -208,7 +212,7 @@ def test_the_gauges_work_is_true_in_millimetres() -> None:
 
 
 def test_the_wheel_doesnt_change_a_gauge() -> None:
-    """Review M1: a wheel tick over a box changed the gauge while T had the focus."""
+    """A wheel tick over a box never changes the gauge while T has the focus."""
     from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtGui import QWheelEvent
     from PySide6.QtWidgets import QApplication
@@ -251,9 +255,9 @@ def test_the_wheel_doesnt_change_a_gauge() -> None:
 def test_both_pages_show_the_stated_thickness_in_the_work(
     unit: str, system: str, size: str, stated: str
 ) -> None:
-    """Review M3: the work rounded the stated value to the display decimals."""
+    """The work gives the stated value, never one rounded to the display decimals."""
     window = open_window()
-    window.units_box.setCurrentText(unit)
+    show_in(window, unit)
     pick(window, system, size)
     text = about(window, "thickness")
     assert f"= {stated}" in text
