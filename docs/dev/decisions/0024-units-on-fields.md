@@ -1160,3 +1160,34 @@ UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
   dimension, read-only mappings, the set by its length, the input's choice, the range
   error's unit, a unit's decimals, the window's field choices, the settings' unit and
   the CLI's bare number), are each killed. Offscreen: 2,251 tests pass.
+
+### 2026-10-19: as built, U2
+
+* **The Units box is gone,** with its label, its 16 px spacing, `_on_units_changed`, and
+  the settings page's renaming of unapplied text on a switch (`_name_pending_units`),
+  which has no switch left to guard. ADR-0023's `options_gap` was never built, so
+  nothing else goes with it. The method row is the page's options row alone.
+* **The header** (`ResultsPanel.header`) is a `Reflow` of the title and a row of "Show
+  in:", the picker and Copy all, so the row goes under the title when the two don't fit.
+  "Show in:" is the picker's buddy; the picker's accessible name is "Results units", and
+  it's the panel's first Tab stop, before the copy buttons. A calculator with no sets,
+  such as a converter, hides both and drops the stop.
+* **The set** is the window's per calculator, for the session (`MainWindow.output_sets`).
+  Until one is picked, it's the first set whose length choice every length field of the
+  calculator shares, all of them and not only the method's, so a method change can't
+  move it; otherwise the first set. A pick is made in the open list or by a step on the
+  closed picker: picking a set changes only how values show, so it needs no settle.
+* **A per-output picker** is a `UnitPicker` in the field's row, in place of its unit
+  label, after its value; the window keeps its pick for the session, and it's in the
+  Tab order before its copy button.
+* **The Inputs list** adds a column only when some input's field is in another choice than
+  the set's: `0.1046 in = 2.6568 mm`, the second value as the results show it.
+* **Settings** show and read in the inch set until U2b (`_settings_units`, KI-027).
+* **The `(≈ 5/16")` hint** goes with E-4, which removes it from `core.formatting`.
+* **Offscreen figures:** the header is 23 px tall at launch, the title's height, so it
+  adds nothing; the picker is 23 px. At the least window, 492 × 158, the header stacks,
+  at 46 px. Every page that fit at launch still fits, with every method, and its output
+  picker never moves. The native figures (at most 2 px, a 26 px picker) are UI/UX's.
+* Nine mutants, one for each guard (a pick is the user's, kept, and restored; the follow
+  needs one shared choice and counts every length; the picker's Tab stop; its hiding;
+  the Inputs list's second value; the settings' inches), are each killed.

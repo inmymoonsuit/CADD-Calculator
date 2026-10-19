@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from caddcalc.core import Dimension, TypedValue
-from tests.qt_helpers import open_window, page_text, pick, results_text, type_into
+from tests.qt_helpers import open_window, page_text, pick, results_text, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -78,12 +78,12 @@ def test_retyping_the_value_in_use_records_nothing(unit: str) -> None:
     """Retyping "0.156" passes "0", "0.1", "0.15"; only the end of the edit counts."""
     window = open_window()
     window.select_calculator(BEND)
-    window.units_box.setCurrentText(unit)
+    show_in(window, unit)
     retyped = field(window, "inside_radius").text()
     type_into(field(window, "inside_radius"), retyped)  # ends with Enter
     assert not overrides_radius(window)
     assert source_of(window, "inside_radius") == "default"
-    window.units_box.setCurrentText("in")
+    show_in(window, "in")
     then_family_radius_flows_through(window)
     window.close()
 
@@ -127,7 +127,7 @@ def test_a_cleared_field_shows_its_default_as_a_labelled_placeholder() -> None:
     thickness = field(window, "thickness")
     type_into(thickness, "")
     assert (thickness.text(), thickness.placeholderText()) == ("", "default 0.1046")
-    window.units_box.setCurrentText("mm")
+    show_in(window, "mm")
     assert field(window, "thickness").placeholderText() == "default 0.1046", "the picker's"
     pick(window, "thickness", "mm")
     assert field(window, "thickness").placeholderText() == "default 2.65684"
@@ -202,8 +202,8 @@ def test_unreadable_text_stays_with_its_error_and_applies_no_prefix() -> None:
 
     for leave_and_return in (
         lambda: (window.select_domain("sheet_metal"), window.select_calculator(BEND)),
-        lambda: window.units_box.setCurrentText("mm"),
-        lambda: window.units_box.setCurrentText("in"),
+        lambda: show_in(window, "mm"),
+        lambda: show_in(window, "in"),
         lambda: pick(window, "thickness", "mm"),
         lambda: pick(window, "thickness", "in"),
     ):
@@ -226,7 +226,7 @@ def test_a_units_round_trip_never_changes_a_calculator_value() -> None:
     window.select_calculator(BEND)
     type_into(field(window, "thickness"), "1/3", enter=False)
     for unit in ("mm", "in", "mm", "in"):
-        window.units_box.setCurrentText(unit)
+        show_in(window, unit)
         assert field(window, "thickness").text() == "1/3"
         assert field(window, "inside_radius").text() == "0.156"
     typed = window.entries[BEND]["thickness"].value

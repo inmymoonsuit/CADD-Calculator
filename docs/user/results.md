@@ -14,6 +14,27 @@ inputs and the notes, work, and method. The command line prints the same values 
 Each field shows one result: its symbol, its name, its value, its unit, and a copy
 button.
 
+## Show in: the results' units
+
+The **Show in** picker, between the Results title and Copy all, sets the units every
+result is shown in. Its choices are sets, one per length unit: `in`, `in 1/16`, `in
+1/32` and `in 1/64` (inches to the nearest fraction, as `5/16"`), `ft-in`, `ft`, `mm`,
+`cm` and `m`. Each names what the calculator shows: the right triangle's are `in · ° ·
+in²` and the like, since areas are the square of the length unit, and stresses follow
+the system, ksi beside inches and MPa beside metric units. Angles are in degrees.
+
+* **Until you choose a set, it follows your inputs:** while every length input's picker
+  shows the same unit, the results show in it. Pick mm for the thickness, and the other
+  lengths and the results follow. Once you choose a set, it's yours for the session, on
+  that calculator, and changing the method never moves it.
+* **What follows the set:** the fields, Copy, Copy all, what a screen reader says, and
+  the work. The Inputs list gives each input in its own picker's unit, then in the
+  set's where they differ: `0.1046 in = 2.6568 mm`.
+* **Some results keep their own unit,** such as each row of a unit converter, and a
+  result with its own picker in its row is set there. A calculator whose every result
+  has its own unit has no Show in picker.
+* In a narrow window, the picker and Copy all move under the title.
+
 * Values are rounded for display only, and line up on their decimal points, so a mix of
   lengths (4 decimals) and angles (2 decimals) is easy to read. A degree sign sits
   against its number: `132.70°`.

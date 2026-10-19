@@ -212,7 +212,7 @@ def _next_tab_stop(widget: Any) -> Any:
 
 
 def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
-    """Each input and its unit picker, each copy button, Copy all, then the document."""
+    """Each input and its picker, the output picker, each copy button, Copy all, the document."""
     from PySide6.QtCore import Qt
 
     window = _bend_window()
@@ -223,7 +223,7 @@ def test_tab_goes_down_the_page_from_the_inputs_to_the_document() -> None:
         if stop is not None
     ]
     assert len(stops) == 2 * len(window.fields), "every bend input has a unit"
-    stops += [f.copy_button for f in window.results.fields.values()]
+    stops += [window.results.set_picker, *(f.copy_button for f in window.results.fields.values())]
     stops += [window.results.copy_all_button, window.output]
     for before, after in pairwise(stops):
         assert _next_tab_stop(before) is after, (before, after)
@@ -305,12 +305,11 @@ def test_tabbing_to_a_copy_button_paints_no_focus_but_the_ring(style_name: str) 
     window.show()
     window.activateWindow()
     QApplication.processEvents()
-    key, (_param, last_input) = list(window.fields.items())[-1]
-    last_input = window.pickers.get(key, last_input)  # a field's picker follows it
+    before = window.results.set_picker  # the output picker is the stop before the fields
     fields = list(window.results.fields.values())
     for button in (fields[0].copy_button, window.results.copy_all_button):
         button.setStyle(style)
-    assert _pixels_tab_changes(fields[0].copy_button, last_input) == 0
+    assert _pixels_tab_changes(fields[0].copy_button, before) == 0
     copy_all = window.results.copy_all_button
     assert _pixels_tab_changes(copy_all, fields[-1].copy_button) > 0, "the style's own focus"
     window.close()

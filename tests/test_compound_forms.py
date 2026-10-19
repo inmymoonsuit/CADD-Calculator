@@ -556,18 +556,17 @@ def test_a_result_field_shows_copies_and_says_a_compound_form_with_no_code_of_it
     feet.copy_button.click()
     assert QGuiApplication.clipboard().text() == "1'4-3/16\""
     # A compound form names its own units, so "with unit" would copy the same text, and
-    # its full precision is a decimal in the form's own unit, which the item names.
-    for units in ("in", "mm"):
-        window.units_box.setCurrentText(units)
-        feet, dms = window.results.fields["ft_in"], window.results.fields["dms"]
-        for field, unit, full in ((feet, "inches", "16.1875"), (dms, "degrees", "-0.5")):
-            menu = field.context_menu()
-            assert [a.text() for a in menu.actions()] == [
-                "Copy value",
-                f"Copy full precision, in {unit}",
-            ], units
-            menu.actions()[1].trigger()
-            assert QGuiApplication.clipboard().text() == full, (units, unit)
+    # its full precision is a decimal in the form's own unit, which the item names. Every
+    # output has its own form, so there's no output set to show them in.
+    assert window.results.set_picker.isHidden()
+    for field, unit, full in ((feet, "inches", "16.1875"), (dms, "degrees", "-0.5")):
+        menu = field.context_menu()
+        assert [a.text() for a in menu.actions()] == [
+            "Copy value",
+            f"Copy full precision, in {unit}",
+        ]
+        menu.actions()[1].trigger()
+        assert QGuiApplication.clipboard().text() == full, unit
     window.close()
 
 

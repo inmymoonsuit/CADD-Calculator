@@ -279,7 +279,9 @@ def test_every_field_shows_in_full_at_the_default_size(calc_id: str) -> None:
     window = _shown_at(1100, 720, calc_id)
     panel = window.results
     assert not isinstance(panel, QAbstractScrollArea)
-    assert not panel.findChildren(QScrollBar), "the results have no scroll bar of their own"
+    # The output picker's list has its own, in its popup window, not in the panel.
+    bars = [bar for bar in panel.findChildren(QScrollBar) if bar.window() is window]
+    assert not bars, "the results have no scroll bar of their own"
     # Its height follows its width, as the disclaimer's wrapped lines do (ADR-0021 §7).
     assert panel.hasHeightForWidth()
     assert panel.height() == panel.heightForWidth(panel.width())
@@ -403,7 +405,10 @@ def test_the_title_lines_up_with_the_frames_and_the_spacing_is_as_documented() -
     panel = window.results
     first, second = list(panel.fields.values())[:2]
     frame_left = first.x() + round(first.frame.left())
-    assert panel.title.x() + panel.title.contentsRect().left() == frame_left
+    from PySide6.QtCore import QPoint
+
+    title = panel.title.mapTo(panel, QPoint(panel.title.contentsRect().left(), 0)).x()
+    assert title == frame_left
     gap = (second.y() + round(second.frame.top())) - (first.y() + round(first.frame.bottom()))
     assert gap == round(tokens.stack_gap + 2 * ring)
     assert frame_left == round(tokens.panel_inset[1] + ring)

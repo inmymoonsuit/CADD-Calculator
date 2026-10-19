@@ -15,7 +15,7 @@ import pytest
 from caddcalc.calculators import default_registry
 from caddcalc.core import Dimension, i18n
 from tests import pseudo_locale
-from tests.qt_helpers import open_window, pick, results_text, settle, type_into
+from tests.qt_helpers import open_window, pick, results_text, settle, show_in, type_into
 from tests.test_translated_gui import _clipped, _rows
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
@@ -625,7 +625,7 @@ def test_the_inputs_are_shown_in_each_field_s_choice_not_the_results_units() -> 
     """The Inputs block says each input as its field reads it (ADR-0024 E4)."""
     window = open_window()
     window.select_calculator(BEND)
-    window.units_box.setCurrentText("mm")
+    show_in(window, "mm")
     pick(window, "thickness", "in")  # the first pick leads the untouched fields
     pick(window, "bend_angle", "rad")
     text = window.output.toPlainText()
@@ -640,7 +640,7 @@ def test_a_range_error_names_the_bound_in_the_field_s_choice() -> None:
     """The user types in the field's unit, so its bound is in that unit too."""
     window = open_window()
     window.select_calculator(BEND)
-    window.units_box.setCurrentText("mm")
+    show_in(window, "mm")
     pick(window, "bend_angle", "rad")
     type_into(field(window, "bend_angle"), "4")
     assert "must be less than 3.14159 rad" in window.output.toPlainText()

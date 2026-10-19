@@ -1,0 +1,234 @@
+"""The results' output picker, "Show in:", in place of the Units box (ADR-0024 §5, U2)."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from caddcalc.core import Calculator, Dimension, Method, Output, Param, Registry, Verification
+from tests.qt_helpers import open_window, pick, settle, show_in
+
+pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
+
+BEND = "sheet_metal.bend_allowance"
+RIGHT = "geometry.right_triangle"
+L = Dimension.LENGTH
+
+
+class _Mixed(Calculator):
+    """A length doubled: in the set, in a fixed unit, and with its own picker."""
+
+    id = "acme.mixed"
+    name = "Mixed"
+    domain = "acme"
+    summary = "A length, three ways."
+    params = (Param("length", "X", "Length", L, default="1 in"),)
+    outputs = (
+        Output("double", "Y", "Double", L),
+        Output("fixed", "W", "Fixed", L, unit="mm"),
+        Output("own", "Z", "Own", L, picks=("in", "cm")),
+    )
+    methods = (Method("only", "Only", "Y = 2 × X", Verification.UNVERIFIED),)
+
+    def compute(self, ctx: Any) -> None:
+        ctx.calc("Y", "2 * X", label="Double", dimension=L, output="double")
+        ctx.calc("W", "2 * X", label="Fixed", dimension=L, output="fixed")
+        ctx.calc("Z", "2 * X", label="Own", dimension=L, output="own")
+
+
+class _Two(Calculator):
+    """One length in one method, two in the other."""
+
+    id = "acme.two"
+    name = "Two"
+    domain = "acme"
+    summary = "One length or two."
+    params = (
+        Param("x", "X", "X", L, default="1 in"),
+        Param("y", "Y", "Y", L, default="1 in", methods=("both",)),
+    )
+    outputs = (Output("total", "T", "Total", L),)
+    methods = (
+        Method("both", "Both", "T = X + Y", Verification.UNVERIFIED),
+        Method("one", "One", "T = X", Verification.UNVERIFIED),
+    )
+
+    def compute(self, ctx: Any) -> None:
+        if ctx.method == "both":
+            ctx.calc("T", "X + Y", label="Total", dimension=L, output="total")
+        else:
+            ctx.calc("T", "X", label="Total", dimension=L, output="total")
+
+
+def _acme_window(calc_id: str) -> Any:
+    from tests.test_domains import ACME
+
+    registry = Registry()
+    registry.register_domain(ACME)
+    registry.register(_Mixed)
+    registry.register(_Two)
+    window = open_window(registry)
+    window.select_calculator(calc_id)
+    return window
+
+
+def _mixed_window() -> Any:
+    return _acme_window(_Mixed.id)
+
+
+def _shown(window: Any, key: str) -> str:
+    field = window.results.fields[key]
+    return f"{field.value.text()} {field.unit.text()}".strip()
+
+
+def test_there_is_no_units_box() -> None:
+    window = open_window()
+    assert not hasattr(window, "units_box") and not hasattr(window, "_on_units_changed")
+    assert not hasattr(window, "_name_pending_units")
+    window.close()
+
+
+def test_the_picker_is_named_results_units_and_labelled_show_in() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    picker = window.results.set_picker
+    assert picker.accessibleName() == "Results units"
+    assert window.results.show_in.text() == "Show in:" and window.results.show_in.buddy() is picker
+    labels = [picker.itemText(i) for i in range(picker.count())]
+    assert labels[:2] == ["in", "in 1/16"] and labels[-1] == "m", "one set per length choice"
+    window.select_calculator(RIGHT)
+    assert window.results.set_picker.itemText(0) == "in · ° · in²"
+    window.close()
+
+
+def test_a_set_changes_every_field_its_copy_its_speech_and_the_work_together() -> None:
+    from PySide6.QtGui import QGuiApplication
+
+    window = open_window()
+    window.select_calculator(BEND)
+    show_in(window, "mm")
+    field = window.results.fields["bend_allowance"]
+    assert (field.value.text(), field.unit.text()) == ("7.9213", "mm")
+    assert "millimeters" in field.accessibleName()
+    field.copy_button.click()
+    assert QGuiApplication.clipboard().text() == "7.9213"
+    tsv = window.results.copy_all()
+    assert tsv is not None and tsv.splitlines()[0] == "BA\tBend allowance\t7.9213\tmm"
+    text = window.output.toPlainText()
+    work = text[text.index("Work") :]
+    assert "mm" in work and " in\n" not in work, "the work is in the set's units"
+    inputs = text[text.index("Inputs") : text.index("Work")]
+    assert "0.1046\nin\n= 2.6568 mm" in inputs, "an input as typed, then in the set's units"
+
+    show_in(window, "in_16")
+    assert _shown(window, "bend_allowance") == '5/16"'
+    show_in(window, "in")
+    assert _shown(window, "bend_allowance") == "0.3119 in"
+    assert "= 2.6568 mm" not in window.output.toPlainText(), "no second value in the same unit"
+    window.close()
+
+
+def test_the_set_follows_the_length_fields_until_it_is_picked() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    assert window.results.set_key == "in"
+    pick(window, "thickness", "mm")  # the first pick leads the untouched fields (§3)
+    assert window.results.set_key == "mm"
+    assert _shown(window, "bend_allowance") == "7.9213 mm"
+    pick(window, "inside_radius", "in")
+    assert window.results.set_key == "in", "two choices: the first set, its default"
+    pick(window, "inside_radius", "mm")
+    assert window.results.set_key == "mm"
+
+    show_in(window, "ft_in")
+    pick(window, "thickness", "in")
+    pick(window, "inside_radius", "in")
+    assert window.results.set_key == "ft_in", "once picked, it's the user's"
+    window.select_calculator(RIGHT)
+    window.select_calculator(BEND)
+    assert window.results.set_key == "ft_in", "for the session"
+    window.close()
+
+
+def test_changing_the_method_never_moves_the_set() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    pick(window, "thickness", "cm")
+    for index in range(window.method_box.count()):
+        window.method_box.setCurrentIndex(index)
+        assert window.results.set_key == "cm", window.method_key
+    window.close()
+
+
+def test_the_set_follows_every_length_field_not_only_the_method_s() -> None:
+    """A method without Y doesn't make X's choice the only one, so the set stays."""
+    window = _acme_window(_Two.id)
+    pick(window, "x", "mm")
+    pick(window, "y", "in")
+    assert window.results.set_key == "in", "two choices: the first set"
+    window.method_box.setCurrentIndex(window.method_box.findData("one"))
+    assert window.method_key == "one" and "y" not in window.fields
+    assert window.results.set_key == "in"
+    window.close()
+
+
+def test_a_fixed_unit_output_ignores_the_set_and_its_own_picker_sits_in_its_row() -> None:
+    window = _mixed_window()
+    own = window.results.fields["own"]
+    assert own.picker is not None and own.unit.isHidden()
+    assert own.picker.accessibleName() == "Own unit"
+    assert own.picker.choices == ("in", "cm")
+    assert (_shown(window, "double"), _shown(window, "fixed")) == ("2.0000 in", "50.8000 mm")
+    assert own.value.text() == "2.0000"
+    show_in(window, "m")
+    assert (_shown(window, "double"), _shown(window, "fixed")) == ("0.0508 m", "50.8000 mm")
+    assert own.value.text() == "2.0000", "its own picker, not the set"
+    pick_own = own.picker
+    pick_own.setCurrentIndex(1)
+    pick_own.activated.emit(1)
+    own = window.results.fields["own"]
+    assert own.value.text() == "5.0800" and own.picker.choice == "cm"
+    assert _shown(window, "double") == "0.0508 m", "only that output"
+    tsv = window.results.copy_all()
+    assert tsv is not None and tsv.splitlines()[2] == "Z\tOwn\t5.0800\tcm"
+    window.select_calculator(_Two.id)
+    window.select_calculator(_Mixed.id)
+    own = window.results.fields["own"]
+    assert own.picker is not None and own.picker.choice == "cm", "for the session"
+    assert own.value.text() == "5.0800"
+    window.close()
+
+
+def test_the_picker_hides_for_a_calculator_with_no_sets() -> None:
+    window = open_window()
+    window.select_calculator("conversions.length")
+    assert window.results.set_picker.isHidden() and window.results.show_in.isHidden()
+    assert window.results.set_picker not in window.results.focus_chain()
+    window.select_calculator(BEND)
+    assert not window.results.set_picker.isHidden()
+    assert window.results.focus_chain()[0] is window.results.set_picker
+    window.close()
+
+
+def test_at_the_least_width_the_picker_goes_under_the_title_and_nothing_clips() -> None:
+    from tests.test_translated_gui import _clipped
+
+    window = open_window()
+    window.select_calculator(RIGHT)
+    window.resize(1400, 900)
+    window.show()
+    settle(window)
+    header = window.results.header
+    assert not header.stacked, "beside the title at a wide window"
+    window.resize(1, 1)
+    settle(window)
+    picker, title = window.results.set_picker, window.results.title
+    assert header.stacked == (header.width() < header.row_width())
+    if header.stacked:
+        assert (
+            picker.mapTo(window, picker.rect().topLeft()).y()
+            > title.mapTo(window, title.rect().bottomLeft()).y()
+        )
+    assert [w for w in _clipped(window) if w in (picker, title, window.results.show_in)] == []
+    window.close()

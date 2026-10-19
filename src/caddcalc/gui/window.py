@@ -75,6 +75,7 @@ from caddcalc.core import (
     SourceKind,
     StartingValue,
     TypedValue,
+    UnitSet,
     UsageError,
     ValueOrigin,
 )
@@ -98,6 +99,7 @@ from caddcalc.core.formatting import (
     picked_text,
     render_step,
     unit_suffix,
+    value_parts,
 )
 from caddcalc.core.i18n import _
 from caddcalc.core.spec import named
@@ -107,7 +109,6 @@ from caddcalc.core.units import (
     Unit,
     UnitInTextError,
     base_text,
-    parse_quantity_detailed,
 )
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
@@ -333,8 +334,12 @@ class MainWindow(QMainWindow):
         self.branding = branding
         self.app_actions = actions if actions is not None else AppActions(branding, self)
         self.prefs = DisplayPrefs(symbols=number_symbols() if symbols is None else symbols)
-        self.shown_units = ShownUnits.generated()
-        """The output set results are shown in, chosen in the Units box."""
+        self.output_sets: dict[str, str] = {}
+        """The key of the output set the user picked for each calculator, by its id; a
+        calculator not named follows its inputs (ADR-0024 §6)."""
+        self.output_picks: dict[tuple[str, str], str] = {}
+        """The choice the user picked for each output with its own picker, by calculator
+        id and output key."""
         self.calculator: Calculator | None = None
         """The calculator whose page is shown, if one is."""
         self.domain: Domain | None = None
@@ -423,6 +428,8 @@ class MainWindow(QMainWindow):
         # never cut off (ADR-0021 §7).
         self.statusBar()
         self.results.announced.connect(self._show_copied)
+        self.results.set_picked.connect(self._on_set_picked)
+        self.results.output_picked.connect(self._on_output_picked)
         # Copy all, from anywhere in the window, while a calculator's results show (§5).
         self.copy_all_action = QAction(COPY_ALL_NAME, self)
         self.copy_all_action.setShortcut(COPY_ALL_KEYS)
@@ -488,15 +495,6 @@ class MainWindow(QMainWindow):
         method_layout.setContentsMargins(0, 0, 0, 0)
         method_layout.addWidget(QLabel("Method:"))
         method_layout.addWidget(method_parts, 1)
-        self.units_box = QComboBox()
-        self.units_box.addItems(["in", "mm"])
-        self.units_box.currentTextChanged.connect(self._on_units_changed)
-        options = QHBoxLayout()
-        options.addWidget(self.method_row, 1)
-        options.addStretch(0)  # holds the units box right while a settings page hides the method
-        options.addSpacing(16)
-        options.addWidget(QLabel("Units:"))
-        options.addWidget(self.units_box)
 
         self.form_box = QGroupBox("Inputs")
         self.form = QFormLayout(self.form_box)
@@ -563,7 +561,7 @@ class MainWindow(QMainWindow):
         col = QVBoxLayout(right)
         col.addWidget(self.title)
         col.addWidget(self.summary)
-        col.addLayout(options)
+        col.addWidget(self.method_row)
         col.addWidget(self.pages, 1)
 
         # Too short a window scrolls the page as a whole: title, options, inputs,
@@ -670,7 +668,7 @@ class MainWindow(QMainWindow):
         top, spacing = (
             (0, 0) if column is None else (column.contentsMargins().top(), column.spacing())
         )
-        method = max(self.method_row.sizeHint().height(), self.units_box.sizeHint().height())
+        method = self.method_row.sizeHint().height()
         return top + self.title.sizeHint().height() + spacing + method + spacing + field
 
     def _style_document(self) -> None:
@@ -813,17 +811,6 @@ class MainWindow(QMainWindow):
         self._show_method_status()
         if self.calculator is not None:
             self._finish_field_edits()
-            self._rebuild_form()
-
-    def _on_units_changed(self, unit: str) -> None:
-        self._apply_setting_edits()
-        self._finish_field_edits()
-        units = ShownUnits.generated(unit)
-        self._name_pending_units(units)
-        self.shown_units = units
-        if self.domain is not None:
-            self._rebuild_domain_form()
-        else:
             self._rebuild_form()
 
     # --- calculator form ------------------------------------------------------------------
@@ -1021,15 +1008,63 @@ class MainWindow(QMainWindow):
         return self.field_choices.get((calc.id, p.key), p.default_choice or "")
 
     def _units_for(self, calc: Calculator | None = None) -> ShownUnits:
-        """Return the units a calculator's results are shown in: the set, and its fields'."""
+        """Return the units a calculator's results are shown in.
+
+        That's its output set, each output's own pick, and each field's choice. A
+        calculator with no sets, whose every output has its own unit, form or picks, takes
+        the inch set for its notes and messages.
+        """
         calc = self.calculator if calc is None else calc
         if calc is None:
-            return self.shown_units
-        return self.shown_units.with_inputs({p.key: self._choice(calc, p) for p in calc.params})
+            return _settings_units()
+        unit_set = self._output_set(calc)
+        picks = {
+            o.key: self.output_picks[calc.id, o.key]
+            for o in calc.outputs
+            if (calc.id, o.key) in self.output_picks
+        }
+        inputs = {p.key: self._choice(calc, p) for p in calc.params}
+        if unit_set is None:
+            return replace(_settings_units(), picks=picks, inputs=inputs)
+        return ShownUnits.of(unit_set, picks=picks, inputs=inputs)
+
+    def _output_set(self, calc: Calculator) -> UnitSet | None:
+        """Return the set ``calc``'s results show in: the user's pick, or the followed one.
+
+        Until the user picks one, it follows the calculator's length fields while they're
+        all in one choice, and is the first set otherwise (ADR-0024 §6). Every length
+        input counts, not only the method's, so changing the method never moves it.
+        """
+        sets = calc.unit_sets()
+        if not sets:
+            return None
+        picked = self.output_sets.get(calc.id)
+        for unit_set in sets:
+            if unit_set.key == picked:
+                return unit_set
+        lengths = {self._choice(calc, p) for p in calc.params if p.dimension is Dimension.LENGTH}
+        if len(lengths) == 1:
+            (choice,) = lengths
+            for unit_set in sets:
+                if unit_set.choices.get(Dimension.LENGTH) == choice:
+                    return unit_set
+        return sets[0]
+
+    def _on_set_picked(self, key: str) -> None:
+        """Show the results in the set the user picked, for the rest of the session."""
+        if self.calculator is not None and key:
+            self.output_sets[self.calculator.id] = key
+            self.recompute()
+
+    def _on_output_picked(self, key: str, choice: str) -> None:
+        """Show an output with its own picker in the choice the user picked."""
+        if self.calculator is not None:
+            self.output_picks[self.calculator.id, key] = choice
+            self.recompute()
 
     def _setting_unit(self, setting: Param) -> Unit:
         """Return the unit a family setting is shown and read in (known-issues KI-027)."""
-        return self.shown_units.unit(setting.dimension)
+        return _settings_units().unit(setting.dimension)
 
     @property
     def _decimal(self) -> str:
@@ -1535,6 +1570,7 @@ class MainWindow(QMainWindow):
             for key, outline in strongest(result.notes, self.fields).items():
                 _set_outline(self.fields[key][1], outline)
             units = self._units_for(calc)
+            self._show_output_units(units)
             self.results.show_result(result, units, self.prefs)
             self.output.setHtml(
                 result_html(
@@ -1544,6 +1580,12 @@ class MainWindow(QMainWindow):
             self.result = result
         except Exception as exc:  # noqa: BLE001
             self._report_failure(exc)
+
+    def _show_output_units(self, units: ShownUnits) -> None:
+        """Show the set and the picks the results are in, in the output pickers."""
+        self.results.show_set(units.key)
+        for key, choice in units.picks.items():
+            self.results.show_pick(key, choice)
 
     def _report_failure(self, exc: Exception) -> None:
         """Show why there's no result: an input to fix, or a calculation that failed."""
@@ -1557,7 +1599,9 @@ class MainWindow(QMainWindow):
     def _show_failure(self, errors: list[str], heading: str) -> None:
         """Blank the results, and show why there are none in the work."""
         self.result = None
-        self.results.show_result(None, self.shown_units, self.prefs)
+        units = self._units_for()
+        self._show_output_units(units)
+        self.results.show_result(None, units, self.prefs)
         self.output.setHtml(_error_html(errors, current_scheme(), heading))
 
     # --- domain settings page -------------------------------------------------------------
@@ -1645,7 +1689,7 @@ class MainWindow(QMainWindow):
         self.settings_box.hide()
         QTimer.singleShot(0, self, self._clear_failed_settings)
         color = role_color("text_error", current_scheme())
-        message = escape(_failure_text(exc, self.shown_units, self.prefs))
+        message = escape(_failure_text(exc, _settings_units(), self.prefs))
         self.domain_note.setText(
             f"<p style='color:{color}'><b>The settings couldn't be shown:</b></p>"
             f"<ul><li>{message}</li></ul>"
@@ -1816,7 +1860,7 @@ class MainWindow(QMainWindow):
                         setting,
                         derived,
                         overridden=key in family.values,
-                        units=self.shown_units,
+                        units=_settings_units(),
                         prefs=self.prefs,
                         scheme=current_scheme(),
                     ),
@@ -1829,7 +1873,7 @@ class MainWindow(QMainWindow):
         selections = self._selections(domain)
         if self.facts_label is not None:
             facts = domain.facts(selections)
-            self.facts_label.setText(_facts_html(facts, self.shown_units, self.prefs))
+            self.facts_label.setText(_facts_html(facts, _settings_units(), self.prefs))
             self.settings_form.setRowVisible(self.facts_label, bool(facts))
         offered = domain.starting_values(selections)
         for key, row in self.start_rows.items():
@@ -1879,7 +1923,7 @@ class MainWindow(QMainWindow):
                 domain, setting.key, text, default_unit, decimal=self._decimal
             )
         except InputError as exc:
-            message = describe_error(exc, self.shown_units, self.prefs)
+            message = describe_error(exc, _settings_units(), self.prefs)
             if isinstance(exc, OutOfRangeError):  # a range error already names the setting
                 return message
             return f"{named(setting.label, setting.symbol)}: {message}"
@@ -1921,22 +1965,6 @@ class MainWindow(QMainWindow):
         """Apply every field's unapplied text, as leaving each field would."""
         for key in list(self.setting_fields):
             self._apply_setting(key)
-
-    def _name_pending_units(self, new_units: ShownUnits) -> None:
-        """Before the display unit changes, give unapplied unitless text its unit.
-
-        Unapplied text is read in the display unit when it is applied, so "5" typed in
-        inches would mean 5 mm after a switch to mm. Writing it as "5 in" keeps the
-        user's meaning, and the field shows exactly what will be applied (ADR-0013 §9).
-        Text that names its unit, or that can't be read in any unit, is left as typed.
-        A calculator field has its own picker, so the display unit never changes how it
-        reads (ADR-0024 §1).
-        """
-        for (domain_id, key), text in list(self.pending_settings.items()):
-            dimension = self.registry.domain(domain_id).setting(key).dimension
-            self.pending_settings[domain_id, key] = _name_unit(
-                text, dimension, self.shown_units, new_units, self.prefs.symbols.decimal
-            )
 
     @_settings_boundary
     def _clear_domain_settings(self) -> None:
@@ -2037,6 +2065,16 @@ def _write_bug(exc: Exception) -> None:
         traceback.print_exception(exc, file=sys.stderr)
 
 
+@cache
+def _settings_units() -> ShownUnits:
+    """Return the units a family settings page shows and reads in: the inch set.
+
+    Until its fields get pickers (U2b), a bare number on it is inches (known-issues
+    KI-027). It's built on first use, once the units registry is complete.
+    """
+    return ShownUnits.generated("in")
+
+
 DIMENSION_PLURALS = {
     Dimension.LENGTH: "Lengths",
     Dimension.ANGLE: "Angles",
@@ -2070,21 +2108,6 @@ def _with_unit(fix: UnitInTextError) -> str:
     """Write a fix's number and unit as they're written: "25 mm", but "30°" (SP 811 §7.2)."""
     joined = fix.shown in CLOSE_UP_SYMBOLS
     return f"{fix.number}{fix.shown}" if joined else f"{fix.number} {fix.shown}"
-
-
-def _name_unit(text: str, dimension: Dimension, old: ShownUnits, new: ShownUnits, mark: str) -> str:
-    """Return ``text`` with the unit it was typed in, if the switch would change its meaning.
-
-    Only a bare number, in a dimension whose shown unit changes, gains its unit.
-    """
-    typed_in = old.unit(dimension)
-    if typed_in == new.unit(dimension):
-        return text
-    try:
-        parsed = parse_quantity_detailed(text, dimension, typed_in.symbol, decimal=mark)
-    except InputError:
-        return text
-    return text if parsed.explicit_unit else f"{text.strip()} {typed_in.symbol}"
 
 
 def _reference_of(copied: ValueOrigin | DerivedValue) -> Reference | None:
@@ -2305,15 +2328,24 @@ def result_html(
         )
     # Inputs on the result fields' grid, symbol, label, value, unit, with the source
     # set smaller after them (F3).
+    # Each input's value in the results' units too, where its field is picked in another
+    # (ADR-0024 §5), "T 0.1046 in = 2.6568 mm", in a column only a table with one has.
+    params = calc.params_for(result.method)
+    in_set = {
+        p.key: "= " + value_parts(result.inputs[p.key], p.dimension, units, prefs).with_unit
+        for p in params
+        if units.input_choice(p.key, p.dimension) != units.choice(p.dimension)
+    }
     input_rows = []
-    for p in calc.params_for(result.method):
+    for p in params:
         shown = input_parts(p.key, result.inputs[p.key], p.dimension, units, prefs)
         number, unit = (shown.with_unit, "") if shown.unit_close_up else (shown.number, shown.unit)
         source = _secondary(describe_source(result.source_of(p.key)), scheme)
+        converted = f"<td>{escape(in_set.get(p.key, ''))}</td>" if in_set else ""
         input_rows.append(
             f"<tr><td><b>{escape(p.symbol)}</b></td><td>{escape(p.label)}</td>"
             f"<td align='right'>{escape(number)}</td><td>{escape(unit)}</td>"
-            f"<td>{source}</td></tr>"
+            f"{converted}<td>{source}</td></tr>"
         )
     parts.append(f"<h3>Inputs</h3><table cellpadding='4'>{''.join(input_rows)}</table>")
     work = []

@@ -205,16 +205,16 @@ at launch (rule C). Offscreen:
 
 * **At 15 px lines** (Inter), the right triangle, the Length converter, the cone, and
   the segment with its K-factor method scroll. The segment's course method fits, so
-  choosing the K-factor brings a scroll bar and moves the Units box 14 px: ADR-0021's
-  promise that the Units box stays put as the method changes (UI/UX's M1) holds at 16 px
-  lines only, for now.
+  choosing the K-factor brings a scroll bar and moves the output picker: ADR-0021's
+  promise that it stays put as the method changes (UI/UX's M1, the Units box's until
+  ADR-0024 U2) holds at 16 px lines only, for now.
 * **At 14 px lines** (DejaVu Sans), the triangle, the right triangle, the polygon, the
   Length converter, the cone and the segment, with each of its methods, scroll.
 * **At 16 px lines**, the Length converter and the right triangle scroll, by design:
   the maintainer approved them as long pages (ADR-0023, C2).
 
 `test_no_calculator_page_scrolls_at_the_launch_size` checks every other page at the
-design's 16 px lines, and that its Units box stays put. ADR-0023's slice 1, paired rows,
+design's 16 px lines, and that its output picker stays put. ADR-0023's slice 1, paired rows,
 shortens the pages so they fit at shorter lines too.
 
 **History.** An earlier resolution sized the launch window to the tallest built-in page,
@@ -229,9 +229,9 @@ family settings page its own pickers, a settings field reads a unit typed with i
 number, `3 mm`, and a bare number in the Units box's unit, as before, while a calculator
 field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds of
 field are on different pages, and each page says how it reads (the user guide's Units
-and precision). The Units box sets how results show, and the unit a settings field
-shows and reads a bare number in, until U2 removes it; from U2 to U2b, settings show and
-read in inches (`MainWindow._setting_unit`). Resolved by U2b.
+and precision). With the Units box gone (U2), a settings page shows and reads in inches,
+degrees and ksi (`window._settings_units`), whatever the results are shown in, and its
+facts show strengths in ksi. Resolved by U2b.
 
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 

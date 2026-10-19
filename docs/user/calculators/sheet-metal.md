@@ -104,8 +104,7 @@ Under the Temper row, **Facts** shows, for the chosen material and temper:
   say why they have none.
 * **Bending practice:** form across the grain where possible, and bend a test piece first.
 * **Strength:** the tensile strengths, ultimate (F_tu) and yield (F_ty), along (L) and
-  across (LT) the rolling direction, with their basis and source. They show in ksi when
-  the unit system is `in`, and MPa when it's `mm`.
+  across (LT) the rolling direction, with their basis and source, in ksi.
 
 ### K-factor starting values
 

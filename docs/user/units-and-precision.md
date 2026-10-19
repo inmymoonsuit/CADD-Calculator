@@ -56,16 +56,18 @@ no picker.
   once you press Enter or leave the picker.
 * **The Inputs list under the results** gives each input in the unit its picker shows,
   and a value out of range is refused in that unit too: "must be less than 3.14159 rad"
-  for a bend angle picked in rad. The Units box sets how the results show.
+  for a bend angle picked in rad. The **Show in** picker above the results sets the
+  units they're shown in ([Results and copying](results.md#show-in-the-results-units)).
 
 ## Typing with the unit in the text
 
 Family settings fields (until they get pickers, KI-027) and the command line read a
-value with its unit in the text:
+value with its unit in the text. On a settings page, a number with no unit is inches,
+degrees or ksi:
 
 | You type | Means |
 |---|---|
-| `0.1046` | 0.1046 in your current unit system (in or mm) |
+| `0.1046` | 0.1046 inches on a settings page; on the command line, in its `--units` (in or mm) |
 | `3mm`, `3 mm` | 3 millimetres, whatever the unit system |
 | `1/8`, `1/8in` | 0.125 (inches if no unit is typed and the system is `in`) |
 | `1-1/2"`, `1 1/2 in` | 1.5 inches |
@@ -123,11 +125,13 @@ disagree.
 * **Rounding happens only for display.** Results show 4 decimals by default (angles show 2,
   stresses 1).
   The CLI's `--decimals` changes this, and `--fraction 64` adds the nearest 1/64".
-* Stresses follow the unit system: ksi when it's `in`, MPa when it's `mm`.
-* Areas follow it too, as the square of the length unit: in² when it's `in`, mm² when
-  it's `mm`, to 6 significant figures, such as `6451.60 mm²` or `10.0000 in²`. They're
-  always written `in²` and `mm²`, however you typed them.
-* Some results are always shown in one unit, whatever the unit system, such as each row
+* Stresses follow the results' units: ksi beside inches or feet, MPa beside metric units.
+* Areas follow them too, as the square of the length unit: in² beside inches, mm²
+  beside millimeters, to 6 significant figures, such as `6451.60 mm²` or `10.0000 in²`.
+  They're always written `in²` and `mm²`, however you typed them.
+* A value in radians shows 4 decimals, as `1.5708 rad`, since 0.01 rad is over half a
+  degree.
+* Some results are always shown in one unit, whatever the results' units, such as each row
   of a unit converter. They show 6 significant figures, e.g. `25.4000 mm` or
   `0.0833333 ft`.
 * JSON output (`--json`) is unrounded, in millimetres, degrees, megapascals, and square

@@ -41,6 +41,7 @@ from PySide6.QtGui import (
     QResizeEvent,
 )
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QMenu,
@@ -53,7 +54,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from caddcalc.core import Calculator, Output, Result
+from caddcalc.core import Calculator, Output, Result, UnitSet
 from caddcalc.core.formatting import (
     DISCLAIMER,
     CopyForm,
@@ -72,8 +73,10 @@ from caddcalc.gui.icons import current_scheme, icon, role_color
 from caddcalc.gui.name_tips import tip_text
 from caddcalc.gui.outlines import Outline, strongest
 from caddcalc.gui.painting import frame_within, on_device_pixels, stroke
+from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.text_units import text_unit
 from caddcalc.gui.ui_style import ResultFieldTokens, secondary_text, ui_style
+from caddcalc.gui.unit_picker import UnitPicker
 from caddcalc.gui.window_layout import chars
 
 NO_VALUE = "—"
@@ -82,6 +85,11 @@ NO_VALUE_TIP = "No value to copy"
 NO_VALUE_SPOKEN = "no value"
 """What a screen reader says in place of a value while there's none."""
 TITLE = "Results"
+SHOW_IN = "Show in:"
+RESULTS_UNITS = "Results units"
+"""The output picker's accessible name (ADR-0024 §5)."""
+SET_ROLE = Qt.ItemDataRole.UserRole
+"""The item data that holds an output set's key."""
 FIELD_NAME = "{label}, {symbol}: {value}"
 """A field's accessible name, e.g. "Bend allowance, BA: 0.3119 inches"."""
 VALUE_SPOKEN = "{symbol}: {value}"
@@ -224,9 +232,11 @@ class ResultField(QWidget):
 
     Attributes:
         copied: Emitted with the status message after the field copies.
+        picked: Emitted with the choice's id when the user changes its own picker.
     """
 
     copied = Signal(str)
+    picked = Signal(str)
 
     def __init__(self, output: Output, tokens: ResultFieldTokens, parent: QWidget) -> None:
         super().__init__(parent)
@@ -264,6 +274,12 @@ class ResultField(QWidget):
         self.value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.unit = QLabel(self)
+        self.picker: UnitPicker | None = None
+        """Its own unit picker, in place of its unit, if it declares one (``Output.picks``)."""
+        if output.picks:
+            self.picker = UnitPicker(output.label, output.picks, output.dimension, self)
+            self.picker.picked.connect(self.picked)
+            self.picker.stepped.connect(self.picked)
         self.fraction = QLabel(self)
         self.fraction.hide()
         self.copy_button = _CopyButton(self, ringed=True)
@@ -277,8 +293,10 @@ class ResultField(QWidget):
         self.copy_button.clicked.connect(self._on_clicked)
         self.copy_button.setAccessibleName(COPY.format(label=output.label))
         self.copied_state = _CopiedState(self.copy_button, tokens)
-        for widget in (self.symbol, self.label, self.value, self.unit, self.fraction):
-            row.addWidget(widget)
+        for widget in (self.symbol, self.label, self.value, self.unit, self.picker, self.fraction):
+            if widget is not None:
+                row.addWidget(widget)
+        self.unit.setVisible(self.picker is None)
         row.setStretch(row.indexOf(self.label), 1)
         row.addWidget(self.copy_button)
         self.setMinimumHeight(round(tokens.min_height + 2 * ring))
@@ -477,12 +495,21 @@ class ResultsPanel(QWidget):
     their values, or blanks them all while the inputs have no result, so an old answer
     can't be read, or copied, after its inputs changed (ADR-0017 §1, §4).
 
+    The output picker, "Show in:", sits in the header between the title and Copy all,
+    and moves under the title when the panel is too narrow for the three (ADR-0024 §5).
+    It offers the calculator's output sets, and it's hidden for a calculator with none.
+
     Attributes:
         announced: Emitted with each copy's status message, once screen readers have
             been told it.
+        set_picked: Emitted with a set's key when the user picks it in the output picker.
+        output_picked: Emitted with an output's key and its choice's id when the user
+            changes that output's own picker.
     """
 
     announced = Signal(str)
+    set_picked = Signal(str)
+    output_picked = Signal(str, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -515,13 +542,28 @@ class ResultsPanel(QWidget):
         self.copy_all_button.setToolTip(COPY_ALL_TIP.format(keys=keys))
         self.copy_all_button.clicked.connect(self.copy_all)
         self.copy_all_state = _CopiedState(self.copy_all_button, self.tokens)
-        # The title and Copy all sit in line with the fields' frames, inside the focus
-        # ring's room.
+        self.show_in = QLabel(SHOW_IN, self)
+        self.set_picker = QComboBox(self)
+        self.set_picker.setAccessibleName(RESULTS_UNITS)
+        self.set_picker.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.show_in.setBuddy(self.set_picker)
+        self.set_picker.activated.connect(self._on_set_activated)
+        controls = QWidget(self)
+        row = QHBoxLayout(controls)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(self.show_in)
+        row.addWidget(self.set_picker)
+        row.addStretch(1)
+        row.addWidget(self.copy_all_button)
+        # The title and the controls sit in line with the fields' frames, inside the focus
+        # ring's room; the controls go under the title when the two don't fit side by side.
         ring = round(self.tokens.focus_width + self.tokens.focus_gap)
+        self.header = Reflow(self)
+        self.header.add(self.title, 1)
+        self.header.add(controls)
         header = QHBoxLayout()
         header.setContentsMargins(ring, 0, ring, 0)
-        header.addWidget(self.title, 1)
-        header.addWidget(self.copy_all_button)
+        header.addWidget(self.header)
         column.addLayout(header)
         self._column = QVBoxLayout()
         self._column.setSpacing(round(self.tokens.stack_gap))
@@ -573,9 +615,11 @@ class ResultsPanel(QWidget):
         self.calculator = calc
         self.result = None
         self.fields = {o.key: ResultField(o, self.tokens, self) for o in calc.outputs}
-        for field in self.fields.values():
+        for key, field in self.fields.items():
             self._column.addWidget(field)
             field.copied.connect(self._announce)
+            field.picked.connect(lambda choice, key=key: self.output_picked.emit(key, choice))
+        self._offer_sets(calc.unit_sets())
         self._align()
         self._sync_copy_all()
         self.updateGeometry()
@@ -598,6 +642,33 @@ class ResultsPanel(QWidget):
         self._align()
         self._sync_copy_all()
 
+    @property
+    def set_key(self) -> str:
+        """The key of the set the output picker shows; empty for a calculator with none."""
+        return str(self.set_picker.currentData(SET_ROLE) or "")
+
+    def show_set(self, key: str) -> None:
+        """Show the set with ``key`` in the output picker, as code sets it: no signal."""
+        index = self.set_picker.findData(key, SET_ROLE)
+        if index >= 0:
+            self.set_picker.setCurrentIndex(index)
+
+    def show_pick(self, key: str, choice: str) -> None:
+        """Show ``choice`` in output ``key``'s own picker, as code sets it: no signal."""
+        picker = self.fields[key].picker if key in self.fields else None
+        if picker is not None and choice in picker.choices:
+            picker.set_choice(choice)
+
+    def _offer_sets(self, sets: tuple[UnitSet, ...]) -> None:
+        self.set_picker.clear()
+        for unit_set in sets:
+            self.set_picker.addItem(unit_set.label, unit_set.key)
+        self.show_in.setVisible(bool(sets))
+        self.set_picker.setVisible(bool(sets))
+
+    def _on_set_activated(self, _index: int) -> None:
+        self.set_picked.emit(self.set_key)
+
     def copy_all(self) -> str | None:
         """Copy every output as tab-separated rows (R2); ``None`` while there's no result."""
         if self.calculator is None or self.result is None:
@@ -609,8 +680,16 @@ class ResultsPanel(QWidget):
         return text
 
     def focus_chain(self) -> list[QWidget]:
-        """The panel's stops for Tab, in order: each field's copy button, then Copy all."""
-        return [*(f.copy_button for f in self.fields.values()), self.copy_all_button]
+        """The panel's stops for Tab, in order.
+
+        That's the output picker, each field's own picker and copy button, then Copy all.
+        """
+        stops: list[QWidget] = [self.set_picker] if self.set_picker.isVisibleTo(self) else []
+        for field in self.fields.values():
+            if field.picker is not None:
+                stops.append(field.picker)
+            stops.append(field.copy_button)
+        return [*stops, self.copy_all_button]
 
     def restyle(self) -> None:
         """Take the current light or dark scheme's colours and icons."""

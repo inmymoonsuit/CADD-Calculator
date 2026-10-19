@@ -104,12 +104,13 @@ def _raised(monkeypatch: pytest.MonkeyPatch) -> list[BaseException]:
 def test_a_rebuild_while_the_ring_shows_leaves_results_live(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Units changed while an outlined input has focus rebuild the form."""
+    """A method changed while an outlined input has focus rebuilds the form."""
     raised = _raised(monkeypatch)
     window = _outlined_window()
     _focus(window.fields["thickness"][1])
     assert window.focus_ring.isVisible()
-    window.units_box.setCurrentText("mm")  # rebuilds the form, deleting the ringed input
+    window.method_box.setCurrentIndex(1)  # rebuilds the form, deleting the ringed input
+    window.method_box.setCurrentIndex(0)
     assert window.focus_ring.target is None or window.focus_ring.target in [
         e for _p, e in window.fields.values()
     ]

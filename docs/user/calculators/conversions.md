@@ -4,7 +4,7 @@ Each converter takes one value, typed in any unit of its kind, and shows it in e
 of that kind at once. Each row has its own Copy button, so type a length in millimeters
 and copy it in inches, or the other way round.
 
-* **Each row stays in its unit,** whatever the unit system: the millimeter row reads mm
+* **Each row stays in its unit,** whatever the results' units: the millimeter row reads mm
   when the app shows inches. Rows show 6 significant figures, such as `25.4000 mm` or
   `0.0833333 ft`; Copy gives what's shown, and **Copy full precision** 10 digits.
 * **Any finite value converts,** zero and negative values included: a negative length

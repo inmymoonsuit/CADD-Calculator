@@ -244,7 +244,7 @@ def test_the_method_status_shows_beside_the_box_and_in_the_open_list(qt_window: 
 
 def test_the_status_keeps_its_width_and_its_tooltip_names_the_source(qt_window: Any) -> None:
     """Changing the method changes only the words, never the row."""
-    status, units = qt_window.method_status, qt_window.units_box
+    status, units = qt_window.method_status, qt_window.results.set_picker
     widths = {}
     for calc_id in ("sheet_metal.bend_allowance", "sheet_metal.segment_flat_length"):
         qt_window.select_calculator(calc_id)
@@ -573,7 +573,7 @@ def test_no_calculator_page_scrolls_at_the_launch_size(qt: Any, calc_id: str) ->
     amendments). The fields' heights are in pixels, so with lines shorter than
     the design's a page may scroll at launch (KI-024): the window is never sized to its
     content. A page that fits never shows a scroll bar when its method changes, which
-    would narrow it and move the Units box.
+    would narrow it and move the output picker (ADR-0024 U2).
     """
     from caddcalc.gui.text_units import line_spacing
 
@@ -590,7 +590,8 @@ def test_no_calculator_page_scrolls_at_the_launch_size(qt: Any, calc_id: str) ->
             window.method_box.setCurrentIndex(index)
             settle(window)
             scrolls.add(window.page_scroll.verticalScrollBar().maximum() > 0)
-            units.add(window.units_box.mapTo(window, window.units_box.rect().topLeft()).x())
+            picker = window.results.set_picker
+            units.add(picker.mapTo(window, picker.rect().topLeft()).x())
         long = calc_id in LONG_PAGES
         assert scrolls == {long}, "a long page scrolls; any other fits, with every method"
         assert len(units) == 1, units

@@ -109,3 +109,12 @@ def pick(window: Any, key: str, choice: str) -> None:
     index = picker.choices.index(choice)
     picker.setCurrentIndex(index)
     picker.activated.emit(index)
+
+
+def show_in(window: Any, key: str) -> None:
+    """Pick the output set ``key`` in the results' output picker, as a person does."""
+    picker = window.results.set_picker
+    index = picker.findData(key)
+    assert index >= 0, f"no output set {key!r}"
+    picker.setCurrentIndex(index)
+    picker.activated.emit(index)

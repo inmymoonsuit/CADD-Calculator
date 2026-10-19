@@ -533,6 +533,16 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The Units box is gone; the results have a Show in picker** (ADR-0024 U2), between
+  their title and Copy all. It offers a set per length unit, `in`, `in 1/16`, `in 1/32`,
+  `in 1/64`, `ft-in`, `ft`, `mm`, `cm` and `m`, labelled by what the calculator shows
+  (`in · ° · in²` on the right triangle), and sets the fields, Copy, Copy all, speech
+  and the work together. Until you choose one, it follows your length inputs while they
+  share a unit; once chosen, it's yours for the session, and changing the method never
+  moves it. Its accessible name is "Results units". The Inputs list adds each input's
+  value in the set's units where its picker shows another: `0.1046 in = 2.6568 mm`. A
+  result with its own picker (`Output.picks`) has it in its row. A family settings page
+  now shows and reads in inches, degrees and ksi until its fields get pickers (KI-027).
 - **The Inputs list and an input's range error are in the unit its picker shows**
   (ADR-0024 E4), not the Units box's: a bend angle picked in rad is listed as
   `1.5708 rad`, and refused as "must be less than 3.14159 rad". A value in radians shows
@@ -556,7 +566,7 @@ All notable changes are recorded here. The format follows
   in its list). A bend angle is picked in °, ° ′ ″ or rad. Degrees, minutes and seconds
   take hyphens between their parts (`40-30-15`), and the minus sign `−` never joins a
   mixed number. For calculator authors, a default with no unit in its text is in the
-  unit its picker starts in. The Units box now sets only how results show. Family settings fields read as before (KI-027).
+  unit its picker starts in. Family settings fields read units in their text (KI-027).
 - **The command line suggests only names that can be given:** for the right
   triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
   `--method leg_angle`, which takes no side b, it suggests none and names that method's

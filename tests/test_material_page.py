@@ -185,12 +185,15 @@ def test_the_facts_show_the_materials_rule_strengths_and_notes() -> None:
     window.close()
 
 
-@pytest.mark.parametrize(("unit", "shown"), [("in", "F_tu 42.0 ksi"), ("mm", "F_tu 289.6 MPa")])
-def test_strengths_follow_the_length_unit(unit: str, shown: str) -> None:
+def test_strengths_are_in_ksi_whatever_the_results_show() -> None:
+    """The settings page shows inch-pound units until its fields get pickers (KI-027)."""
+    from tests.qt_helpers import show_in
+
     window = open_window()
-    window.units_box.setCurrentIndex(window.units_box.findText(unit))
+    window.select_calculator("sheet_metal.bend_allowance")
+    show_in(window, "mm")
     choose(window, "Aluminum", "al:6061")
-    assert shown in facts(window)
+    assert "F_tu 42.0 ksi" in facts(window) and "MPa" not in facts(window)
     window.close()
 
 
