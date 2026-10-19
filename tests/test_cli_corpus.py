@@ -5,7 +5,13 @@ each with its exit status and, for a run, every base value, captured with c7b177
 (``tooling/capture_cli_corpus.py``). Each call is rewritten keeping its meaning, as S&R's
 M1 says: ``--units in`` becomes ``--output-set in``, and ``--units mm`` becomes
 ``--output-set mm`` with "mm" on each bare length, since it also read bare lengths in
-mm. Every rewritten call must exit as it did, and give every base value bit for bit.
+mm. Every rewritten call must exit as it did, and read every input bit for bit.
+
+The outputs and steps go through the platform's maths library, whose sine and tangent
+can differ in their last bits: macOS's do from Linux's, where the corpus was captured,
+by up to a few units in the last place, more after a subtraction. So they're held to
+1e-12 relative, far tighter than any change E-4 could make, and the inputs, which only
+the reading decides, bit for bit everywhere.
 """
 
 from __future__ import annotations
@@ -82,7 +88,9 @@ def test_every_call_rewritten_gives_c7b1772_s_base_values(row: dict[str, Any]) -
     status, base = _run(rewrite(row["argv"]))
     assert status == row["exit"]
     if base is not None:
-        assert base == row["base"]
+        assert base["inputs"] == row["base"]["inputs"], "read bit for bit"
+        assert base["outputs"] == pytest.approx(row["base"]["outputs"], rel=1e-12, abs=1e-12)
+        assert base["steps"] == pytest.approx(row["base"]["steps"], rel=1e-12, abs=1e-12)
 
 
 def test_the_rewrite_reads_a_bare_length_in_mm_and_leaves_a_named_one() -> None:

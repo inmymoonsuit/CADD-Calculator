@@ -1281,3 +1281,10 @@ When the runners came back, CI's first run of stop 2 (on 6d859c6) failed two job
   its longest label, `in · ° · in²`. It's never narrower than its longest label now, as
   a field's picker never is. Offscreen, that makes the least window 509 px wide, from
   492; the native width is UI/UX's to re-measure.
+* **macOS, the corpus's outputs:** macOS's maths library rounds sine and tangent
+  differently in the last bits from Linux's, where the corpus was captured, so 62 of
+  the segment's runs gave outputs a few units in the last place apart, 1.5 × 10⁻¹⁵
+  relative at most after a subtraction. Every input read bit for bit. So the corpus
+  holds the inputs bit for bit on every platform, which is what E-4's rewriting
+  decides, and the outputs and steps to 10⁻¹² relative; on Linux and Windows they
+  still match bit for bit.
