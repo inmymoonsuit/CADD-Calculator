@@ -222,6 +222,15 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
+### KI-029: The converters show every unit at once, with no output picker (Low)
+
+ADR-0024 §7 splits the converters into one value in and one out, each with its picker,
+and Decimal to fraction and Fraction to decimal into converters of their own (E-6, U3).
+Until then each converter shows its value in every unit of its kind, each row in its own
+fixed unit, as ADR-0018's m2 built them. They have no output set, so the results' Show in
+picker is hidden on them and their Inputs list gives no second value; their input has a
+picker, as every input with a unit has. Resolved by E-6 and U3, in ADR-0024's stop 3.
+
 ### KI-028: A decimal half typed in one unit can show the odd last digit in another (Low)
 
 A value is shown by rounding its double in the shown unit to the shown decimals, half to
@@ -250,7 +259,7 @@ field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds
 field are on different pages, and each page says how it reads (the user guide's Units
 and precision). With the Units box gone (U2), a settings page shows and reads in inches,
 degrees and ksi (`window._settings_units`), whatever the results are shown in, and its
-facts show strengths in ksi. Resolved by U2b.
+facts show strengths in ksi. Resolved by U2b, in ADR-0024's stop 3.
 
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 

@@ -742,7 +742,8 @@ def test_a_list_closed_without_a_choice_leaves_the_step_to_settle(close: str) ->
     click elsewhere on the window is closed by the combo offscreen; where the platform
     closes popups itself, Qt closes the list as the last case does.
     """
-    from PySide6.QtCore import Qt
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QFocusEvent
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication
 
@@ -770,9 +771,9 @@ def test_a_list_closed_without_a_choice_leaves_the_step_to_settle(close: str) ->
     QApplication.processEvents()
     assert not picker.view().isVisible()
     assert window.pickers["inside_radius"].choice == "in", "closing chose nothing"
-    picker.setFocus()
-    QApplication.processEvents()
-    QTest.keyClick(picker, Qt.Key.Key_Tab)
+    # Sent, not tabbed to: on macOS, once the list has closed, a Tab moves no focus
+    # offscreen, and what's tested is the picker's own state after the close.
+    QApplication.sendEvent(picker, QFocusEvent(QEvent.Type.FocusOut, Qt.FocusReason.TabFocusReason))
     assert window.pickers["inside_radius"].choice == "ft_in", "the step settles on focus out"
     window.close()
 
