@@ -1,6 +1,56 @@
 # Units and precision
 
-## Typing values
+## Typing into a calculator's field
+
+Each input with a unit has a **unit picker** after it, and the number you type is read
+in the unit the picker shows. The picker is the only place a unit is given: closed, it
+shows the unit's symbol (`in`, `ft-in`, `mm`, `°`); open, each unit's name too.
+Lengths are offered as `in`, `ft-in`, `ft`, `mm`, `cm` and `m`; angles as `°`, `° ′ ″`,
+`′`, `″` and `rad`. An input with no unit, such as a K-factor or a number of sides, has
+no picker.
+
+| You type | With the picker on | Reads as |
+|---|---|---|
+| `0.1046` | in | 0.1046 in |
+| `3/16`, `1 3/16`, `1-3/16` | in | 3/16 in, and 1 3/16 in |
+| `1 - 3/16` | in | 13/16 in: with a space, the hyphen is minus |
+| `2 × 1 3/16`, `(1 + 2) / 4` | in | 2 3/8 in, and 3/4 in |
+| `10-2 3/16`, `10 2 3/16`, `10'-2 3/16"` | ft-in | 10'-2 3/16" |
+| `10` | ft-in | 10 inches, 0'-10" |
+| `40 30 15`, `40°30′15″` | ° ′ ″ | 40°30′15″ |
+| `0.44` | (no picker) | the ratio 0.44 |
+
+* **Arithmetic** takes `+`, `-` (or `−`), `*` (or `×`), `/` (or `÷`) and parentheses,
+  and works exactly, so `1/3*3` is exactly 1. It takes no names, functions or powers.
+* **A hyphen between a whole number and a fraction, with no space on either side,
+  joins them**, as AutoCAD reads it: `1-3/16` is one and three sixteenths. Every other
+  hyphen is minus, so `1 - 3/16` is thirteen sixteenths. A whole number, a space and a
+  fraction, `1 3/16`, is a mixed number too.
+* **In feet and inches**, the marks are optional: give whole feet, then the inches,
+  under 12, joined by a hyphen or a space, or the inches alone, of any size. One sign,
+  at the front: `-10-2`.
+* **In degrees, minutes and seconds**, the parts go in order, separated by spaces or
+  their marks; degrees and minutes are whole, and minutes and seconds are under 60.
+* **What it reads as** shows at the field's end, in a lighter colour, whenever your
+  text isn't a plain number: `1-3/16` shows `= 1 3/16 in`, and `1 - 3/16` shows
+  `= 0.8125 in`. If the field is too narrow for both, it's in the field's tooltip, and
+  a screen reader says it.
+* **A unit typed into the field is refused**, never guessed at: `25 mm` in a field set
+  to inches says "Units go in the picker. Use 25 mm?", with a button that sets the
+  picker to mm and the text to 25. A pasted feet-and-inches value offers ft-in. A unit
+  of another kind, such as `25 MPa` in a length, is refused with no offer.
+* **Switching a picker** re-reads the number you typed in the new unit: 25 stays 25,
+  now in millimeters, and switching back is the undo. A value you didn't type, such as
+  a default, a family value or the course example, keeps its size and is shown
+  converted. Each switch is shown in the status bar and said to screen readers.
+* **Your first switch of a picker on a calculator carries** to that calculator's other
+  pickers of the same kind, so a part drawn in millimeters takes one change. After
+  that, each picker is set on its own, for as long as the app is open.
+
+## Typing with the unit in the text
+
+Family settings fields (until they get pickers, KI-027) and the command line read a
+value with its unit in the text:
 
 | You type | Means |
 |---|---|

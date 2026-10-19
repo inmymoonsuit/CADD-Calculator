@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from caddcalc.core import Dimension, TypedValue
-from tests.qt_helpers import open_window, page_text, results_text, type_into
+from tests.qt_helpers import open_window, page_text, pick, results_text, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -128,6 +128,8 @@ def test_a_cleared_field_shows_its_default_as_a_labelled_placeholder() -> None:
     type_into(thickness, "")
     assert (thickness.text(), thickness.placeholderText()) == ("", "default 0.1046")
     window.units_box.setCurrentText("mm")
+    assert field(window, "thickness").placeholderText() == "default 0.1046", "the picker's"
+    pick(window, "thickness", "mm")
     assert field(window, "thickness").placeholderText() == "default 2.65684"
     window.close()
 
@@ -195,18 +197,21 @@ def test_unreadable_text_stays_with_its_error_and_applies_no_prefix() -> None:
     window = open_window()
     window.select_calculator(BEND)
     type_into(field(window, "thickness"), "0.1x", enter=False)
-    assert "Material thickness: Unknown unit 'x'" in result(window)
+    why = "Material thickness: '0.1x' isn't a number or arithmetic"
+    assert why in result(window)
 
     for leave_and_return in (
         lambda: (window.select_domain("sheet_metal"), window.select_calculator(BEND)),
         lambda: window.units_box.setCurrentText("mm"),
         lambda: window.units_box.setCurrentText("in"),
+        lambda: pick(window, "thickness", "mm"),
+        lambda: pick(window, "thickness", "in"),
     ):
         leave_and_return()
         assert field(window, "thickness").text() == "0.1x"
         assert "border" in field(window, "thickness").styleSheet()
         assert window.result is None
-        assert "Unknown unit 'x'" in result(window)
+        assert why in result(window)
 
     type_into(field(window, "thickness"), "", enter=False)
     assert source_of(window, "thickness") == "default", "clearing drops the field's own value"
@@ -216,22 +221,46 @@ def test_unreadable_text_stays_with_its_error_and_applies_no_prefix() -> None:
 
 
 def test_a_units_round_trip_never_changes_a_calculator_value() -> None:
-    """KI-017: switching units never re-reads six-decimal display text as the value."""
+    """KI-017: the Units box sets how results show; it never touches a field's value."""
     window = open_window()
     window.select_calculator(BEND)
     type_into(field(window, "thickness"), "1/3", enter=False)
-    for unit, thickness, radius in (
-        ("mm", "8.466667", "3.9624"),
-        ("in", "1/3", "0.156"),
-        ("mm", "8.466667", "3.9624"),
-        ("in", "1/3", "0.156"),
-    ):
+    for unit in ("mm", "in", "mm", "in"):
         window.units_box.setCurrentText(unit)
-        assert field(window, "thickness").text() == thickness
-        assert field(window, "inside_radius").text() == radius
+        assert field(window, "thickness").text() == "1/3"
+        assert field(window, "inside_radius").text() == "0.156"
     typed = window.entries[BEND]["thickness"].value
-    assert typed == TypedValue.parse("1/3", Dimension.LENGTH, "in")
+    assert typed == TypedValue.read("1/3", "in", Dimension.LENGTH)
     assert window.result.inputs["thickness"] == 1 / 3 * INCH
+    window.close()
+
+
+def test_a_pick_rereads_typed_text_and_converts_a_value_not_typed() -> None:
+    """25 stays 25, now in mm; the default radius keeps its quantity (ADR-0024 Q4).
+
+    The first length pick carries to the lengths the user hasn't set, once (Q6); a
+    picker set back is the undo, for the typed text.
+    """
+    window = open_window()
+    window.select_calculator(BEND)
+    type_into(field(window, "thickness"), "1/3", enter=False)
+    pick(window, "thickness", "mm")
+    assert field(window, "thickness").text() == "1/3", "re-read, never rewritten"
+    assert window.result.inputs["thickness"] == 1 / 3
+    assert field(window, "inside_radius").text() == "3.9624", "it followed, converted"
+    assert window.pickers["inside_radius"].choice == "mm"
+    assert window.result.inputs["inside_radius"] == pytest.approx(0.156 * INCH, rel=1e-15)
+    message = window.statusBar().currentMessage()
+    assert message == (
+        "Material thickness: 1/3 now read as millimeters. "
+        "Lengths now in millimeters: inside bend radius"
+    )
+    pick(window, "thickness", "in")
+    assert window.result.inputs["thickness"] == 1 / 3 * INCH, "switched back: the undo"
+    assert window.pickers["inside_radius"].choice == "mm", "it follows only the first pick"
+    assert window.statusBar().currentMessage() == "Material thickness: 1/3 now read as inches"
+    pick(window, "inside_radius", "in")
+    assert window.statusBar().currentMessage() == "Inside bend radius: shown in inches, 0.156"
     window.close()
 
 

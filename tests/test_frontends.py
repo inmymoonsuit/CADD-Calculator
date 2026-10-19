@@ -151,7 +151,9 @@ def test_gui_window_computes(qt: Any) -> None:
     window.method_box.setCurrentIndex(0)  # course
     assert "BA Bend allowance 0.3119 in" in results_text(window)
 
-    window.units_box.setCurrentText("mm")
+    from tests.qt_helpers import pick
+
+    pick(window, "thickness", "mm")
     _param, thickness = window.fields["thickness"]
     assert thickness.text() == "2.65684"  # 0.1046 in, re-expressed
 
@@ -159,7 +161,7 @@ def test_gui_window_computes(qt: Any) -> None:
 
     thickness.selectAll()
     QTest.keyClicks(thickness, "-1")  # typed, so it is the user's intent (ADR-0013 §9)
-    assert "must be greater than 0 mm" in results_text(window)
+    assert "must be greater than 0" in results_text(window)
     window.close()
     app.processEvents()
 

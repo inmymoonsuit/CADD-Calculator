@@ -976,3 +976,59 @@ default sets", and ADR-0006 the note "a plugin length Param with a bare-number d
   inch forms' area are each killed.
 
 E-1 and E-2 change nothing a user sees; the user guide changes with U1.
+
+### 2026-10-19: as built, U1
+
+* `gui/unit_picker.py`: `UnitPicker`, a `QComboBox` whose closed face is the choice's
+  symbol (`in`, `ft-in`, `°`, `° ′ ″`) and whose list draws "symbol — name"; its
+  accessible name is "{label} unit", and its description and tooltip are the choice's
+  name, the plural ("millimeters"). `picked` is emitted on the user's activation only.
+  `EchoField`, the field with the echo: a label in the placeholder role inside the
+  field's right edge, shown only while the text, a gap of one "X" and the echo fit the
+  contents rect; the echo is always in the tooltip, after the help, and is the
+  accessible description. `picker_min_chars` measures the widest symbol among a page's
+  pickers in widths of "X", and every picker takes it, so they share one width.
+* `window.py`: each field is read by `TypedValue.read` in its choice. A field's choice is
+  its parameter's default until picked (`field_choices`, per calculator and key, for
+  the session). A unitless field has a spacer as wide as the page's pickers, so the
+  fields end on one line. Tab goes field → picker → its "Use … value" box. A pick ends
+  the page's edits, then re-reads a typed text, pending text included, in the new
+  choice, or shows a value the user didn't type converted (`choice_text`,
+  `picked_text`). The first pick of a dimension on a calculator carries to its other
+  pickers of that dimension that offer the choice and don't show it already
+  (`led_dimensions`); before it none of them can be the user's, so no "untouched"
+  filter is needed, and a mutant without the once-only guard fails a test with a
+  length that defaults to mm. The status bar shows, and `announce` says, "Material
+  thickness: 25 now read as millimeters", "…: shown in millimeters, 2.65684", and
+  "Lengths now in millimeters: inside bend radius". A `UnitInTextError` shows in the
+  field's note area as "Units go in the picker. Use 25 mm?" with a "Use 25 mm" button,
+  which picks (as the user's pick, so it leads) and applies the number as typed; a
+  unit of another dimension shows the usual message with no offer.
+* `core.formatting`: `choice_text`, `picked_text`, `echo` and `Echo`, with `READS_AS`
+  marked for translation. The echo of a lone fraction or mixed number is a mixed number
+  (`= 1 3/16 in`, said "reads as 1 and 3 sixteenths inches"), of other text its value
+  at field precision (`= 0.8125 in`), and of a form the form as shown, unless the text
+  is that already. A plain decimal has none.
+* A pick shows the fields in their choices in place (`_show_choices`), never by
+  rebuilding the form, which would delete the picker while it emits `activated`.
+* **For UI/UX:** ↑ and ↓ on a closed picker activate each choice in turn, so the first
+  step leads: from `in`, three ↓ presses leave the thickness in mm and the radius, which
+  followed the first step, in ft-in.
+* The Units box stays until U2 and sets only the results; settings fields keep their
+  grammar until U2b (KI-027).
+* **Figures, offscreen** (`tests/test_unit_pickers.py`, 44 tests, and the updated page
+  tests): every input of every built-in calculator and method has a picker with its
+  parameter's choices, starting at its default, and every ratio and count input none;
+  the bend's three pickers share one width, wider than their widest symbol, and with the
+  K-factor method every field ends at the same x; nothing clips on any calculator page
+  at the launch size, in English and en_XA, nor on any page at the least size. A
+  settings page is left out of the launch-size check: `_clipped` compares a group box
+  with its least height at its least width, where its labels wrap most, so at 1,105 px
+  it reports the Sheet Metal settings box, 522 px tall, as short of 543 px, while its
+  page scrolls as designed; the same report is on the F0 commit, before any picker.
+  Mutants of re-reading, the once-only follow, the fix's offer, the unit's refusal,
+  the echo's hiding, Tab to the picker, and the shared width are each killed.
+* **Native only, for UI/UX's review:** pickers 26 px tall like the fields; the echo's
+  0 px of height and width; nothing clipping at the 521 px least window; and no page
+  growing past ADR-0023's table but for the header.
+

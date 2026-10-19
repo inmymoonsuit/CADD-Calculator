@@ -666,7 +666,7 @@ def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
     window.select_calculator("conversions.length")
     settle(window)
     _param, value = window.fields["value"]
-    type_into(value, "0.31 in")
+    type_into(value, "0.31")
     field = window.results.fields["error_16"]
     help_text = "The nearest fraction less the value: positive where the fraction is longer"
     assert field.output.help.startswith(help_text)

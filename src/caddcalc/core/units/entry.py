@@ -227,6 +227,28 @@ def evaluate(text: str, decimal: str = ".") -> Fraction:
     return value
 
 
+def lone_fraction(text: str, decimal: str = ".") -> Fraction | None:
+    """Return a text's value if it's one fraction or mixed number, as ``-1-3/16`` is.
+
+    A front end writes such a value back as a mixed number, so its reader can see how a
+    hyphen was read (ADR-0024 D8); ``None`` for anything else, such as ``1 - 3/16``.
+    """
+    try:
+        tokens = _mixed(_tokens(text, decimal), text)
+    except InputError:
+        return None
+    signed = tokens[1:] if tokens[:1] and tokens[0].kind in ("+", "-") else tokens
+    kinds = [t.kind for t in signed]
+    joined = kinds == ["number"] and "/" in text and signed[0].digits is False
+    plain = kinds == ["number", "/", "number"] and signed[0].digits and signed[2].digits
+    if not (joined or plain) or (plain and signed[2].value == 0):
+        return None
+    try:
+        return evaluate(text, decimal)
+    except InputError:
+        return None
+
+
 def _tokens(text: str, decimal: str) -> list[_Token]:
     if len(text) > MAX_LENGTH:
         raise InputError(f"{text[:20]!r}… is longer than {MAX_LENGTH} characters")

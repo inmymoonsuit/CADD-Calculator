@@ -222,6 +222,15 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
+### KI-027: Settings fields still read units in their text (Low)
+
+ADR-0024's slices give calculator fields pickers first (U1). Until E-5 and U2b give a
+family settings page its own pickers, a settings field reads a unit typed with its
+number, `3 mm`, and a bare number in the Units box's unit, as before, while a calculator
+field refuses `3 mm` and reads a bare number in its picker's unit. The two kinds of
+field are on different pages, and each page says how it reads (the user guide's Units
+and precision). The Units box still sets how results show until U2. Resolved by U2b.
+
 ### KI-026: Geometry works with lengths from 10⁻⁷⁰ mm to 10⁷⁰ mm only (Low)
 
 A double holds about 10⁻³⁰⁸ to 10³⁰⁸ at full precision. Heron's and Kahan's formulas

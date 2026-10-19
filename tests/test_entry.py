@@ -342,7 +342,9 @@ def test_a_typed_value_keeps_its_text_and_its_pick() -> None:
     with pytest.raises(UnitInTextError):
         TypedValue.read("3 mm", "in", L)
     parsed = TypedValue.parse("3 mm", L)
-    assert (parsed.choice, parsed.explicit_unit) == ("", True)
+    assert (parsed.choice, parsed.explicit_unit) == (None, True)
+    ratio = TypedValue.read("0.44+0", "", R)
+    assert (ratio.choice, ratio.value) == ("", 0.44)
 
 
 def test_every_unit_of_every_dimension_a_field_takes_is_a_choice() -> None:

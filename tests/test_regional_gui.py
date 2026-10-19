@@ -105,7 +105,7 @@ def test_a_range_errors_decimal_bound_is_written_in_the_locales_mark() -> None:
     window = open_window(registry, symbols=COMMA)
     window.select_calculator("acme.widget")
     _param, edit = window.fields["length"]
-    type_into(edit, "0,1 in")
+    type_into(edit, "0,1")
     message = edit.toolTip() + window.output.toPlainText()
     assert "0,25 in" in message and "0.25" not in message, message
     window.close()

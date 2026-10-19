@@ -75,31 +75,34 @@ from caddcalc.core import (
     SourceKind,
     StartingValue,
     TypedValue,
+    UsageError,
     ValueOrigin,
 )
 from caddcalc.core.formatting import (
     HEADED,
     DisplayPrefs,
     NumberSymbols,
+    choice_text,
     describe_error,
     describe_note,
     describe_override,
     describe_setting_uses,
     describe_source,
     display_unit,
+    echo,
     entry_text,
     entry_unit,
-    field_text,
     format_output,
     format_value,
     method_notes,
+    picked_text,
     render_step,
     unit_suffix,
     value_parts,
 )
 from caddcalc.core.i18n import _
 from caddcalc.core.spec import named
-from caddcalc.core.units import Dimension, base_text, parse_quantity_detailed
+from caddcalc.core.units import Dimension, UnitInTextError, base_text, parse_quantity_detailed
 from caddcalc.gui.actions import AppActions
 from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
 from caddcalc.gui.focus_ring import OUTLINED, FocusRing
@@ -122,10 +125,11 @@ from caddcalc.gui.pages import (
 )
 from caddcalc.gui.reflow import Reflow
 from caddcalc.gui.regional import number_symbols
-from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel
+from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel, announce
 from caddcalc.gui.style_tokens import Rect, Size
 from caddcalc.gui.text_units import line_spacing, text_unit
 from caddcalc.gui.ui_style import secondary_text, ui_style
+from caddcalc.gui.unit_picker import EchoField, UnitPicker, choice_name, picker_min_chars
 from caddcalc.gui.welcome import WelcomeScreen
 from caddcalc.gui.window_layout import Margins, chars, fit_window, launch_size
 
@@ -334,7 +338,18 @@ class MainWindow(QMainWindow):
         """
         self.overrides: dict[str, set[str]] = {}
         """The shared parameters each calculator overrides; sticky for the session (C)."""
-        self.fields: dict[str, tuple[Param, QLineEdit]] = {}
+        self.fields: dict[str, tuple[Param, EchoField]] = {}
+        self.pickers: dict[str, UnitPicker] = {}
+        """Each shown field's unit picker, by parameter key; a unitless field has none."""
+        self.unit_fixes: dict[str, tuple[QWidget, QLabel, QPushButton]] = {}
+        """Each shown field's offer to move a unit typed in it into its picker (Q5)."""
+        self.field_choices: dict[tuple[str, str], str] = {}
+        """The unit or form each calculator field is picked in, by (calculator id, key),
+        where it isn't its default: the user's pick, or one it followed (ADR-0024 §3)."""
+        self.led_dimensions: set[tuple[str, Dimension]] = set()
+        """The dimensions whose pickers the user has changed on each calculator, by
+        (calculator id, dimension): the first change carries to the pickers the user
+        hasn't set, and after it each picker is the user's (ADR-0024 Q6)."""
         self.pending_fields: dict[tuple[str, str], str] = {}
         """Text typed in a calculator field that can't be read, by (calculator id, key).
 
@@ -836,6 +851,8 @@ class MainWindow(QMainWindow):
         while self.form.rowCount():
             self.form.removeRow(0)
         self.fields.clear()
+        self.pickers.clear()
+        self.unit_fixes.clear()
         self.inherit_boxes.clear()
         self.override_notes.clear()
 
@@ -843,8 +860,9 @@ class MainWindow(QMainWindow):
         self._clear_form()
         domain = self.registry.domain(calc.domain)
         self.example_button.setVisible(any(m.legacy for m in calc.methods))
+        spacers: list[QWidget] = []
         for p in calc.params_for(self.method_key):
-            edit = QLineEdit()
+            edit = EchoField()
             if self._inherits_family_value(calc, p):
                 dropped = self.pending_fields.pop((calc.id, p.key), None)
                 if dropped is not None:  # it can't apply while the field inherits
@@ -854,17 +872,43 @@ class MainWindow(QMainWindow):
                     )
             pending = self.pending_fields.get((calc.id, p.key))
             edit.setText(self._shown_text(calc, p) if pending is None else pending)
+            choice = self._choice(calc, p)
             default = p.default_value()
             if default is not None:
-                edit.setPlaceholderText(f"default {field_text(default, p.dimension, self.prefs)}")
-            edit.setToolTip(p.help)
+                shown = choice_text(default, choice, p.dimension, self.prefs)
+                edit.setPlaceholderText(f"default {shown}")
+            edit.set_help(p.help)
             edit.textEdited.connect(_slot(self._on_field_edited, p.key))
             edit.editingFinished.connect(_slot(self._finish_field_edit, p.key))
             field = QHBoxLayout()
             field.addWidget(edit, 1)
-            field.addWidget(QLabel(unit_suffix(p.dimension, self.prefs).strip()))
+            # A unitless field ends where a picker would begin, so every field on the page
+            # ends on one line and the pickers stand in one column (ADR-0024 §1).
+            if len(p.choices) > 1:
+                picker = UnitPicker(p.label, p.choices, p.dimension)
+                picker.set_choice(choice)
+                picker.picked.connect(_slot(self._on_picked, p.key))
+                picker.installEventFilter(self._wheel_guard)
+                field.addWidget(picker)
+                self.pickers[p.key] = picker
+            else:
+                spacer = QWidget()
+                field.addWidget(spacer)
+                spacers.append(spacer)
             row = QVBoxLayout()
             row.addLayout(field)
+            fix = QWidget()
+            fix_row = QHBoxLayout(fix)
+            fix_row.setContentsMargins(0, 0, 0, 0)
+            fix_note = QLabel()
+            fix_note.setWordWrap(True)
+            fix_button = QPushButton()
+            fix_button.clicked.connect(_slot(self._apply_unit_fix, p.key))
+            fix_row.addWidget(fix_note, 1)
+            fix_row.addWidget(fix_button)
+            fix.hide()
+            row.addWidget(fix)
+            self.unit_fixes[p.key] = (fix, fix_note, fix_button)
             if p.shared:
                 box = QCheckBox(f"Use {domain.name} value")
                 box.setToolTip(
@@ -880,12 +924,20 @@ class MainWindow(QMainWindow):
                 self.override_notes[p.key] = note
             self.form.addRow(p.named, row)
             self.fields[p.key] = (p, edit)
+        least = picker_min_chars(self.pickers.values())
+        for picker in self.pickers.values():
+            picker.setMinimumContentsLength(least)
+        width = max((pk.sizeHint().width() for pk in self.pickers.values()), default=0)
+        for spacer in spacers:
+            spacer.setFixedWidth(width)
 
     def _chain_tabs(self) -> None:
         """Tab down the page: the inputs, each result's copy button, Copy all, the document."""
         stops: list[QWidget] = []
         for key, (_p, edit) in self.fields.items():
             stops.append(edit)
+            if key in self.pickers:
+                stops.append(self.pickers[key])
             if key in self.inherit_boxes:
                 stops.append(self.inherit_boxes[key])
         stops += [*self.results.focus_chain(), self.output]
@@ -943,29 +995,57 @@ class MainWindow(QMainWindow):
 
     def _shown_text(self, calc: Calculator, p: Param) -> str:
         """Return the text a field shows: the value the run uses for it."""
+        choice = self._choice(calc, p)
         if self._inherits(calc, p):
             inherited = self._family_value(calc, p)
             if inherited is not None:
-                return entry_text(inherited, self.prefs)
+                return picked_text(inherited, choice, self.prefs)
         else:
             entry = self.entries.get(calc.id, {}).get(p.key)
             if entry is not None and isinstance(entry.value, TypedValue):
-                return entry_text(entry.value, self.prefs)
+                return picked_text(entry.value, choice, self.prefs)
         value = self._value_in_use(calc, p)
-        return "" if value is None else field_text(value, p.dimension, self.prefs)
+        return "" if value is None else choice_text(value, choice, p.dimension, self.prefs)
+
+    def _choice(self, calc: Calculator, p: Param) -> str:
+        """Return the unit or form ``p``'s field is picked in on ``calc``: set, or its default."""
+        return self.field_choices.get((calc.id, p.key), p.default_choice or "")
 
     @property
     def _decimal(self) -> str:
         """The regional format's decimal mark, which typing may use besides "."."""
         return self.prefs.symbols.decimal
 
+    def _read(self, p: Param, text: str) -> TypedValue:
+        """Read a field's text in the unit or form its picker shows (ADR-0024 E2).
+
+        Raises:
+            InputError: The text isn't a value in it, or names a unit.
+        """
+        calc = self.calculator
+        if calc is None:
+            raise UsageError("a field is read only on a calculator's page")
+        choice = self._choice(calc, p)
+        return TypedValue.read(text, choice, p.dimension, decimal=self._decimal)
+
     def _field_problem(self, p: Param, text: str) -> str | None:
         """Return why ``text`` can't be read as a value of ``p``, or ``None`` if it can."""
-        default_unit = entry_unit(p.dimension, self.prefs)
         try:
-            TypedValue.parse(text, p.dimension, default_unit, decimal=self._decimal)
+            self._read(p, text)
+        except UnitInTextError as exc:
+            return f"{p.label}: {_unit_fix_text(exc)}"
         except InputError as exc:
             return f"{p.label}: {exc}"
+        return None
+
+    def _unit_fix(self, p: Param, text: str) -> UnitInTextError | None:
+        """Return the fix for text that names a unit, if it does and the fix is one."""
+        try:
+            self._read(p, text)
+        except UnitInTextError as exc:
+            return exc if exc.choice is not None and exc.choice in p.choices else None
+        except InputError:
+            return None
         return None
 
     def _on_field_edited(self, key: str, text: str) -> None:
@@ -996,9 +1076,7 @@ class MainWindow(QMainWindow):
             self.pending_fields[calc.id, key] = text
         else:
             self.pending_fields.pop((calc.id, key), None)
-            default_unit = entry_unit(p.dimension, self.prefs)
-            typed = TypedValue.parse(text, p.dimension, default_unit, decimal=self._decimal)
-            own[key] = FieldEntry(typed)
+            own[key] = FieldEntry(self._read(p, text))
             if p.shared:
                 overrides.add(key)
         self.recompute()
@@ -1024,8 +1102,7 @@ class MainWindow(QMainWindow):
         elif self._field_problem(p, text) is not None:
             unchanged = True
         else:
-            default_unit = entry_unit(p.dimension, self.prefs)
-            value = TypedValue.parse(text, p.dimension, default_unit, decimal=self._decimal).value
+            value = self._read(p, text).value
             unchanged = text.strip() == start.shown or value == start.in_use
         if unchanged:
             own = self.entries.setdefault(calc.id, {})
@@ -1044,6 +1121,110 @@ class MainWindow(QMainWindow):
         """End every edit in the shown calculator's fields, as leaving each field would."""
         for key in list(self.fields):
             self._finish_field_edit(key)
+
+    def _on_picked(self, key: str, choice: str) -> None:
+        """Pick a field's unit or form, and carry it to the fields that follow (Q4, Q6).
+
+        The user's own number is kept and re-read in the new choice; a value the user
+        didn't type keeps its quantity and is shown converted. The first change to a
+        dimension's picker on a calculator carries to its other pickers of that dimension
+        the user hasn't set; after it, each picker is the user's. The switch is announced.
+        """
+        calc = self.calculator
+        if calc is None or key not in self.fields:
+            return
+        self._finish_field_edits()
+        p, _edit = self.fields[key]
+        if choice == self._choice(calc, p):
+            return
+        said = [self._switch(calc, p, choice)]
+        followers: list[Param] = []
+        if (calc.id, p.dimension) not in self.led_dimensions:
+            # Before a dimension's first pick none of its pickers is the user's, so every
+            # other one that offers the choice follows; one already showing it stays put.
+            self.led_dimensions.add((calc.id, p.dimension))
+            followers = [
+                q
+                for q in calc.params
+                if q.dimension is p.dimension
+                and q.key != key
+                and choice in q.choices
+                and self._choice(calc, q) != choice
+            ]
+        for q in followers:
+            self._switch(calc, q, choice)
+        if followers:
+            labels = ", ".join(q.label.lower() for q in followers)
+            plural = DIMENSION_PLURALS.get(p.dimension, p.dimension.value.capitalize())
+            said.append(f"{plural} now in {choice_name(choice, p.dimension)}: {labels}")
+        self._show_choices(calc)
+        message = ". ".join(said)
+        self.statusBar().showMessage(message, round(ui_style().result_field.copied_status_ms))
+        announce(self.pickers.get(key, self), message)
+
+    def _show_choices(self, calc: Calculator) -> None:
+        """Show each field in its choice, in place, then recompute.
+
+        In place, not by rebuilding the form: the picker that was picked is still
+        emitting its signal, and a rebuild would delete it under its own feet.
+        """
+        for key, (p, edit) in self.fields.items():
+            choice = self._choice(calc, p)
+            picker = self.pickers.get(key)
+            if picker is not None and picker.choice != choice:
+                picker.set_choice(choice)
+            pending = self.pending_fields.get((calc.id, key))
+            edit.setText(self._shown_text(calc, p) if pending is None else pending)
+            default = p.default_value()
+            if default is not None:
+                shown = choice_text(default, choice, p.dimension, self.prefs)
+                edit.setPlaceholderText(f"default {shown}")
+        self.recompute()
+
+    def _switch(self, calc: Calculator, p: Param, choice: str) -> str:
+        """Pick ``choice`` for ``p``'s field, re-read its typed text, and say what changed."""
+        before = self._choice(calc, p)
+        self.field_choices[calc.id, p.key] = choice
+        name = choice_name(choice, p.dimension)
+        own = self.entries.get(calc.id, {})
+        entry = own.get(p.key)
+        pending = self.pending_fields.get((calc.id, p.key))
+        typed = entry is not None and entry.origin is EntryOrigin.TYPED
+        text = pending if pending is not None else None
+        own_text = typed and entry is not None and isinstance(entry.value, TypedValue)
+        if text is None and own_text and entry is not None and isinstance(entry.value, TypedValue):
+            text = entry.value.text if entry.value.choice == before else None
+        if text is None or self._inherits_family_value(calc, p):
+            shown = self._shown_text(calc, p)
+            return f"{p.label}: shown in {name}, {shown}" if shown else f"{p.label}: in {name}"
+        try:
+            own[p.key] = FieldEntry(self._read(p, text))
+            self.pending_fields.pop((calc.id, p.key), None)
+        except InputError:
+            self.pending_fields[calc.id, p.key] = text
+        return f"{p.label}: {text} now read as {name}"
+
+    def _apply_unit_fix(self, key: str) -> None:
+        """Move a unit typed in a field into its picker: pick it, and keep the number (Q5).
+
+        The user's click is the picker's author, as a pick is, so it carries to the fields
+        that follow, and the number then reads as typed in it.
+        """
+        calc = self.calculator
+        if calc is None or key not in self.fields:
+            return
+        p, edit = self.fields[key]
+        fix = self._unit_fix(p, edit.text())
+        if fix is None or fix.choice is None:
+            return
+        self.pending_fields[calc.id, key] = fix.number
+        if fix.choice != self._choice(calc, p):
+            self._on_picked(key, fix.choice)
+        p, edit = self.fields[key]
+        edit.setText(fix.number)
+        self._on_field_edited(key, fix.number)
+        self._finish_field_edit(key)
+        edit.setFocus()
 
     def _leave_calculator(self) -> None:
         """End the shown calculator's edits, and forget notices it has already shown."""
@@ -1205,6 +1386,23 @@ class MainWindow(QMainWindow):
             if problem:
                 problems.append(problem)
             edit.setReadOnly(self._inherits_family_value(calc, p))
+            entry = self.entries.get(calc.id, {}).get(key)
+            typed = (
+                entry.value
+                if pending is None
+                and entry is not None
+                and isinstance(entry.value, TypedValue)
+                and not self._inherits(calc, p)
+                and entry.value.choice == self._choice(calc, p)
+                else None
+            )
+            edit.set_echo(None if typed is None else echo(typed, self.prefs))
+            fix_row, fix_note, fix_button = self.unit_fixes[key]
+            fix = None if pending is None else self._unit_fix(p, pending)
+            fix_row.setVisible(fix is not None)
+            if fix is not None:
+                fix_note.setText(_unit_fix_text(fix))
+                fix_button.setText(_unit_fix_button(fix))
             box = self.inherit_boxes.get(key)
             note = self.override_notes.get(key)
             if box is None or note is None:
@@ -1646,17 +1844,13 @@ class MainWindow(QMainWindow):
         inches would mean 5 mm after a switch to mm. Writing it as "5 in" keeps the
         user's meaning, and the field shows exactly what will be applied (ADR-0013 §9).
         Text that names its unit, or that can't be read in any unit, is left as typed.
-        This covers settings fields and calculator fields alike.
+        A calculator field has its own picker, so the display unit never changes how it
+        reads (ADR-0024 §1).
         """
         for (domain_id, key), text in list(self.pending_settings.items()):
             dimension = self.registry.domain(domain_id).setting(key).dimension
             self.pending_settings[domain_id, key] = _name_unit(
                 text, dimension, self.prefs, new_prefs
-            )
-        for (calc_id, key), text in list(self.pending_fields.items()):
-            param = next(p for p in self.registry.get(calc_id).params if p.key == key)
-            self.pending_fields[calc_id, key] = _name_unit(
-                text, param.dimension, self.prefs, new_prefs
             )
 
     @_settings_boundary
@@ -1756,6 +1950,35 @@ def _write_bug(exc: Exception) -> None:
     """
     if not isinstance(exc, CaddCalcError) or exc.__cause__ is not None:
         traceback.print_exception(exc, file=sys.stderr)
+
+
+DIMENSION_PLURALS = {
+    Dimension.LENGTH: "Lengths",
+    Dimension.ANGLE: "Angles",
+    Dimension.STRESS: "Stresses",
+    Dimension.AREA: "Areas",
+}
+"""How an announcement names the fields of a dimension that follow a pick (ADR-0024 §3)."""
+
+
+def _unit_fix_text(fix: UnitInTextError) -> str:
+    """Return what a field says about a unit typed in it: "Units go in the picker. Use 25 mm?"."""
+    if fix.choice is None:
+        return f"Units go in the picker: {fix.text!r} names {fix.shown}."
+    if fix.choice == "":
+        return f"This field takes a plain number, not {fix.shown}. Use {fix.number}?"
+    if fix.number == fix.text:
+        return f"Units go in the picker. Use {fix.shown}?"
+    return f"Units go in the picker. Use {fix.number} {fix.shown}?"
+
+
+def _unit_fix_button(fix: UnitInTextError) -> str:
+    """Return the button that applies a unit's fix: "Use 25 mm", "Use ft-in", "Use 0.44"."""
+    if fix.choice == "":
+        return f"Use {fix.number}"
+    if fix.number == fix.text:
+        return f"Use {fix.shown}"
+    return f"Use {fix.number} {fix.shown}"
 
 
 def _name_unit(text: str, dimension: Dimension, old: DisplayPrefs, new: DisplayPrefs) -> str:

@@ -395,6 +395,13 @@ msgid_plural "radians"
 msgstr[0] ""
 msgstr[1] ""
 
+#. a field's accessible description: what its text reads as, e.g. "reads as 1
+#. and 3 sixteenths inches".
+#: src/caddcalc/core/formatting.py
+#, python-brace-format
+msgid "reads as {value}"
+msgstr ""
+
 #: src/caddcalc/core/units/builtin.py
 msgctxt "unit"
 msgid "second"

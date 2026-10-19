@@ -183,7 +183,7 @@ class TypedValue:
     the user's own ``text`` and never re-read from rounded display text. A value typed
     into a field picked in a unit or form is built with ``read``, and its ``choice`` is
     the pick (ADR-0024 E2); text with its unit in it, from the command line or a
-    declaration, is built with ``parse``, and its ``choice`` is empty. Building one
+    declaration, is built with ``parse``, and its ``choice`` is ``None``. Building one
     directly checks that ``text`` read so gives ``value``, ``unit`` and ``explicit_unit``.
     """
 
@@ -198,14 +198,15 @@ class TypedValue:
     decimal: str = "."
     """The locale's decimal mark the text was read with, besides ``"."``: ``","`` for
     ``"0,0625"`` typed in a comma locale (ADR-0020 §4)."""
-    choice: str = ""
-    """The id of the unit or form the field was picked in, e.g. ``"mm"`` or ``"ft_in"``;
-    ``""`` for text that names its own unit or takes the default (``parse``)."""
+    choice: str | None = None
+    """The id of the unit or form the field was picked in, e.g. ``"mm"``, ``"ft_in"``, or
+    ``""`` for a ratio's unnamed unit; ``None`` for text read by ``parse``, which names
+    its own unit or takes the default."""
 
     def __post_init__(self) -> None:
         # Re-reading the user's own text is safe; re-reading rounded display text isn't (§9).
         try:
-            if self.choice:
+            if self.choice is not None:
                 value, unit = read_entry(
                     self.text, self.choice, self.dimension, decimal=self.decimal
                 )

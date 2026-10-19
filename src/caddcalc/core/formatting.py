@@ -23,6 +23,7 @@ from caddcalc.core.provenance import InputSource, SourceKind
 from caddcalc.core.spec import Method, OutOfRangeError, Output
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
+    CompoundForm,
     CompoundText,
     Dimension,
     Precision,
@@ -35,10 +36,13 @@ from caddcalc.core.units import (
 from caddcalc.core.units.compound import (
     MEASURE_SPOKEN,
     NEGATIVE_SPOKEN,
+    PARTS,
     POSITIVE_SPOKEN,
+    NearestInches,
     nearest_inches,
     round_half_even,
 )
+from caddcalc.core.units.entry import lone_fraction
 
 # Translators: shown under every calculator's results, after the command line's results,
 # and in About.
@@ -552,6 +556,101 @@ def field_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> str:
     mark = prefs.symbols.decimal
     shown = format_number(display_value(value, dimension, prefs), FIELD_DECIMALS, mark)
     return shown.rstrip("0").rstrip(mark)
+
+
+def choice_text(value: float, choice: str, dimension: Dimension, prefs: DisplayPrefs) -> str:
+    """Return a base-unit value as the text of a field picked in ``choice`` (ADR-0024 §2).
+
+    In a unit it's the number alone, as ``field_text`` writes one, since the picker says
+    the unit: ``2.65684`` in mm. In a form it's the form as shown, ``1'-4 3/16"``, whose
+    marks the field reads as its own. Its decimal mark is the locale's.
+    """
+    picked = registry().choice(choice, dimension)
+    mark = prefs.symbols.decimal
+    if isinstance(picked, Unit):
+        shown = format_number(from_base(value, picked), FIELD_DECIMALS, mark)
+        return shown.rstrip("0").rstrip(mark) if mark in shown else shown
+    return picked.text(value, mark).shown
+
+
+def picked_text(entry: TypedValue, choice: str, prefs: DisplayPrefs) -> str:
+    """Return the text a picked field shows for a value: the user's own, or converted.
+
+    The user's own text shows while the field is picked in what it was read in, in the
+    locale's mark (ADR-0024 §2). A value read otherwise, such as a family value typed
+    with its unit or a default, shows converted into the field's choice.
+    """
+    own_mark = entry.decimal == prefs.symbols.decimal or "." not in entry.text
+    if entry.choice == choice and own_mark:
+        return entry.text
+    return choice_text(entry.value, choice, entry.dimension, prefs)
+
+
+_PLAIN = re.compile(r"[+\-−]?(?:\d+(?:[.,]\d*)?|[.,]\d+)")
+"""A plain decimal, with the point or the locale's comma, which needs no echo."""
+
+
+@dataclass(frozen=True)
+class Echo:
+    """What a picked field reads its text as, shown after it (ADR-0024 D8)."""
+
+    text: str
+    """As shown in the field, e.g. ``= 1 3/16 in`` or ``= 0'-10"``."""
+    spoken: str
+    """As its accessible description says it, e.g. "reads as 1 and 3 sixteenths inches"."""
+
+
+def echo(entry: TypedValue, prefs: DisplayPrefs) -> Echo | None:
+    """Return what a picked field's text reads as, or ``None`` for a plain decimal.
+
+    A form shows as the form does, unless the text is already the form as shown. A lone
+    fraction or mixed number shows as a mixed number, so ``1-3/16`` echoes ``= 1 3/16
+    in``; any other text, such as ``1 - 3/16``, as its value, ``= 0.8125 in``.
+    """
+    if entry.choice is None:
+        return None  # text that names its unit reads as it says
+    picked = registry().choice(entry.choice, entry.dimension)
+    mark = prefs.symbols.decimal
+    if isinstance(picked, CompoundForm):
+        written = picked.text(entry.value, mark)
+        if written.shown == entry.text:
+            return None
+        return Echo(f"= {written.shown}", _(READS_AS).format(value=written.spoken))
+    if _PLAIN.fullmatch(entry.text):
+        return None
+    fraction = lone_fraction(entry.text, entry.decimal)
+    if fraction is not None:
+        number = _mixed_text(fraction)
+        words = _mixed_spoken(fraction, picked)
+    else:
+        number = choice_text(entry.value, entry.choice, entry.dimension, prefs)
+        words = _(MEASURE_SPOKEN).format(number=number, unit=picked.spoken(number)).strip()
+    return Echo(f"= {number}{_suffix(picked.written)}", _(READS_AS).format(value=words))
+
+
+# Translators: a field's accessible description: what its text reads as, e.g. "reads as 1
+# and 3 sixteenths inches".
+READS_AS = N_("reads as {value}")
+
+
+def _mixed_text(fraction: Fraction) -> str:
+    """Write an exact value as a mixed number, ``1 3/16``, or a fraction, ``-3/16``."""
+    sign = "-" if fraction < 0 else ""
+    whole, part = divmod(abs(fraction), 1)
+    if not part:
+        return f"{sign}{whole}"
+    written = f"{part.numerator}/{part.denominator}"
+    return f"{sign}{whole} {written}" if whole else f"{sign}{written}"
+
+
+def _mixed_spoken(fraction: Fraction, unit: Unit) -> str:
+    """Say a mixed number of ``unit`` as its echo is said."""
+    if unit.symbol == "in" and abs(fraction).denominator in PARTS:
+        return NearestInches(abs(fraction).denominator).text(float(fraction) * unit.factor).spoken
+    # The unit's form follows the value as a decimal: "1/3 millimeters".
+    decimal = format_number(float(fraction), FIELD_DECIMALS)
+    number = _mixed_text(fraction)
+    return _(MEASURE_SPOKEN).format(number=number, unit=unit.spoken(decimal)).strip()
 
 
 def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:

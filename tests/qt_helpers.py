@@ -101,3 +101,11 @@ def settle(window: Any) -> None:
             return
         last = now
     raise AssertionError("the page's layout never settled")
+
+
+def pick(window: Any, key: str, choice: str) -> None:
+    """Pick a field's unit or form in its picker, as a person does (ADR-0024 §2)."""
+    picker = window.pickers[key]
+    index = picker.choices.index(choice)
+    picker.setCurrentIndex(index)
+    picker.activated.emit(index)

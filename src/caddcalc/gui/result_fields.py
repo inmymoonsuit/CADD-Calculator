@@ -112,7 +112,7 @@ as feet and inches copy in inches; "Copy {number}, in {unit}" where both marks a
 offer."""
 
 
-def _announce(widget: QWidget, message: str) -> None:
+def announce(widget: QWidget, message: str) -> None:
     """Tell screen readers ``message``, politely, as the status bar shows it (R4)."""
     event = QAccessibleAnnouncementEvent(widget, message)
     event.setPoliteness(QAccessible.AnnouncementPoliteness.Polite)
@@ -608,7 +608,7 @@ class ResultsPanel(QWidget):
             field.restyle()
 
     def _announce(self, message: str) -> None:
-        _announce(self, message)
+        announce(self, message)
         self.announced.emit(message)
 
     def _sync_copy_all(self) -> None:

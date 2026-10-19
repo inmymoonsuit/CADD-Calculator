@@ -28,12 +28,18 @@ uv run caddcalc-gui
   settings its calculators share. Rest the pointer on one to see what it does; when the
   list is too narrow for a name, the tip gives the whole name too. Drag the line between
   the list and the page to widen either.
-* Choose a **Method** and **Units** (`in` or `mm`). The method's status, such as
-  "unverified · reproduces legacy", shows beside it, and its list shows each method's.
-* Type the inputs. Results update as you type, and invalid fields are outlined in red.
-  You can type units and fractions: `1/8`, `1-1/2"`, `3 mm`.
-* Switching units re-expresses the values you've entered. The part doesn't change, and
-  what you typed comes back exactly when you switch back.
+* Choose a **Method**. Its status, such as "unverified · reproduces legacy", shows
+  beside it, and its list shows each method's. **Units** (`in` or `mm`) sets the unit
+  the results show in.
+* Type the inputs. Each input with a unit has a **unit picker** after it: the number is
+  read in the unit it shows. You can type fractions, mixed numbers and arithmetic:
+  `1/8`, `1-3/16`, `2 × 1 3/16`. Results update as you type, and invalid fields are
+  outlined in red. A unit typed into the field, such as `3 mm`, is refused, with a
+  button that moves it into the picker. See [Units and precision](units-and-precision.md).
+* Switching a picker re-reads the number you typed in the new unit, so `25` stays 25,
+  now in millimeters; switching back is the undo. A value you didn't type, such as a
+  default, keeps its size and is shown converted. Your first switch of a length's
+  picker on a calculator carries to its other lengths' pickers.
 * Results show in their own fields. Click a field's copy button to copy its value, or
   **Copy all** for every result as spreadsheet rows; see
   [Results and copying](results.md) for the other forms and the keyboard.

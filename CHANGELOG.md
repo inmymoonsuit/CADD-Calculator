@@ -529,6 +529,17 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **Each calculator input with a unit has a unit picker after it** (ADR-0024 U1), and
+  the number is read in the unit it shows. Fields take fractions, mixed numbers and
+  exact arithmetic (`2 × 1 3/16`), with AutoCAD's rule that `1-3/16` is one and three
+  sixteenths while `1 - 3/16` is thirteen sixteenths; feet and inches with their marks
+  optional (`10-2 3/16`, a bare `10` being inches); and degrees, minutes and seconds as
+  `40 30 15`. What the text reads as shows at the field's end, `= 1 3/16 in`, and is
+  the field's accessible description. **A unit typed into a calculator field is
+  refused**, with a button that moves it into the picker: `25 mm` offers "Use 25 mm".
+  Switching a picker re-reads the number you typed and converts a value you didn't;
+  your first switch carries to the calculator's other pickers of that kind. The Units
+  box now sets only how results show. Family settings fields read as before (KI-027).
 - **The command line suggests only names that can be given:** for the right
   triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?". With
   `--method leg_angle`, which takes no side b, it suggests none and names that method's
