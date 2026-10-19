@@ -605,3 +605,20 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **The whole recalculation is the boundary,** reading the fields included: their state
   comes from the family's values, which a plugin's code may derive (ADR-0006,
   amendments).
+
+### 2026-10-19: a column is as wide as its labels ask (Linux CI, ADR-0018's m2)
+
+* **What failed.** On GitHub's ubuntu-24.04 runners, whose default sans is DejaVu Sans,
+  the Angle converter's DMS value, `1°0′0.00″`, was set 97 px wide where its label asked
+  for 98, and the least-size clipping test caught it. The value and unit columns were
+  sized from each text's fractional width (`QFontMetricsF`), rounded up; a label's own
+  hint counts its glyphs in whole pixels, which for °, ′ and ″ in DejaVu Sans came to a
+  pixel more. Fonts whose advances round the other way, as this project's other Linux
+  runs had, never showed it.
+* **The rule now.** Each column is at least as wide as its widest label's own least width
+  (`minimumSizeHint`), padding included, as well as its text's fractional width, rounded
+  up. The symbol column already took its labels' hints. A test raises a label's least
+  width with an indent, which every font shows, and fails without the rule.
+* **What it changes:** a column may be a pixel wider in some fonts; the launch height is
+  unchanged (996 px offscreen here, 990 px with DejaVu Sans).
+

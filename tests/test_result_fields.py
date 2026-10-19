@@ -190,6 +190,28 @@ def test_a_column_is_never_narrower_than_its_text() -> None:
     window.close()
 
 
+def test_a_column_is_never_narrower_than_its_labels_own_least_width() -> None:
+    """A column is as wide as its labels' own least widths, not only their text's.
+
+    A label's own hint counts each glyph in whole pixels, which can exceed its text's
+    fractional width: on Linux CI, DejaVu Sans's ″ cut the DMS value by a pixel. An
+    indent raises a label's least width the same way, without changing its text, so
+    every font shows it.
+    """
+    window = open_window()
+    window.select_calculator("conversions.angle")
+    window.show()
+    panel = window.results
+    for field in panel.fields.values():
+        field.value.setIndent(9)
+        field.unit.setIndent(9)
+    panel._align()
+    for field in panel.fields.values():
+        for label in (field.value, field.unit):
+            assert label.width() >= label.minimumSizeHint().width(), label.text()
+    window.close()
+
+
 LIST_PX = 280
 """The list's width in these tests: its launch width at 9 pt Segoe UI. The layout is in
 text units (ADR-0021), and offscreen fonts differ by platform (Windows' offscreen font is

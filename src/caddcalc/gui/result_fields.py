@@ -593,7 +593,13 @@ class ResultsPanel(QWidget):
         if not fields:
             return
         symbol = max(f.symbol.sizeHint().width() for f in fields)
-        unit = max(QFontMetricsF(f.unit.font()).horizontalAdvance(f.unit.text()) for f in fields)
+        # Each column is at least as wide as its widest label asks to be: a label's own
+        # hint counts each glyph in whole pixels, which can be a pixel more than the
+        # fractional width of its text, as for ″ in DejaVu Sans.
+        unit = max(
+            max(QFontMetricsF(f.unit.font()).horizontalAdvance(f.unit.text()), _least(f.unit))
+            for f in fields
+        )
         metrics = QFontMetricsF(fields[0].value.font())
         point = decimal_separator(self.prefs)
         tails = [_tail(f.parts, metrics, point) for f in fields]
@@ -603,7 +609,8 @@ class ResultsPanel(QWidget):
             aligned = self.tokens.decimal_align and not _flush(field.parts, point)
             pad = most - tail if aligned else 0.0
             field.value.setContentsMargins(0, 0, round(pad), 0)
-            widths.append(metrics.horizontalAdvance(field.value.text()) + round(pad))
+            advance = metrics.horizontalAdvance(field.value.text()) + round(pad)
+            widths.append(max(advance, _least(field.value)))
         value = max(widths)
         # Up, not to the nearest: a column a fraction of a pixel narrower than its text
         # cuts off the text's last pixel.
@@ -611,6 +618,11 @@ class ResultsPanel(QWidget):
             field.symbol.setFixedWidth(symbol)
             field.unit.setFixedWidth(math.ceil(unit))
             field.value.setFixedWidth(math.ceil(value))
+
+
+def _least(label: QLabel) -> int:
+    """Return the least width ``label`` asks for, its contents margins included."""
+    return label.minimumSizeHint().width()
 
 
 def _flush(parts: ValueParts | None, point: str) -> bool:

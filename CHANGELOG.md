@@ -387,6 +387,10 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- A result's value or unit column could be a pixel narrower than its widest label asked
+  for in some fonts, cutting the label's last pixel; on Linux with DejaVu Sans, the
+  Angle converter's degrees, minutes and seconds lost one. Each column now takes its
+  labels' own least widths into account (ADR-0017, amendments).
 - A method whose calculation failed unexpectedly, such as a plugin's bug, left the
   previous method's results on screen under the new method's name. Now its result fields
   go blank and the error shows in the work, the command line exits with the error, and
