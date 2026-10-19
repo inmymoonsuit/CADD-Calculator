@@ -14,6 +14,7 @@ from caddcalc.core.notes import Quantity, check_template
 from caddcalc.core.provenance import EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
 from caddcalc.core.units import Dimension, Precision, base_text, parse_quantity
+from caddcalc.core.units.model import COUNT_LIMIT
 
 
 class Verification(Enum):
@@ -97,6 +98,8 @@ class Param:
             raise OutOfRangeError(self, value, bound=hi, above=True, source=source)
         if self.dimension is Dimension.COUNT and not value.is_integer():
             raise InputError(f"{self.named} must be a whole number")
+        if self.dimension is Dimension.COUNT and abs(value) >= COUNT_LIMIT:
+            raise InputError(f"{self.named} must be under 2^53, to be held exactly")
 
 
 _RELATION = {
@@ -174,8 +177,9 @@ class Output:
     An output gives a unit or a form, not both."""
     signed: bool = False
     """Whether it's a difference whose direction matters, such as an error: a value shown
-    above zero gets a plus sign, as ``+0.002500 in``, and it takes no inch fraction hint.
-    A compound form writes its own sign, so it ignores this."""
+    above zero gets a plus sign, as ``+0.002500 in``, in its row and its work line, and it
+    takes no inch fraction hint. A compound form writes its own sign, so an output in one
+    can't be signed."""
 
 
 @dataclass(frozen=True)

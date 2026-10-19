@@ -230,3 +230,24 @@ def test_the_welcome_cards_version_stays_inside_its_safe_area(
     assert box.x() + box.width() <= math.ceil(area.x + area.width), (box, area)
     assert box.y() + box.height() <= math.ceil(area.y + area.height), (box, area)
     welcome.close()
+
+
+def test_the_disclaimer_is_translated_everywhere_it_is_shown(tmp_path: Path) -> None:
+    """Under the results, in About, and after the command line's results (ADR-0020)."""
+    import html
+
+    from caddcalc.calculators import default_registry
+    from caddcalc.cli import format_result
+    from caddcalc.core.formatting import DISCLAIMER, DisplayPrefs
+    from caddcalc.gui.actions import about_html
+    from caddcalc.gui.branding import Branding
+
+    _in(LANGUAGE, tmp_path)
+    translated = pseudo(DISCLAIMER)
+    assert translated != DISCLAIMER
+    window = open_window()
+    assert window.results.disclaimer.text() == translated
+    window.close()
+    assert html.escape(translated) in about_html(Branding())
+    calc = default_registry(load_plugins=False).get("sheet_metal.bend_allowance")
+    assert format_result(calc, calc.run(), DisplayPrefs()).endswith(f". {translated}")

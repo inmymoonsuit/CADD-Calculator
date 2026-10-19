@@ -43,11 +43,11 @@ from caddcalc.core.units.compound import (
 # Translators: shown under every calculator's results, after the command line's results,
 # and in About.
 DISCLAIMER = N_(
-    "Results are for drafting and education. Verify them against your shop's tooling, "
-    "material data, and a test part before manufacturing."
+    "Verify results and test according to your organization's policies or industry best "
+    "practice before manufacturing."
 )
-"""The one disclaimer for every family, marked for translation; it's translated where
-it's shown."""
+"""The one disclaimer for every family, in the maintainer's words (ADR-0020, amendments),
+marked for translation; it's translated where it's shown."""
 
 
 @dataclass(frozen=True)
@@ -387,9 +387,14 @@ def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValuePart
     if output.signed:
         # A difference takes no fraction hint: "(≈ 0")" beside an error says nothing.
         parts = replace(parts, fraction=None)
-    if output.signed and parts.number[:1] != "-" and any(c in "123456789" for c in parts.number):
-        return replace(parts, number=f"+{parts.number}")  # zero, as shown, has no sign
+    if output.signed:
+        return replace(parts, number=_plus(parts.number))
     return parts
+
+
+def _plus(number: str) -> str:
+    """Return a shown number with a plus sign if it's above zero; zero, as shown, has none."""
+    return f"+{number}" if number[:1] != "-" and any(c in "123456789" for c in number) else number
 
 
 def format_output(output: Output, value: float, prefs: DisplayPrefs) -> str:
@@ -625,6 +630,9 @@ def _step_lines(
     ``None``.
     """
     value_text = format_value(step.value, step.dimension, prefs)
+    if step.signed:
+        number, space, written = value_text.partition(" ")
+        value_text = _plus(number) + space + written
     if step.expression_unit is not None:
         unit = get_unit(step.expression_unit, step.dimension)
         yielded = step.stated

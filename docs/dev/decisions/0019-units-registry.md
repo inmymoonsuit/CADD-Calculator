@@ -411,3 +411,18 @@ six significant figures), and the new messages left unmarked until the sweep.
 * **`format_significant` writes an exponent outside 10⁻⁶ to 10¹⁶**
   (`PLAIN_EXPONENTS`): 1e300 is `1.00000e+300`, not 301 digits. Inside the range it's
   unchanged. `Precision(0, significant=True)` says "at least 1 significant figure".
+
+### 2026-10-19: two units in the last place for a tie (fix round 4, group G)
+
+* One unit in the last place missed ties typed in metres (12 of the cloud review's
+  cases), as fractions of a foot (60), and 99 of 240,000 DMS ties: those are rounded
+  twice on the way in, as typed and into the base unit. `round_half_even` now takes a
+  count within `TIE_ULPS` = 2 units in the last place of a half as the half, so
+  `0.12779375 m` is 5" and `317/384 ft` 9 7/8" to the 1/16, and `1°35′3.405″` is
+  `3.40″`.
+* **Capped below half a count** (`TIE_CAP`, a quarter): where a unit in the last place
+  is bigger than the finest part, as at 2³³°, every count would otherwise be within two
+  of them of a half; 2³³ + 2⁻⁶° is exactly 56.25″ and stays so.
+* Tests sweep every tie to 4 ft typed in metres and as foot fractions, and 20,000 DMS
+  ties; a value three units over a half rounds as itself, and the capped case holds.
+  Mutants of one and four units, and of no cap, each fail them.

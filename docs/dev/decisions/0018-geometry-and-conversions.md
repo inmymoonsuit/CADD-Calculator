@@ -360,3 +360,28 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
 * **Not now:** each JSON row in its own unit or form (m2 Minor 4) changes a public
   format, so it's an open decision in the roadmap. S&R checked SP 811's B.8 factors
   against the printed publication, which the cloud review couldn't reach; they match.
+
+### 2026-10-19: the cloud review's round-2 findings, fix round 4 (group G, code and tests)
+
+* **A hypotenuse equal to its leg in another unit is refused** (Medium 1): `a=39 in`
+  and `c=990.6 mm` gave b = 0 and A = 90°. The leg and hypotenuse are equal within
+  `FLAT_GAP`, 4ε of the hypotenuse, as a flat triangle's sides are; equal lengths typed
+  in two units differed by at most 1.94ε over 40,000 pairs. Tests refuse 2,000 such
+  pairs both ways and pin the bound (4ε refused, 5ε a triangle); a strict test, 3ε and
+  5ε each fail them.
+* **An angle that counts as 90° to the arithmetic says so** (Low 2): "Angle A (opposite
+  a) is so near 90° that it counts as 90° to the arithmetic: give an angle further
+  below 90°". 90° itself is still the range's "must be less than 90°".
+* **The command line offers only names that can be given** (Note): `B=30` for the
+  right triangle is "isn't one: as written it's a result, angle_b. Did you mean b/leg_b?
+  Give it exactly".
+* **A count from 2⁵³ on is refused** (the review's note): 2⁵³ + 1 reads as 2⁵³, so a
+  double can't hold it exactly; `COUNT_LIMIT`, in the parser and `Param.check`.
+* **`tand` is exactly 0 at a whole multiple of 180°**, as `sind` is (ADR-0004's
+  amendment). An error's work line shows its sign as its row does (`Step.signed`, from
+  the output it gives; JSON's shape is unchanged), and an output in a form can't be
+  signed.
+* **Tests for the surviving mutants** (Low 4): the disclaimer translated at each of its
+  three sites, the TSV keeping a "+" value a number, and full precision without the "+".
+  Every long page in the layout test is a built-in calculator.
+* **The disclaimer** is the maintainer's line (ADR-0020's amendment of this date).

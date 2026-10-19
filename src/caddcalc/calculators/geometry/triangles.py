@@ -27,9 +27,8 @@ from caddcalc.calculators.geometry.common import (
     method,
 )
 from caddcalc.calculators.geometry.domain import DOMAIN
-from caddcalc.core import N_, Calculator, Context, InputError, OutOfRangeError, Output, Param
+from caddcalc.core import N_, Calculator, Context, InputError, Output, Param
 from caddcalc.core.expr import tan_is_undefined
-from caddcalc.core.provenance import EXPLICIT
 
 FLAT_GAP = 4 * sys.float_info.epsilon
 """How far over 0 the gap ``a + b − c`` may be, relative to the longest side c, and the
@@ -231,12 +230,9 @@ class RightTriangle(Calculator):
             # So near 90° that tan(A) is undefined, A is 90° to the arithmetic, in either
             # angle method, and refused as the range refuses 90° itself.
             angle = next(p for p in self.params if p.key == "angle_a")
-            raise OutOfRangeError(
-                angle,
-                ctx["angle_a"],
-                bound=90.0,
-                above=True,
-                source=ctx.sources.get("angle_a", EXPLICIT),
+            raise InputError(
+                f"{angle.named} is so near 90° that it counts as 90° to the arithmetic: "
+                "give an angle further below 90°"
             )
         if ctx.method == "legs":
             ctx.given("a", output="leg_a")
@@ -245,7 +241,9 @@ class RightTriangle(Calculator):
                 "c", "sqrt(a**2 + b**2)", label="Hypotenuse", dimension=LENGTH, output="hypotenuse"
             )
         elif ctx.method == "leg_hypotenuse":
-            if ctx["hypotenuse"] <= ctx["leg_a"]:
+            # Within FLAT_GAP of each other they're equal, as "39 in" and "990.6 mm" are:
+            # each typed value is rounded on its way in (ADR-0018, amendments).
+            if ctx["hypotenuse"] - ctx["leg_a"] <= FLAT_GAP * ctx["hypotenuse"]:
                 raise InputError("The hypotenuse (c) must be longer than the leg (a).")
             ctx.given("a", output="leg_a")
             ctx.given("c", output="hypotenuse")

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import random
 import re
 from decimal import Decimal
 from fractions import Fraction
@@ -491,6 +493,7 @@ def test_copy_all_keeps_a_compound_value_from_being_read_as_a_formula() -> None:
         ({"form": "dms"}, "form 'dms' doesn't write a length"),
         ({"form": "ft_in", "unit": "in"}, "gives a unit and a form; give one"),
         ({"form": "ft_in", "precision": Precision(6)}, "gives a precision and a form"),
+        ({"form": "ft_in", "signed": True}, "is signed and in a form"),
     ],
 )
 def test_an_output_naming_a_form_it_cant_be_shown_in_is_a_definition_error(
@@ -663,3 +666,62 @@ def test_seconds_may_start_with_their_decimal_mark(typed: str, seconds: float) -
     degrees = abs(float(typed.split("°")[0])) + int(typed.split("°")[1].split("′")[0]) / 60
     decimal = "," if "," in typed else "."
     assert parse_quantity(typed, A, decimal=decimal) == sign * (degrees + seconds / 3600)
+
+
+@pytest.mark.parametrize("denominator", [16, 32, 64])
+def test_a_tie_typed_in_metres_or_foot_fractions_takes_the_even_fraction(denominator: int) -> None:
+    """Typed in metres, or as a fraction of a foot, a tie is rounded twice on its way in.
+
+    So it can land two units in its last place off the half: 0.12779375 m is 5 1/32 in,
+    which takes 5", and 317/384 ft is 9 29/32 in, which takes 9 7/8".
+    """
+    for odd in range(1, 4 * 12 * 2 * denominator, 2):
+        half = Fraction(odd, 2 * denominator)
+        expected = Fraction(round(half * denominator), denominator)
+        metres = Decimal(half.numerator) * Decimal("0.0254") / half.denominator
+        for text in (f"{metres} m", f"{half / 12} ft"):
+            for sign in (1, -1):
+                value = sign * parse_quantity(text, L)
+                assert nearest_inches(value, denominator) == sign * expected, (sign, text)
+    assert nearest_inches(parse_quantity("0.12779375 m", L), 16) == 5
+    assert nearest_inches(parse_quantity("317/384 ft", L), 16) == Fraction(79, 8)
+
+
+def test_a_tie_in_seconds_takes_the_even_hundredth() -> None:
+    """Seconds typed to the thousandth, ending in 5, are ties at hundredths."""
+    rng = random.Random("dms ties")
+    for _ in range(20_000):
+        degrees, minutes = rng.randrange(0, 360), rng.randrange(0, 60)
+        thousandths = rng.randrange(0, 6000) * 10 + 5
+        typed = f"{degrees}°{minutes}′{Decimal(thousandths) / 1000}″"
+        hundredths = round(Fraction(thousandths, 10))  # half to even, exactly
+        expected = f"{hundredths // 100}.{hundredths % 100:02d}″"
+        shown = DegreesMinutesSeconds(2).text(parse_quantity(typed, A)).shown
+        assert shown.endswith(f"′{expected}") or hundredths == 6000, (typed, shown)
+    assert DegreesMinutesSeconds(2).text(parse_quantity("1°35′3.405″", A)).shown == "1°35′3.40″"
+
+
+def test_a_count_three_units_in_the_last_place_from_a_half_is_no_tie() -> None:
+    """The tolerance is two units in the last place: three is a value, not a typed tie."""
+    from caddcalc.core.units.compound import TIE_ULPS
+
+    assert TIE_ULPS == 2
+    tie = parse_quantity("1/32 in", L)  # between 0 and 1/16: a tie takes 0, the even one
+    scale = Fraction(16) / Fraction("25.4")
+    value = tie
+    while (Fraction(value) * scale - Fraction(1, 2)) / (Fraction(math.ulp(value)) * scale) < 3:
+        value = math.nextafter(value, math.inf)
+    assert nearest_inches(tie, 16) == 0
+    assert nearest_inches(value, 16) == Fraction(1, 16), "three units over: it rounds up"
+
+
+def test_a_value_too_large_for_its_finest_part_is_never_all_ties() -> None:
+    """At 2³³°, a unit in the last place is more than a hundredth of a second.
+
+    Without the cap every count would be within two of them of a half; 2⁻⁶° is exactly
+    56.25″, and stays so.
+    """
+    from caddcalc.core.units.compound import TIE_CAP
+
+    assert Fraction(1, 4) == TIE_CAP
+    assert DegreesMinutesSeconds(2).text(2.0**33 + 2.0**-6).shown == "8589934592°0′56.25″"

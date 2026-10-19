@@ -541,8 +541,15 @@ def test_the_window_opens_on_a_builtin_even_below_a_plugins_calculator() -> None
 
 
 LONG_PAGES = {"conversions.length", "geometry.right_triangle"}
-"""Pages taller than the launch height at 9 pt, which scroll as a whole (rule C) until
-ADR-0023's layout contract replaces this list with a flag each page declares."""
+"""Pages taller than the launch height at 9 pt, which scroll as a whole (rule C; KI-024)
+until ADR-0023's layout contract replaces this list with a flag each page declares."""
+
+
+def test_every_long_page_is_a_builtin_calculator() -> None:
+    """A renamed or removed calculator can't leave a stale exemption behind."""
+    from caddcalc.calculators import BUILTIN_CALCULATORS
+
+    assert LONG_PAGES.issubset({c.id for c in BUILTIN_CALCULATORS})
 
 
 def _design_font(app: Any) -> Any:

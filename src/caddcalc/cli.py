@@ -210,12 +210,16 @@ def _resolve_param(calc: Calculator, name: str) -> Param:
         for o in calc.outputs
         if folded in (o.key.casefold(), o.symbol.casefold()) and o.symbol not in symbols
     ]
-    if len(matches) + len({o.symbol for o in results}) > 1:
-        names = ", ".join(
-            [f"{p.symbol}/{p.key}" for p in matches]
-            + [f"{o.symbol}/{o.key} (a result)" for o in results]
-        )
+    if len(matches) > 1:
+        names = ", ".join(f"{p.symbol}/{p.key}" for p in matches)
         raise InputError(f"Input {name!r} for {calc.id} could be {names}; give one exactly")
+    if matches and results:
+        # Only what can be given is offered: the result is named, not suggested.
+        (p,) = matches
+        raise InputError(
+            f"Input {name!r} for {calc.id} isn't one: as written it's a result, "
+            f"{results[0].key}. Did you mean {p.symbol}/{p.key}? Give it exactly"
+        )
     if not matches:
         options = ", ".join(f"{p.symbol}/{p.key}" for p in calc.params)
         raise InputError(f"Unknown input {name!r} for {calc.id}. Inputs: {options}")

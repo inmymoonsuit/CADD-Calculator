@@ -647,3 +647,10 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
 * **A field's label names its symbol once:** "Side a", not "Side a (a)", and "Angle A
   (opposite a)", not "… (A)" (`spec.named`); range and missing-input messages use the
   same rule. No sheet-metal label holds its symbol, so none of theirs changes.
+
+### 2026-10-19: the help reaches the keyboard (fix round 4)
+
+* **The copy button's accessible description carries the output's help** (the cloud
+  review's Low 3): Tab reaches the button, not the label whose tooltip has the help, so
+  a screen reader says "E16: plus 0.002500 inches. The nearest fraction less the value
+  …". Every output with help gets it, the sheet-metal ones included.

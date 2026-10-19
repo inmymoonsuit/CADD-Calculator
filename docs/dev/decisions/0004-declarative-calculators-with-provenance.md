@@ -70,6 +70,7 @@ The front ends show the method, status, references, and a disclaimer next to eve
   `sin(radians(180))` is 1.2e-16, which made a whole circle's chord 2.4e-15 in long.
   Support & Review's Note 2 on ADR-0018's m1 found it. No sheet-metal formula uses
   either function, and every golden test passes unchanged.
+* `tand` is exactly 0 at a whole multiple of 180° too (fix round 4).
 * `expr.tan_is_undefined` is the test `tand` refuses by, public so a calculator can
   refuse the same angle before another method computes from it (ADR-0018, fix round 2).
 

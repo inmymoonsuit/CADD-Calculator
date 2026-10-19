@@ -187,7 +187,8 @@ def test_fields_and_buttons_have_names_a_screen_reader_says_in_full() -> None:
     assert field.accessibleName() == "Bend allowance, BA: 0.3119 inches"
     assert field.copy_button.accessibleName() == "Copy Bend allowance"
     assert field.copy_button.toolTip() == "Copy Bend allowance", "the label as written"
-    assert field.copy_button.accessibleDescription() == "BA: 0.3119 inches", "not the label twice"
+    # Not the label twice; the output's help follows, since Tab reaches the button only.
+    assert field.copy_button.accessibleDescription() == f"BA: 0.3119 inches. {field.output.help}"
     assert window.results.copy_all_button.accessibleName() == "Copy all results"
     window.select_calculator("sheet_metal.truncated_cone_layout")
     angle = window.results.fields["sweep_angle"]

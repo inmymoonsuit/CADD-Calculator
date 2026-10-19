@@ -387,6 +387,14 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A right triangle's hypotenuse equal to its leg is refused in any units:** `a=39 in`
+  with `c=990.6 mm` gave a leg of 0 and an angle of 90°.
+- **A half-way value typed in meters or as a fraction of a foot takes the even
+  fraction:** `0.12779375 m` is 5" and `317/384 ft` 9 7/8" to the 1/16, and
+  `1°35′3.405″` is `3.40″`.
+- An angle within about 6e-11° of 90° is refused saying it counts as 90°, a count too
+  large for the computer to hold exactly (2⁵³ and up) is refused, and `tand(180)` is
+  exactly 0.
 - **A triangle's small or nearly straight angle keeps its digits:** every angle is
   Kahan's half-angle formula, so sides 10, 10 and 1e-7 give C = 5.73e-7°, not 0, and
   Copy full precision and JSON give the true angle (ADR-0018, amendments).
@@ -495,6 +503,10 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The command line suggests only names that can be given:** for the right
+  triangle's `B=30` it says B is a result and asks "Did you mean b/leg_b?".
+- A result's help reaches the keyboard: screen readers say it after the copy button's
+  value. An error's work line shows its sign, `+0.0025 in`, as its row does.
 - **Speech, in words a drafter says:** "1 foot and a quarter inch", "a half inch", "1
   foot and 3 sixteenths of an inch". Spoken parts are joined by CLDR's list patterns, so
   a translation can put its "and" before the last part only.
@@ -531,8 +543,11 @@ All notable changes are recorded here. The format follows
   …", and one part of an inch as "1 and a quarter inches" or "1 and a half inches".
 - "Copy with unit" isn't offered for feet and inches or degrees, minutes and seconds,
   whose copy names its units already.
-- **The disclaimer is one line for every family,** marked for translation: "…Verify them
-  against your shop's tooling, material data, and a test part before manufacturing."
+- **The disclaimer is one line for every family,** in the maintainer's words, marked for
+  translation: "Verify results and test according to your organization's policies or
+  industry best practice before manufacturing." It's shown under the results, after the
+  command line's results, and in About. The maintainer chose it: "Sounds like the best
+  wording so far. I like it" (ADR-0020, amendments).
 - **The window opens at main's launch height again, 738 px at 9 pt,** and is never
   sized to its content (ADR-0021, the interim amendment, on the maintainer's ruling,
   pending ADR-0023). A page taller than that, such as the Length converter or the right

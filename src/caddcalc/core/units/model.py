@@ -129,6 +129,11 @@ class Unit:
         return npgettext_shown(NAME_CONTEXT, self.name, self.spoken_plural, shown)
 
 
+COUNT_LIMIT = 2**53
+"""The first whole number a double can't tell from its neighbour, 2⁵³ + 1 reading as 2⁵³:
+a count must be under it to be held exactly."""
+
+
 @dataclass(frozen=True)
 class Precision:
     """How many digits a value is shown with: decimal places, or significant figures.

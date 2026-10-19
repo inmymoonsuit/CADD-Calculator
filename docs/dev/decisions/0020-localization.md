@@ -470,3 +470,16 @@ Spoken forms, unit names and the fractions' words are marked (ADR-0019, u3 and u
   and "doesn't use … its inputs are …"; "too large to calculate with" and a converter's
   "too large to show in …"; and the menu's "Copy full precision, in {unit}", with the
   rest of the result fields' text.
+
+### 2026-10-19: the disclaimer, in the maintainer's words (fix round 4)
+
+The maintainer ruled on round 2's change of the disclaimer, 2026-10-19: "Let's go with
+one generic disclaimer/instruction. Maybe: 'Verify results and test according to your
+organization policies or using industry best-practice before manufacturing.'" Lightly
+edited for grammar with their agreement, it's "Verify results and test according to
+your organization's policies or industry best practice before manufacturing.", of which
+they said: "Sounds like the best wording so far. I like it". That is now the disclaimer,
+for every family, Sheet Metal included, word for word, wherever it's shown: under the
+results, after the command line's results, and in About. It's marked for translation;
+the British catalog spells it "organisation's", and en_CA keeps the source's
+"organization's".

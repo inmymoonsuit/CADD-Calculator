@@ -32,6 +32,9 @@ class Step:
     """The value as its source states it, e.g. ``"0.109375 in"``, shown as the expression's
     result instead of a figure rounded for display. It needs an ``expression_unit``, in
     which it must state ``value`` exactly."""
+    signed: bool = False
+    """Whether its value is shown with a plus sign above zero, as the signed output it gives
+    is (``Output.signed``)."""
 
     def __post_init__(self) -> None:
         if self.expression_unit is None:

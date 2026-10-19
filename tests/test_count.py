@@ -87,3 +87,17 @@ def test_the_window_shows_a_count_whole_and_refuses_a_percent() -> None:
     )
     assert window.result is None
     window.close()
+
+
+@pytest.mark.parametrize("typed", ["9007199254740993", "9007199254740992", "-9007199254740993"])
+def test_a_count_a_double_cant_hold_exactly_is_refused(typed: str) -> None:
+    """2⁵³ + 1 reads as 2⁵³, so from 2⁵³ on a count can't be told from its neighbour."""
+    with pytest.raises(InputError, match="too large a count to hold exactly"):
+        parse_quantity(typed, COUNT)
+    assert parse_quantity("9007199254740991", COUNT) == 2**53 - 1
+    from caddcalc.core import Param
+
+    param = Param("n", "N", "Number", COUNT, default="1")
+    with pytest.raises(InputError, match=r"Number \(N\) must be under 2\^53"):
+        param.check(float(2**53))
+    param.check(float(2**53 - 1))

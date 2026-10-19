@@ -319,8 +319,13 @@ class ResultField(QWidget):
         self.setAccessibleName(
             FIELD_NAME.format(label=self.output.label, symbol=symbol, value=spoken)
         )
-        # Said after the button's name, "Copy Bend allowance", so not the label again.
-        self.copy_button.setAccessibleDescription(VALUE_SPOKEN.format(symbol=symbol, value=spoken))
+        # Said after the button's name, "Copy Bend allowance", so not the label again. The
+        # button is what Tab reaches, so it carries the output's help too: the label's
+        # tooltip is the mouse's only.
+        described = VALUE_SPOKEN.format(symbol=symbol, value=spoken)
+        if self.output.help:
+            described = f"{described}. {self.output.help}"
+        self.copy_button.setAccessibleDescription(described)
         self.update()
 
     def copy(self, form: CopyForm = CopyForm.VALUE) -> str | None:

@@ -408,8 +408,6 @@ class MainWindow(QMainWindow):
         self.addAction(self.copy_all_action)
         QGuiApplication.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
 
-        launch = self.launch_size()
-        self.resize(round(launch.width), round(launch.height))
         # It opens on the first built-in calculator: a plugin's calculator in a built-in
         # family can sort above it, and its code runs only once it's chosen.
         items = list(self._calculator_items())

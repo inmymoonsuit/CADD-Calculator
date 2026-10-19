@@ -230,6 +230,33 @@ def _refused_in_every_order(*typed: str) -> None:
             Triangle().run(dict(zip(("side_a", "side_b", "side_c"), order, strict=True)))
 
 
+def test_a_hypotenuse_equal_to_its_leg_in_another_unit_is_refused() -> None:
+    """39 in is 990.6 mm, so c = a, however they're typed: a few ε apart as doubles."""
+    pairs = [("39 in", "990.6 mm"), ("1 ft", "12 in"), ("0.3048 m", "1 ft"), ("2.54 cm", "1 in")]
+    rng = random.Random("legs in two units")
+    to_mm = {"in": Decimal("25.4"), "ft": Decimal("304.8"), "mm": 1, "cm": 10, "m": 1000}
+    while len(pairs) < 2000:
+        first, second = rng.sample(sorted(to_mm), 2)
+        typed = Decimal(rng.randint(1, 999_999)) / 1000
+        other = (typed * Decimal(to_mm[first]) / Decimal(to_mm[second])).normalize()
+        if other == other.quantize(Decimal("1e-9")):
+            pairs.append((f"{typed} {first}", f"{other} {second}"))
+    for leg, hypotenuse in pairs:
+        for a, c in ((leg, hypotenuse), (hypotenuse, leg)):
+            keys = {"leg_a": parse_quantity(a, LENGTH_), "hypotenuse": parse_quantity(c, LENGTH_)}
+            with pytest.raises(InputError, match=r"hypotenuse \(c\) must be longer"):
+                RightTriangle().run(keys, "leg_hypotenuse")
+
+
+def test_a_hypotenuse_is_its_leg_within_4_epsilon() -> None:
+    eps = sys.float_info.epsilon
+    keys = {"leg_a": 1.0, "hypotenuse": 1.0 + 4 * eps}
+    with pytest.raises(InputError, match=r"hypotenuse \(c\) must be longer"):
+        RightTriangle().run(keys, "leg_hypotenuse")
+    out = RightTriangle().run({**keys, "hypotenuse": 1.0 + 5 * eps}, "leg_hypotenuse").outputs
+    assert out["leg_b"] > 0 and out["angle_a"] < 90
+
+
 @pytest.mark.parametrize("unit", ["in", "mm", "ft", "m"])
 def test_a_flat_triangle_typed_in_decimals_is_refused(unit: str) -> None:
     """0.1 + 0.2 comes out over 0.3 as doubles, yet those sides make no triangle."""
@@ -303,9 +330,10 @@ def test_an_acute_angle_outside_0_to_90_is_refused(angle: float) -> None:
 def test_an_angle_that_is_90_to_the_arithmetic_is_refused_in_either_method(method: str) -> None:
     """Within about 6e-11° of 90°, tan(A) is undefined: both angle methods refuse it alike."""
     given = {"leg_angle": "leg_a", "hypotenuse_angle": "hypotenuse"}[method]
-    for angle in (90.0, 89.99999999995):
-        with pytest.raises(OutOfRangeError, match=r"^Angle A \(opposite a\) must be less than 90"):
-            run_inches(RightTriangle(), method, **{given: 3, "angle_a": angle})
+    with pytest.raises(OutOfRangeError, match=r"^Angle A \(opposite a\) must be less than 90"):
+        run_inches(RightTriangle(), method, **{given: 3, "angle_a": 90.0})
+    with pytest.raises(InputError, match="so near 90° that it counts as 90° to the arithmetic"):
+        run_inches(RightTriangle(), method, **{given: 3, "angle_a": 89.99999999995})
     out = run_inches(RightTriangle(), method, **{given: 3, "angle_a": 89.9999999999})
     assert 0 < out["leg_b"] < 1e-11
 

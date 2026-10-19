@@ -380,3 +380,30 @@ def test_a_radian_is_180_over_pi_degrees_to_every_digit_copied() -> None:
     assert _copied(AngleConverter(), "1 rad", "deg", CopyForm.FULL) == "57.29577951"
     assert _copied(AngleConverter(), "180", "rad", CopyForm.FULL) == "3.141592654"
     assert convert(1, get_unit("rad"), get_unit("deg")) == pytest.approx(180 / math.pi, rel=1e-15)
+
+
+def test_an_errors_work_line_shows_its_sign_as_its_row_does() -> None:
+    from caddcalc.core.formatting import render_step
+
+    calc = LengthConverter()
+    cases = (("0.31 in", "+0.0025 in"), ("0.315 in", "-0.0025 in"), ("0.3125 in", "0.0000 in"))
+    for typed, shown in cases:
+        result = calc.run({"value": parse_quantity(typed, L)})
+        step = next(s for s in result.steps if s.symbol == "E16")
+        assert step.signed and render_step(step, result, DisplayPrefs())[2] == shown, typed
+    n16 = next(s for s in result.steps if s.symbol == "N16")
+    assert not n16.signed and render_step(n16, result, DisplayPrefs())[2] == "0.3125 in"
+    assert "signed" not in result.to_dict()["steps"][0], "JSON's shape is unchanged"
+
+
+def test_the_tsv_keeps_a_plus_value_a_number_and_full_precision_drops_the_plus() -> None:
+    """A "+0.002500" cell pastes as a number, so it isn't quoted as text."""
+    from caddcalc.core.formatting import results_tsv
+
+    calc = LengthConverter()
+    result = calc.run({"value": parse_quantity("0.31 in", L)})
+    rows = results_tsv(calc, result, DisplayPrefs()).splitlines()
+    row = next(r for r in rows if r.startswith("E16"))
+    assert row.split("\t")[2] == "+0.002500", row
+    assert _copied(calc, "0.31 in", "error_16", CopyForm.FULL) == "0.0025"
+    assert _copied(calc, "0.31 in", "error_16", CopyForm.VALUE) == "+0.002500"

@@ -45,7 +45,9 @@ Each result shows:
 
 ## Disclaimer
 
-Results are for drafting and education. Verify them against your shop's tooling,
-material data, and a test part before manufacturing. A bent part also depends on the
-material lot, grain direction, temper, and bending method, so make a test bend. The
-software comes with no warranty.
+Verify results and test according to your organization's policies or industry best
+practice before manufacturing.
+
+Results are for drafting and education, and the software comes with no warranty. A
+bent part also depends on the material lot, grain direction, temper, and bending method,
+which is why a test bend is the usual practice.

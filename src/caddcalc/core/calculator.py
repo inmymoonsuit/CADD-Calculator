@@ -252,6 +252,8 @@ class Context:
             raise SpecError(f"{self.calculator.id}: symbol {step.symbol!r} is defined twice")
         if output is not None:
             self._claim(output)
+            if any(o.key == output and o.signed for o in self.calculator.outputs):
+                step = replace(step, signed=True)  # its work line shows the sign too
         self.symbols[step.symbol] = (step.value, step.dimension)
         self.steps.append(step)
         if output is not None:
@@ -562,6 +564,11 @@ def _check_output_unit(owner: str, output: Output) -> None:
             raise SpecError(
                 f"{owner}: output {output.key!r} gives a precision and a form; a form has "
                 "its own fineness"
+            )
+        if output.signed:
+            raise SpecError(
+                f"{owner}: output {output.key!r} is signed and in a form; a form writes its "
+                "own sign"
             )
         return
     if not output.unit:

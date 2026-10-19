@@ -250,10 +250,10 @@ def test_a_cli_name_matching_an_input_and_a_result_in_any_case_is_refused(calc_i
     from caddcalc.core import InputError
 
     calc = default_registry(load_plugins=False).get(calc_id)
-    with pytest.raises(
-        InputError, match=rf"'B' for {calc_id} could be b/\w+, B/angle_b \(a result\); give one"
-    ):
+    message = rf"'B' for {calc_id} isn't one: as written it's a result, angle_b. Did you mean b/"
+    with pytest.raises(InputError, match=message) as refused:
         parse_inputs(calc, ["B=30"], "in")
+    assert "B/angle_b" not in str(refused.value), "a result is never offered as an input"
     (key,) = parse_inputs(calc, ["b=30"], "in")
     assert next(p for p in calc.params if p.key == key).symbol == "b"
 

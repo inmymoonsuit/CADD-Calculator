@@ -22,7 +22,7 @@ from typing import NamedTuple
 from caddcalc.core.errors import InputError, UsageError
 from caddcalc.core.units.builtin import DIMENSIONS
 from caddcalc.core.units.builtin import UNITS as UNITS
-from caddcalc.core.units.model import Dimension, Exact, Unit
+from caddcalc.core.units.model import COUNT_LIMIT, Dimension, Exact, Unit
 from caddcalc.core.units.numbers import MINUS_SIGN as MINUS_SIGN
 from caddcalc.core.units.numbers import parse_number as parse_number
 from caddcalc.core.units.unit_registry import registry
@@ -162,6 +162,8 @@ def parse_quantity_detailed(
         )
     if dimension is Dimension.COUNT and not float(number).is_integer():
         raise InputError(f"{text!r} isn't a whole number, and a count is")
+    if dimension is Dimension.COUNT and abs(number) >= COUNT_LIMIT:
+        raise InputError(f"{text!r} is too large a count to hold exactly: give one under 2^53")
     value = number * unit.factor
     if not math.isfinite(value):
         # A finite number in a large unit, as 1e308 ft is, can overflow in the base unit.

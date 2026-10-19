@@ -50,9 +50,14 @@ def tan_is_undefined(deg: float) -> bool:
 
 
 def _tand(deg: float) -> float:
-    """Tangent of an angle in degrees, refusing angles where it is undefined."""
+    """Tangent of an angle in degrees, refusing angles where it is undefined.
+
+    It's exactly 0 at a whole multiple of 180°, as ``_sind`` is.
+    """
     if tan_is_undefined(deg):
         raise ValueError(f"tan is undefined at {deg:g}°")
+    if math.fmod(deg, 180.0) == 0.0:
+        return 0.0  # as sind is (_sind)
     return math.tan(math.radians(deg))
 
 

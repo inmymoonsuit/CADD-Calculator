@@ -673,6 +673,8 @@ def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
     assert field.value.text() == "+0.002500" and field.unit.text() == "in"
     assert field.label.toolTip() == field.output.help == field.accessibleDescription()
     assert "plus 0.002500 inches" in field.accessibleName()
+    description = field.copy_button.accessibleDescription()
+    assert description == f"E16: plus 0.002500 inches. {field.output.help}", "Tab reaches it"
     assert "Copy with unit" in [a.text() for a in field.context_menu().actions()]
     field.label.resize(8, field.label.height())
     assert field.label.toolTip() == tip_text(field.output.label, field.output.help), "elided"

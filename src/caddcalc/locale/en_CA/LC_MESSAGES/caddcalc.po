@@ -146,14 +146,6 @@ msgstr ""
 msgid "Regular polygon"
 msgstr ""
 
-#. shown under every calculator's results, after the command line's results,
-#. and in About.
-#: src/caddcalc/core/formatting.py
-msgid ""
-"Results are for drafting and education. Verify them against your shop's tooling, material data, "
-"and a test part before manufacturing."
-msgstr ""
-
 #: src/caddcalc/calculators/geometry/triangles.py
 msgid "Right triangle"
 msgstr ""
@@ -184,6 +176,14 @@ msgstr ""
 
 #: src/caddcalc/calculators/sheet_metal/bends.py
 msgid "V-die opening (air bending)"
+msgstr ""
+
+#. shown under every calculator's results, after the command line's results,
+#. and in About.
+#: src/caddcalc/core/formatting.py
+msgid ""
+"Verify results and test according to your organization's policies or industry best practice "
+"before manufacturing."
 msgstr ""
 
 #. the welcome card's version line. It sits in a small corner of the
@@ -515,6 +515,18 @@ msgstr ""
 #, python-brace-format
 msgid "{numerator} {part} of an inch"
 msgstr ""
+
+#~ msgid ""
+#~ "Results are for drafting and education. Verify them"
+#~ " against your shop's tooling, material data, and "
+#~ "a test part before manufacturing."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Verify results and test according to your "
+#~ "organization policies or using industry best-practice "
+#~ "before manufacturing."
+#~ msgstr ""
 
 #~ msgid "{first} {second}"
 #~ msgstr ""

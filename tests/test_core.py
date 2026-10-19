@@ -687,6 +687,10 @@ def test_expr_sine_and_cosine_are_exactly_0_where_they_are_0() -> None:
         expr.evaluate("sind(x)", {"x": 90.0}) == 1.0
         and expr.evaluate("cosd(x)", {"x": 180.0}) == -1.0
     )
+    for k in range(-8, 9):
+        assert expr.evaluate("tand(x)", {"x": 180.0 * k}) == 0.0, k
+    assert math.tan(math.radians(180)) != 0, "the case it's for"
+    assert expr.evaluate("tand(x)", {"x": 45.0}) == math.tan(math.radians(45))
 
 
 def test_expr_evaluates_exactly_with_exact_inputs() -> None:

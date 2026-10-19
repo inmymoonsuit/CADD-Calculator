@@ -70,18 +70,28 @@ class CompoundForm(ABC):
         """Return a base-unit value written in this form, rounded once, to ``fineness``."""
 
 
+TIE_ULPS = 2
+"""How many units in the last place of a value, so counted, a count may be from a half and
+still be taken as that half (``round_half_even``)."""
+TIE_CAP = Fraction(1, 4)
+"""The most a count may be from a half and be taken as it, whatever the value's units in
+the last place: under half a count, so a value too large to hold the finest part is never
+all ties."""
+
+
 def round_half_even(value: float, scale: Fraction) -> int:
     """Return ``|value| · scale`` rounded to a whole number once, half to even.
 
     ``scale`` counts a base-unit value in a form's finest part, such as sixteenths of an
     inch. A value typed as a half-way one, as 3/32 in is between 1/16 and 1/8, is a double
-    already, so it lands a little off the half, one way or the other. A count within one
-    unit in the last place of the typed value, so counted, of a half is taken as that half,
-    and rounds to even whichever way it landed.
+    already, rounded once as typed and again into the base unit, as 0.12779375 m is, so it
+    lands a little off the half, one way or the other. A count within ``TIE_ULPS`` units in
+    the last place of the value, so counted, of a half, and never more than ``TIE_CAP``, is
+    taken as that half, and rounds to even whichever way it landed (ADR-0019, amendments).
     """
     parts = abs(Fraction(value)) * scale
     half = Fraction(math.floor(parts)) + Fraction(1, 2)
-    if abs(parts - half) <= Fraction(math.ulp(value)) * scale:
+    if abs(parts - half) <= min(TIE_ULPS * Fraction(math.ulp(value)) * scale, TIE_CAP):
         parts = half
     return round(parts)
 
