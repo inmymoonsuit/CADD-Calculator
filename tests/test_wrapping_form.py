@@ -96,6 +96,27 @@ def test_the_settings_page_builds_its_form_as_a_wrapping_form() -> None:
     window.close()
 
 
+def _squeezed(window: Any) -> list[Any]:
+    """Every clipped widget narrower than its least width, or past the window's right edge.
+
+    A wrapped label short of its text's height at one width is KI-032, tested below.
+    """
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QGroupBox
+
+    from tests.test_translated_gui import _clipped
+
+    return [
+        w
+        for w in _clipped(window)
+        if not isinstance(w, QGroupBox)
+        and (
+            w.width() < w.minimumSizeHint().width()
+            or w.mapTo(window, QPoint(w.width(), 0)).x() > window.width()
+        )
+    ]
+
+
 def test_no_settings_row_is_squeezed_at_any_window_width() -> None:
     """The settings page at each width from its least to 400 px wider, a pixel at a time.
 
@@ -103,10 +124,8 @@ def test_no_settings_row_is_squeezed_at_any_window_width() -> None:
     Group boxes are left out, as the domain page's picker test leaves them out: the check
     measures a group box's least height at its least width (ADR-0024's U1 amendment).
     """
-    from PySide6.QtWidgets import QGroupBox
-
     from tests.qt_helpers import open_window, settle
-    from tests.test_translated_gui import _clipped, _described
+    from tests.test_translated_gui import _described
 
     window = open_window()
     window.show()
@@ -117,7 +136,53 @@ def test_no_settings_row_is_squeezed_at_any_window_width() -> None:
     for extra in range(400):
         window.resize(least.width() + extra, least.height())
         settle(window)
-        clipped = [w for w in _clipped(window) if not isinstance(w, QGroupBox)]
-        found += [f"+{extra} px: {_described(w, window)}" for w in clipped]
+        found += [f"+{extra} px: {_described(w, window)}" for w in _squeezed(window)]
     assert not found, "\n".join(found[:6])
+    window.close()
+
+
+def _short_labels(window: Any) -> list[Any]:
+    """Every shown word-wrapped label given less height than its text needs at its width."""
+    from PySide6.QtWidgets import QLabel
+
+    return [
+        label
+        for label in window.settings_box.findChildren(QLabel)
+        if label.isVisible()
+        and label.wordWrap()
+        and label.height() < label.heightForWidth(label.width())
+    ]
+
+
+def test_qt_gives_a_form_the_wrong_heights_at_exactly_its_preferred_width() -> None:
+    """KI-032 as Qt has it: at its preferred width a form's wrapped labels fall short.
+
+    One pixel either side, they're whole. If this fails, Qt lays the form out right at that
+    width now: the sweep above can check labels' heights as well, and KI-032 can close.
+    """
+    from tests.qt_helpers import open_window, settle
+
+    window = open_window()
+    window.show()
+    window.select_domain("sheet_metal")
+    settle(window)
+    form = window.settings_form
+    height = window.minimumSizeHint().height()
+
+    def at(width: int) -> int:
+        window.resize(width, height)
+        settle(window)
+        return int(form.sizeHint().width() - form.geometry().width())
+
+    width = window.width()
+    for _ in range(8):  # the form widens as the window does, a pixel for a pixel
+        short_by = at(width)
+        if short_by == 0:
+            break
+        width += short_by
+    assert at(width) == 0, "the window reaches the form's preferred width"
+    assert _short_labels(window), "short at the preferred width"
+    for beside in (width - 1, width + 1):
+        at(beside)
+        assert _short_labels(window) == [], beside
     window.close()

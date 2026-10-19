@@ -224,6 +224,21 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
+### KI-032: At exactly its preferred width, a form's wrapped help text is cut short (Low)
+
+At one window width, where the family settings form is exactly as wide as it prefers,
+Qt lays it out with row heights it worked out for another width, so two settings' help
+texts get less height than their wrapped lines need. One pixel wider or narrower,
+they're whole. It's on main before ADR-0024's stop 3 too. Offscreen here at 9 pt, the
+thickness and K-factor help get 81 px of 104 and 117 px, 581 px past the least window
+on main; the Windows jobs saw the same at 396 px past it. Qt 6.12's
+`QFormLayout::setGeometry` (qformlayout.cpp) skips recomputing the heights at that
+width when it has a height cached for it, and lays the rows out from whatever width it
+last worked heights out for. The one reset Qt offers, `invalidate()`, lays the page out
+again, so calling it from `setGeometry` would need a guard against looping; that's for a
+decision, not done here. `tests/test_wrapping_form.py` checks Qt's behaviour; when it
+fails, the 400-width sweep there can check labels' heights too.
+
 ### KI-031: Qt squeezes a form's field when its row fits only without the gap (Low, worked around)
 
 A `QFormLayout` that wraps long rows (`WrapLongRows`, ADR-0021 §7) decides that a row
