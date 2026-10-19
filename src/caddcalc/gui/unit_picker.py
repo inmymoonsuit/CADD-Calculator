@@ -14,7 +14,7 @@ from collections.abc import Iterable, Sequence
 from typing import override
 
 from PySide6.QtCore import QEvent, QModelIndex, QObject, QPersistentModelIndex, QSize, Qt, Signal
-from PySide6.QtGui import QFocusEvent, QFontMetricsF, QKeyEvent, QResizeEvent, QShowEvent
+from PySide6.QtGui import QFocusEvent, QFontMetricsF, QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QLabel,
@@ -144,17 +144,6 @@ class UnitPicker(QComboBox):
     def set_text_width(self, width: int) -> None:
         """Hold ``width`` pixels of text, as wide as the page's widest symbol (§1, §8)."""
         self.text_width = width
-        self.updateGeometry()
-
-    @override
-    def showEvent(self, event: QShowEvent) -> None:
-        """Give the layout its size again, as measured now that it shows.
-
-        A picker built on a hidden page is measured before it shows, and a style can
-        measure a shown combo box wider; the layout keeps the first size unless told
-        (engineering log, 2026-10-19).
-        """
-        super().showEvent(event)
         self.updateGeometry()
 
     @override

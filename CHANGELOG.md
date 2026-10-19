@@ -397,6 +397,10 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A family settings row is never squeezed beside its label** (KI-031): within a few
+  pixels of fitting, a row stayed beside its label and its field lost those pixels,
+  cutting into a choice box at some window widths and, on Windows, into the unit
+  pickers at the least size. Such a row now goes below its label.
 - **A decimal half shows to even in every unit** (KI-028): 49.92751 mm is `1.9656 in`, a
   0.5 mm circle's radius `0.0002 m`, and 1/32 in `0.7938 mm`, where each showed its
   double's rounding. A value within two of its last places of a half is taken as the

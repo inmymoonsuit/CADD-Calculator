@@ -128,7 +128,7 @@ from caddcalc.gui.pages import (
     PageStack,
     PageWidget,
 )
-from caddcalc.gui.reflow import Reflow
+from caddcalc.gui.reflow import Reflow, WrappingForm
 from caddcalc.gui.regional import number_symbols
 from caddcalc.gui.result_fields import COPY_ALL_KEYS, COPY_ALL_NAME, ResultsPanel, announce
 from caddcalc.gui.style_tokens import Rect, Size
@@ -524,9 +524,8 @@ class MainWindow(QMainWindow):
         calc_col.addWidget(self.output, 1)
 
         self.settings_box = QGroupBox("Family settings")
-        self.settings_form = QFormLayout(self.settings_box)
         # A narrow page puts each label above its field, rather than scrolling sideways.
-        self.settings_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.settings_form = WrappingForm(self.settings_box)
         self.clear_settings_button = QPushButton("Clear all")
         self.clear_settings_button.setToolTip(
             "Unset every setting of this family, and return each choice to its default."
@@ -1681,7 +1680,7 @@ class MainWindow(QMainWindow):
             self.facts_label = QLabel()
             self.facts_label.setTextFormat(Qt.TextFormat.RichText)
             self.facts_label.setWordWrap(True)
-            self.settings_form.addRow("Facts", self.facts_label)
+            self.settings_form.add_row("Facts", self.facts_label)
         spacers: list[QWidget] = []
         for setting in domain.settings:
             edit = QLineEdit()
@@ -1722,7 +1721,7 @@ class MainWindow(QMainWindow):
             row.addLayout(starts)
             row.addWidget(about)
             self.start_rows[setting.key] = starts
-            self.settings_form.addRow(named(setting.label, setting.symbol), row)
+            self.settings_form.add_row(named(setting.label, setting.symbol), row)
             self.setting_fields[setting.key] = (setting, edit)
             self.setting_abouts[setting.key] = about
         least = picker_text_width(self.setting_pickers.values())
@@ -1807,7 +1806,7 @@ class MainWindow(QMainWindow):
         row = QVBoxLayout()
         row.addWidget(boxes)
         row.addWidget(about)
-        self.settings_form.addRow(choice.label, row)
+        self.settings_form.add_row(choice.label, row)
         self.choice_rows[choice.key] = (group_box, option_box)
 
     def _selections(self, domain: Domain) -> dict[str, str]:

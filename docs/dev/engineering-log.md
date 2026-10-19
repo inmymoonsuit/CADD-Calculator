@@ -16,21 +16,21 @@ Template:
 
 ---
 
-## 2026-10-19: Settling the least-size clip test before it sizes the window
+## 2026-10-19: Two wrong causes for a settings picker clipped on Windows
 **Tried:** at stop 3, both Windows jobs reported the Sheet Metal settings page's unit
-pickers as clipped at the least window size. The test read the window's least size
-straight after switching pages, before the page's layout had run, so it was the last
-page's. 76d626e made the test settle first.
-**Outcome:** not enough. The Windows jobs still failed, now with numbers: each picker
-52 px wide with a least width of 55, and room to spare in the window. The page's layout
-held a picker width older than the picker's own. It doesn't reproduce offscreen on
-Linux, with Fusion or the Windows style, any font tried, or a proxy style that widens or
-re-fonts a combo box once shown or polished.
-**Instead:** a picker tells its layout its size again when it shows
-(`UnitPicker.showEvent`), since a picker on a hidden page is measured before it shows.
-Only the Windows jobs can test it, since nothing here fails without it.
-The test still settles first, which it needs in any case, and names the style, font,
-text width, and whether a clip clears once the layout is told.
+pickers as clipped at the least window size, which no Linux run reproduced. First,
+76d626e made the test settle before it sized the window, since it read the least size
+before the new page's layout had run. Then bfef38a had a picker call `updateGeometry()`
+when it shows, taking the layout for holding a stale size.
+**Outcome:** neither was the cause, and the second was reverted. The test's new message
+showed 52 px given of a 55 px least width, under Fusion, still clipped once the layout
+was told to update.
+**Why:** Qt's form decides a row fits beside its label without counting the gap between
+them (KI-031), and Windows' Segoe UI put that row 3 px inside the gap.
+**Instead:** `WrappingForm` keeps the gap in each label (KI-031). The test still
+settles first, which it needs in any case. It names each clipped widget's style, font
+and text width, and says whether the clip clears once the layout is told to update,
+which is what told a stale size from a layout's own arithmetic.
 
 ## 2026-10-19: Knowing a picker's list is open by overriding hidePopup
 **Tried:** for M-B at stop 2, the picker set `_listing` in `showPopup` and cleared it in

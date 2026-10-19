@@ -224,6 +224,23 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
+### KI-031: Qt squeezes a form's field when its row fits only without the gap (Low, worked around)
+
+A `QFormLayout` that wraps long rows (`WrapLongRows`, ADR-0021 §7) decides that a row
+fits side by side by its label's width and its field's least width, without the gap
+between them, then lays the row out with the gap. So within the gap's width of fitting,
+the row stays side by side and its field gets up to the gap less than its least width:
+a widget runs past the form's edge, and a row of widgets is squeezed. Qt 6.12's
+`QFormLayoutPrivate::setupVerticalLayoutData` and `setupHorizontalLayoutData`
+(qformlayout.cpp) are where. At stop 3 of ADR-0024 the Windows jobs, under Fusion at
+9 pt, gave the Sheet Metal settings page's unit pickers 52 px of their 55 at the least
+window size; offscreen here, its Gauge, Material and Temper boxes got 236 px of their
+242 at window widths 327 to 332 px past the least. Worked around
+by `gui.reflow.WrappingForm`, which keeps the gap in each label's right margin, where Qt
+counts it, and gives the form no horizontal spacing. `tests/test_wrapping_form.py`
+checks Qt's behaviour, the workaround, and the settings page at each of 400 widths;
+when Qt counts the gap, its first test fails, and the class can go.
+
 ### KI-030: A decimal half converted through three roundings can land outside the tie window (Low)
 
 A decimal shown to its places rounds a near-half as the half, half to even, when it's
