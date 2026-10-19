@@ -463,6 +463,11 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The window opens at main's launch height again, 738 px at 9 pt,** and is never
+  sized to its content (ADR-0021, the interim amendment, on the maintainer's ruling,
+  pending ADR-0023). A page taller than that, such as the Length converter or the right
+  triangle, scrolls as a whole. The window no longer lays out every calculator page
+  before it opens.
 - **Families are listed in their declared order,** general tools first: Geometry, then
   Sheet Metal, with a plugin's families after the built-ins. They were sorted by name.
 - **The command line reads an input's exact key or symbol first,** then in any case, so

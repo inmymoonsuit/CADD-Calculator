@@ -219,8 +219,9 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   inch and the square foot in square meters, which B.8 prints exact; and the pound-force
   and the kip per square inch, and the degree, to B.8's printed digits.
 * **The launch height.** The Length converter's twelve rows make it the tallest built-in
-  page, which ADR-0021 §3 makes the launch height: offscreen, 996 px against Geometry's
-  765. Natively at 9 pt, about 970 px against 738, a change UI/UX & Design should rule
-  on. Putting each fraction and its error in one row would make nine rows.
+  page, which ADR-0021 §3 made the launch height: offscreen, 996 px against Geometry's
+  765. The maintainer ruled that the launch height stays main's, 738 px at 9 pt, and the
+  Length converter scrolls (ADR-0021's interim amendment, 2026-10-19); so does the right
+  triangle.
 * **The CLI** needs nothing of its own: `caddcalc run conversions.length X=4.7625mm`
   prints every row, and JSON gives each in base units.

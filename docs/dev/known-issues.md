@@ -203,19 +203,18 @@ inputs and the work show it as `6.0000`, though it must be whole: the calculator
 (ADR-0019 §5: dimensions are a closed set in core), and would come with ADR-0005's
 amendment. `test_a_number_of_sides_that_isnt_whole_is_refused` pins the refusal.
 
-## Resolved
+### KI-024: With shorter text lines, a page can scroll at launch (Low; superseded, pending ADR-0023)
 
-### KI-009: No feet-and-inches input (resolved 2026-10-18)
+**Superseded on 2026-10-19 by ADR-0021's interim rule,** on the maintainer's ruling: the
+launch height is `launch_lines` line spacings again, 738 px at 9 pt, and the window is
+never sized to its content. The fields' heights are in pixels (ADR-0017's tokens), so
+with a UI font whose lines are shorter than 9 pt Segoe UI's 16 px, a page that fits on
+Windows scrolls as a whole at launch (rule C): offscreen at 14 px lines, the cone, the
+segment, the polygon and the triangles do. At 16 px lines, the Length converter and the
+right triangle do, by design until ADR-0023 decides. `test_no_calculator_page_scrolls_at_the_launch_size`
+checks every other page at the design's lines.
 
-`parse_quantity` accepted `2'` and `1-1/2"` but not the combined `3'-4 1/2"`. Feet and
-inches is now a compound form of a length, read in AutoCAD's report and input forms, the
-spaced and prime forms, and words (`1 ft 4 3/16 in`), and shown `1'-4 3/16"` where an
-output asks for it (ADR-0019 U3, its u3 amendment). `tests/test_compound_forms.py` checks
-each form.
-
-### KI-024: With shorter text lines, the tallest page could scroll at launch (resolved 2026-10-18)
-
-The window's launch height was `launch_lines` line spacings, 736 px with 9 pt Segoe UI's
+The resolution it replaces: The window's launch height was `launch_lines` line spacings, 736 px with 9 pt Segoe UI's
 16 px lines, but the result fields' heights are in pixels (ADR-0017's tokens). With a UI
 font whose lines are shorter, such as the offscreen platform's 14 px, the launch window
 was shorter while the pages weren't, so the cone and segment pages scrolled as a whole at
@@ -227,6 +226,16 @@ built-in calculator page at the launch width, within the screen, on UI/UX's ruli
 review, M1): the segment calculator's K-factor page, with its K field, had scrolled at
 launch and moved the Units box. On Windows at 9 pt the launch height is now 738 px, two
 more than `launch_lines`' 736.
+
+## Resolved
+
+### KI-009: No feet-and-inches input (resolved 2026-10-18)
+
+`parse_quantity` accepted `2'` and `1-1/2"` but not the combined `3'-4 1/2"`. Feet and
+inches is now a compound form of a length, read in AutoCAD's report and input forms, the
+spaced and prime forms, and words (`1 ft 4 3/16 in`), and shown `1'-4 3/16"` where an
+output asks for it (ADR-0019 U3, its u3 amendment). `tests/test_compound_forms.py` checks
+each form.
 
 ### KI-023: Three things didn't fit a window at its least size (resolved 2026-10-18)
 
