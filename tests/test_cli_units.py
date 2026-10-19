@@ -125,7 +125,11 @@ def test_show_lists_each_input_s_choices_and_the_output_sets(
     assert "Units (--unit): deg (default), dms, rad" in out
     assert "Output sets (--output-set)" in out and "in_16      in 1/16" in out
     status, out, _err = _run(capsys, "show", "conversions.length")
-    assert "Output sets" not in out and "Always in mm" in out
+    assert "Output sets" not in out
+    assert "Units (--output-unit): in, ft_in, ft, mm, cm, m" in out
+    assert "Until picked, it follows value: in → mm, ft_in → mm, ft → m, mm → in" in out
+    status, out, _err = _run(capsys, "show", "conversions.decimal_to_fraction")
+    assert "Values: 16 (1/16), 32 (1/32), 64 (1/64)" in out and "Always in in_64" in out
 
 
 def _calls() -> list[tuple[str, str]]:
@@ -199,10 +203,10 @@ def test_a_published_example_in_schema_1(capsys: pytest.CaptureFixture[str]) -> 
 
 
 def test_a_signed_step_shows_its_plus_in_json() -> None:
-    """A converter's error shows ``+0.002500 in`` in its work, so its JSON does too."""
-    from caddcalc.calculators.conversions import LengthConverter
+    """A fraction's error shows ``+0.0025 in`` in its work, so its JSON does too."""
+    from caddcalc.calculators.conversions import DecimalToFraction
 
-    calc = LengthConverter()
+    calc = DecimalToFraction()
     result = calc.run({"value": 7.9223})
     data = result_json(calc, result, ShownUnits.generated(), DisplayPrefs())
     signed = [s for s, step in zip(data["steps"], result.steps, strict=True) if step.signed]

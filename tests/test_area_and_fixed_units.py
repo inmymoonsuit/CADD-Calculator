@@ -429,7 +429,7 @@ def test_a_result_field_shows_copies_and_says_a_fixed_unit_with_no_code_of_its_o
     [
         (1e300, "1.00000e+300"),
         (-1e308, "-1.00000e+308"),
-        (5e-324, "4.94066e-324"),
+        (5e-324, "5e-324"),  # one bit, so one figure (PR #1's final review, Low 7)
         (1.23e-7, "1.23000e-07"),
         (9.999997e15, "1.00000e+16"),
         (1.23e-6, "0.00000123000"),

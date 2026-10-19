@@ -406,3 +406,18 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
   (inscribed circle, AF)".
 * The triangles' module docstring names Kahan's half-angle formula, and the README's
   disclaimer is ADR-0020's line.
+
+### 2026-10-19: the converters, rebuilt and split (ADR-0024 §7, U3)
+
+* **§3 is superseded:** "shows the same quantity in every unit of that kind at once" and
+  the converter table give way to ADR-0024 §7 (D5, D6): each converter takes one value and
+  gives one, each with a picker, and Decimal to fraction and Fraction to decimal are
+  converters of their own. The ids `conversions.length`, `.angle`, `.area` and `.stress`
+  stay, each with input `value` and output `value`.
+* **Amendment m2 is superseded** where it makes the rows fixed-unit outputs; and its
+  launch-height paragraph, since Length isn't a long page any more (ADR-0023's note).
+* **What stands:** the exact definitions, each converter's verification against SP 811's
+  Appendix B.8 for its scope, six significant figures, the refusal of a value too large
+  for a unit it can be shown in, and the nearest fraction's half-to-even rounding and its
+  error, now Decimal to fraction's. PR #1's final review's converter Lows are fixed with
+  it (ADR-0024's amendment of this date).

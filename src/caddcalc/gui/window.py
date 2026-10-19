@@ -91,8 +91,8 @@ from caddcalc.core.formatting import (
     echo,
     format_output,
     input_in_set,
-    input_parts,
     method_notes,
+    param_parts,
     picked_text,
     render_step,
     unit_parts,
@@ -375,6 +375,8 @@ class MainWindow(QMainWindow):
         """The domain settings the user has set; kept for the life of the window (§7)."""
         self.setting_fields: dict[str, tuple[Param, QLineEdit]] = {}
         self.setting_abouts: dict[str, QLabel] = {}
+        self.allowed_boxes: dict[str, QComboBox] = {}
+        """The choice box of each input that takes only certain values (``Param.allowed``)."""
         self.setting_pickers: dict[str, UnitPicker] = {}
         """Each family setting's unit picker, for a setting with a unit (ADR-0024 U2b)."""
         self.choice_rows: dict[str, tuple[QComboBox | None, QComboBox]] = {}
@@ -839,9 +841,12 @@ class MainWindow(QMainWindow):
     def _clear_form(self) -> None:
         for _p, old in self.fields.values():
             old.blockSignals(True)  # removing a field mustn't edit it mid-rebuild
+        for box in self.allowed_boxes.values():
+            box.blockSignals(True)
         while self.form.rowCount():
             self.form.removeRow(0)
         self.fields.clear()
+        self.allowed_boxes.clear()
         self.pickers.clear()
         self.unit_fixes.clear()
         self.inherit_boxes.clear()
@@ -853,6 +858,9 @@ class MainWindow(QMainWindow):
         self.example_button.setVisible(any(m.legacy for m in calc.methods))
         spacers: list[QWidget] = []
         for p in calc.params_for(self.method_key):
+            if p.allowed:
+                self._add_allowed_row(calc, p)
+                continue
             edit = EchoField()
             if self._inherits_family_value(calc, p):
                 dropped = self.pending_fields.pop((calc.id, p.key), None)
@@ -923,10 +931,39 @@ class MainWindow(QMainWindow):
         for spacer in spacers:
             spacer.setFixedWidth(width)
 
+    def _add_allowed_row(self, calc: Calculator, p: Param) -> None:
+        """Add an input that takes only certain values, as a choice box (ADR-0024 §7)."""
+        box = QComboBox()
+        for value, label in p.allowed:
+            box.addItem(label, value)
+        box.setCurrentIndex(max(box.findData(self._value_in_use(calc, p)), 0))
+        box.setAccessibleName(p.label)
+        box.setToolTip(p.help)
+        box.installEventFilter(self._wheel_guard)
+        box.activated.connect(_slot(self._on_allowed_chosen, p.key))
+        self.form.addRow(p.named, box)
+        self.allowed_boxes[p.key] = box
+
+    def _on_allowed_chosen(self, key: str, index: int) -> None:
+        """Use the value chosen in an input's choice box, as the user's own."""
+        calc = self.calculator
+        if calc is None or key not in self.allowed_boxes:
+            return
+        p = next(p for p in calc.params if p.key == key)
+        value = float(self.allowed_boxes[key].itemData(index))
+        entry = TypedValue.read(f"{value:g}", p.default_choice or "", p.dimension)
+        self.entries.setdefault(calc.id, {})[key] = FieldEntry(entry)
+        self.recompute()
+
     def _chain_tabs(self) -> None:
         """Tab down the page: the inputs, each result's copy button, Copy all, the document."""
         stops: list[QWidget] = []
-        for key, (_p, edit) in self.fields.items():
+        for key in [p.key for p in self.calculator.params] if self.calculator else []:
+            if key in self.allowed_boxes:
+                stops.append(self.allowed_boxes[key])
+            if key not in self.fields:
+                continue
+            edit = self.fields[key][1]
             stops.append(edit)
             if key in self.pickers:
                 stops.append(self.pickers[key])
@@ -1597,10 +1634,12 @@ class MainWindow(QMainWindow):
             self._report_failure(exc)
 
     def _show_output_units(self, units: ShownUnits) -> None:
-        """Show the set and the picks the results are in, in the output pickers."""
+        """Show the set and each output's pick, or what it follows, in the output pickers."""
         self.results.show_set(units.key)
-        for key, choice in units.picks.items():
-            self.results.show_pick(key, choice)
+        calc = self.calculator
+        for output in calc.outputs if calc is not None else ():
+            if output.picks:
+                self.results.show_pick(output.key, units.output_choice(output))
 
     def _report_failure(self, exc: Exception) -> None:
         """Show why there's no result: an input to fix, or a calculation that failed."""
@@ -2431,7 +2470,7 @@ def result_html(
     }
     input_rows = []
     for p in params:
-        shown = input_parts(p.key, result.inputs[p.key], p.dimension, units, prefs)
+        shown = param_parts(p, result.inputs[p.key], units, prefs)
         number, unit = (shown.with_unit, "") if shown.unit_close_up else (shown.number, shown.unit)
         source = _secondary(describe_source(result.source_of(p.key)), scheme)
         converted = f"<td>{escape(in_set.get(p.key, ''))}</td>" if in_set else ""

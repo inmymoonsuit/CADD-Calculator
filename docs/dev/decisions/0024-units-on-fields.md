@@ -1417,3 +1417,49 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   across units, a fact in MPa, and the pickers whole at the least window in English and
   en_XA (group boxes left out, as the U1 amendment explains). 12 mutants, one for each
   guard, are each killed.
+
+### 2026-10-19: as built, E-6 and U3 (stop 3)
+
+* **The converters** (`calculators/conversions/converters.py`): Length, Fraction to
+  decimal, Decimal to fraction, Angle, Area, and Stress and pressure, in that order. Each
+  unit-to-unit converter has input `value` and output `value`, an output with its own
+  picker (`Output.picks`) to six significant figures, so none has an output set or a Show
+  in picker. Length offers in, ft-in, ft, mm, cm and m; Fraction to decimal, the decimal
+  units, starting in inches, and reads a fraction in inches by default; Angle adds the
+  minute and second of arc; Stress adds GPa.
+* **Follow to the counterpart (§6, Q9)** is core: `Output.follows` names the input, and
+  `Output.counterparts` maps each of its choices to a pick (in → mm, mm → in, ft → m,
+  m → ft, ksi → MPa, MPa → ksi, ° → rad, rad → °). `ShownUnits.output_choice` shows the
+  user's pick, else the counterpart of the input's choice, else the first pick, so the
+  window and the CLI follow alike; the row's picker shows it (`_show_output_units`).
+  `validate_spec` refuses a follow of an input of another dimension, without picks, or a
+  counterpart that names a choice the input lacks or a pick the output lacks.
+  Fraction to decimal follows nothing: it's decimal inches until picked.
+* **Decimal to fraction** takes `value` and `fineness`, a count with `Param.allowed`
+  ((16, "1/16"), (32, "1/32"), (64, "1/64")): `Param.check` refuses any other value, a
+  window shows a choice box (`MainWindow.allowed_boxes`, in Tab order), and the Inputs
+  list, the CLI and JSON's `shown.text` give its label (`formatting.param_parts`).
+  `caddcalc show` lists the values. Its outputs are `nearest`, in the fixed form `in_64`,
+  and `error`, signed, in the set's unit, to the set's places (4 in inches), where the
+  Length converter's error rows had six.
+* **`Output.precision`** may be given by an output with picks; a picked unit shows with
+  it, a picked form as the form writes it.
+* **Overflow:** a value that would overflow in any unit its output can be picked in is
+  refused, as before: kPa beside MPa, and now arcsec beside the degree.
+* **PR #1's final review, Low 7:** a form whose finest step a double no longer holds,
+  past 2⁵³ steps (`CompoundForm.steps`: 16 an inch for ft-in to the 1/16, 360,000 a
+  degree for DMS to two places), shows in its full unit to six significant figures, not
+  150 digits (`formatting.choice_parts`); a subnormal is written to the figures its bits
+  hold (`format_significant`); and a copy menu drops an item that copies the same text
+  as one before it, as a fraction's shown copy is its value in a "," locale.
+* **Removed:** the all-units rows and their keys (`mm`, `nearest_16`, `error_16` and the
+  rest); `LONG_PAGES` loses `conversions.length`.
+* **E-3's golden** holds the new converters' text, captured from this commit; its other
+  840 entries are unchanged.
+* **Tests** (`tests/test_conversions.py`, rewritten): each converter's shape; every
+  counterpart, and a pick that sticks; 3/16 in → 0.1875 in and 4.7625 mm to 1e-15; 0.1875
+  in → 3/16" with an error of 0 at each fineness; DMS → rad; the ties, signs, the
+  extremes, and the three Low 7 items; the window's follow, choice box and copy menu.
+  15 mutants, one for each guard, are each killed.
+* **Native only** (UI/UX's): Length's page about 444 px and Decimal to fraction's about
+  528, both under 736.

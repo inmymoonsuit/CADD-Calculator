@@ -39,9 +39,9 @@ from caddcalc.core.formatting import (
     describe_note,
     describe_source,
     entered_form,
-    format_input,
     format_output,
     method_notes,
+    param_parts,
     render_step,
     result_json,
 )
@@ -222,14 +222,22 @@ def _cmd_show(args: argparse.Namespace) -> int:
         scope = f"  (methods: {', '.join(p.methods)})" if p.methods else ""
         default = f"  default {p.default}" if p.default else ""
         print(f"  {p.symbol:<6} {p.key:<20} {p.label}{default}{scope}")
-        if any(p.choices):
+        if p.allowed:
+            values = ", ".join(f"{v:g} ({label})" for v, label in p.allowed)
+            print(f"         Values: {values}")
+        elif any(p.choices):
             print(f"         Units (--unit): {_choices_text(p.choices, p.default_choice)}")
         if p.help:
             print(f"         {p.help}")
     print("\nOutputs")
     for o in calc.outputs:
         print(f"  {o.symbol:<6} {o.key:<20} {o.label}")
-        if o.picks:
+        if o.picks and o.follows:
+            # Until it's picked, it's the counterpart of its input's unit (ADR-0024 §6).
+            pairs = ", ".join(f"{c} → {p}" for c, p in o.counterparts.items())
+            print(f"         Units (--output-unit): {', '.join(o.picks)}")
+            print(f"         Until picked, it follows {o.follows}: {pairs}")
+        elif o.picks:
             print(f"         Units (--output-unit): {_choices_text(o.picks, o.picks[0])}")
         elif o.unit or o.form:
             print(f"         Always in {o.form or o.unit}")
@@ -547,7 +555,7 @@ def format_result(
     width = max(LABEL_WIDTH, *(len(label) for label in labels))
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in params:
-        value = format_input(p.key, result.inputs[p.key], p.dimension, units, prefs)
+        value = param_parts(p, result.inputs[p.key], units, prefs).with_unit
         source = describe_source(result.source_of(p.key))
         lines.append(f"  {p.symbol:<6} {p.label:<{width}} {value}  ({source})")
     if show_work:

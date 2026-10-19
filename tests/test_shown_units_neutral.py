@@ -7,6 +7,9 @@ copied, the tab-separated rows, the work, the notes, the method's notes, the inp
 CLI's report and each error. The generated ``in`` and ``mm`` sets must write it all
 again, character for character. A scaled run is held by the SHA-256 of its text as
 canonical JSON, to keep the file small.
+
+The converters' entries were captured again when U3 rebuilt them as one value in and one
+out, from that commit; every other entry is E-3's (ADR-0024's U3 amendment).
 """
 
 from __future__ import annotations

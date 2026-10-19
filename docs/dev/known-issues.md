@@ -210,8 +210,10 @@ at launch (rule C). Offscreen:
   ADR-0024 U2) holds at 16 px lines only, for now.
 * **At 14 px lines** (DejaVu Sans), the triangle, the right triangle, the polygon, the
   Length converter, the cone and the segment, with each of its methods, scroll.
-* **At 16 px lines**, the Length converter and the right triangle scroll, by design:
-  the maintainer approved them as long pages (ADR-0023, C2).
+* **At 16 px lines**, the right triangle scrolls, by design: the maintainer approved it
+  as a long page (ADR-0023, C2). The Length converter was one too until ADR-0024's U3
+  made it one value in and one out; it fits at 16 px lines now, and its figures at 14 and
+  15 px lines above are from before, for UI/UX to measure again.
 
 `test_no_calculator_page_scrolls_at_the_launch_size` checks every other page at the
 design's 16 px lines, and that its output picker stays put. ADR-0023's slice 1, paired rows,
@@ -221,15 +223,6 @@ shortens the pages so they fit at shorter lines too.
 with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 2026-10-19
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
-
-### KI-029: The converters show every unit at once, with no output picker (Low)
-
-ADR-0024 §7 splits the converters into one value in and one out, each with its picker,
-and Decimal to fraction and Fraction to decimal into converters of their own (E-6, U3).
-Until then each converter shows its value in every unit of its kind, each row in its own
-fixed unit, as ADR-0018's m2 built them. They have no output set, so the results' Show in
-picker is hidden on them and their Inputs list gives no second value; their input has a
-picker, as every input with a unit has. Resolved by E-6 and U3, in ADR-0024's stop 3.
 
 ### KI-028: A decimal half typed in one unit can show the odd last digit in another (Low)
 
@@ -269,6 +262,15 @@ gives a leg and an area of 0, its sine under the doubles' range (the cloud revie
 PR #2, in the code before it too).
 
 ## Resolved
+
+### KI-029: The converters showed every unit at once, with no output picker (resolved 2026-10-19)
+
+Each converter showed its value in every unit of its kind, a row per unit, with no
+output picker. Resolved by ADR-0024's E-6 and U3: Length, Fraction to decimal, Decimal
+to fraction, Angle, Area, and Stress and pressure each take one value and give one,
+in its own picker's unit, which follows the input's unit to its counterpart until
+picked (`Output.follows`); Decimal to fraction takes its fineness as a choice
+(`Param.allowed`). `tests/test_conversions.py` checks each.
 
 ### KI-027: Settings fields read units in their text (resolved 2026-10-19)
 

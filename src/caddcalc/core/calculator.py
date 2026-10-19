@@ -523,6 +523,7 @@ class Calculator(ABC):
         for o in cls.outputs:
             _check_output_unit(cls.id, o)
             check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
+            _check_follows(cls, o)
             if o.picks and (o.unit or o.form):
                 raise SpecError(
                     f"{cls.id}: output {o.key!r} gives picks and a fixed unit or form; give one"
@@ -551,12 +552,42 @@ class Calculator(ABC):
                         f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
             check_param_choices(cls.id, p)
+            values = [v for v, _label in p.allowed]
+            if len(set(values)) != len(values) or any(not lb.strip() for _v, lb in p.allowed):
+                raise SpecError(
+                    f"{cls.id}: parameter {p.key!r}'s allowed values must differ, each with a label"
+                )
 
 
 def _written(choice: str, dimension: Dimension) -> str:
     """Return a choice as a picker shows it: a unit's written symbol, or a form's."""
     picked = registry().choice(choice, dimension)
     return picked.written if isinstance(picked, Unit) else picked.symbol
+
+
+def _check_follows(cls: type[Calculator], output: Output) -> None:
+    """Check an output that follows an input: it has picks, and its counterparts are real.
+
+    Raises:
+        SpecError: It follows no input of its dimension, or has no picks, or a counterpart
+            names a choice the input doesn't offer or a pick the output doesn't have.
+    """
+    if not output.follows:
+        if output.counterparts:
+            raise SpecError(f"{cls.id}: output {output.key!r} has counterparts but follows nothing")
+        return
+    param = next((p for p in cls.params if p.key == output.follows), None)
+    if param is None or param.dimension is not output.dimension or not output.picks:
+        raise SpecError(
+            f"{cls.id}: output {output.key!r} follows {output.follows!r}, which must be an "
+            f"input of {output.dimension.with_article}, and needs picks to follow it in"
+        )
+    for choice, pick in output.counterparts.items():
+        if choice not in param.choices or pick not in output.picks:
+            raise SpecError(
+                f"{cls.id}: output {output.key!r}'s counterpart {choice!r} → {pick!r} needs "
+                f"a choice {param.key!r} offers and one of the output's picks"
+            )
 
 
 def _check_sets(cls: type[Calculator]) -> None:
@@ -602,8 +633,10 @@ def _check_output_unit(owner: str, output: Output) -> None:
             )
         return
     if not output.unit:
-        if output.precision is not None:
-            raise SpecError(f"{owner}: output {output.key!r} gives a precision but no unit")
+        if output.precision is not None and not output.picks:
+            raise SpecError(
+                f"{owner}: output {output.key!r} gives a precision but no unit or picks of its own"
+            )
         return
     try:
         unit = get_unit(output.unit, output.dimension)

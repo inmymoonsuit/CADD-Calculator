@@ -58,6 +58,16 @@ class CompoundForm(ABC):
     """The key symbol of the unit a full-precision copy is written in, e.g. ``"in"``."""
     fineness: int
     """How finely it's shown, in the form's own terms (each form's ``text`` says)."""
+
+    @property
+    def steps(self) -> int:
+        """How many of its finest steps make one ``full_unit``: 16 for inches to the 1/16.
+
+        Past 2⁵³ of them a double holds no fraction of a step, so a front end shows such
+        a value in the full unit instead (``formatting.choice_parts``).
+        """
+        return self.fineness
+
     reads: bool = False
     """Whether a field can be picked in it, to read what's typed by ``read``."""
     sets: bool = True
@@ -509,6 +519,12 @@ class DegreesMinutesSeconds(CompoundForm):
         if not 0 <= fineness <= 6:
             raise UsageError(f"Seconds are shown to 0 to 6 decimals, not {fineness}")
         self.fineness = fineness
+
+    @property
+    @override
+    def steps(self) -> int:
+        """The seconds' last decimal place in a degree: 360,000 to two places."""
+        return int(3600 * 10**self.fineness)
 
     @override
     def parse(self, text: str, decimal: str = ".") -> float | None:

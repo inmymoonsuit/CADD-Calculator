@@ -398,6 +398,11 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A converter's result near 10³⁰⁸ in feet and inches, an inch fraction or degrees,
+  minutes and seconds printed hundreds of digits;** past what a double holds of the form's
+  finest step, it's shown in inches or degrees to 6 significant figures. A number too
+  small to hold six figures, near 10⁻³²⁴, shows only the figures it holds, and a copy
+  menu no longer offers two items that copy the same text (PR #1's final review).
 - **Escape, or a click outside, on a picker's open list left it unable to settle:** a
   step taken before, and every step after, never carried to the other fields. Closing
   the list chooses nothing, and the step settles when you leave the picker.
@@ -561,6 +566,16 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- **The converters are one value in and one out** (ADR-0024 §7, E-6, U3): Length,
+  **Fraction to decimal** and **Decimal to fraction**, new, Angle, Area, and Stress and
+  pressure. Each takes a value in its input's picked unit and gives it in its result's
+  own picker's unit, which is the other system's counterpart (in → mm, mm → in, ksi →
+  MPa) until you pick it. Decimal to fraction takes its fineness, 1/16, 1/32 or 1/64, as
+  a choice, and gives the nearest fraction and its error. The CLI and JSON give each
+  converter's result as `value`, and `caddcalc show` lists a fineness's values and what
+  a result follows. KI-029 is resolved. For calculator authors: `Output.follows` and
+  `Output.counterparts`, `Param.allowed`, and `Output.precision` for an output with its
+  own picker.
 - **Each family setting with a unit has a picker** (ADR-0024 E-5, U2b), as a
   calculator's inputs do, and its number is read in the unit the picker shows; a unit
   typed in the field, as `3 mm`, is refused, with where it goes. Switching it re-reads

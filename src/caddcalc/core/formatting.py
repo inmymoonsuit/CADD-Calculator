@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import re
+import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from decimal import ROUND_HALF_EVEN, Decimal
@@ -22,7 +23,7 @@ from caddcalc.core.errors import CaddCalcError, UsageError
 from caddcalc.core.i18n import N_, _
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
-from caddcalc.core.spec import Method, OutOfRangeError, Output, UnitSet
+from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, UnitSet
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
     BASE_UNITS,
@@ -207,7 +208,8 @@ class ShownUnits:
         """Return the id an output is shown in: its fixed unit or form, its pick, or the set's.
 
         An output with its own picker never follows the set: until it's picked, it shows
-        in its first pick (``Output.picks``).
+        in its first pick (``Output.picks``), or in the counterpart of the choice of the
+        input it follows, as a converter's output does (``Output.follows``, §6).
 
         Raises:
             UsageError: The output is picked in a choice it doesn't offer.
@@ -216,7 +218,8 @@ class ShownUnits:
             return output.form or output.unit
         if not output.picks:
             return self.choice(output.dimension)
-        picked = self.picks.get(output.key, output.picks[0])
+        followed = output.counterparts.get(self.inputs.get(output.follows, ""), output.picks[0])
+        picked = self.picks.get(output.key, followed)
         if picked not in output.picks:
             raise UsageError(
                 f"Output {output.key!r} offers {', '.join(output.picks)}, not {picked!r}"
@@ -290,7 +293,8 @@ def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     negative zero. A rounding that carries into a new place keeps the count, so 9.999997
     to six is ``10.0000``. Zero is ``0.00000`` to six. A value of at least 10⁻⁶ and under
     10¹⁶ is written in plain decimals; one outside that range (``PLAIN_EXPONENTS``) is
-    written with an exponent, as ``1.00000e+300``, not 301 digits.
+    written with an exponent, as ``1.00000e+300``, not 301 digits. A subnormal number is
+    written to no more figures than its bits hold.
 
     Args:
         value: The number.
@@ -302,6 +306,11 @@ def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     exact = Decimal(value)
     if not exact:
         return format_number(0.0, digits - 1, decimal)
+    if abs(value) < sys.float_info.min:
+        # A subnormal holds fewer bits than 53, so fewer figures: 5e-324 holds one bit,
+        # and one figure (PR #1's final review, Low 7).
+        bits = math.floor(math.log2(abs(value) / math.ulp(0.0))) + 1
+        digits = min(digits, max(1, math.floor((bits - 1) * math.log10(2))))
 
     def rounded(adjusted: int) -> Decimal:
         step = Decimal(1).scaleb(adjusted - digits + 1)
@@ -392,13 +401,24 @@ def choice_parts(
 ) -> ValueParts:
     """Return a base-unit value as shown in a unit or form, by its id, in parts.
 
-    A unit shows the value to its dimension's precision; a form, as the form writes it.
+    A unit shows the value to its dimension's precision; a form, as the form writes it,
+    while its finest step is held, and past ``FORM_LIMIT`` steps in its full unit's
+    significant figures.
     """
     picked = registry().choice(choice, dimension)
     if isinstance(picked, CompoundForm):
+        full = choice_unit(choice, dimension)
+        if abs(from_base(value, full)) * picked.steps >= FORM_LIMIT:
+            # Its parts would be hundreds of digits a double doesn't hold, as feet and
+            # inches of 1e308 mm are, so it's the full unit's figures (PR #1's Low 7).
+            return _parts(value, full, registry().precision_for(full), prefs)
         written = picked.text(value, prefs.symbols.decimal)
         return ValueParts(written.shown, "", written)
     return unit_parts(value, picked, prefs)
+
+
+FORM_LIMIT = 2.0**53
+"""The finest steps a form's parts can count before a double holds no fraction of one."""
 
 
 def unit_parts(value: float, unit: Unit, prefs: DisplayPrefs) -> ValueParts:
@@ -492,6 +512,18 @@ def format_value(
     return parts.with_unit if unit else parts.number
 
 
+def param_parts(param: Param, value: float, units: ShownUnits, prefs: DisplayPrefs) -> ValueParts:
+    """Return an input's value as listed, by its label where it's an allowed value.
+
+    A fineness is ``1/16`` (``Param.allowed``, ADR-0024 E7); any other value is as
+    ``input_parts`` shows it.
+    """
+    label = next((lb for v, lb in param.allowed if v == value), None)
+    if label is not None:
+        return ValueParts(label, "")
+    return input_parts(param.key, value, param.dimension, units, prefs)
+
+
 def format_input(
     key: str, value: float, dimension: Dimension, units: ShownUnits, prefs: DisplayPrefs
 ) -> str:
@@ -547,7 +579,12 @@ def output_parts(
         precision = output.precision or registry().precision_for(unit)
         parts = _parts(value, unit, precision, prefs)
     else:
-        parts = choice_parts(value, units.output_choice(output), output.dimension, prefs)
+        choice = units.output_choice(output)
+        picked = registry().choice(choice, output.dimension)
+        if output.precision is not None and isinstance(picked, Unit):
+            parts = _parts(value, picked, output.precision, prefs)
+        else:
+            parts = choice_parts(value, choice, output.dimension, prefs)
     if output.signed and parts.compound is None:
         return replace(parts, number=_plus(parts.number))
     return parts
@@ -1063,10 +1100,11 @@ def result_json(
     """
     entered = entered or {}
     inputs: dict[str, Any] = {}
+    params = {p.key: p for p in calc.params}
     for key, value in result.inputs.items():
         dimension = result.dimensions[key]
         choice = units.input_choice(key, dimension)
-        parts = input_parts(key, value, dimension, units, prefs)
+        parts = param_parts(params[key], value, units, prefs)
         shown = _shown_json(value, choice_unit(choice, dimension), parts, choice)
         typed = _typed_amount(entered[key], shown["unit"]) if key in entered else None
         if typed is not None:
