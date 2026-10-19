@@ -294,8 +294,8 @@ are the registry's public names already (ADR-0019 §2), so no new list is made.
 
 **`Param` gains two fields. `default` stays text with its unit:**
 ```python
-unit: str = ""          # the picker's default choice id; "" = the unit `default` names
-units: tuple[str, ...] = ()   # restrict the offered choices; () = entry_choices(dimension)
+unit: str = ""  # the picker's default choice id; "" = the unit `default` names
+units: tuple[str, ...] = ()  # restrict the offered choices; () = entry_choices(dimension)
 ```
 * Most declarations need no change: `"0.1046 in"` already says inches, so the picker
   defaults to inches. `validate_spec` refuses a Param that has more than one choice and no
@@ -309,15 +309,17 @@ units: tuple[str, ...] = ()   # restrict the offered choices; () = entry_choices
 ```python
 @dataclass(frozen=True)
 class UnitSet:
-    key: str                         # public, e.g. "in", "mm", "in_dms"
-    label: str                       # N_("Inches and degrees")
-    choices: Mapping[Dimension, str] # one choice id per dimension its outputs use
+    key: str  # public, e.g. "in", "mm", "in_dms"
+    label: str  # N_("Inches and degrees")
+    choices: Mapping[Dimension, str]  # one choice id per dimension its outputs use
+
 
 class Calculator:
-    output_sets: ClassVar[tuple[UnitSet, ...]] = ()   # () = generated (below); [0] = default
+    output_sets: ClassVar[tuple[UnitSet, ...]] = ()  # () = generated (below); [0] = default
+
 
 class Output:
-    picks: tuple[str, ...] = ()   # its own picker, first is the default (the exception)
+    picks: tuple[str, ...] = ()  # its own picker, first is the default (the exception)
     # unit / form stay as today: fixed, with no picker
 ```
 * **Generated sets** reuse ADR-0019's display rules. There's one set per length choice

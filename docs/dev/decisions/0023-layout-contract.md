@@ -657,20 +657,25 @@ def main(scale: float, out: str) -> int:
                     low = trial + 1
                 else:
                     high = trial
-            rows.append({
-                "calc": calc.id,
-                "method": window.method_box.currentText(),
-                "long_page": getattr(calc, "long_page", False),
-                "outputs": len(window.results.fields),
-                "inputs": len(window.fields),
-                "window_h": low,
-                "content_h": low - bars,
-                "lines": round((low - bars) / line, 2),
-            })
+            rows.append(
+                {
+                    "calc": calc.id,
+                    "method": window.method_box.currentText(),
+                    "long_page": getattr(calc, "long_page", False),
+                    "outputs": len(window.results.fields),
+                    "inputs": len(window.fields),
+                    "window_h": low,
+                    "content_h": low - bars,
+                    "lines": round((low - bars) / line, 2),
+                }
+            )
             print(rows[-1], flush=True)
     with open(out, "w", encoding="utf-8") as file:
-        json.dump({"scale": scale, "width": width, "line": line, "ch": ch, "bars": bars,
-                   "rows": rows}, file, indent=1)
+        json.dump(
+            {"scale": scale, "width": width, "line": line, "ch": ch, "bars": bars, "rows": rows},
+            file,
+            indent=1,
+        )
     window.close()
     return 0
 
