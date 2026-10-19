@@ -479,7 +479,15 @@ def test_an_unfinished_expression_is_refused(text: str) -> None:
 
 @pytest.mark.parametrize(
     ("text", "named"),
-    [("3 μm", "μm"), ("10 ft-in", "ft-in"), ("3μm", "μm"), ("3)mm", "mm"), ('1-"', '"')],
+    [
+        ("3 μm", "μm"),
+        ("10 ft-in", "ft-in"),
+        ("3μm", "μm"),
+        ("3)mm", "mm"),
+        ('1-"', '"'),
+        ("1e3)mm", "mm"),
+        ("40d30m", "m"),
+    ],
 )
 def test_a_refused_unit_is_named_as_written(text: str, named: str) -> None:
     with pytest.raises(UnitInTextError) as refused:

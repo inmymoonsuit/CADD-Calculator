@@ -398,6 +398,10 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A field's echo no longer widens the window's least size;** it hides when it doesn't
+  fit, as it always did. A plugin's declared output set is shown by its translated label,
+  in the results and in `caddcalc show`. A unit run on to a number with an exponent, as
+  `1e3)mm`, is named as `mm`.
 - **A converter's result near 10³⁰⁸ in feet and inches, an inch fraction or degrees,
   minutes and seconds printed hundreds of digits;** past what a double holds of the form's
   finest step, it's shown in inches or degrees to 6 significant figures. A number too

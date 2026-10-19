@@ -348,3 +348,52 @@ def test_the_inputs_are_listed_in_their_own_choice_not_the_set_s(
     assert status == 0
     (line,) = [line for line in out.splitlines() if "Material thickness" in line]
     assert "0.1000 in" in line
+
+
+LENGTH = "conversions.length"
+
+
+@pytest.mark.parametrize(
+    ("argv", "why"),
+    [
+        (["--output-unit", "Y=mm", "--output-unit", "value=in"], "names Y/value twice"),
+        (
+            ["--output-unit", "Y=deg"],
+            "--output-unit Y=deg: 'deg' isn't a unit for Y/value; its units are in, ft_in, ft, "
+            "mm, cm, m",
+        ),
+        (["--output-unit", "Y"], "Expected --output-unit KEY=ID, got 'Y'"),
+        (["--output-unit", "Z=mm"], f"{LENGTH} has no output 'Z'; the outputs with their own"),
+    ],
+)
+def test_an_output_s_own_unit_is_refused_as_the_mistake_it_is(
+    capsys: pytest.CaptureFixture[str], argv: list[str], why: str
+) -> None:
+    """A built-in output with its own picker: a converter's (ADR-0024 E5)."""
+    status, out, err = _run(capsys, "run", LENGTH, "X=1in", *argv)
+    assert status == 2 and out == ""
+    assert why in err
+
+
+@pytest.mark.parametrize("name", ["Y", "y", "value", "VALUE"])
+def test_an_output_s_own_unit_is_named_by_key_or_symbol_in_any_case(
+    capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    data = _json(capsys, "run", LENGTH, "X=1in", "--output-unit", f"{name}=cm")
+    assert data["outputs"]["value"]["shown"]["text"] == "2.54000 cm"
+
+
+def test_an_output_follows_its_input_until_given_its_unit(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """ADR-0024 §6 on the command line: mm gives in, and --output-unit wins."""
+    data = _json(capsys, "run", LENGTH, "X=5mm")
+    assert data["outputs"]["value"]["shown"]["unit"] == "in"
+    assert data["inputs"]["value"]["shown"]["text"] == "5.0000 mm", "the input in its own unit"
+    data = _json(capsys, "run", LENGTH, "--unit", "X=ft_in", "X=1-2")
+    assert data["outputs"]["value"]["shown"]["unit"] == "mm"
+    assert data["inputs"]["value"]["shown"]["text"] == "1'-2\"", "1-2 reads a foot, then inches"
+    status, out, _err = _run(capsys, "run", LENGTH, "X=5mm", "--output-unit", "Y=m", "--no-work")
+    assert status == 0 and "0.00500000 m" in out
+    (line,) = [line for line in out.splitlines() if line.lstrip().startswith("X ")]
+    assert "5.0000 mm" in line, "the Inputs line in the field's own unit"

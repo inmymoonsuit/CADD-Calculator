@@ -512,3 +512,48 @@ def test_a_copy_menu_never_offers_the_same_text_twice() -> None:
     copies = [a.text() for a in error.context_menu().actions()]
     assert copies == ["Copy -0.0025", "Copy -0,0025", "Copy -0.0025 in"], "full is the value here"
     window.close()
+
+
+def test_a_declared_set_s_label_is_translated_where_it_s_shown(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``UnitSet.label`` is marked where it's declared, so the picker and ``show`` translate it."""
+    from caddcalc import cli
+    from caddcalc.core import i18n
+    from tests import pseudo_locale
+    from tests.test_shown_units import _Fine
+
+    template = tmp_path / "with_set.pot"
+    label = _Fine.output_sets[0].label
+    template.write_text(
+        pseudo_locale.TEMPLATE.read_text(encoding="utf-8") + f'\nmsgid "{label}"\nmsgstr ""\n',
+        encoding="utf-8",
+    )
+    use = i18n.use
+    use([pseudo_locale.LANGUAGE], directories=[pseudo_locale.write(tmp_path, template)])
+    try:
+        window = _acme_window_with(_Fine)
+        assert window.results.set_picker.itemText(0) == pseudo_locale.pseudo(label)
+        window.close()
+        monkeypatch.setattr(cli, "default_registry", lambda **_kw: _registry_with(_Fine))
+        # The command line chooses its language from its environment; keep the test's.
+        monkeypatch.setattr(cli.i18n, "use", lambda *_args, **_kw: None)
+        assert cli.main(["show", _Fine.id]) == 0
+        assert pseudo_locale.pseudo(label) in capsys.readouterr().out
+    finally:
+        use([])  # the real one: the patch above stands until the test ends
+
+
+def _registry_with(calc: type[Calculator]) -> Registry:
+    from tests.test_domains import ACME
+
+    registry = Registry()
+    registry.register_domain(ACME)
+    registry.register(calc)
+    return registry
+
+
+def _acme_window_with(calc: type[Calculator]) -> Any:
+    window = open_window(_registry_with(calc))
+    window.select_calculator(calc.id)
+    return window

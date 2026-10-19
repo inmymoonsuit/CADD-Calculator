@@ -1463,3 +1463,20 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   15 mutants, one for each guard, are each killed.
 * **Native only** (UI/UX's): Length's page about 444 px and Decimal to fraction's about
   528, both under 736.
+
+### 2026-10-19: the final reviews' Lows (stop 3)
+
+* **UI/UX's Low, the echo and the least width:** an echo that showed raised the window's
+  least width by its text margin (natively 475 → 529 px in English), since a line edit's
+  least size counts its text margins. `EchoField.minimumSizeHint` leaves them out, as the
+  echo hides when it doesn't fit. Offscreen, without the fix, typing `1-3/16` raises the
+  least window from 508 to 542 px; with it, it stays at 508.
+* **A declared set's label** is translated where it's shown: in the results' picker and
+  in `caddcalc show`, as `UnitSet.label`'s docstring says it's marked.
+* **The `--output-unit` guards** are tested on a built-in now that the converters have
+  their own pickers: an output named twice, a choice it doesn't offer, a malformed or
+  unknown name, any case, the follow until given, and the converter's Inputs line in the
+  field's own unit.
+* **The unit-naming heuristic** (`entry._last_word`) counts an exponent's `e` and a
+  degree or minute mark between numbers as part of the number: `1e3)mm` names "mm", and
+  `40d30m` in an inch field names "m".

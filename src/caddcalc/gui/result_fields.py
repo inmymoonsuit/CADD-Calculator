@@ -696,7 +696,8 @@ class ResultsPanel(QWidget):
         self.set_picker.clear()
         for unit_set in sets:
             name = _set_name(unit_set, shown)
-            self.set_picker.addItem(unit_set.label, unit_set.key)
+            # A declared label is marked for translation where it's declared (UnitSet).
+            self.set_picker.addItem(_(unit_set.label), unit_set.key)
             index = self.set_picker.count() - 1
             self.set_picker.setItemData(index, name, NAME_ROLE)
             self.set_picker.setItemData(index, name, Qt.ItemDataRole.ToolTipRole)

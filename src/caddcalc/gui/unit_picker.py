@@ -316,6 +316,16 @@ class EchoField(QLineEdit):
             self._color()
 
     @override
+    def minimumSizeHint(self) -> QSize:
+        """As the field's with no echo, which hides when it doesn't fit.
+
+        So showing it never widens the window's least size (UI/UX's Low at stop 2).
+        """
+        hint = super().minimumSizeHint()
+        margins = self.textMargins()
+        return QSize(max(0, hint.width() - margins.left() - margins.right()), hint.height())
+
+    @override
     def resizeEvent(self, event: QResizeEvent) -> None:
         """Keep the echo at the right edge, or hide it, as the field's width changes."""
         super().resizeEvent(event)

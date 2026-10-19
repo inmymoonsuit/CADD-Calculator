@@ -872,3 +872,24 @@ def test_the_echo_takes_the_scheme_s_colour_when_the_palette_changes(
     QApplication.sendEvent(field(window, "thickness"), QEvent(QEvent.Type.PaletteChange))
     assert label.styleSheet() == f"color: {secondary_text('dark')};"
     window.close()
+
+
+def test_an_echo_that_shows_never_widens_the_least_window() -> None:
+    """It hides when it doesn't fit, so it needs no room of its own (UI/UX's Low)."""
+    from tests.qt_helpers import settle
+
+    window = open_window()
+    window.select_calculator(BEND)
+    window.resize(1400, 900)
+    window.show()
+    settle(window)
+    thickness = field(window, "thickness")
+    type_into(thickness, "0.2", enter=False)  # a plain decimal has no echo
+    settle(window)
+    assert not thickness.echo_shown
+    least = (thickness.minimumSizeHint().width(), window.minimumSizeHint().width())
+    type_into(thickness, "1-3/16", enter=False)
+    settle(window)
+    assert thickness.echo_shown, "a wide window has room for it"
+    assert (thickness.minimumSizeHint().width(), window.minimumSizeHint().width()) == least
+    window.close()

@@ -246,7 +246,7 @@ def _cmd_show(args: argparse.Namespace) -> int:
         print("\nOutput sets (--output-set)")
         for i, unit_set in enumerate(sets):
             first = "  (default)" if i == 0 else ""
-            print(f"  {unit_set.key:<10} {unit_set.label}{first}")
+            print(f"  {unit_set.key:<10} {_(unit_set.label)}{first}")
     print("\nMethods")
     for m in calc.methods:
         print(f"  {m.key:<14} {m.label}  [{m.status}]")
