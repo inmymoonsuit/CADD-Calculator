@@ -387,6 +387,17 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A triangle's small or nearly straight angle keeps its digits:** every angle is
+  Kahan's half-angle formula, so sides 10, 10 and 1e-7 give C = 5.73e-7°, not 0, and
+  Copy full precision and JSON give the true angle (ADR-0018, amendments).
+- **A stress too large for its kPa or psi row is refused,** never shown as `inf`; a
+  number too large to calculate with, such as `1e308 ft`, is refused as too large, not
+  as "not a finite number".
+- **The `(≈ …")` beside an inch value rounds as every inch fraction does,** so it
+  agrees with feet and inches and the nearest 1/16, 1/32 and 1/64 inch on a tie: 7/32 in
+  is 1/4" in each. An error row has no `(≈ …")`.
+- **The polygon's number of sides is at most 1 000 000,** refused plainly past that,
+  where 1e300 failed with internal text.
 - **A whole circle's chord is exactly 0,** not 2.4e-15 in: `sind` is exactly 0 at a
   whole multiple of 180°, and `cosd` at an odd multiple of 90° (ADR-0004, amendments).
 - **A right triangle's angle within about 6e-11° of 90° is refused in both angle

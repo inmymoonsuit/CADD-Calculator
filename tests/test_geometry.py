@@ -54,6 +54,36 @@ from tests.helpers import run_inches
 IN2 = 25.4**2
 """A square inch in square millimetres: ``run_inches`` gives areas in mm²."""
 
+A_345, B_345 = 36.86989764584402129685561, 53.13010235415597870314439
+"""A 3-4-5 triangle's acute angles, from 50-digit mpmath, outside this project's code."""
+
+ANGLES = {
+    (10.0, 10.0, 1e-7): (
+        89.99999971352110243458841,
+        89.99999971352110243458841,
+        0.0000005729577951308231852278836,
+    ),
+    (1.0, 1.0, 1e-6): (
+        89.9999713521102434576472,
+        89.9999713521102434576472,
+        0.00005729577951308470560820233,
+    ),
+    (3.0, 5.0, 7.0): (21.78678929826181121096505, 38.21321070173818878903495, 120.0),
+    (0.07165433510563943, 4.478911887913045, 4.550566223018663): (
+        0.0000007100719745227329808326018,
+        0.00004438461124892598525251751,
+        179.9999549053167765512818,
+    ),
+    (0.5, 0.5000000000000011, 1.0): (
+        0.000002699869328381911533467526,
+        0.00000269986932838191752838171,
+        179.9999946002613432361709,
+    ),
+}
+"""Each triangle's angles A, B and C, opposite its sides as listed, from mpmath's law of
+cosines at 50 digits on the sides' exact doubles: needles, an obtuse C, the triangle
+whose cosine of A rounds past 1, and one 5 ε of the longest side short of flat."""
+
 
 def test_geometry_is_listed_first_and_has_six_calculators() -> None:
     assert BUILTIN_DOMAINS[0].id == "geometry"
@@ -97,9 +127,9 @@ def test_a_3_4_5_triangle_has_area_6_and_its_angles() -> None:
     out = run_inches(Triangle(), side_a=3, side_b=4, side_c=5)
     assert out["perimeter"] == pytest.approx(12)
     assert out["area"] / IN2 == pytest.approx(6, rel=1e-14)
-    assert out["angle_a"] == pytest.approx(36.8699, abs=5e-5)
-    assert out["angle_b"] == pytest.approx(53.1301, abs=5e-5)
-    assert out["angle_c"] == pytest.approx(90, abs=1e-12)
+    assert out["angle_a"] == pytest.approx(A_345, rel=1e-12, abs=0)
+    assert out["angle_b"] == pytest.approx(B_345, rel=1e-12, abs=0)
+    assert out["angle_c"] == pytest.approx(90, rel=1e-12, abs=0)
     assert out["angle_a"] + out["angle_b"] + out["angle_c"] == pytest.approx(180, abs=1e-12)
 
 
@@ -148,14 +178,36 @@ def test_every_needle_keeps_its_area_in_any_order_of_its_sides(
         assert area == pytest.approx(exact, rel=1e-14, abs=0), order
 
 
-def test_each_cosine_is_clamped_so_a_rounding_past_one_is_still_an_angle() -> None:
-    """These sides' cosine of A computes as 1.0000000000000002; acos would refuse it."""
+@pytest.mark.parametrize("sides", ANGLES)
+def test_every_angle_keeps_its_digits_in_any_order_of_the_sides(
+    sides: tuple[float, float, float],
+) -> None:
+    """Kahan's half-angle formula, to 1e-12 of the true angle, small, obtuse or straight."""
+    for order in itertools.permutations(range(3)):
+        keys = dict(zip(("side_a", "side_b", "side_c"), (sides[i] for i in order), strict=True))
+        out = Triangle().run(keys).outputs
+        for key, i in zip(("angle_a", "angle_b", "angle_c"), order, strict=True):
+            assert out[key] == pytest.approx(ANGLES[sides][i], rel=1e-12, abs=0), (order, key)
+
+
+def test_a_cosine_that_rounds_past_one_needs_no_clamp() -> None:
+    """The half-angle formula gives the true 7.1e-7° where a clamped cosine gave 0°.
+
+    These sides' cosine of A, by the law of cosines, is 1.0000000000000002, which acos
+    refuses.
+    """
     a, b, c = 0.07165433510563943, 4.478911887913045, 4.550566223018663
-    cosine = (b**2 + c**2 - a**2) / (2 * b * c)
-    assert cosine > 1, "the case the clamp is for"
-    result = Triangle().run({"side_a": a, "side_b": b, "side_c": c})
-    assert result.outputs["angle_a"] == 0.0
-    assert 179 < result.outputs["angle_b"] + result.outputs["angle_c"] <= 180 + 1e-9
+    assert (b**2 + c**2 - a**2) / (2 * b * c) > 1, "the case a clamp was for"
+    angle = Triangle().run({"side_a": a, "side_b": b, "side_c": c}).outputs["angle_a"]
+    assert angle == pytest.approx(7.100719745227329808326018e-7, rel=1e-12, abs=0)
+
+
+def test_a_cosine_that_rounds_past_minus_one_is_a_flat_triangle() -> None:
+    """80.572, 10.817 and 91.389 make the cosine of C −1.0000000000000002; they're flat."""
+    a, b, c = 80.572, 10.817, 91.389
+    assert (a**2 + b**2 - c**2) / (2 * a * b) < -1, "the case a clamp was for"
+    with pytest.raises(InputError, match="These sides make no triangle"):
+        Triangle().run({"side_a": a, "side_b": b, "side_c": c})
 
 
 @pytest.mark.parametrize(
@@ -217,8 +269,8 @@ def test_a_right_triangle_from_any_two_of_its_parts(method: str, given: dict[str
     assert out["leg_a"] == pytest.approx(3, rel=1e-14)
     assert out["leg_b"] == pytest.approx(4, rel=1e-14)
     assert out["hypotenuse"] == pytest.approx(5, rel=1e-14)
-    assert out["angle_a"] == pytest.approx(36.8699, abs=5e-5)
-    assert out["angle_b"] == pytest.approx(53.1301, abs=5e-5)
+    assert out["angle_a"] == pytest.approx(A_345, rel=1e-12, abs=0)
+    assert out["angle_b"] == pytest.approx(B_345, rel=1e-12, abs=0)
     assert out["area"] / IN2 == pytest.approx(6, rel=1e-14)
     assert out["perimeter"] == pytest.approx(12, rel=1e-14)
 
@@ -288,6 +340,27 @@ def test_a_square_and_an_equilateral_triangle_as_polygons() -> None:
     assert square["across_corners"] == pytest.approx(2 * math.sqrt(2))
     tri = run_inches(RegularPolygon(), "side", sides=3, side=2)
     assert tri["area"] / IN2 == pytest.approx(math.sqrt(3), rel=1e-14)
+
+
+@pytest.mark.parametrize("sides", [3, 4, 5, 6, 7, 9, 10, 12, 13, 1_000_000])
+def test_only_an_odd_polygon_has_the_caliper_note(sides: int) -> None:
+    notes = RegularPolygon().run({"sides": sides, "side": 25.4}, "side").notes
+    assert len(notes) == sides % 2, sides
+
+
+@pytest.mark.parametrize("sides", [4.0000000001, 4 + 2**-40, 5.5, 999_999.5])
+def test_a_number_of_sides_a_hair_off_whole_is_refused(sides: float) -> None:
+    with pytest.raises(InputError, match=r"Number of sides \(N\) must be a whole number"):
+        RegularPolygon().run({"sides": sides, "side": 25.4}, "side")
+
+
+@pytest.mark.parametrize("sides", [1_000_001, 1e300])
+def test_a_number_of_sides_past_a_million_is_refused_plainly(sides: float) -> None:
+    with pytest.raises(OutOfRangeError, match=r"Number of sides \(N\) must be at most 1000000"):
+        RegularPolygon().run({"sides": sides, "side": 25.4}, "side")
+    from caddcalc.cli import main
+
+    assert main(["run", "geometry.regular_polygon", f"N={sides}", "a=1in"]) == 2
 
 
 def test_an_odd_polygon_says_what_a_caliper_reads() -> None:
@@ -418,7 +491,7 @@ def test_the_cli_and_json_need_no_code_of_their_own(capsys: pytest.CaptureFixtur
 
     assert main(["run", "geometry.triangle", "a=3", "b=7", "c=5"]) == 0
     out = capsys.readouterr().out
-    assert "120.00°" in out and "acos(max(-1, min(1," in out and "in²" in out
+    assert "120.00°" in out and "B = 2·atan(√(((c - a) + b)·" in out and "in²" in out
     assert (
         main(
             ["run", "geometry.right_triangle", "a=3", "c=5", "--method", "leg_hypotenuse", "--json"]

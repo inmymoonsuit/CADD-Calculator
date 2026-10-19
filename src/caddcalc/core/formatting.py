@@ -32,7 +32,12 @@ from caddcalc.core.units import (
     get_unit,
     registry,
 )
-from caddcalc.core.units.compound import NEGATIVE_SPOKEN, POSITIVE_SPOKEN
+from caddcalc.core.units.compound import (
+    NEGATIVE_SPOKEN,
+    POSITIVE_SPOKEN,
+    nearest_inches,
+    round_half_even,
+)
 
 # Translators: shown under every calculator's results, after the command line's results,
 # and in About.
@@ -285,7 +290,9 @@ def _parts(value: float, unit: Unit, precision: Precision, prefs: DisplayPrefs) 
     shown = from_base(value, unit)
     fraction = None
     if prefs.fraction_denominator and unit.fractions:
-        fraction = to_fraction(shown, prefs.fraction_denominator)
+        # Only the inch has fractions. Its hint rounds the base value as the nearest
+        # fraction rows do, so the two never disagree (ADR-0019, amendments).
+        fraction = _fraction_text(nearest_inches(value, prefs.fraction_denominator))
     number = format_precise(shown, precision, prefs.symbols.decimal)
     return ValueParts(number, unit.written, fraction)
 
@@ -368,6 +375,9 @@ def output_parts(output: Output, value: float, prefs: DisplayPrefs) -> ValuePart
         unit = output_unit(output, prefs)
         precision = output.precision or registry().precision_for(unit)
         parts = _parts(value, unit, precision, prefs)
+    if output.signed:
+        # A difference takes no fraction hint: "(≈ 0")" beside an error says nothing.
+        parts = replace(parts, fraction=None)
     if output.signed and parts.number[:1] != "-" and any(c in "123456789" for c in parts.number):
         return replace(parts, number=f"+{parts.number}")  # zero, as shown, has no sign
     return parts
@@ -548,11 +558,23 @@ def entry_text(entry: TypedValue, prefs: DisplayPrefs) -> str:
 
 
 def to_fraction(value: float, denominator: int = 64) -> str:
-    """Nearest drafting fraction: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``."""
+    """Nearest drafting fraction of ``value`` inches: ``1.015625`` → ``1-1/64``, ``0.5`` → ``1/2``.
+
+    It rounds as every inch fraction does, half to even, with a value within its own last
+    place of a half taken as the half (``core.units.compound.round_half_even``).
+    """
     if not math.isfinite(value):
         return str(value)
-    frac = Fraction(round(abs(value) * denominator), denominator)
-    sign = "-" if value < 0 and frac else ""  # a value that rounds to 0 is never "-0"
+    sign = -1 if value < 0 else 1
+    return _fraction_text(
+        Fraction(sign * round_half_even(value, Fraction(denominator)), denominator)
+    )
+
+
+def _fraction_text(frac: Fraction) -> str:
+    """Write an inch fraction as it's copied, e.g. ``1-1/64``, ``1/2`` or ``-1/4``."""
+    sign = "-" if frac < 0 else ""  # a value that rounds to 0 is never "-0"
+    frac = abs(frac)
     whole, rem = divmod(frac.numerator, frac.denominator)
     if rem == 0:
         return f"{sign}{whole}"
@@ -773,5 +795,7 @@ def _quantity_text(value: float, dimension: Dimension, prefs: DisplayPrefs) -> s
     It keeps six significant digits rather than the display decimals, so a bound in a
     message isn't rounded to a value the rejected input seems to satisfy.
     """
-    number = f"{display_value(value, dimension, prefs):g}"
+    shown = display_value(value, dimension, prefs)
+    whole = dimension is Dimension.COUNT and shown.is_integer()
+    number = f"{shown:.0f}" if whole else f"{shown:g}"  # a count is never "1e+06"
     return typeset(number, prefs.symbols) + unit_suffix(dimension, prefs)

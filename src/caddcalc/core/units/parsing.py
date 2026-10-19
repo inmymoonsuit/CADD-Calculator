@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import math
 import re
+import sys
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import NamedTuple
@@ -35,6 +36,8 @@ def base_text(value: float, dimension: Dimension) -> str:
 
     Front ends show values in display units through ``core.formatting`` instead.
     """
+    if dimension is Dimension.COUNT and value.is_integer():
+        return f"{value:.0f}"  # a count is whole, never "1e+06"
     return f"{value:g} {BASE_UNITS[dimension]}".rstrip()
 
 
@@ -159,7 +162,14 @@ def parse_quantity_detailed(
         )
     if dimension is Dimension.COUNT and not float(number).is_integer():
         raise InputError(f"{text!r} isn't a whole number, and a count is")
-    return ParsedQuantity(number * unit.factor, unit, explicit)
+    value = number * unit.factor
+    if not math.isfinite(value):
+        # A finite number in a large unit, as 1e308 ft is, can overflow in the base unit.
+        raise InputError(
+            f"{text!r} is too large to calculate with: its size in {BASE_UNITS[dimension]} "
+            f"must be under {sys.float_info.max:.6g}"
+        )
+    return ParsedQuantity(value, unit, explicit)
 
 
 @dataclass(frozen=True)

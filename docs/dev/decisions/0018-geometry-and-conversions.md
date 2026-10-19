@@ -282,3 +282,38 @@ pitch, bolt circles, and editable precision per converter. They're candidates fo
 * **Speech** (UI/UX's L3 and L4): every negative is "minus …", and "1 and a quarter
   inches", "1 and a half inches" (ADR-0020's amendment). "Copy with unit" isn't offered
   for a compound form (UI/UX's L2).
+
+### 2026-10-19: the cloud review's findings, fix round 3 (group D, numerics)
+
+* **Kahan's angles** (the review's Major 3). The law of cosines, clamped, lost a small
+  angle's digits: sides (10, 10, 1e−7) gave C = 0 where it's 5.73e−7°, and (1, 1, 1e−6)
+  was wrong in the fourth figure. Each angle is now Kahan's half-angle formula, from the
+  lecture notes already cited: with the angle's two other sides p ≥ q and the opposite
+  side s, `2·atan(√(((p − q) + s)·μ / ((p + (q + s))·((p − s) + q))))`, with μ as
+  `s − (p − q)` where q ≥ s and `q − (p − s)` otherwise. The work shows each angle's
+  arrangement. It's the law of cosines (MH31 p. 96) rearranged, and still a deliberate
+  departure from MH31 p. 101's law-of-sines step.
+  * **No clamp.** For a triangle that passes the flat check, every factor under the
+    root is 0 or more, and arctan takes any value. The cosine that rounded past 1, for
+    sides (0.0716…, 4.4789…, 4.5505…), was clamped to A = 0; Kahan gives the true
+    7.10072e−7°. One that rounds past −1 needs a gap under about 0.7ε of the longest
+    side, so it's refused as flat: sides 80.572, 10.817 and 91.389 are one.
+  * **Tests** compare every angle, in every order of the sides, with 50-digit mpmath
+    values held as literals, to 1e−12 relative: two needles, an obtuse C (3, 5, 7), the
+    clamp's triangle and one 5ε short of flat. The plain law of cosines, the other μ
+    arrangement, and the law of sines for C fail them; so does a right triangle's angle
+    off by a part in a million.
+* **A stress too large for its smaller units is refused** (the review's Major 4).
+  Stress is held in MPa, larger than kPa and psi, so 1e308 MPa is finite and its kPa
+  and psi rows overflow. Making kPa the base, as the length's is its smallest unit, was
+  considered and not done: MPa is the stress base unit in JSON, in the materials data and
+  in messages (ADR-0005's and ADR-0014's), a public format. A converter now refuses a
+  value whose row in its smallest unit would overflow, naming the limit, and a test runs
+  ±max, 1e308 and ±5e−324 through every converter with no row infinite or not a number.
+  A typed number too large for the base unit, such as `1e308 ft`, is refused as "too large
+  to calculate with", not as "not a finite number".
+* **The polygon's N is at most 1 000 000.** N = 1e300 failed in the area's arithmetic
+  with internal text; it's now refused by the range. A polygon of a million sides is its
+  circle to about 2 parts in 10¹², far finer than any drawing. Tests pin the odd
+  polygon's note at N = 3, 5, 7, 9 and 13 and its absence at even N, and a count a hair
+  off whole, such as 4 + 2⁻⁴⁰.

@@ -11,6 +11,7 @@ zero passes, and so does a sign, which is an offset, a compression, or a directi
 from __future__ import annotations
 
 import math
+import sys
 from typing import ClassVar, override
 
 from caddcalc.calculators.conversions.domain import DOMAIN
@@ -19,13 +20,14 @@ from caddcalc.core import (
     Calculator,
     Context,
     Dimension,
+    InputError,
     Method,
     Output,
     Param,
     Reference,
     Verification,
 )
-from caddcalc.core.units import Precision, to_base
+from caddcalc.core.units import Precision, from_base, to_base
 from caddcalc.core.units.compound import nearest_inches
 
 LENGTH, ANGLE, AREA, STRESS = (
@@ -105,8 +107,23 @@ class _Converter(Calculator):
     @override
     def compute(self, ctx: Context) -> None:
         for output in self.outputs:
+            # A row in a unit smaller than the base, as psi is beside MPa, can overflow
+            # where the value doesn't; it's refused, never shown as inf (ADR-0018,
+            # amendments).
+            if output.unit and not math.isfinite(from_base(ctx["value"], output.unit)):
+                smallest = _smallest_unit(self.outputs)
+                raise InputError(
+                    f"This value is too large to show in {smallest}: its size must be under "
+                    f"{sys.float_info.max:.6g} {smallest}."
+                )
+        for output in self.outputs:
             if output.key not in self.computed:
                 ctx.given("X", output=output.key)
+
+
+def _smallest_unit(outputs: tuple[Output, ...]) -> str:
+    """The smallest unit any row is shown in, whose row overflows first."""
+    return min((o.unit for o in outputs if o.unit), key=lambda unit: to_base(1, unit))
 
 
 FRACTIONS = (16, 32, 64)

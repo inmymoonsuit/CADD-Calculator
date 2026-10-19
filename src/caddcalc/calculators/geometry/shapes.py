@@ -138,7 +138,10 @@ class RegularPolygon(Calculator):
             COUNT,
             default="6",
             minimum=3.0,
-            help="How many equal sides the polygon has: a whole number, 3 or more.",
+            # Past this a polygon is its circle to far finer than any drawing, and much
+            # larger counts overflow the area (ADR-0018, amendments).
+            maximum=1_000_000.0,
+            help="How many equal sides the polygon has: a whole number, 3 to 1000000.",
         ),
         length("side", "a", "Side", "1 in", "The length of one side.", "side"),
         length(

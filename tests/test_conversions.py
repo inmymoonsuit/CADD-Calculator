@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from decimal import Decimal
 from fractions import Fraction
 
 import pytest
@@ -279,3 +280,103 @@ def test_a_half_way_length_takes_the_even_fraction_in_every_row() -> None:
         rows = _shown(LengthConverter(), typed)
         assert (rows["nearest_16"], rows["ft_in"]) == (nearest, ft_in), typed
     assert _shown(LengthConverter(), "3/128 in")["nearest_64"] == '1/32"'
+
+
+@pytest.mark.parametrize("typed", ["3/32 in", "2.38125 mm", "7/32 in", "5.55625 mm"])
+def test_the_hint_and_the_nearest_rows_round_a_tie_alike(typed: str) -> None:
+    """The ``(≈ …")`` hint beside the inch row and the nearest 1/16 inch agree on a tie."""
+    prefs = DisplayPrefs(length_unit="in", fraction_denominator=16)
+    calc = LengthConverter()
+    result = calc.run({"value": parse_quantity(typed, L)})
+    hint = output_parts(calc.output("in"), result.outputs["in"], prefs).fraction
+    nearest = copy_output(
+        calc.output("nearest_16"), result.outputs["nearest_16"], prefs, CopyForm.VALUE
+    )
+    assert f'{hint}"' == nearest.replace("0-", ""), typed
+    assert hint in ("1/8", "1/4"), typed
+
+
+def test_an_error_row_takes_no_fraction_hint() -> None:
+    prefs = DisplayPrefs(fraction_denominator=64)
+    calc = LengthConverter()
+    result = calc.run({"value": parse_quantity("0.31 in", L)})
+    assert output_parts(calc.output("error_16"), result.outputs["error_16"], prefs).fraction is None
+    assert output_parts(calc.output("in"), result.outputs["in"], prefs).fraction == "5/16"
+
+
+def test_a_value_and_its_negative_show_the_same_error_digits() -> None:
+    """Every odd 1/128 inch to 4 ft, either sign, typed in inches or exactly in mm."""
+    calc = LengthConverter()
+    for k in range(1, 4 * 12 * 128, 2):
+        for text in (f"{k}/128 in", f"{Decimal(k) * Decimal('25.4') / 128} mm"):
+            shown = []
+            for sign in ("", "-"):
+                result = calc.run({"value": parse_quantity(sign + text, L)})
+                rows = [calc.output(f"error_{d}") for d in (16, 32, 64)]
+                errors = [format_output(o, result.outputs[o.key], DisplayPrefs()) for o in rows]
+                shown.append([e.lstrip("+-") for e in errors])
+            assert shown[0] == shown[1], text
+
+
+@pytest.mark.parametrize("calc", CALCULATORS)
+@pytest.mark.parametrize(
+    "value", [1.7976931348623157e308, -1.7976931348623157e308, 1e308, 5e-324, -5e-324]
+)
+def test_no_row_is_ever_infinite_or_not_a_number(calc: type[Calculator], value: float) -> None:
+    """A row in a unit smaller than the base can overflow: then the value is refused."""
+    try:
+        result = calc().run({"value": value})
+    except InputError as exc:
+        assert calc is StressConverter, "only stress has rows smaller than its base"
+        assert "is too large to show in kPa: its size must be under 1.79769e+308 kPa" in str(exc)
+        return
+    for output in calc.outputs:
+        text = format_output(output, result.outputs[output.key], DisplayPrefs())
+        assert "inf" not in text and "nan" not in text, (output.key, text)
+
+
+@pytest.mark.parametrize("typed", ["1e308 ft", "-1e308 ft", "1e308 m", "1e400"])
+def test_a_finite_number_too_large_to_calculate_with_says_so(typed: str) -> None:
+    with pytest.raises(InputError, match="is too large"):
+        parse_quantity(typed, L)
+
+
+def test_a_length_that_rounds_to_zero_has_no_minus_sign() -> None:
+    """−0.01 in is 0" to the nearest 1/16 and 1/32 inch, never -0"; to the 1/64, -1/64"."""
+    rows = _shown(LengthConverter(), "-0.01 in")
+    assert (rows["nearest_16"], rows["nearest_32"], rows["nearest_64"]) == ('0"', '0"', '-1/64"')
+    assert _copied(LengthConverter(), "-0.01 in", "nearest_16", CopyForm.VALUE) == '0"'
+    assert rows["error_16"] == "+0.010000 in"
+    # The rows are given the fraction, already rounded; the form rounds a raw value too.
+    from caddcalc.core.units.compound import NearestInches
+
+    for value in (-0.01 * 25.4, -0.0):
+        text = NearestInches(16).text(value)
+        assert (text.shown, text.copied, text.spoken) == ('0"', '0"', "0 inches"), value
+
+
+def test_an_output_with_a_precision_but_no_unit_is_a_definition_error() -> None:
+    from caddcalc.core import Method, Output, Param, SpecError
+    from caddcalc.core.units import Precision
+
+    class Bad(Calculator):
+        id = "test.bad"
+        name = "Bad"
+        domain = "test"
+        summary = "An output with a precision of its own and no unit."
+        params = (Param("value", "X", "Value", L, default="1 in"),)
+        outputs = (Output("row", "R", "Row", L, precision=Precision(6)),)
+        methods = (Method("only", "Only", "R", Verification.UNVERIFIED),)
+
+        def compute(self, ctx: object) -> None:  # pragma: no cover - never run
+            raise AssertionError(ctx)
+
+    with pytest.raises(SpecError, match="output 'row' gives a precision but no unit"):
+        Bad.validate_spec()
+
+
+def test_a_radian_is_180_over_pi_degrees_to_every_digit_copied() -> None:
+    """A radian of 57.2958° would still show 57.2958°; the full copy gives it away."""
+    assert _copied(AngleConverter(), "1 rad", "deg", CopyForm.FULL) == "57.29577951"
+    assert _copied(AngleConverter(), "180", "rad", CopyForm.FULL) == "3.141592654"
+    assert convert(1, get_unit("rad"), get_unit("deg")) == pytest.approx(180 / math.pi, rel=1e-15)

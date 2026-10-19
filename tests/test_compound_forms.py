@@ -35,11 +35,14 @@ from caddcalc.core.formatting import (
     output_parts,
     results_tsv,
     spoken_value,
+    to_fraction,
+    value_parts,
 )
 from caddcalc.core.i18n import use
 from caddcalc.core.units import (
     CompoundText,
     Dimension,
+    from_base,
     parse_quantity,
     parse_quantity_detailed,
     registry,
@@ -180,7 +183,12 @@ def test_a_value_half_way_between_two_fractions_takes_the_even_one(
 @pytest.mark.parametrize("denominator", [16, 32, 64])
 @pytest.mark.parametrize("unit", ["in", "mm"])
 def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: str) -> None:
-    """Each odd 1/(2d) inch to 4 ft, typed in inches or exactly in mm, either sign."""
+    """Each odd 1/(2d) inch to 4 ft, typed in inches or exactly in mm, either sign.
+
+    The nearest fraction, feet and inches, the ``(≈ …")`` hint and ``to_fraction`` all
+    round by one rule, so they agree on every tie (the reviews' Major 5).
+    """
+    prefs = DisplayPrefs(length_unit="in", fraction_denominator=denominator)
     for odd in range(1, 4 * 12 * 2 * denominator, 2):
         half = Fraction(odd, 2 * denominator)
         text = (
@@ -192,9 +200,19 @@ def test_every_half_way_value_takes_the_even_fraction(denominator: int, unit: st
         for sign in (1, -1):
             value = sign * parse_quantity(text, L)
             assert nearest_inches(value, denominator) == sign * expected, (sign, text)
+            hint = _copied_fraction(sign * expected)
+            assert value_parts(value, L, prefs).fraction == hint, (sign, text)
+            assert to_fraction(from_base(value, "in"), denominator) == hint, (sign, text)
             if denominator == 16:
                 again = parse_quantity(FeetInches(16).text(value).copied, L)
                 assert nearest_inches(again, 16) == sign * expected, (sign, text)
+
+
+def _copied_fraction(inches: Fraction) -> str:
+    """An inch fraction as the hint writes it, e.g. ``1-1/8`` or ``-3/16``."""
+    whole, part = divmod(abs(inches), 1)
+    text = "-".join(t for t in (str(whole) if whole else "", str(part) if part else "") if t)
+    return ("-" if inches < 0 else "") + (text or "0")
 
 
 @pytest.mark.parametrize(("seconds", "shown"), [(0.005, "0.00"), (0.015, "0.02"), (0.025, "0.02")])

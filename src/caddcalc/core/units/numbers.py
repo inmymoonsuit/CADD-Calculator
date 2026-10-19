@@ -56,6 +56,8 @@ def parse_number(text: str, decimal: str = ".") -> float:
         value = float(s)
     except ValueError:
         raise InputError(f"{text!r} is not a number") from None
-    if not math.isfinite(value):
+    if math.isnan(value) or s.lstrip("+-").lower().startswith(("inf", "nan")):
         raise InputError(f"{text!r} is not a finite number")
+    if not math.isfinite(value):
+        raise InputError(f"{text!r} is too large a number to calculate with")
     return value

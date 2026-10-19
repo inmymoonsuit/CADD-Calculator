@@ -36,19 +36,27 @@ FLAT_GAP = 4 * sys.float_info.epsilon
 triangle still be flat (ADR-0018, amendments)."""
 
 TRIANGLE_NOTES = (
-    "Each angle comes from the law of cosines, with its cosine kept within −1 to 1 against "
-    "rounding. The Handbook's procedure for three known sides (p. 101) takes its second "
-    "angle from the law of sines, which can't give an obtuse angle, so this calculator "
-    "departs from it there on purpose.",
+    "Each angle comes from Kahan's formula for the tangent of half of it, the law of "
+    "cosines rearranged so a small or nearly straight angle keeps its digits. The "
+    "Handbook's procedure for three known sides (p. 101) takes its second angle from the "
+    "law of sines, which can't give an obtuse angle, so this calculator departs from it "
+    "there on purpose.",
     "The area is Heron's formula in Kahan's arrangement, with the sides sorted longest "
     "first, so a needle-thin triangle keeps its digits.",
 )
 
 
-def _law_of_cosines(opposite: str, side_1: str, side_2: str) -> str:
-    """The angle opposite ``opposite``, by the law of cosines, its cosine clamped."""
-    cosine = f"({side_1}**2 + {side_2}**2 - {opposite}**2)/(2*{side_1}*{side_2})"
-    return f"acosd(max(-1, min(1, {cosine})))"
+def _kahan_angle(opposite: str, larger: str, smaller: str, smaller_first: bool) -> str:
+    """The angle opposite ``opposite``, by Kahan's half-angle formula.
+
+    ``larger`` and ``smaller`` are the other two sides, so ordered; ``smaller_first`` is
+    whether the smaller is at least as long as ``opposite``, which picks how μ is
+    arranged. Each factor is then 0 or more for any triangle the flat check passes, so
+    the square root needs no clamp, and arctan takes any value (Kahan's lecture notes).
+    """
+    c, a, b = opposite, larger, smaller
+    mu = f"({c} - ({a} - {b}))" if smaller_first else f"({b} - ({a} - {c}))"
+    return f"2*atand(sqrt((({a} - {b}) + {c})*{mu}/(({a} + ({b} + {c}))*(({a} - {c}) + {b}))))"
 
 
 class Triangle(Calculator):
@@ -74,7 +82,7 @@ class Triangle(Calculator):
         method(
             "three_sides",
             "Three sides",
-            "S by Heron (Kahan's arrangement); each angle by the law of cosines",
+            "S by Heron, and each angle by its half-angle tangent, both in Kahan's arrangement",
             MH31_TRIANGLE,
             MH31_LAW_OF_COSINES,
             MH31_THREE_SIDES,
@@ -107,17 +115,15 @@ class Triangle(Calculator):
             dimension=AREA,
             output="area",
         )
-        for symbol, sides, key in (
-            ("A", "abc", "angle_a"),
-            ("B", "bca", "angle_b"),
-            ("C", "cab", "angle_c"),
-        ):
+        sides = {"a": ctx["side_a"], "b": ctx["side_b"], "c": ctx["side_c"]}
+        for symbol, opposite, others in (("A", "a", "bc"), ("B", "b", "ca"), ("C", "c", "ab")):
+            larger, smaller = sorted(others, key=lambda s: sides[s], reverse=True)
             ctx.calc(
                 symbol,
-                _law_of_cosines(*sides),
+                _kahan_angle(opposite, larger, smaller, sides[smaller] >= sides[opposite]),
                 label=f"Angle {symbol}",
                 dimension=ANGLE,
-                output=key,
+                output=f"angle_{opposite}",
             )
 
 

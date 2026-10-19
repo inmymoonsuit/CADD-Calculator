@@ -153,9 +153,9 @@ class Output:
     inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.
     An output gives a unit or a form, not both."""
     signed: bool = False
-    """Whether a value shown above zero gets a plus sign, as ``+0.002500 in``, for a
-    difference whose direction matters, such as an error. A compound form writes its own
-    sign, so it ignores this."""
+    """Whether it's a difference whose direction matters, such as an error: a value shown
+    above zero gets a plus sign, as ``+0.002500 in``, and it takes no inch fraction hint.
+    A compound form writes its own sign, so it ignores this."""
 
 
 @dataclass(frozen=True)

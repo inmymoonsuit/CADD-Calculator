@@ -371,3 +371,16 @@ six significant figures), and the new messages left unmarked until the sweep.
   and the nearest 1/16, 1/32 and 1/64 inch all use it, so 3/32 in shows as 1/8", 7/32 in
   as 1/4" and 3/128 in as 1/32", typed in inches or in millimeters, either sign. A test
   rounds every odd 1/32, 1/64 and 1/128 inch to 4 ft both ways.
+
+### 2026-10-19: one rounding rule for every inch fraction (fix round 3, group D)
+
+* The `(≈ …")` hint beside an inch value rounded `value/25.4` on its own (the cloud
+  review's Major 5), so for 7/32 in it said 1/4" beside a nearest 1/16 inch of 3/16". It
+  now takes the base value through `nearest_inches`, which the nearest-fraction rows and
+  feet and inches use, and `formatting.to_fraction`, for a value already in inches,
+  rounds through the same `round_half_even`. A test runs every odd 1/32, 1/64 and 1/128
+  inch to 4 ft, typed in inches and in millimeters, either sign, through all four;
+  half up, half away from zero, and float arithmetic for the count each fail it.
+* **A difference takes no hint:** an `Output.signed` output, such as the Length
+  converter's errors, never shows `(≈ 0")`. A value and its negative show the same
+  error digits, signs apart, which a test checks for every odd 1/128 inch to 4 ft.

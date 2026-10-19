@@ -42,7 +42,10 @@ inch, and Copy gives `1'4-3/16"`, the form CAD takes. A result in degrees, minut
 seconds reads `40°30′15.00″`, and Copy gives `40d30'15.00"`. Rounding carries, so
 1'-11 63/64" shows as 2'-0", and 29.99999999° as 30°0′0.00″. A value exactly half-way
 between two fractions takes the one with the even numerator, so 3/32" shows as 1/8" and
-7/32" as 1/4", however it was typed.
+7/32" as 1/4", however it was typed: a value within its own last digit of the half, as a
+typed 3/32" or 2.38125 mm is, counts as the half. Every inch fraction rounds by this one
+rule: feet and inches, the nearest 1/16, 1/32 and 1/64 inch, and the `(≈ …")` beside an
+inch value, so they never disagree.
 
 ## Precision and rounding
 

@@ -33,7 +33,9 @@ MH31_SEGMENT = Reference(
     MH31, "Mathematics: Dimensions of Plane Figures, circular segment, printed p. 79"
 )
 MH31_LAW_OF_COSINES = Reference(
-    MH31, "Mathematics: Solution of Triangles, the law of cosines, printed p. 96"
+    MH31,
+    "Mathematics: Solution of Triangles, the law of cosines, printed p. 96, which Kahan's "
+    "angle formula rearranges",
 )
 MH31_RIGHT_TRIANGLES = Reference(
     MH31, "Mathematics: Solution of Triangles, Solution of Right Triangles, printed p. 98"
@@ -50,8 +52,9 @@ DLMF_TRIANGLES = Reference(
 )
 KAHAN_NEEDLE = Reference(
     "W. Kahan, Miscalculating Area and Angles of a Needle-like Triangle",
-    "Heron's formula with the sides sorted, longest first (lecture notes, University of "
-    "California, Berkeley)",
+    "Heron's formula with the sides sorted, longest first, and each angle from its "
+    "half-angle tangent with μ as defined there (lecture notes, University of California, "
+    "Berkeley)",
     url="https://people.eecs.berkeley.edu/~wkahan/Triangle.pdf",
 )
 POCKET = "Machinery's Handbook Pocket Companion, 32nd ed. (Industrial Press, 2024)"
