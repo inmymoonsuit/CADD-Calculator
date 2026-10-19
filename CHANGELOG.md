@@ -398,6 +398,11 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A degrees-minutes-seconds field left at a sign ran at 0°:** `-`, `+` or an empty
+  text now isn't finished, as in any other field, and so are `40-` and `40-30-`; a
+  hyphen after a mark, `40°-30′`, is refused.
+- **Opening a unit picker's list after an arrow-key step moved the other fields** to the
+  step's unit before anything was chosen. Only the choice made in the list leads now.
 - **A Geometry length outside 10⁻⁷⁰ mm to 10⁷⁰ mm is refused, plainly** (KI-026). A 3-4-5
   triangle of 3·10⁻⁸² mm had an area of 0, and one of 3·10⁻¹⁶² mm angles 9 % off; at
   3·10⁻¹⁶⁵ mm it divided by zero, a circle that small had an area of 0, and a triangle of

@@ -648,3 +648,50 @@ def test_a_range_error_names_the_bound_in_the_field_s_choice() -> None:
     type_into(field(window, "bend_angle"), "200")
     assert "must be less than 180°" in window.output.toPlainText()
     window.close()
+
+
+def test_opening_a_stepped_picker_s_list_settles_nothing() -> None:
+    """The list takes the focus before anything is chosen, so no step leads (M-B)."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    window = open_window()
+    window.show()
+    window.activateWindow()
+    QApplication.processEvents()
+    window.select_calculator(BEND)
+    picker = window.pickers["thickness"]
+    picker.setFocus()
+    QApplication.processEvents()
+    QTest.keyClick(picker, Qt.Key.Key_Down)  # in → ft-in, a step
+    picker.showPopup()
+    QApplication.processEvents()
+    assert window.pickers["inside_radius"].choice == "in", "the step didn't lead"
+    assert window.statusBar().currentMessage() == ""
+    index = picker.choices.index("mm")
+    picker.setCurrentIndex(index)
+    picker.activated.emit(index)
+    picker.hidePopup()
+    QApplication.processEvents()
+    assert window.pickers["inside_radius"].choice == "mm", "the choice made in the list leads"
+    window.close()
+
+
+@pytest.mark.parametrize("text", ["", "-", "+", "−", "40-", "40-30-", "40°-30′"])
+def test_a_dms_field_refuses_text_with_no_number_or_a_stray_hyphen(text: str) -> None:
+    """A bend angle left at "-" mustn't run at 0° (M-A)."""
+    from caddcalc.core import InputError, TypedValue
+
+    with pytest.raises(InputError):
+        TypedValue.read(text, "dms", Dimension.ANGLE)
+
+
+def test_a_bend_angle_left_at_a_sign_runs_nothing() -> None:
+    window = open_window()
+    window.select_calculator(BEND)
+    pick(window, "bend_angle", "dms")
+    type_into(field(window, "bend_angle"), "-", enter=False)
+    assert window.result is None
+    assert "ends before its last number" in window.output.toPlainText()
+    window.close()

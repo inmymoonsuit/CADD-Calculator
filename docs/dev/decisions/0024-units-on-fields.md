@@ -1231,3 +1231,18 @@ UI/UX's H1 and M1, already fixed in 1a0357b. The rest:
   input shown as read; a bare number in the default choice; `entered` only when given; a
   whole count; a form's `copied`; an unrounded `shown.value`; a signed step's plus), are
   each killed.
+
+### 2026-10-19: the stop-1 re-review's Mediums (at stop 2)
+
+* **M-A:** a DMS field refused nothing without a number, so `-`, `+`, `−` and an empty
+  text read 0°, and a bend angle left at `-` ran at 0°. They're now "ends before its
+  last number", as a ° or inch field says. A hyphen separates only unmarked parts and
+  must have one after it, so `40-` and `40-30-` aren't finished and `40°-30′` isn't
+  DMS; `40-30-15` still reads.
+* **M-B:** opening a picker's list after an arrow step took the focus and so settled the
+  step, which led the follow before anything was chosen. The list's own focus no
+  longer settles (`UnitPicker.showPopup`, `hidePopup`); a choice in it settles as
+  before. The reviewer saw a second focus-out offscreen, so the picker checks that its
+  list is open rather than the focus reason; the native check is UI/UX's.
+* Four mutants, one for each guard, are each killed. The re-review's Lows 1–5 are
+  follow-ups, for U2b or later.

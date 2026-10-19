@@ -105,6 +105,8 @@ class UnitPicker(QComboBox):
         self.text_width = 0
         """The width its closed face holds text in, shared by a page's pickers."""
         self._stepping = False
+        self._listing = False
+        """Whether its list is open, which takes the focus without settling a step."""
         self._settled = ""
         self.currentIndexChanged.connect(self._named)
         self.activated.connect(self._activated)
@@ -164,9 +166,26 @@ class UnitPicker(QComboBox):
             self._stepping = False
 
     @override
+    def showPopup(self) -> None:
+        """Open the list; the focus it takes isn't the picker losing it (§3)."""
+        self._listing = True
+        super().showPopup()
+
+    @override
+    def hidePopup(self) -> None:
+        """Close the list. A choice made in it has settled already (``_activated``)."""
+        super().hidePopup()
+        self._listing = False
+
+    @override
     def focusOutEvent(self, event: QFocusEvent) -> None:
-        """Settle the choice stepped to, as the picker loses focus."""
-        self._settle()
+        """Settle the choice stepped to, as the picker loses focus to another widget.
+
+        Opening its own list takes the focus too, before anything is chosen, so that
+        doesn't settle: the step would otherwise lead the follow (UI/UX's M-B).
+        """
+        if not self._listing and not self.view().isVisible():
+            self._settle()
         super().focusOutEvent(event)
 
     def _activated(self, index: int) -> None:

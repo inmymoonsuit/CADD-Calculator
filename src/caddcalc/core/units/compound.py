@@ -522,7 +522,12 @@ class DegreesMinutesSeconds(CompoundForm):
 
         An unmarked part is the one after the last, so ``40°30`` is 40°30′; marks go in
         order. Degrees and minutes are whole, seconds may have decimals, and minutes and
-        seconds are under 60. One sign, at the front.
+        seconds are under 60. One sign, at the front. A hyphen separates unmarked parts,
+        as ``40-30-15``, so it's refused after a mark or at the end, as ``40°-30′`` and
+        ``40-`` are; a text with no number, as ``-`` is, isn't finished.
+
+        Raises:
+            InputError: The text isn't degrees, minutes and seconds.
         """
         if decimal == "." and "," in text:
             raise comma_error(text, decimal)
@@ -530,6 +535,7 @@ class DegreesMinutesSeconds(CompoundForm):
         part, kinds = _dms_picked()
         parts: list[str | None] = [None, None, None]
         at = slot = 0
+        hyphen = False
         while at < len(body):
             m = part.match(body, at)
             mark = None if m is None else next((k for k in kinds if m[k]), None)
@@ -540,6 +546,9 @@ class DegreesMinutesSeconds(CompoundForm):
                     "minutes, then seconds, as 40 30 15 or 40°30′15″; one sign, at the front"
                 )
             parts[index], slot, at = m["number"], index + 1, m.end()
+            hyphen = m["sep"] == "-"
+        if hyphen or all(p is None for p in parts):
+            raise InputError(f"{text!r} ends before its last number")
         degrees, minutes, seconds = (
             exact_number(p, decimal) if p is not None else Fraction(0) for p in parts
         )
@@ -581,15 +590,15 @@ class DegreesMinutesSeconds(CompoundForm):
 def _dms_picked() -> tuple[re.Pattern[str], tuple[str, str, str]]:
     """A picked field's part of degrees, minutes and seconds, and its marks' groups.
 
-    A part is a number and its mark, if it has one, then a space or a hyphen before the
-    next: there's no arithmetic in a form's field, so ``40-30-15`` is 40°30′15″ (ADR-0024
-    E2). The groups are in the parts' order.
+    A part is a number and its mark, then a space, or a number and a space or a hyphen
+    before the next: there's no arithmetic in a form's field, so ``40-30-15`` is 40°30′15″
+    (ADR-0024 E2). The groups are in the parts' order.
     """
     degree = _marks(_builtin("deg")) + "|d"
     minute, second = _marks(_builtin("arcmin")), _marks(_builtin("arcsec"))
     part = re.compile(
         rf"(?P<number>\d+(?:[.,]\d*)?|[.,]\d+)(?: ?(?:(?P<d>{degree})|(?P<m>{minute})|"
-        rf"(?P<s>{second})))?(?: |-)?",
+        rf"(?P<s>{second})) ?|(?P<sep> |-))?",
         re.IGNORECASE,
     )
     return part, ("d", "m", "s")
