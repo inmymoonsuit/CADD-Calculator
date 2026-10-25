@@ -78,7 +78,7 @@ has been checked. The suite starts with sheet metal and grows by domain.
       to `ubuntu-24.04` (`.github/workflows/ci.yml`), since the test job installs Qt's
       runtime libraries by name: libegl1, libgl1, libxkbcommon0, libfontconfig1 and
       libdbus-1-3.
-- [ ] Third-party license notices in the app folder (KI-016)
+- [x] Third-party license notices in the app folder (KI-016): full texts in `licenses/`, vendored by `packaging/fetch_notices.py`
 - [ ] Light and dark Qt themes built from the UI palette (`gui/assets/palette.toml`,
       [design/palette.md](design/palette.md)), replacing the ad-hoc HTML colors in `gui/window.py`
 - [x] Welcome screen at startup, replacing the splash screen (ADR-0015): composed from a

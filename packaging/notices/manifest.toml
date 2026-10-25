@@ -1,0 +1,21 @@
+# License texts that packaged builds ship in licenses/ (KI-016).
+# Written by packaging/fetch_notices.py; THIRD_PARTY_NOTICES.md is the index.
+qt_tag = "v6.12.0"
+cpython_tag = "v3.12.14"
+
+# file = SHA-256
+[files]
+"GPL-3.0.txt" = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+"LGPL-3.0.txt" = "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+"Microsoft-Visual-C++-runtime.txt" = "3c71b3ae243121f6f227374cd1ef7c59ed07b1969b330d0e947f91a3a1b3fd73"
+"Nuitka-LICENSE.txt" = "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+"OpenSSL-LICENSE.txt" = "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+"Python-LICENSE.txt" = "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+"Python-incorporated-software.rst" = "341832873fd316a37927e79385093fbbfd40a467428480835fe435a80cadf4e5"
+"Qt-third-party.txt" = "61368211716907a904720f4c152a793c2eb1fed4404089815355155acc6f9bf4"
+"bzip2-LICENSE.txt" = "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3"
+"expat-COPYING.txt" = "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87"
+"libffi-LICENSE.txt" = "2c9c2acb9743e6b007b91350475308aee44691d96aa20eacef8e199988c8c388"
+"xz-5.2-COPYING.txt" = "bcb02973ef6e87ea73d331b3a80df7748407f17efdb784b61b47e0e610d3bb5c"
+"xz-COPYING.0BSD.txt" = "0b01625d853911cd0e2e088dcfb743261034a091bb379246cb25a14cc4c74bf1"
+"zlib-LICENSE.txt" = "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"

@@ -623,6 +623,70 @@ def test_qt_catalogs_go_where_each_platforms_pyside6_keeps_them(
         build_script.qt_catalogs_dir(tmp_path / "elsewhere", package)
 
 
+def test_the_vendored_license_texts_match_their_manifest() -> None:
+    """KI-016: every runtime license text is present and is the reviewed download."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "fetch_notices", ROOT / "packaging" / "fetch_notices.py"
+    )
+    assert spec and spec.loader
+    fetch_notices = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fetch_notices)
+    assert fetch_notices.check() == []
+    assert "LGPL-3.0.txt" in fetch_notices.expected_files()
+    assert "Qt-third-party.txt" in fetch_notices.expected_files()
+
+
+@pytest.mark.gui
+def test_the_build_copies_and_checks_every_notice(build_script: ModuleType, tmp_path: Path) -> None:
+    """KI-016: a build lacking our license, the index, or a runtime text fails."""
+    missing = build_script.missing_notices(tmp_path)
+    assert "LICENSE.md" in missing
+    assert "THIRD_PARTY_NOTICES.md" in missing
+    assert "licenses/LGPL-3.0.txt" in missing
+    build_script.copy_notices(tmp_path)
+    assert build_script.missing_notices(tmp_path) == []
+    (tmp_path / "licenses" / "Qt-third-party.txt").unlink()
+    assert build_script.missing_notices(tmp_path) == ["licenses/Qt-third-party.txt"]
+
+
+@pytest.mark.gui
+def test_the_trim_finds_every_platforms_left_out_files(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    """docs/dev/packaging.md, "What the build leaves out": named per platform."""
+    plugins = Path("PySide6/qt-plugins")
+    left_out = [
+        plugins / "imageformats/qpdf.dll",
+        plugins / "imageformats/libqwebp.so",
+        plugins / "imageformats/libqicns.dylib",
+        plugins / "tls/qopensslbackend.dll",
+        Path("PySide6/QtNetwork.pyd"),
+        Path("PySide6/QtNetwork.abi3.so"),
+        Path("qt6network.dll"),
+        Path("libQt6Network.so.6"),
+    ]
+    kept = [
+        plugins / "imageformats/qjpeg.dll",
+        plugins / "imageformats/libqsvg.so",
+        plugins / "imageformats/qgif.dll",
+        plugins / "imageformats/qico.dll",
+        plugins / "platforms/qwindows.dll",
+        Path("qt6gui.dll"),
+        Path("libcrypto-3-x64.dll"),
+    ]
+    for path in (*left_out, *kept):
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_bytes(b"")
+    found = sorted(Path(name) for name in build_script.trimmed_files(tmp_path))
+    assert found == sorted(left_out)
+    args = build_script.nuitka_args(None)
+    assert "--noinclude-qt-plugins=tls" in args
+    assert "--nofollow-import-to=PySide6.QtNetwork" in args
+    assert "--noinclude-dlls=*imageformats*qpdf*" in args
+
+
 @pytest.mark.gui
 def test_the_build_fails_with_no_catalog_to_check(
     build_script: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

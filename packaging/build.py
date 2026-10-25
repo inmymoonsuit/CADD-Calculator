@@ -48,6 +48,9 @@ from caddcalc.gui.branding import (
     load_branding,
 )
 from caddcalc.gui.welcome_style import STYLE_FILE, style
+from fetch_notices import NOTICES_DIR
+from fetch_notices import check as check_notices
+from fetch_notices import expected_files as notice_files
 from icons import ROOT, ensure_qt_app, save_icns, save_ico
 
 BUILDS = ROOT / "builds"
@@ -199,6 +202,59 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     return out
 
 
+TRIMMED_QT_PLUGIN_FAMILIES = ("tls",)
+"""Qt plugin families the build leaves out: TLS backends, for a network the app never uses."""
+TRIMMED_IMAGE_FORMATS = ("qpdf", "qtiff", "qwebp", "qtga", "qwbmp", "qicns")
+"""Qt image-format plugins the build leaves out. The app reads PNG and JPEG art, SVG and
+ICO icons, and nothing else; ``.icns`` is made at build time, not read by the app."""
+TRIMMED_QT_MODULES = ("QtNetwork",)
+"""Qt modules the build leaves out: nothing imports QtNetwork; only the TLS plugins did."""
+
+
+LICENSES_DIR = "licenses"
+"""Where a build keeps the runtime's license texts, from packaging/notices/ (KI-016)."""
+
+
+def copy_notices(output: Path) -> None:
+    """Copy the project's license, the index, and the runtime's license texts into a build."""
+    for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
+        shutil.copy2(ROOT / notice, output / notice)
+    folder = output / LICENSES_DIR
+    folder.mkdir(exist_ok=True)
+    for name in notice_files():
+        shutil.copy2(NOTICES_DIR / name, folder / name)
+
+
+def missing_notices(output: Path) -> list[str]:
+    """Return the notices a build lacks: our license, the index, or a runtime license text."""
+    wanted = ["LICENSE.md", "THIRD_PARTY_NOTICES.md"]
+    wanted += [f"{LICENSES_DIR}/{name}" for name in notice_files()]
+    return [name for name in wanted if not (output / name).is_file()]
+
+
+def trimmed_files(output: Path) -> list[str]:
+    """Return the files in a build that the trim should have left out (docs/dev/packaging.md).
+
+    Matches each platform's names: ``qpdf.dll``, ``libqpdf.so``, ``libqpdf.dylib``;
+    ``QtNetwork.pyd``, ``Qt6Network.dll``, ``libQt6Network.so.6``, ``QtNetwork.framework``.
+    """
+    found = []
+    for path in output.rglob("*"):
+        name = path.name.lower()
+        parts = [part.lower() for part in path.relative_to(output).parts]
+        stem = name.removeprefix("lib").split(".")[0]
+        if (
+            ("imageformats" in parts and stem in TRIMMED_IMAGE_FORMATS)
+            or (any(family in parts for family in TRIMMED_QT_PLUGIN_FAMILIES) and path.is_file())
+            or any(
+                m.lower() in stem or m.lower().replace("qt", "qt6") in stem
+                for m in TRIMMED_QT_MODULES
+            )
+        ):
+            found.append(path)
+    return sorted(str(p.relative_to(output)) for p in found)
+
+
 def qt_catalogs_dir(translations: Path | None = None, package: Path | None = None) -> str:
     """Return where a build keeps Qt's catalogs: where the running PySide6 keeps them.
 
@@ -266,6 +322,9 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
         f"--product-version={numeric_version(__version__)}",
         f"--copyright=Copyright {COMPANY}. Apache-2.0.",
         "--report=compilation-report.xml",
+        *(f"--noinclude-qt-plugins={family}" for family in TRIMMED_QT_PLUGIN_FAMILIES),
+        *(f"--nofollow-import-to=PySide6.{module}" for module in TRIMMED_QT_MODULES),
+        *(f"--noinclude-dlls=*imageformats*{plugin}*" for plugin in TRIMMED_IMAGE_FORMATS),
     ]
     if sys.platform == "win32":
         args.append("--windows-console-mode=disable")
@@ -316,6 +375,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
     Raises:
         BuildError: pyside6-deploy failed, or the output is wrong for the edition.
     """
+    for problem in check_notices():
+        raise BuildError(f"packaging/notices: {problem}; run packaging/fetch_notices.py")
     edition_dir = BUILDS / branding.edition
     work = edition_dir / "work"
     name = f"{EXE_STEM}-{__version__}-{branding.edition}-{platform_tag()}"
@@ -361,8 +422,11 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
 
     output, exe = locate_output(edition_dir, name, mode)
     if output.is_dir():
-        for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
-            shutil.copy2(ROOT / notice, output / notice)
+        copy_notices(output)
+        for missing in missing_notices(output):
+            raise BuildError(f"the notice {missing} is missing from the build (KI-016)")
+        for extra in trimmed_files(output):
+            raise BuildError(f"{extra} is in the build; the trim leaves it out")
         bundled_pack = exe.parent / PACK_DIR_NAME
         if branding.is_generic and bundled_pack.exists():
             raise BuildError(f"a generic build must not contain {bundled_pack}")

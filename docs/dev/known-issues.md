@@ -123,20 +123,6 @@ typical lab PC. If it's still slow, try naming font families for the results pan
 show a splash screen. Switching the font engine changes how text looks, so check that
 before choosing it.
 
-### KI-016: Packaged builds lack third-party license notices (Medium)
-
-The app folder bundles at least Qt 6, its translations (`qtbase_*.qm`), and
-PySide6/Shiboken (LGPL-3.0), CPython (PSF License), OpenSSL's libcrypto (Apache-2.0),
-libffi (MIT), Nuitka's runtime (Apache-2.0), and the Microsoft C++ runtime
-(redistributable). `packaging/build.py` copies only the project's `LICENSE.md`, and the
-PySide6 wheels carry no LGPL text to copy.
-**Progress (2026-10-17):** `THIRD_PARTY_NOTICES.md` now exists. The build copies it into
-the app folder, and it carries Tabler Icons' full MIT text, VT323's full SIL Open Font
-License (ADR-0016), a table of the bundled runtime components, and the note on replacing
-the Qt libraries. **Still needed before a public
-release:** the full license texts for those runtime components (LGPL-3.0 and the GPL-3.0
-it builds on, the PSF license, Apache-2.0, libffi's MIT text, and the MSVC runtime terms).
-
 ### KI-018: Switching to another window mid-edit ends a calculator edit (Low)
 
 A calculator field's edit is judged when it ends, and Qt ends it when the field loses
@@ -291,6 +277,21 @@ gives a leg and an area of 0, its sine under the doubles' range (the cloud revie
 PR #2, in the code before it too).
 
 ## Resolved
+
+### KI-016: Packaged builds lacked third-party license notices (resolved 2026-10-25)
+
+The app folder bundled Qt, PySide6/Shiboken, CPython, OpenSSL's libcrypto, libffi,
+Nuitka's runtime, and the Microsoft C++ runtime, with only a table naming them.
+**As built:** every packaged build now carries their full license texts in `licenses/`:
+LGPL-3.0 and GPL-3.0, CPython's license and the software it includes (expat, libmpdec,
+zlib, libffi, OpenSSL), bzip2, xz, Nuitka's Apache-2.0, the Microsoft runtime terms, and
+Qt's own third-party notices (84 entries from qtbase 6.12.0's `qt_attribution.json`
+files). `packaging/fetch_notices.py` vendors them from each project's repository at a
+pinned tag, with SHA-256 checksums; THIRD_PARTY_NOTICES.md is the index. The build stops
+if a vendored text changed, or if a notice is missing from the app folder, and a test
+checks the vendored texts offline. The build also leaves out QtNetwork, its TLS
+backends, and six unused image plugins, so their notices aren't needed
+(`docs/dev/packaging.md`).
 
 ### KI-028: A decimal half could show the odd last digit (resolved 2026-10-19)
 

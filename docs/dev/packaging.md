@@ -121,11 +121,48 @@ The loader is `caddcalc.gui.branding`. It doesn't import Qt.
 
 ## Notices
 
-The build copies `LICENSE.md` and `THIRD_PARTY_NOTICES.md` into the app folder. Third-party
-assets inside the package ride along with the package data: the Tabler icons and their
-`LICENSE.txt`, and the welcome screen's display face, VT323, with its `OFL.txt`
-(`gui/assets/fonts/vt323/`, vendored by `packaging/fetch_fonts.py`; ADR-0016 §2). See
-KI-016 for what the notices still lack.
+The build copies `LICENSE.md` and `THIRD_PARTY_NOTICES.md` into the app folder, and the
+runtime's license texts into its `licenses/` folder. Third-party assets inside the
+package ride along with the package data: the Tabler icons and their `LICENSE.txt`, and
+the welcome screen's display face, VT323, with its `OFL.txt` (`gui/assets/fonts/vt323/`,
+vendored by `packaging/fetch_fonts.py`; ADR-0016 §2).
+
+The runtime's texts (Qt's LGPL-3.0 and GPL-3.0, CPython's license and the software it
+includes, OpenSSL, libffi, zlib, bzip2, xz, Nuitka, the Microsoft C++ runtime, and Qt's
+own third-party notices) are vendored in `packaging/notices/` by
+`packaging/fetch_notices.py`, from each project's repository at a pinned tag, with each
+file's SHA-256 in its `manifest.toml`:
+
+```bash
+uv run python packaging/fetch_notices.py --check    # offline: the files match
+uv run python packaging/fetch_notices.py            # re-download; refuse any change
+uv run python packaging/fetch_notices.py --update   # after moving a pin: re-hash
+```
+
+Qt's third-party notices (`Qt-third-party.txt`) are collected from every
+`qt_attribution.json` in qtbase at its tag, for the modules a build ships: Core, Gui
+with its platform plugins, DBus, and Svg. When PySide6 is upgraded, move `QT_TAG` with
+it, and `CPYTHON_TAG` with the build's Python, then run `--update` and review the diff.
+The build stops before compiling if a vendored text differs from the manifest, and
+after, if a notice is missing from the app folder (`missing_notices`).
+
+## What the build leaves out
+
+Beyond Nuitka's PySide6 defaults, the build leaves out code the app never uses. That
+makes the folder smaller and leaves fewer notices to carry. On Windows the folder went
+from 87.8 MB to 83.0 MB, and its zip from 32.3 MB to 30.3 MB, with 0.4 MB of license
+texts added (2026-10-25; `.build.json`'s `size_mb` and `archive_mb`):
+
+| Left out | Why | How |
+|---|---|---|
+| QtNetwork (`QtNetwork` module, `Qt6Network` library) | nothing imports it; the app makes no network calls (ADR-0009) | `--nofollow-import-to=PySide6.QtNetwork` |
+| Qt's TLS backends (`tls/`: OpenSSL, Schannel, cert-only) | they serve QtNetwork, and were what pulled it in | `--noinclude-qt-plugins=tls` |
+| Image plugins for PDF, TIFF, WebP, TGA, WBMP, and ICNS | the app reads PNG and JPEG art, SVG and ICO icons; `.icns` is only written at build time | `--noinclude-dlls=*imageformats*<name>*` |
+
+OpenSSL's libcrypto stays, because Python's `hashlib` uses it. The GIF, ICO, JPEG, and
+SVG image plugins stay. The build fails if a left-out file turns up in the app folder
+(`trimmed_files`), and the smoke test checks the app still starts and draws its icons
+and art.
 
 ## What the build does
 

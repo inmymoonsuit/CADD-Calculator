@@ -202,20 +202,37 @@ SPDX-License-Identifier: Unicode-3.0
 ## Bundled in packaged builds only
 
 Packaged builds (`packaging/build.py`) also contain the runtime components below. Their
-full license texts will be added here before the first public release (KI-016).
+full license texts ship in the app folder's `licenses/`, vendored by
+`packaging/fetch_notices.py` from each project's repository at a pinned tag, with their
+SHA-256 in `packaging/notices/manifest.toml`. The build fails if any is missing.
 
-| Component | License | Project |
+| Component | License | Text in `licenses/` |
 |---|---|---|
-| Qt 6 (Core, Gui, Widgets, Svg) | LGPL-3.0 | https://www.qt.io/ |
-| Qt translations (`qtbase_*.qm`, from qttranslations) | LGPL-3.0 | https://www.qt.io/ |
-| PySide6 and Shiboken6 (Qt for Python) | LGPL-3.0 | https://wiki.qt.io/Qt_for_Python |
-| CPython | Python Software Foundation License 2.0 | https://www.python.org/ |
-| OpenSSL (libcrypto) | Apache-2.0 | https://www.openssl.org/ |
-| libffi | MIT | https://sourceware.org/libffi/ |
-| Nuitka runtime | Apache-2.0 | https://nuitka.net/ |
-| Microsoft Visual C++ runtime (Windows builds) | Microsoft redistributable license | https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist |
+| Qt 6 (Core, Gui, Widgets, Svg, and on Linux DBus) | LGPL-3.0 | `LGPL-3.0.txt`, `GPL-3.0.txt` |
+| Qt translations (`qtbase_*.qm`, from qttranslations) | LGPL-3.0 | `LGPL-3.0.txt`, `GPL-3.0.txt` |
+| Third-party code inside Qt: FreeType, HarfBuzz, libpng, libjpeg-turbo, PCRE2, zlib, MD4C, double-conversion, TinyCBOR, the Unicode Character Database, the Wayland protocols, and others | each entry's own (BSD, MIT, zlib, FTL, Unicode, and others) | `Qt-third-party.txt`, one entry each with its copyright and full license text, from qtbase 6.12.0's `qt_attribution.json` files |
+| PySide6 and Shiboken6 (Qt for Python) | LGPL-3.0 | `LGPL-3.0.txt`, `GPL-3.0.txt` |
+| CPython | Python Software Foundation License 2.0 | `Python-LICENSE.txt` (CPython 3.12.14) |
+| Software CPython includes: expat, libmpdec, zlib, libffi, OpenSSL | each one's own | `Python-incorporated-software.rst` (CPython 3.12.14's `Doc/license.rst`), and below |
+| expat (`pyexpat`) | MIT | `expat-COPYING.txt` |
+| OpenSSL's libcrypto | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.0.16) |
+| libffi (`_ctypes`) | MIT | `libffi-LICENSE.txt` (libffi 3.4.4) |
+| zlib | zlib License | `zlib-LICENSE.txt` (zlib 1.3.1) |
+| bzip2 (`_bz2`) | bzip2 License | `bzip2-LICENSE.txt` (bzip2 1.0.8) |
+| xz's liblzma (`_lzma`) | public domain before 5.4; 0BSD from 5.4 on | `xz-5.2-COPYING.txt`, `xz-COPYING.0BSD.txt` |
+| Nuitka's runtime, compiled into the executable | Apache-2.0 | `Nuitka-LICENSE.txt` (Nuitka 4.1.1) |
+| Microsoft Visual C++ runtime (Windows builds) | Microsoft Distributable Code terms | `Microsoft-Visual-C++-runtime.txt` (CPython 3.12.14's `PC/crtlicense.txt`) |
+
+The texts are pinned to the versions CPython 3.12.14's own Windows build uses. Each
+platform's Python may bundle other releases of the same libraries, under the same
+licenses; xz's two texts cover both of its licensing eras.
+
+The builds leave out Qt's network module, its TLS backends, and the image plugins the app
+doesn't read (PDF, TIFF, WebP, TGA, WBMP, ICNS), so their notices aren't needed
+(`docs/dev/packaging.md`, "What the build leaves out"). OpenSSL's libcrypto stays:
+Python's `hashlib` uses it.
 
 The Qt and PySide6 libraries ship as separate shared libraries in the app folder, and
 Qt's translations as separate files (in `PySide6/translations/`, or `PySide6/Qt/translations/`
-on Linux and macOS), so they can be replaced
-with other compatible builds, as the LGPL-3.0 allows.
+on Linux and macOS), so they can be replaced with other compatible builds, as the
+LGPL-3.0 allows.

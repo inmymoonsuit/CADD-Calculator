@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Packaged builds carry the full license texts of the runtime they bundle, in the app
+  folder's `licenses/`: Qt's LGPL-3.0 and GPL-3.0, CPython and the software it
+  includes, OpenSSL, libffi, zlib, bzip2, xz, Nuitka, the Microsoft C++ runtime, and
+  Qt's own third-party notices (KI-016). They're vendored from upstream at pinned tags
+  with checksums (`packaging/fetch_notices.py`), and the build fails if one is missing.
 - For calculator authors (ADR-0024 E1, E2): a field's text is read in the unit or form
   its picker chooses, by `TypedValue.read(text, choice, dimension)`. It takes numbers,
   fractions, mixed numbers and exact arithmetic (+ − × ÷ and parentheses), with
@@ -583,6 +588,10 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- Packaged builds leave out QtNetwork, Qt's TLS backends, and the PDF, TIFF, WebP, TGA,
+  WBMP, and ICNS image plugins, which the app never uses (`docs/dev/packaging.md`).
+- Packaged builds on Linux and macOS put Qt's own catalogs where their Qt looks, so Qt's
+  text (standard buttons, a field's context menu) follows the app's language there too.
 - **The converters are one value in and one out** (ADR-0024 §7, E-6, U3): Length,
   **Fraction to decimal** and **Decimal to fraction**, new, Angle, Area, and Stress and
   pressure. Each takes a value in its input's picked unit and gives it in its result's
