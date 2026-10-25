@@ -119,9 +119,20 @@ jobs:
 
       - name: Validate the desktop file and the AppStream metainfo (Linux)
         if: runner.os == 'Linux'
+        shell: bash
         run: |
-          desktop-file-validate packaging/linux/io.github.inmymoonsuit.CADDCalculator.desktop
-          appstreamcli validate --no-net \
+          # On failure the tool's own output becomes a public annotation.
+          check() {
+            local title="$1"; shift
+            if ! out=$("$@" 2>&1); then
+              echo "::error title=$title::${out//$'\n'/%0A}"
+              return 1
+            fi
+            echo "$out"
+          }
+          check desktop-file-validate \
+            desktop-file-validate packaging/linux/io.github.inmymoonsuit.CADDCalculator.desktop
+          check appstreamcli appstreamcli validate --no-net --explain \
             packaging/linux/io.github.inmymoonsuit.CADDCalculator.metainfo.xml
 
       # Wrap the folder in an AppImage, then start it with --appimage-extract-and-run (no
@@ -153,13 +164,32 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: Build the Flatpak
-        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3  # v6.8
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          bundle: CADDCalculator.flatpak
-          manifest-path: packaging/flatpak/io.github.inmymoonsuit.CADDCalculator.yml
-          cache-key: flatpak-builder-${{ hashFiles('packaging/flatpak/**', 'uv.lock') }}
-          upload-artifact: false
+          path: .flatpak-builder
+          key: flatpak-builder-${{ hashFiles('packaging/flatpak/**') }}
+          restore-keys: flatpak-builder-
+
+      # flatpak-builder directly, rather than through flatpak-github-actions, so its log can
+      # become a public annotation when it fails.
+      - name: Build the Flatpak
+        shell: bash
+        run: |
+          set -o pipefail
+          flatpak remote-add --user --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
+            --force-clean --repo=repo build-dir \
+            packaging/flatpak/io.github.inmymoonsuit.CADDCalculator.yml 2>&1 \
+            | tee flatpak-build.log
+          flatpak build-bundle repo CADDCalculator.flatpak io.github.inmymoonsuit.CADDCalculator
+
+      - name: Report a failed Flatpak build as an annotation
+        if: failure()
+        shell: bash
+        run: |
+          [ -f flatpak-build.log ] || exit 0
+          tail -n 60 flatpak-build.log | python3 -c "import sys; print('::error title=flatpak-builder::' + '%0A'.join(x.rstrip().replace('%', '%25') for x in sys.stdin))"
 
       - name: Start it inside the sandbox
         run: |
