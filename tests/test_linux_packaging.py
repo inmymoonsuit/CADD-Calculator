@@ -116,10 +116,13 @@ def test_only_listed_binaries_pass_the_notice_check() -> None:
         "libgcc_s.so.1",
     ):
         assert notices.component_of(unknown) is None, unknown
+    # Whichever Python runs the tests: some build every module into libpython, and list none.
     own = sorted(notices.stdlib_extensions())
-    assert own, "the interpreter has extension modules of its own"
-    for name in (f"{own[0]}.pyd", f"{own[0]}.cpython-312-x86_64-linux-gnu.so"):
-        assert notices.component_of(name).name.startswith("Python"), name
+    if sys.platform == "win32":
+        assert own, "Windows interpreters keep their extension modules in DLLs"
+    for module in own[:3]:
+        for name in (f"{module}.pyd", f"{module}.cpython-312-x86_64-linux-gnu.so"):
+            assert notices.component_of(name).name.startswith("Python"), name
     assert notices.component_of("PySide6/Qt/lib/libxcb-cursor.so.0").name.startswith("xcb")
 
 

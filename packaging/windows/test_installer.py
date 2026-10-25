@@ -62,6 +62,8 @@ def run(step: str, command: list[str], timeout: float = 300) -> None:
 
 def uninstall_entry() -> dict[str, str] | None:
     """Return the installer's per-user uninstall entry, or ``None`` if it isn't registered."""
+    if sys.platform != "win32":  # also tells mypy, checking for Linux or macOS, to skip it
+        return None
     import winreg
 
     try:

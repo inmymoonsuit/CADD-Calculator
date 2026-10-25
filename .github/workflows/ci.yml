@@ -2,8 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Release branches too, so a release's version bump is fully tested before it's merged
+    # and tagged; workflow_dispatch runs it on any other branch by hand.
+    branches: [main, "release-*"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

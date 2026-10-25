@@ -688,11 +688,13 @@ def test_the_build_checks_the_notices_name_the_versions_it_ships(build_script: M
     """M1 and Low 1, and S&R's d6 M1: the index names what the build ships.
 
     That's Qt, PySide6, and the interpreter's OpenSSL, zlib, and expat; OpenSSL is a 3.
+    The releases are fixed here: the pinned build interpreter's, which CI's release builds
+    use, not those of whichever Python runs the tests (main's CI at d37058e).
     """
-    versions = build_script.runtime_versions()
-    assert set(versions) >= {"OpenSSL", "expat"}, "and zlib, except on macOS: the system's"
-    assert build_script.notice_version_problems() == []
-    assert build_script.notice_version_problems("no versions") != []
+    assert set(build_script.runtime_versions()) >= {"OpenSSL", "expat"}, "zlib: not on macOS"
+    versions = {"OpenSSL": "3.5.7", "zlib": "1.3.2", "expat": "2.8.3"}
+    assert build_script.notice_version_problems(versions=versions) == []
+    assert build_script.notice_version_problems("no versions", versions) != []
     old_zlib = {**versions, "zlib": "1.3.1"}
     [problem] = build_script.notice_version_problems(versions=old_zlib)
     assert "zlib 1.3.1" in problem
