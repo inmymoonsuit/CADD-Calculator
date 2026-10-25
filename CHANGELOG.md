@@ -6,6 +6,10 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0a1] - 2026-10-25
+
+The first pre-release, for testing: unsigned, with Windows and Linux downloads.
+
 ### Added
 - The AppImage is started on X11 in CI, in a clean Ubuntu 22.04 container with only the
   libraries a stock 22.04 desktop installs, and every library it needs is checked with

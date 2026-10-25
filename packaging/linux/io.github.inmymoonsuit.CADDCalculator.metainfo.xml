@@ -34,9 +34,9 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
-    <release version="0.1.0" date="2026-10-25" type="development">
+    <release version="0.1.0a1" date="2026-10-25" type="development">
       <description>
-        <p>The first packaged builds, for testing.</p>
+        <p>The first pre-release, for testing.</p>
       </description>
     </release>
   </releases>
