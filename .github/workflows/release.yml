@@ -57,7 +57,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
-            libfontconfig1 libdbus-1-3 ccache appstream desktop-file-utils
+            libfontconfig1 libdbus-1-3 ccache
           echo "QT_QPA_PLATFORM=offscreen" >> "$GITHUB_ENV"
 
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
@@ -117,24 +117,6 @@ jobs:
           uv run --no-project --with jsonschema==4.26.0 --with pyyaml==6.0.3 \
             python packaging/windows/winget.py validate builds/winget
 
-      - name: Validate the desktop file and the AppStream metainfo (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          # On failure the tool's own output becomes a public annotation.
-          check() {
-            local title="$1"; shift
-            if ! out=$("$@" 2>&1); then
-              echo "::error title=$title::${out//$'\n'/%0A}"
-              return 1
-            fi
-            echo "$out"
-          }
-          check desktop-file-validate \
-            desktop-file-validate packaging/linux/io.github.inmymoonsuit.CADDCalculator.desktop
-          check appstreamcli appstreamcli validate --no-net --explain \
-            packaging/linux/io.github.inmymoonsuit.CADDCalculator.metainfo.xml
-
       # Wrap the folder in an AppImage, then start it with --appimage-extract-and-run (no
       # FUSE on the runner) and check its smoke test (slice d4).
       - name: Build and start the AppImage (Linux)
@@ -151,6 +133,36 @@ jobs:
             builds/generic/*.AppImage
             builds/generic/*.build.json
           if-no-files-found: error
+
+  # The .desktop file and the AppStream metainfo, checked with current tools: Ubuntu
+  # 22.04's appstreamcli predates the <developer> tag and the vcs-browser URL that Flathub
+  # asks for, so this runs on 24.04 (appstream 1.0) rather than in the AppImage's job.
+  linux-metadata:
+    name: Linux metadata
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install the validators
+        run: sudo apt-get update && sudo apt-get install -y appstream desktop-file-utils
+
+      - name: Validate the desktop file and the AppStream metainfo
+        shell: bash
+        run: |
+          appstreamcli --version
+          # On failure the tool's own output becomes a public annotation.
+          check() {
+            local title="$1"; shift
+            if ! out=$("$@" 2>&1); then
+              echo "::error title=$title::${out//$'\n'/%0A}"
+              return 1
+            fi
+            echo "$out"
+          }
+          check desktop-file-validate \
+            desktop-file-validate packaging/linux/io.github.inmymoonsuit.CADDCalculator.desktop
+          check appstreamcli appstreamcli validate --no-net --explain \
+            packaging/linux/io.github.inmymoonsuit.CADDCalculator.metainfo.xml
 
   # Builds the Flathub manifest from source in Flathub's KDE container, then starts the app
   # inside the sandbox with --smoke-test (slice d4). Submitting to Flathub is the
@@ -189,7 +201,15 @@ jobs:
         shell: bash
         run: |
           [ -f flatpak-build.log ] || exit 0
-          tail -n 60 flatpak-build.log | python3 -c "import sys; print('::error title=flatpak-builder::' + '%0A'.join(x.rstrip().replace('%', '%25') for x in sys.stdin))"
+          # The error lines, then the end of the log, leaving out download progress.
+          python3 - flatpak-build.log <<'PY'
+          import re, sys
+          lines = [l.rstrip() for l in open(sys.argv[1], encoding="utf-8", errors="replace")]
+          lines = [l for l in lines if l and not re.match(r"^\s*(\d|% Total|Dload)", l)]
+          errors = [l for l in lines if re.search(r"error|failed|not found", l, re.I)]
+          shown = errors[-25:] + ["----"] + lines[-35:]
+          print("::error title=flatpak-builder::" + "%0A".join(l.replace("%", "%25") for l in shown))
+          PY
 
       - name: Start it inside the sandbox
         run: |
