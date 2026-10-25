@@ -762,6 +762,47 @@ def pane_fill(art: Art, pairs: Sequence[Pair], panes: PaneStyle, needed: float) 
     return index, alpha
 
 
+def settled_fill(
+    region: Art, under: Art, pairs: Sequence[Pair], panes: PaneStyle, needed: float
+) -> tuple[int, int]:
+    """Choose a pane's pair over its safe area, then the opacity its own pixels need.
+
+    The pair is chosen over the pane's ``region``: its safe area, the corner the art
+    keeps clear for it, which is the same whatever the pane's text. So a near-tie
+    between the pairs can't tip with the text's width, as the version line's did from
+    one version to the next (ADR-0016, amendments). The opacity is the least, from the
+    region's, at which that pair reads over the art ``under`` the pane itself, so the
+    contrast and calm guarantees hold on exactly the pixels behind the text
+    (``pane_reads``). An opaque fill covers the art, so a pair that reads opaque over
+    the region reads opaque here too; one that doesn't, the region's fallback, stays
+    opaque, as ``pane_fill`` leaves it.
+
+    Args:
+        region: The art's colours over the pane's safe area and the pane, every pixel.
+        under: The art's colours under the pane itself, every pixel.
+        pairs: Each text colour, with its fill's colour.
+        panes: The panes' style: the floor, the percentile, and the most spread.
+        needed: The contrast the text must reach.
+
+    Returns:
+        The index of the pair in ``pairs``, and the fill's alpha, 0 to 255.
+    """
+    index, alpha = pane_fill(region, pairs, panes, needed)
+    counted = tally(under)
+    text, fill = pairs[index]
+
+    def reads(level: int) -> bool:
+        return pane_reads(counted, text, fill, level, panes, needed)
+
+    if alpha == LEVELS or reads(alpha):
+        return index, alpha
+    low, high = alpha, LEVELS  # low doesn't read over the pane's own pixels; opaque does
+    while high - low > 1:
+        middle = (low + high) // 2
+        low, high = (low, middle) if reads(middle) else (middle, high)
+    return index, high
+
+
 def opaque_fill(pairs: Sequence[Pair]) -> tuple[int, int]:
     """Return the pair whose text contrasts most with its fill, and an opaque alpha.
 

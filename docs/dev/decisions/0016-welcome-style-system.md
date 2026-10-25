@@ -458,3 +458,47 @@ about 2 s of it inside its first show, in font work. Profiled natively on Window
 * **Tests** check that the display font names only its face when it's loaded, and its
   fallbacks after it when it isn't, and that the work names Consolas where it's
   installed, and the platform's fixed-width family elsewhere.
+
+### 2026-10-25: a pane's look doesn't change with its text
+
+Packaging & Builds found that bumping the version to 0.1.0a1 turned the version line from
+white on ink to ink on white, on the generic art. The maintainer left the rule to UI/UX
+(relayed by PM).
+
+* **The cause.** The pane hugs its text, so its pixels, and the art it chose its pair
+  over, change with the text's width: 59 px for "Version 0.1.0", 79 px for "Version
+  0.1.0.dev0". Over the generic art both pairs read at the floor, so the tie went to
+  whichever had more contrast under the text, and that was a coin toss.
+  * Under the pane, measured offscreen, ink on white reached 4.76–4.82:1 and white on
+    ink 4.75–4.80:1.
+  * "0.1.0a1", "0.1.0" and "1.0.0" tipped to ink on white; "0.1.0.dev0", "0.1.0a10"
+    and "10.12.3rc2" stayed white on ink.
+  * Every release could have flipped it.
+* **The rule.** A pane's pair is chosen over its **safe area**: the corner the art keeps
+  clear for it (`safe_area`, §1). That's the same whatever the text, so the choice rests
+  on the art alone (`welcome_style.settled_fill`).
+  * The area is measured together with the pane's own box, in case a long text, such
+    as a translation, outgrows it.
+  * The **opacity** is the least, from the area's, at which that pair reads over the
+    pane's own pixels. So §5's contrast and calm guarantees still hold on exactly the
+    pixels behind the text, as before.
+  * An opaque fill covers the art, so a pair the area can read opaque reads opaque
+    behind the text too.
+* **Rejected:**
+  * Measuring at a fixed reference text width: a guess that a longer version, or a
+    translation, would outgrow.
+  * Hysteresis: there's no previous look to hold on to at launch.
+  * A contrast margin before a tie counts: it moves the coin toss rather than removing
+    it.
+* **What it does.** Over the version pane's safe area (3,340 device pixels offscreen, the
+  same for every version), white on ink leads 4.80:1 to 4.35:1. Every version measured
+  gets white on ink at the floor, 15%, in both themes: the generic look, as before
+  0.1.0a1. The name pane is unchanged.
+* **Tests:**
+  * The version pane's look is the same, and its text reads by the contrast rule, for
+    "0.1.0.dev0", "0.1.0a1", "0.1.0", "0.1.0a10", "1.0.0" and "10.12.3rc2", in both
+    themes.
+  * Over one near-tie under the text, a lighter or a darker safe area decides the
+    pair.
+  * Where the pane's own pixels need more than its area, the opacity rises to the
+    least that reads there.

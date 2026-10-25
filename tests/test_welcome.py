@@ -450,6 +450,37 @@ def test_the_generic_look_is_unchanged_by_the_calm_rule() -> None:
     welcome.close()
 
 
+VERSIONS = ["0.1.0.dev0", "0.1.0a1", "0.1.0", "0.1.0a10", "1.0.0", "10.12.3rc2"]
+"""Versions whose lines differ in width: a near-tie under the text once tipped between
+them (ADR-0016, amendments)."""
+
+
+@pytest.mark.parametrize("version", VERSIONS)
+def test_the_version_panes_look_doesnt_change_with_the_version(
+    monkeypatch: pytest.MonkeyPatch, version: str
+) -> None:
+    """Its pair is chosen over its safe area, so every version looks alike, and reads."""
+    import math
+
+    from caddcalc.gui import welcome as module
+    from caddcalc.gui.welcome_style import pane_pairs, pane_reads
+
+    monkeypatch.setattr(module, "__version__", version)
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    welcome = screen()
+    welcome.show()
+    pane = welcome.art.version_pane
+    assert pane.text == f"Version {version}"
+    for scheme in ("light", "dark"):
+        text_role, fill_role, alpha = pane.fill(scheme)
+        assert (text_role, fill_role, alpha) == ("welcome_paper", "welcome_ink", floor), scheme
+        text, fill = pane_pairs(panes, scheme)[panes.text_roles.index(text_role)]
+        needed = pane.tokens.min_contrast
+        assert pane_reads(pane.art, text, fill, alpha, panes, needed), "the contrast rule holds"
+    welcome.close()
+
+
 @pytest.mark.parametrize(
     ("logo", "shape"), [(LOGO_SVG, "tall"), (SQUARE_LOGO_SVG, "square"), (WIDE_LOGO_SVG, "wide")]
 )
