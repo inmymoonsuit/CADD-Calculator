@@ -99,7 +99,7 @@ def test_the_settings_page_builds_its_form_as_a_wrapping_form() -> None:
 def _squeezed(window: Any) -> list[Any]:
     """Every clipped widget narrower than its least width, or past the window's right edge.
 
-    A wrapped label short of its text's height at one width is KI-032, tested below.
+    A wrapped label short of its text's height is ``_short_labels``'s.
     """
     from PySide6.QtCore import QPoint
     from PySide6.QtWidgets import QGroupBox
@@ -120,23 +120,22 @@ def _squeezed(window: Any) -> list[Any]:
 def test_no_settings_row_is_squeezed_at_any_window_width() -> None:
     """The settings page at each width from its least to 400 px wider, a pixel at a time.
 
-    Before ``WrappingForm``, its choice boxes lost up to the gap at some widths (KI-031).
+    Before ``WrappingForm``, its choice boxes lost up to the gap at some widths (KI-031),
+    and at its preferred width its wrapped labels fell short (KI-032). Its facts show.
     Group boxes are left out, as the domain page's picker test leaves them out: the check
     measures a group box's least height at its least width (ADR-0024's U1 amendment).
     """
-    from tests.qt_helpers import open_window, settle
+    from tests.qt_helpers import settle
     from tests.test_translated_gui import _described
 
-    window = open_window()
-    window.show()
-    window.select_domain("sheet_metal")
-    settle(window)
+    window = _settings_with_facts()
     least = window.minimumSizeHint()
     found = []
     for extra in range(400):
         window.resize(least.width() + extra, least.height())
         settle(window)
         found += [f"+{extra} px: {_described(w, window)}" for w in _squeezed(window)]
+        found += [f"+{extra} px, short: {_described(w, window)}" for w in _short_labels(window)]
     assert not found, "\n".join(found[:6])
     window.close()
 
@@ -154,18 +153,26 @@ def _short_labels(window: Any) -> list[Any]:
     ]
 
 
-def test_qt_gives_a_form_the_wrong_heights_at_exactly_its_preferred_width() -> None:
-    """KI-032 as Qt has it: at its preferred width a form's wrapped labels fall short.
-
-    One pixel either side, they're whole. If this fails, Qt lays the form out right at that
-    width now: the sweep above can check labels' heights as well, and KI-032 can close.
-    """
+def _settings_with_facts() -> Any:
+    """The Sheet Metal settings page, with a material and temper, so its facts show."""
     from tests.qt_helpers import open_window, settle
 
     window = open_window()
+    domain = window.registry.domain("sheet_metal")
+    settings = window.domain_settings.set_choice(domain, "material", "al:5052")
+    (temper, *_rest) = domain.options("temper", settings.for_domain(domain).selections)
+    window.domain_settings = settings.set_choice(domain, "temper", temper.key)
     window.show()
     window.select_domain("sheet_metal")
     settle(window)
+    assert window.facts_label is not None and window.facts_label.isVisible(), "facts shown"
+    return window
+
+
+def _at_preferred_width(window: Any) -> int:
+    """Resize the window until its settings form is exactly as wide as it prefers."""
+    from tests.qt_helpers import settle
+
     form = window.settings_form
     height = window.minimumSizeHint().height()
 
@@ -181,8 +188,67 @@ def test_qt_gives_a_form_the_wrong_heights_at_exactly_its_preferred_width() -> N
             break
         width += short_by
     assert at(width) == 0, "the window reaches the form's preferred width"
+    return width
+
+
+def test_qt_gives_a_form_the_wrong_heights_at_exactly_its_preferred_width(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """KI-032 as Qt has it, with ``WrappingForm``'s repair off: its wrapped labels fall short.
+
+    If this fails, Qt lays a form out right at its preferred width now, and the repair in
+    ``WrappingForm.setGeometry`` can go.
+    """
+    from PySide6.QtWidgets import QFormLayout
+
+    from caddcalc.gui.reflow import WrappingForm
+
+    monkeypatch.setattr(WrappingForm, "setGeometry", QFormLayout.setGeometry)
+    window = _settings_with_facts()
+    _at_preferred_width(window)
     assert _short_labels(window), "short at the preferred width"
-    for beside in (width - 1, width + 1):
-        at(beside)
-        assert _short_labels(window) == [], beside
     window.close()
+
+
+def test_the_settings_form_is_whole_at_exactly_its_preferred_width() -> None:
+    """UI/UX's review of PR #3, M2: the facts and the help, whole at 935 px and either side.
+
+    The facts are never-clip text (ADR-0023 §2): the cited minimum radius and strengths.
+    """
+    from tests.qt_helpers import settle
+
+    window = _settings_with_facts()
+    width = _at_preferred_width(window)
+    height = window.height()
+    for at in (width, width - 1, width + 1, width):
+        window.resize(at, height)
+        settle(window)
+        assert _short_labels(window) == [], at
+    window.close()
+
+
+def test_a_form_is_laid_out_again_once_per_geometry_whatever_it_finds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The repair's ``invalidate`` lays the page out again; that pass mustn't repair again.
+
+    A row that's short for another reason, such as a page too short for its form, would
+    otherwise lay the page out forever.
+    """
+    from PySide6.QtCore import QRect
+    from PySide6.QtWidgets import QWidget
+
+    from caddcalc.gui.reflow import WrappingForm
+
+    page = QWidget()
+    form = WrappingForm(page)
+    form.add_row("Label", QWidget())
+    calls: list[int] = []
+    monkeypatch.setattr(form, "_short_rows", lambda: True)
+    monkeypatch.setattr(form, "invalidate", lambda: calls.append(1))
+    for rect in (QRect(0, 0, 300, 80), QRect(0, 0, 300, 80), QRect(0, 0, 301, 80)):
+        form.setGeometry(rect)
+    assert len(calls) == 2, "once at 300 px, and once again at 301"
+    form.setGeometry(QRect(0, 0, 300, 80))
+    assert len(calls) == 3, "back at 300 px, after another width, it's done again"
+    page.close()

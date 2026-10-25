@@ -1582,3 +1582,14 @@ the branch.
   say so.
 * **Probes, 4 of 4 killed:** labels not read; the allowed-values message dropped; `--unit`
   by id only; a help that names a unit.
+* **KI-032 worked around, so nothing on a settings page is clipped at its preferred width
+  (UI/UX's M2).** At exactly the form's preferred width Qt lays its rows out with heights
+  from another width (natively, a 947 px window with a material chosen): the Facts got
+  172 px of 186, and the thickness and K-factor help 98 of 112 and 126. The facts are
+  never-clip text (ADR-0023 §2). `WrappingForm.setGeometry` now lays the form out again
+  from scratch when a wrapping row is short, once per geometry. Measured with the repair
+  off and on, offscreen and natively: short labels before, none after. KI-032 stays open
+  as worked around, as KI-031 does, since it's Qt's: its first test pins Qt's behaviour,
+  and fails when Qt is fixed. The 400-width sweep now checks labels' heights too, with
+  the facts shown. Probe: without the once-per-geometry guard, the guard's test fails;
+  without the repair, the preferred-width test does.

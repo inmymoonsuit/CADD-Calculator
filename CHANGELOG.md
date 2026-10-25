@@ -397,6 +397,11 @@ All notable changes are recorded here. The format follows
   `Registry.setting_uses()` support the settings page.
 
 ### Fixed
+- **A family settings page clipped its facts and help at one window width,** the one
+  where its form is exactly as wide as it prefers: the cited minimum inside radius and
+  strengths lost their last line, and a setting's "Used by" list showed one calculator
+  of four. Qt laid the rows out with heights from another width (KI-032); the form now
+  lays itself out again when a wrapped row is short.
 - **A family settings row is never squeezed beside its label** (KI-031): within a few
   pixels of fitting, a row stayed beside its label and its field lost those pixels,
   cutting into a choice box at some window widths and, on Windows, into the unit

@@ -224,20 +224,24 @@ with each of its methods (ADR-0021's amendments of 2026-10-18); the ruling of 20
 superseded that resolution, and the issue is open again. The engineering log records the
 measure that was removed.
 
-### KI-032: At exactly its preferred width, a form's wrapped help text is cut short (Low)
+### KI-032: At exactly its preferred width, Qt gives a form's wrapped labels too few lines (Low, worked around)
 
-At one window width, where the family settings form is exactly as wide as it prefers,
-Qt lays it out with row heights it worked out for another width, so two settings' help
-texts get less height than their wrapped lines need. One pixel wider or narrower,
-they're whole. It's on main before ADR-0024's stop 3 too. Offscreen here at 9 pt, the
-thickness and K-factor help get 81 px of 104 and 117 px, 581 px past the least window
-on main; the Windows jobs saw the same at 396 px past it. Qt 6.12's
-`QFormLayout::setGeometry` (qformlayout.cpp) skips recomputing the heights at that
-width when it has a height cached for it, and lays the rows out from whatever width it
-last worked heights out for. The one reset Qt offers, `invalidate()`, lays the page out
-again, so calling it from `setGeometry` would need a guard against looping; that's for a
-decision, not done here. `tests/test_wrapping_form.py` checks Qt's behaviour; when it
-fails, the 400-width sweep there can check labels' heights too.
+At one window width, where a form is exactly as wide as it prefers, Qt lays it out with
+row heights it worked out for another width, so its wrapped labels get less height than
+their lines need; one pixel wider or narrower, they're whole. On the Sheet Metal settings
+page, natively at 9 pt with a material chosen, that's a 947 px window: the Facts, which
+carry the cited minimum inside radius, got 172 px of 186, and the thickness and K-factor
+help 98 px of 112 and 126, so the thickness's "Used by" list showed one calculator of
+four (UI/UX's review of ADR-0024's stop 3, M2). Qt 6.12's `QFormLayout::setGeometry`
+(qformlayout.cpp) skips recomputing the heights at that width when it has a height cached
+for it, and lays the rows out from whatever width it last worked heights out for.
+Worked around by `gui.reflow.WrappingForm.setGeometry`: when a row that wraps is given
+less than its height for its width, it invalidates the form, which clears the cache, and
+lays it out again at once, once per geometry, since the invalidation lays the page out
+again at the same geometry. `tests/test_wrapping_form.py` pins Qt's behaviour with the
+repair off, checks the settings page whole at the preferred width and at each of 400
+widths, and checks the repair runs once per geometry; when the first fails, Qt lays the
+form out right, and the repair can go.
 
 ### KI-031: Qt squeezes a form's field when its row fits only without the gap (Low, worked around)
 

@@ -165,6 +165,38 @@ class WrappingForm(QFormLayout):
         self.gap = max(self.horizontalSpacing(), 0)
         """The style's space between a label and its field, kept in the label."""
         self.setHorizontalSpacing(0)
+        self._repaired_at: QRect | None = None
+        """The geometry this form was last laid out again at, so it's done once there."""
+
+    @override
+    def setGeometry(self, rect: QRect) -> None:
+        """Lay the rows out, and again from scratch if one's short of its wrapped height.
+
+        At exactly the form's preferred width, Qt finds a height cached for that width and
+        lays the rows out with heights it worked out for another width, so a wrapped label
+        gets too few lines (KI-032). ``invalidate`` clears the cache and the form is laid
+        out again at once. That's done once per geometry: ``invalidate`` asks the page to
+        lay itself out again too, and that pass, at the same geometry, comes back here.
+        """
+        if rect != self._repaired_at:
+            self._repaired_at = None
+        super().setGeometry(rect)
+        if self._repaired_at is not None or not self._short_rows():
+            return
+        self._repaired_at = rect
+        self.invalidate()
+        super().setGeometry(rect)
+
+    def _short_rows(self) -> bool:
+        """Whether a shown item that wraps is given less height than it needs at its width."""
+        for index in range(self.count()):
+            item = self.itemAt(index)
+            if item is None or item.isEmpty() or not item.hasHeightForWidth():
+                continue
+            box = item.geometry()
+            if box.height() < item.heightForWidth(box.width()):
+                return True
+        return False
 
     def add_row(self, text: str, field: QWidget | QLayout) -> None:
         """Add a row of ``field`` after a label of ``text``."""
