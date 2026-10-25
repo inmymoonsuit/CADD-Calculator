@@ -7,6 +7,10 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- macOS: a .dmg holding the app and a link to /Applications; CI mounts it and starts the
+  app from it. A user guide, "Installing", says plainly that the downloads aren't signed
+  yet, and gives Microsoft's and Apple's first-run steps ("Run anyway", "Open Anyway").
+  Notarization is stubbed in the release workflow, switched off.
 - Linux: an AppImage of the packaged build, with a .desktop file and AppStream metainfo,
   made with pinned, checksummed appimagetool and runtime releases; and a Flathub manifest
   that builds the app from source on the KDE runtime with the PySide BaseApp. CI validates

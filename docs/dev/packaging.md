@@ -343,6 +343,40 @@ winget's validation:
 3. Fork winget-pkgs, add the folder as `manifests/i/inmymoonsuit/CADDCalculator/<version>/`,
    and open a pull request. Its bots check the manifest and the installer.
 
+## The macOS .dmg
+
+`packaging/macos/make_dmg.py <app> --smoke-test` puts the `.app` that `build.py` makes into
+a compressed, read-only `.dmg` with `hdiutil`, with a link to `/Applications` beside it, so
+users drag one onto the other (ADR-0022, slice d5). `--smoke-test` mounts the image
+read-only, checks the link, starts the app from the mounted image with `--smoke-test`, and
+detaches.
+
+The CI build is for Apple silicon only: `macos-latest` is an arm64 runner. An Intel or
+universal build would need its own runner or a universal Python.
+
+The app isn't signed or notarized yet, so macOS blocks it the first time it's opened.
+`docs/user/installing.md` explains why, and gives Apple's "Open Anyway" steps.
+
+### macOS notarization (a stub)
+
+The release workflow's `notarize-macos` job is a placeholder for Developer ID signing and
+notarization, once the maintainer joins the Apple Developer Program (ADR-0022, "Later"). It
+runs only on tags, in the `release-signing` environment. Until the variable
+`MACOS_NOTARIZE` is `true` and its secrets are set, it leaves a "switched off" notice and
+succeeds. Switched on, it fails on purpose, because its steps aren't written yet. Before
+switching it on, write and test them:
+
+1. Import the Developer ID Application certificate (the secrets
+   `APPLE_DEVELOPER_ID_P12`, base64, and `APPLE_DEVELOPER_ID_P12_PASSWORD`) into a
+   temporary keychain on a macOS runner.
+2. Sign the `.app` with `codesign --deep --force --options runtime --timestamp`.
+3. Submit it with `xcrun notarytool submit --wait`, using `APPLE_ID`, `APPLE_TEAM_ID`, and
+   `APPLE_APP_SPECIFIC_PASSWORD`, then `xcrun stapler staple` the app.
+4. Rebuild the `.dmg` with `make_dmg.py` from the stapled app, and sign and staple the
+   `.dmg` too.
+
+After that, Homebrew can take a cask, since it accepts only apps that pass Gatekeeper.
+
 ## The Linux AppImage
 
 `packaging/linux/make_appimage.py <app folder> --smoke-test` wraps the standalone Linux
@@ -398,11 +432,11 @@ edition on Windows, macOS, and Linux. Branded editions are never built there.
   and uploads each platform's artifacts. On Windows it also builds the installer, installs
   and uninstalls it, and validates the winget manifests. On Linux it validates the
   `.desktop` file and the metainfo, builds the AppImage and starts it, and a separate job
-  builds the Flatpak from source and starts it in the sandbox. It never signs, drafts a
-  release, or publishes. A newer push cancels a superseded dry run.
+  builds the Flatpak from source and starts it in the sandbox. On macOS it builds the `.dmg`
+  and starts the app from the mounted image. It never signs, drafts a release, or
+  publishes. A newer push cancels a superseded dry run.
 * **On a `v*` tag** it also signs the installer, once signing is switched on, and attaches
-  the archives, the installer, and the AppImage to a **draft** GitHub release for the
-  maintainer to publish.
+  the archives, the installer, the AppImage, and the `.dmg` to a **draft** GitHub release for
+  the maintainer to publish.
 * A failed build's last lines become a public annotation, since job logs need a signed-in
   reader.
-* The macOS .dmg comes later (slice d5).

@@ -123,6 +123,12 @@ jobs:
         if: runner.os == 'Linux'
         run: uv run python packaging/linux/make_appimage.py builds/generic/*-linux-x64 --smoke-test
 
+      # Put the .app in a .dmg with a link to /Applications, then mount the image and start
+      # the app from it with --smoke-test (slice d5). Unsigned for now (ADR-0022).
+      - name: Build the .dmg and start the app from it (macOS)
+        if: runner.os == 'macOS'
+        run: uv run python packaging/macos/make_dmg.py builds/generic/*-macos-*.app --smoke-test
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: CADDCalculator-generic-${{ runner.os }}
@@ -131,8 +137,44 @@ jobs:
             builds/generic/*.tar.gz
             builds/generic/*-setup.exe
             builds/generic/*.AppImage
+            builds/generic/*.dmg
             builds/generic/*.build.json
           if-no-files-found: error
+
+  # A stub: Developer ID signing and notarization for the macOS .dmg, once the maintainer
+  # joins the Apple Developer Program (ADR-0022, "Later"). Switched off until the variable
+  # MACOS_NOTARIZE is "true" and its secrets are set; switched off, it leaves a notice and
+  # succeeds. Switched on, it fails on purpose until the steps are written and tested
+  # (docs/dev/packaging.md, "macOS notarization").
+  notarize-macos:
+    name: Notarize the macOS app (stub)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: release-signing
+    steps:
+      - name: Is notarization switched on?
+        shell: bash
+        env:
+          MACOS_NOTARIZE: ${{ vars.MACOS_NOTARIZE }}
+          HAVE_CERT: ${{ secrets.APPLE_DEVELOPER_ID_P12 != '' }}
+          HAVE_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_P12_PASSWORD != '' }}
+          HAVE_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAVE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+          HAVE_APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+        run: |
+          if [ "$MACOS_NOTARIZE" != "true" ]; then
+            echo "::notice title=Notarization is switched off::MACOS_NOTARIZE isn't true, so the .dmg stays unsigned (docs/user/installing.md says how to open it)."
+            exit 0
+          fi
+          for have in "$HAVE_CERT" "$HAVE_CERT_PASSWORD" "$HAVE_APPLE_ID" "$HAVE_TEAM_ID" "$HAVE_APP_PASSWORD"; do
+            if [ "$have" != "true" ]; then
+              echo "::notice title=Notarization is switched off::MACOS_NOTARIZE is true, but a signing secret isn't set."
+              exit 0
+            fi
+          done
+          echo "::error title=Notarization isn't written yet::Write and test the codesign, notarytool, and stapler steps before switching it on (docs/dev/packaging.md)."
+          exit 1
 
   # The .desktop file and the AppStream metainfo, checked with current tools: Ubuntu
   # 22.04's appstreamcli predates the <developer> tag and the vcs-browser URL that Flathub
@@ -394,4 +436,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes \
-            dist/*.zip dist/*.tar.gz dist/*-setup.exe dist/*.AppImage
+            dist/*.zip dist/*.tar.gz dist/*-setup.exe dist/*.AppImage dist/*.dmg
