@@ -4,10 +4,21 @@ name: Release builds
 # Branded editions are never built here (ADR-0008 item 4, ADR-0011): the first step fails
 # if a branding/ folder exists, and packaging/build.py refuses branded builds in CI.
 # Status and limitations: docs/dev/packaging.md, "CI".
+#
+# Dry runs: a push to the `distribution` branch, or a pull request that touches packaging,
+# builds, smoke-tests, and uploads the artifacts on every platform, but never drafts a
+# release, signs, or publishes. Only a `v*` tag does those.
 
 on:
   push:
     tags: ["v*"]
+    branches: [distribution]
+  pull_request:
+    paths:
+      - "packaging/**"
+      - ".github/workflows/release.yml"
+      - "pyproject.toml"
+      - "uv.lock"
   workflow_dispatch:
 
 permissions:
