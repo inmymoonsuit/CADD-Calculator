@@ -69,15 +69,14 @@ switched on, as SignPath's conditions require.
 
 * **The publisher (Windows, once signed):** right-click the installer, choose Properties,
   then Digital Signatures. It should name the signing service's certificate holder.
-* **The checksum:** each release will attach a `SHA256SUMS` file. Compare it with your
+* **The checksum:** each release attaches a `SHA256SUMS` file. Compare it with your
   download's hash, for example `certutil -hashfile <file> SHA256` on Windows, or
   `shasum -a 256 <file>` on macOS and Linux.
-* **The build's origin:** each release's files will carry a GitHub artifact attestation.
+* **The build's origin:** each release's files carry a GitHub artifact attestation.
   With the GitHub CLI, run
   `gh attestation verify <file> --repo inmymoonsuit/CADD-Calculator`. It confirms that this
-  repository's workflow built the file.
-
-Checksums and attestations are being added to the release workflow for version 0.3.
+  repository's workflow built the file. The Python package on PyPI carries PyPI's own
+  attestations, shown on each file's page there.
 
 ## Privacy
 

@@ -126,3 +126,17 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
   with a catalog of ours for the same language (ADR-0020, amendments), so until then
   they cost space: 33 files, 5.8 MB, in PySide6 6.12. In return, a new language needs
   no packaging change.
+
+### 2026-10-25: release integrity and PyPI, as built (ADR-0022's slice d6)
+
+* **Checksums:** `release.yml`'s `release-files` job writes `SHA256SUMS` over every release
+  file, including the wheel and the sdist, and attaches it to the draft release. It runs on
+  dry runs too.
+* **Attestations:** on tags, `actions/attest` (which replaced
+  `actions/attest-build-provenance`) attests each file named in `SHA256SUMS`. Only that job
+  has `id-token: write` and `attestations: write`.
+* **PyPI**, decided above, is built: Trusted Publishing through
+  `pypa/gh-action-pypi-publish`, on tags only, TestPyPI first, each upload behind an
+  environment (`testpypi`, `pypi`) whose required reviewer is the maintainer. No token is
+  stored. The maintainer's one-time setup is in [packaging.md](../packaging.md#pypi).
+* Every action is pinned by commit SHA, and Dependabot proposes updates weekly.

@@ -72,8 +72,10 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [x] Packaging spike, then accept ADR-0009: pyside6-deploy + Nuitka (pinned to 4.1.1),
       standalone folder, built by `packaging/build.py`. Windows only so far (ADR-0009).
 - [ ] Installers for Windows, macOS, and Linux, built in CI on tags. GitHub Releases.
-      A workflow that builds generic archives on tags and drafts a release is sketched in
-      `.github/workflows/release.yml`. It hasn't run on GitHub, and macOS and Linux are untested.
+      `.github/workflows/release.yml` builds and smoke-tests the Windows installer, the
+      macOS `.dmg`, the AppImage, and the Flatpak, writes `SHA256SUMS`, and on tags
+      attests, drafts the release, and publishes to PyPI (ADR-0022, slices d1 to d6).
+      Its dry runs pass on all three; it hasn't run on a tag yet.
 - [ ] Move CI's Linux jobs to Ubuntu 26 once its package names are checked. They're pinned
       to `ubuntu-24.04` (`.github/workflows/ci.yml`), since the test job installs Qt's
       runtime libraries by name: libegl1, libgl1, libxkbcommon0, libfontconfig1 and

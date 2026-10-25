@@ -27,7 +27,7 @@ def test_the_dmg_links_applications_and_is_smoke_tested_from_the_image() -> None
     assert module.VOLUME_NAME == "CADD Calculator"
     workflow = WORKFLOW.read_text(encoding="utf-8")
     assert "packaging/macos/make_dmg.py builds/generic/*-macos-*.app --smoke-test" in workflow
-    assert "builds/generic/*.dmg" in workflow and "dist/*.dmg" in workflow
+    assert "builds/generic/*.dmg" in workflow and "downloads/*.dmg" in workflow
 
 
 def test_notarization_is_a_stub_gated_off_on_tags_only() -> None:

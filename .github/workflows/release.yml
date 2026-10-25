@@ -404,9 +404,108 @@ jobs:
           path: signed/*-setup.exe
           if-no-files-found: error
 
+  # The wheel and the sdist, built and checked on every run (slice d6). Only a tag
+  # publishes them, through the testpypi and pypi jobs below.
+  python-dist:
+    name: Wheel and sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Build the wheel and the sdist
+        run: uv build
+
+      # The wheel's catalogs are each language's compiled .mo, and nothing else
+      # (ADR-0009's checklist), checked before anything could be uploaded.
+      - name: Check the wheel's catalogs
+        run: |
+          uv sync --locked
+          uv run python scripts/i18n.py check-wheel dist/*.whl
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+
+  # Every release file in one place, with the signed installer in place of the unsigned one
+  # when signing ran; then SHA256SUMS over all of them, and on a tag, a GitHub artifact
+  # attestation for each (slice d6). It runs on dry runs too, so SHA256SUMS is tested; only
+  # a tag attests.
+  release-files:
+    name: Release files, checksums, and attestations
+    needs: [build, python-dist, sign-windows]
+    if: >-
+      !cancelled() && needs.build.result == 'success' && needs.python-dist.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.sign-windows.result)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write  # attestations sign with the workflow's OIDC identity
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: CADDCalculator-generic-*
+          path: downloads
+          merge-multiple: true
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: downloads
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        if: needs.sign-windows.result == 'success'
+        continue-on-error: true
+        with:
+          name: CADDCalculator-signed-installer
+          path: signed
+
+      - name: Collect the release files and write SHA256SUMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir release
+          # The archives (the sdist is a .tar.gz too), the installer, the AppImage, the
+          # .dmg, and the wheel; not the build reports.
+          cp downloads/*.zip downloads/*.tar.gz downloads/*-setup.exe downloads/*.AppImage \
+            downloads/*.dmg downloads/*.whl release/
+          signed=(signed/*-setup.exe)
+          if (( ${#signed[@]} )); then cp -f "${signed[@]}" release/; fi
+          for kind in .zip .tar.gz -setup.exe .AppImage .dmg .whl; do
+            files=(release/*"$kind")
+            if (( ! ${#files[@]} )); then
+              echo "::error title=Release files::no *$kind among the release files"
+              exit 1
+            fi
+          done
+          cd release
+          ls -l
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+          sha256sum --check --strict SHA256SUMS
+
+      - name: Attest every release file
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: release-files
+          path: release/*
+          if-no-files-found: error
+
   draft-release:
     name: Draft GitHub release
-    needs: [build, sign-windows]
+    needs: release-files
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -414,26 +513,55 @@ jobs:
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
-          pattern: CADDCalculator-generic-*
-          path: dist
-          merge-multiple: true
+          name: release-files
+          path: release
 
-      # When signing ran, its installer replaces the unsigned one.
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
-        continue-on-error: true
-        with:
-          name: CADDCalculator-signed-installer
-          path: signed
-
-      - name: Use the signed installer, if there is one
-        run: |
-          if compgen -G "signed/*-setup.exe" > /dev/null; then cp -f signed/*-setup.exe dist/; fi
-
-      # A draft: the maintainer checks the archives and publishes the release by hand.
-      - name: Create a draft release with the generic archives
+      # A draft: the maintainer checks the files and publishes the release by hand.
+      - name: Create a draft release with every file and SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
-            --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes \
-            dist/*.zip dist/*.tar.gz dist/*-setup.exe dist/*.AppImage dist/*.dmg
+            --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes release/*
+
+  # PyPI Trusted Publishing, on tags only: TestPyPI first, then PyPI, each behind its own
+  # environment, whose required reviewer is the maintainer. No token is stored anywhere:
+  # PyPI trusts this workflow's OIDC identity (docs/dev/packaging.md, "PyPI"). The action
+  # makes PEP 740 attestations for both files.
+  testpypi:
+    name: Publish to TestPyPI
+    needs: [python-dist, release-files]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/cadd-calculator/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: Publish to PyPI
+    needs: testpypi
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/cadd-calculator/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3

@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Release integrity: every release attaches `SHA256SUMS` over all its files, and on tags
+  each file gets a GitHub artifact attestation (`gh attestation verify`). The wheel and the
+  sdist are built and checked on every run, and a tag publishes them to TestPyPI, then
+  PyPI, through Trusted Publishing, each upload after the maintainer approves it. No token
+  is stored.
 - macOS: a .dmg holding the app and a link to /Applications; CI mounts it and starts the
   app from it. A user guide, "Installing", says plainly that the downloads aren't signed
   yet, and gives Microsoft's and Apple's first-run steps ("Run anyway", "Open Anyway").

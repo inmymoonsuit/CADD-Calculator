@@ -35,7 +35,8 @@ requirement for that, and nothing from it ships. pip and uv fetch it into the bu
 isolated environment automatically, except offline, or for a distribution packager
 building without isolation: there it must be installed first (often as
 `python3-babel`). CI builds both and checks the wheel's catalogs: each language's `.mo`,
-and nothing else (`uv run python scripts/i18n.py check-wheel dist/*.whl`).
+and nothing else (`uv run python scripts/i18n.py check-wheel dist/*.whl`). A `v*` tag
+publishes both to PyPI ([PyPI](#pypi)).
 
 ## Editions
 
@@ -324,6 +325,57 @@ Actions > Variables) to one provider, and set that provider's settings:
 No key or certificate file is ever stored in the repository or its secrets: both services
 keep the key in their own hardware (ADR-0022's amendment, W5).
 
+## Checksums and attestations
+
+The release workflow's `release-files` job gathers every file a release offers: the Windows
+zip and installer (the signed one, when signing ran), the macOS `.dmg` and zip, the Linux
+AppImage and archive, and the wheel and the sdist. It fails if any kind is missing. It
+writes `SHA256SUMS` over them, and checks it. On a `v*` tag it then makes a GitHub
+artifact attestation for each file with `actions/attest`, from that `SHA256SUMS`
+(ADR-0022, slice d6). The draft release gets every file and `SHA256SUMS`.
+
+The job runs on dry runs too, so `SHA256SUMS` is tested on every push; only a tag
+attests. It alone has `id-token: write` and `attestations: write`. Users check a download
+with either ([installing](../user/installing.md#checking-a-download)):
+
+```bash
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+```bash
+gh attestation verify CADDCalculator-0.3.0-generic-windows-x64-setup.exe --repo inmymoonsuit/CADD-Calculator
+```
+
+The build reports (`*.build.json`) stay in the workflow's artifacts, not the release.
+
+## PyPI
+
+On a `v*` tag the workflow publishes the wheel and the sdist with PyPI's Trusted
+Publishing: first to TestPyPI (the `testpypi` job), then, once that succeeds, to PyPI (the
+`pypi` job). Both use `pypa/gh-action-pypi-publish`, which also makes PEP 740
+attestations for both files. No API token is stored anywhere: PyPI trusts this workflow's
+OIDC identity, and each job has `id-token: write` and nothing else. The `python-dist` job
+builds both files and checks the wheel's catalogs on every run; only a tag publishes.
+
+Nothing is published until the maintainer does this once, on each of
+[PyPI](https://pypi.org/manage/account/publishing/) and
+[TestPyPI](https://test.pypi.org/manage/account/publishing/) (an account on each, with
+two-factor authentication on):
+
+1. **A pending publisher.** Account > Publishing > "Add a new pending publisher", GitHub
+   tab: PyPI project name `cadd-calculator`, owner `inmymoonsuit`, repository
+   `CADD-Calculator`, workflow `release.yml`, environment `pypi` (on TestPyPI,
+   `testpypi`). A pending publisher doesn't reserve the name: until the first upload,
+   anyone can take it.
+2. **The two environments**, in the repository's Settings > Environments: `testpypi` and
+   `pypi`, each with yourself as a **required reviewer** and the deployment tag rule `v*`,
+   as for `release-signing` ([Signing](#signing)). Each upload then waits for your approval
+   in the run's page.
+
+Without them, a tag's `testpypi` job fails at the upload and `pypi` never starts; the
+draft release is made either way. A version can be uploaded once only, to each index, so
+a tag that's published can't be reused.
+
 ## winget
 
 `packaging/windows/winget/` holds the winget manifest templates (schema 1.10.0) for
@@ -433,10 +485,15 @@ edition on Windows, macOS, and Linux. Branded editions are never built there.
   and uninstalls it, and validates the winget manifests. On Linux it validates the
   `.desktop` file and the metainfo, builds the AppImage and starts it, and a separate job
   builds the Flatpak from source and starts it in the sandbox. On macOS it builds the `.dmg`
-  and starts the app from the mounted image. It never signs, drafts a release, or
-  publishes. A newer push cancels a superseded dry run.
-* **On a `v*` tag** it also signs the installer, once signing is switched on, and attaches
-  the archives, the installer, the AppImage, and the `.dmg` to a **draft** GitHub release for
-  the maintainer to publish.
+  and starts the app from the mounted image. It builds and checks the wheel and the sdist,
+  and writes `SHA256SUMS` over every release file. It never signs, attests, drafts a
+  release, or publishes. A newer push cancels a superseded dry run.
+* **On a `v*` tag** it also signs the installer, once signing is switched on, attests
+  every release file, and attaches them with `SHA256SUMS` to a **draft** GitHub release for
+  the maintainer to publish. It publishes the wheel and the sdist to TestPyPI, then PyPI,
+  each after the maintainer approves it ([PyPI](#pypi)).
+* **Every action is pinned** to a full commit SHA, with its version in a comment, and
+  Dependabot (`.github/dependabot.yml`) proposes updates weekly, grouped in one pull
+  request.
 * A failed build's last lines become a public annotation, since job logs need a signed-in
   reader.

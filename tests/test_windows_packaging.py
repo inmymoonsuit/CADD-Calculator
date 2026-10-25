@@ -133,7 +133,7 @@ def test_winget_render_refuses_bad_values(
 
 def test_signing_runs_only_on_tags_and_is_gated_on_its_settings() -> None:
     workflow = WORKFLOW.read_text(encoding="utf-8")
-    job = workflow[workflow.index("  sign-windows:") : workflow.index("  draft-release:")]
+    job = workflow[workflow.index("  sign-windows:") : workflow.index("  python-dist:")]
     assert "if: startsWith(github.ref, 'refs/tags/v')" in job
     assert "vars.SIGNING_PROVIDER" in job
     assert "::notice title=Signing is switched off::" in job

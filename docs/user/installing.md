@@ -51,6 +51,12 @@ You do this once; after that the app opens normally.
   distributions at least as new as Ubuntu 22.04.
 * **Flathub:** a Flathub listing is planned. It will be built from source by Flathub.
 
+## As a Python package
+
+The calculators and the command line are also on PyPI as `cadd-calculator`, from the first
+release on: `pipx install cadd-calculator`, or `pipx install "cadd-calculator[gui]"` for the
+window too. This needs Python 3.12 or later.
+
 ## Checking a download
 
 * **The checksum:** each release has a `SHA256SUMS` file. Compare your download's hash with
