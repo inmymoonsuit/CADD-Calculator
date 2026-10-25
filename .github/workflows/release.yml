@@ -69,7 +69,21 @@ jobs:
           restore-keys: nuitka-${{ runner.os }}-
 
       - name: Build the generic edition, start it, and archive it
-        run: uv run python packaging/build.py --smoke-test --archive
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run python packaging/build.py --smoke-test --archive 2>&1 | tee build-output.txt
+
+      # Job logs need a signed-in reader, but annotations are public: put the end of a
+      # failed build's output, and of pyside6-deploy's log, where anyone can read it.
+      - name: Report a failed build as an annotation
+        if: failure()
+        shell: bash
+        run: |
+          for f in build-output.txt builds/generic/work/deploy.log; do
+            [ -f "$f" ] || continue
+            uv run --no-project python -c "import sys; f = sys.argv[1]; tail = open(f, encoding='utf-8', errors='replace').read().splitlines()[-60:]; print('::error title=' + f + '::' + '%0A'.join(x.replace('%', '%25') for x in tail))" "$f"
+          done
 
       - uses: actions/upload-artifact@v7
         with:
