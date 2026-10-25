@@ -85,9 +85,10 @@ def test_every_workflow_action_is_pinned_to_a_commit() -> None:
 
 
 def test_the_policy_page_claims_only_what_is_true_today() -> None:
-    """M3 and Low 4: MFA as confirmed, and required of anyone added; US English."""
+    """M3 and Low 4: MFA in the maintainer's words, required of anyone added; US English."""
     text = POLICY.read_text(encoding="utf-8")
-    assert "has\ntwo-factor authentication on (confirmed on 2026-10-25)" in text
+    words = '"Yes, two-factor\nauthentication is on for my GitHub account."'
+    assert words in text, "S&R's d6 Low 5: the maintainer's own words, with the date"
     assert "Anyone given write access later\nmust turn it on first" in text
     assert "Every change reaches `main` through review" not in text
     assert "the Trash" in text and "the Bin" not in text

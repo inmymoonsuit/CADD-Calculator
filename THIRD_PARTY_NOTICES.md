@@ -256,22 +256,35 @@ The LGPL-3.0 lets you use the app with a modified Qt or PySide6. Two routes:
 | Component | License | Text in `licenses/` |
 |---|---|---|
 | Third-party code inside Qt: FreeType, HarfBuzz, libpng, libjpeg-turbo, PCRE2, zlib, MD4C, double-conversion, TinyCBOR, the Unicode Character Database, the Wayland protocols, and others | each entry's own (BSD, MIT, zlib, FTL, Unicode, and others) | `Qt-third-party.txt`, one entry each with its copyright and full license text, from qtbase 6.12.0's `qt_attribution.json` files |
-| CPython | Python Software Foundation License 2.0 | `Python-LICENSE.txt` (CPython 3.12.14) |
-| Software CPython includes: expat, libmpdec, zlib, libffi, OpenSSL | each one's own | `Python-incorporated-software.rst` (CPython 3.12.14's `Doc/license.rst`), and below |
-| expat (`pyexpat`) | MIT | `expat-COPYING.txt` |
-| OpenSSL 3's libcrypto | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.5.7, the Windows build's; every OpenSSL 3 release has this license) |
-| libffi (`_ctypes`) | MIT | `libffi-LICENSE.txt` (libffi 3.4.4) |
-| zlib | zlib License | `zlib-LICENSE.txt` (zlib 1.3.1) |
+| ICU 73 (Linux builds: PySide6's wheel bundles `libicudata`, `libicui18n`, and `libicuuc` for Qt Core) | Unicode License, with ICU's notices for the data it includes | `ICU-LICENSE.txt` (ICU 73.2) |
+| The Python interpreter: CPython 3.12.14 as built by [python-build-standalone](https://github.com/astral-sh/python-build-standalone), which uv installs | Python Software Foundation License 2.0 | `Python-interpreter-LICENSE.txt`, the build's own interpreter's `LICENSE.txt`, copied by the build on each platform (on Windows it also carries the licenses of what that build bundles); and `Python-LICENSE.txt` (CPython 3.12.14) |
+| Software CPython includes: libmpdec, expat, zlib, libffi, OpenSSL, and others | each one's own | `Python-incorporated-software.rst` (CPython 3.12.14's `Doc/license.rst`), and below |
+| OpenSSL 3.5.7 (`ssl`, `hashlib`) | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.5.7) |
+| zlib 1.3.2 | zlib License | `zlib-LICENSE.txt` (zlib 1.3.2) |
+| expat 2.8.3 (`pyexpat`) | MIT | `expat-COPYING.txt` (expat 2.8.3) |
+| libffi (`_ctypes`) | MIT | `libffi-LICENSE.txt` (libffi 3.4.4; the license is the same across 3.x) |
 | bzip2 (`_bz2`) | bzip2 License | `bzip2-LICENSE.txt` (bzip2 1.0.8) |
 | xz's liblzma (`_lzma`) | public domain before 5.4; 0BSD from 5.4 on | `xz-5.2-COPYING.txt`, `xz-COPYING.0BSD.txt` |
+| util-linux's libuuid (`_uuid`; Linux) | BSD-3-Clause | `libuuid-COPYING.txt` |
+| libedit (`readline`; Linux) | BSD-3-Clause | `libedit-LICENSE.txt` |
+| ncurses 6.5 (`curses`, `readline`; Linux) | MIT-style (X11) | `ncurses-COPYING.txt` (ncurses 6.5.20240427) |
+| SQLite (`sqlite3`; Linux and macOS) | public domain | none needed |
 | Nuitka's runtime, compiled into the executable | Apache-2.0 | `Nuitka-LICENSE.txt` (Nuitka 4.1.1) |
 | Microsoft Visual C++ runtime (Windows builds) | Microsoft's Distributable Code terms | `Microsoft-Visual-C++-runtime.txt`, the app's own notice, with links to Microsoft's terms |
 
-The library texts other than OpenSSL's are pinned to the versions CPython 3.12.14's own
-Windows build uses. Each platform's Python may bundle other releases of the same
-libraries, under the same licenses; xz's two texts cover both of its licensing eras. The
-build reads the OpenSSL version from the shipped libcrypto and fails if it isn't an
-OpenSSL 3 release, whose license this text is.
+Every build uses uv's python-build-standalone interpreter, not python.org's. On Linux and
+macOS it links OpenSSL, zlib, expat, bzip2, liblzma, libffi, libmpdec, SQLite, and on
+Linux libuuid, libedit, and ncurses, into `libpython`; on Windows some are separate DLLs.
+The build asks its interpreter which OpenSSL, zlib, and expat releases it carries, and fails
+if this index doesn't name them, or if OpenSSL isn't a 3 release, whose license this text
+is. It also lists every native binary it bundles in its `.build.json`
+(`bundled_libraries`), and fails on one that `packaging/library_notices.py` doesn't assign
+to a component above, or whose texts are missing.
+
+The Flatpak is built differently: Flathub builds it from source on the KDE 6.11 runtime,
+and it runs on that runtime's Qt and on PySide6 6.11 from Flathub's
+`io.qt.PySide.BaseApp`, under the same licenses, with their notices in the runtime and
+the BaseApp. It bundles only the app itself (`docs/dev/packaging.md`, "Flathub").
 
 The builds leave out Qt's network module, its TLS backends, the VNC platform plugin, and
 the image plugins the app doesn't read (PDF, TIFF, WebP, TGA, WBMP, ICNS), so their notices

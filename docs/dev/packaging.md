@@ -26,6 +26,18 @@ The first build downloads Nuitka's C compiler (MinGW-w64 gcc, about 270 MB) and 
 Walker into Nuitka's cache. Later builds take 20 to 45 seconds because ccache keeps the
 compiled C.
 
+## The version
+
+The version has one source, `__version__` in `src/caddcalc/__init__.py`, which hatchling
+reads for the wheel and the sdist (`[tool.hatch.version]` in `pyproject.toml`), and the app
+and its build read at run time: the file names, the About box, the Windows version
+resource, and the installer. A release changes it there first, in a reviewed commit, then
+tags that commit `v` plus the version: the first release is `0.1.0a1`, tagged `v0.1.0a1`.
+On a tag, the workflow fails if the two differ, and `release_files.py` fails on a release
+file that carries another version. It's set by hand, not derived from the tag (as
+hatch-vcs would), so a source checkout, the sdist, and the Flatpak's build from source all
+know their version without git.
+
 ## The wheel and the sdist
 
 `uv build` makes both. The sdist carries the catalogs' sources, each language's `.po`
@@ -289,8 +301,11 @@ signing on:
 
 ### Then choose a provider
 
-Set the repository **variable** `SIGNING_PROVIDER` (Settings > Secrets and variables >
-Actions > Variables) to one provider, and set that provider's settings:
+Set the **variable** `SIGNING_PROVIDER` to one provider, and set that provider's
+settings, all on the **`release-signing` environment** (Settings > Environments >
+release-signing > Environment variables and Environment secrets), not as repository
+variables. A job reads them only inside that environment, after your approval; if the
+environment is ever missing, there's no provider, and signing stays off.
 
 **SignPath Foundation** (`SIGNING_PROVIDER` = `signpath`):
 
@@ -327,30 +342,37 @@ keep the key in their own hardware (ADR-0022's amendment, W5).
 
 ## Checksums and attestations
 
-The release workflow's `release-files` job gathers every file a release offers: the Windows
-zip and installer (the signed one, when signing ran), the macOS `.dmg` and zip, the Linux
-AppImage and archive, and the wheel and the sdist. It fails if any kind is missing. It
-writes `SHA256SUMS` over them, and checks it. On a `v*` tag it then makes a GitHub
-artifact attestation for each file with `actions/attest`, from that `SHA256SUMS`
-(ADR-0022, slice d6). The draft release gets every file and `SHA256SUMS`.
+The release workflow's `release-files` job gathers the files of the platforms named in the
+workflow's `RELEASE_PLATFORMS` list, with `packaging/release_files.py`. For the first
+release that's `Windows Linux`: the Windows zip and installer, and the Linux archive and
+AppImage. Adding `macOS` puts the `.dmg` and its zip in, and `Python` the wheel and the
+sdist; every platform is built and smoke-tested on every run either way. The job fails if a
+file is missing or carries another version. When a signing provider ran, the signed
+installer must replace the unsigned one, or the job fails. It writes `SHA256SUMS` over
+the files and checks it.
 
-The job runs on dry runs too, so `SHA256SUMS` is tested on every push; only a tag
-attests. It alone has `id-token: write` and `attestations: write`. Users check a download
-with either ([installing](../user/installing.md#checking-a-download)):
+On a `v*` tag, the `attest` job then makes a GitHub artifact attestation for each file with
+`actions/attest`, from that `SHA256SUMS` (ADR-0022, slice d6), and the draft release gets
+every file and `SHA256SUMS`. `release-files` runs on dry runs too, so it's tested on every
+push, and it holds no token beyond reading: only `attest`, on tags, has `id-token: write`
+and `attestations: write`. Users check a download with either
+([installing](../user/installing.md#checking-a-download)):
 
 ```bash
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 
 ```bash
-gh attestation verify CADDCalculator-0.3.0-generic-windows-x64-setup.exe --repo inmymoonsuit/CADD-Calculator
+gh attestation verify CADDCalculator-0.1.0a1-generic-windows-x64-setup.exe --repo inmymoonsuit/CADD-Calculator
 ```
 
 The build reports (`*.build.json`) stay in the workflow's artifacts, not the release.
 
 ## PyPI
 
-On a `v*` tag the workflow publishes the wheel and the sdist with PyPI's Trusted
+It's **switched off**: the `testpypi` and `pypi` jobs run only when the repository
+variable `PUBLISH_PYPI` is `true`, so a tag's run skips them until the setup below is done.
+Then, on a `v*` tag, the workflow publishes the wheel and the sdist with PyPI's Trusted
 Publishing: first to TestPyPI (the `testpypi` job), then, once that succeeds, to PyPI (the
 `pypi` job). Both use `pypa/gh-action-pypi-publish`, which also makes PEP 740
 attestations for both files. No API token is stored anywhere: PyPI trusts this workflow's
@@ -372,8 +394,11 @@ two-factor authentication on):
    as for `release-signing` ([Signing](#signing)). Each upload then waits for your approval
    in the run's page.
 
-Without them, a tag's `testpypi` job fails at the upload and `pypi` never starts; the
-draft release is made either way. A version can be uploaded once only, to each index, so
+3. **Switch it on:** the repository variable `PUBLISH_PYPI` = `true` (Settings > Secrets
+   and variables > Actions > Variables).
+
+Switched on without the publishers, a tag's `testpypi` job fails at the upload and `pypi`
+never starts; the draft release is made either way. A version can be uploaded once only, to each index, so
 a tag that's published can't be reused.
 
 ## winget
@@ -488,10 +513,18 @@ edition on Windows, macOS, and Linux. Branded editions are never built there.
   and starts the app from the mounted image. It builds and checks the wheel and the sdist,
   and writes `SHA256SUMS` over every release file. It never signs, attests, drafts a
   release, or publishes. A newer push cancels a superseded dry run.
-* **On a `v*` tag** it also signs the installer, once signing is switched on, attests
-  every release file, and attaches them with `SHA256SUMS` to a **draft** GitHub release for
-  the maintainer to publish. It publishes the wheel and the sdist to TestPyPI, then PyPI,
-  each after the maintainer approves it ([PyPI](#pypi)).
+* **On a `v*` tag** it also checks the tag is `v` plus the package's version, signs the
+  installer once signing is switched on, attests every release file, and attaches them
+  with `SHA256SUMS` to a **draft** GitHub release for the maintainer to publish. A tag with
+  a pre-release suffix (`a`, `b`, `rc`, or `.dev`) makes a pre-release. Once `PUBLISH_PYPI`
+  is on, it publishes the wheel and the sdist to TestPyPI, then PyPI, each after the
+  maintainer approves it ([PyPI](#pypi)).
+* **An unsigned tag run**, as for `v0.1.0a1`: every build, the Linux metadata, the Flatpak,
+  and the wheel and sdist run as on a dry run. `sign-windows` and the `notarize-macos`
+  stub each start in the `release-signing` environment, leave a "switched off" notice, and
+  succeed. `release-files` takes the unsigned installer, `attest` attests each file, and
+  `draft-release` drafts a pre-release with the Windows and Linux files and `SHA256SUMS`.
+  `testpypi` and `pypi` are skipped.
 * **Every action is pinned** to a full commit SHA, with its version in a comment, and
   Dependabot (`.github/dependabot.yml`) proposes updates weekly, grouped in one pull
   request.

@@ -333,6 +333,7 @@ def test_build_checks_the_display_face_and_its_license_are_bundled(
 @pytest.mark.gui
 def test_windows_version_resources_get_four_numbers(build_script: ModuleType) -> None:
     assert build_script.numeric_version("0.1.0.dev0") == "0.1.0.0"
+    assert build_script.numeric_version("0.1.0a1") == "0.1.0.0"
     assert build_script.numeric_version("1.2") == "1.2.0.0"
     assert build_script.numeric_version("2.3.4.5.6") == "2.3.4.5"
 
@@ -683,19 +684,49 @@ def test_about_names_qt_and_pyside6_at_their_running_versions() -> None:
 
 
 @pytest.mark.gui
-def test_the_build_checks_the_notices_name_the_versions_it_ships(
-    build_script: ModuleType, tmp_path: Path
-) -> None:
-    """M1 and Low 1: the index names Qt and PySide6; libcrypto is an OpenSSL 3."""
-    assert build_script.notice_version_problems(tmp_path) == []
-    assert build_script.notice_version_problems(tmp_path, "no versions") != []
-    (tmp_path / "libcrypto-3-x64.dll").write_bytes(b"\0junk OpenSSL 3.5.7 9 Jun 2026\0")
-    assert build_script.openssl_version(tmp_path) == "3.5.7"
-    assert build_script.notice_version_problems(tmp_path) == []
-    (tmp_path / "libcrypto-3-x64.dll").write_bytes(b"\0OpenSSL 1.1.1 11 Sep 2023\0")
-    assert build_script.openssl_version(tmp_path) == "1.1.1"
-    [problem] = build_script.notice_version_problems(tmp_path)
-    assert "OpenSSL 1.1.1" in problem
+def test_the_build_checks_the_notices_name_the_versions_it_ships(build_script: ModuleType) -> None:
+    """M1 and Low 1, and S&R's d6 M1: the index names what the build ships.
+
+    That's Qt, PySide6, and the interpreter's OpenSSL, zlib, and expat; OpenSSL is a 3.
+    """
+    versions = build_script.runtime_versions()
+    assert set(versions) == {"OpenSSL", "zlib", "expat"}
+    assert build_script.notice_version_problems() == []
+    assert build_script.notice_version_problems("no versions") != []
+    old_zlib = {**versions, "zlib": "1.3.1"}
+    [problem] = build_script.notice_version_problems(versions=old_zlib)
+    assert "zlib 1.3.1" in problem
+    index = (Path(build_script.ROOT) / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    problems = build_script.notice_version_problems(
+        index + "OpenSSL 1.1.1", {**versions, "OpenSSL": "1.1.1"}
+    )
+    assert problems == ["the build ships OpenSSL 1.1.1, but the notice is OpenSSL 3's license"]
+
+
+@pytest.mark.gui
+def test_every_bundled_binary_needs_a_notice(build_script: ModuleType, tmp_path: Path) -> None:
+    """S&R's d6 M1: each native binary maps to a component whose texts the build carries."""
+    (tmp_path / "PySide6" / "Qt" / "lib").mkdir(parents=True)
+    (tmp_path / "CADDCalculator.bin").write_bytes(b"\x7fELF rest")
+    (tmp_path / "libpython3.12.so.1.0").write_bytes(b"\x7fELF rest")
+    (tmp_path / "PySide6" / "Qt" / "lib" / "libQt6Core.so.6").write_bytes(b"\x7fELF rest")
+    (tmp_path / "PySide6" / "Qt" / "lib" / "libicuuc.so.73").write_bytes(b"\x7fELF rest")
+    (tmp_path / "PySide6" / "helper").write_bytes(b"\x7fELF an unlisted tool")
+    (tmp_path / "notes.txt").write_text("not a binary", encoding="utf-8")
+    libraries = build_script.bundled_libraries(tmp_path)
+    assert libraries["PySide6/Qt/lib/libicuuc.so.73"].startswith("ICU")
+    assert libraries["PySide6/Qt/lib/libQt6Core.so.6"] == "Qt and PySide6, Shiboken6"
+    assert libraries["libpython3.12.so.1.0"].startswith("Python")
+    assert libraries["CADDCalculator.bin"] == "CADD Calculator, compiled by Nuitka"
+    assert libraries["PySide6/helper"] is None, "a binary nothing covers"
+    assert "notes.txt" not in libraries
+    problems = build_script.library_problems(tmp_path, libraries)
+    assert "1 bundled binaries have no notice entry" in problems[0]
+    assert "PySide6/helper" in problems[0]
+    assert "licenses/ICU-LICENSE.txt is missing, and the build's binaries need it" in problems
+    build_script.copy_notices(tmp_path)
+    del libraries["PySide6/helper"]
+    assert build_script.library_problems(tmp_path, libraries) == []
 
 
 @pytest.mark.gui

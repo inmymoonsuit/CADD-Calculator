@@ -30,6 +30,13 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
+env:
+  # The platforms a release carries: their files go to the draft release, with SHA256SUMS.
+  # Every platform is still built and smoke-tested on every run. Add macOS (the .dmg and its
+  # zip) or Python (the wheel and the sdist) here to put them in the release too
+  # (packaging/release_files.py). The first release, v0.1.0a1, is Windows and Linux only.
+  RELEASE_PLATFORMS: Windows Linux
+
 jobs:
   build:
     name: Generic / ${{ matrix.os }}
@@ -275,6 +282,9 @@ jobs:
             io.github.inmymoonsuit.CADDCalculator --smoke-test="$report"
           step "smoke-test report" python3 -c "import json, sys; r = json.load(open(sys.argv[1])); print(r); assert r['calculators'] > 0 and r['window_title'] == 'CADD Calculator', r" \
             "$report/smoke-test.json"
+          # The build tools (python3-build-deps) are cleaned up: none ships in /app.
+          step "build tools in the Flatpak" flatpak run --command=python3 \
+            io.github.inmymoonsuit.CADDCalculator -c "import importlib.util as u, sys; found = [m for m in ('hatchling', 'pathspec', 'pluggy', 'trove_classifiers', 'tomlkit', 'babel') if u.find_spec(m)]; print('build tools in /app:', found); sys.exit(1 if found else 0)"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -283,15 +293,19 @@ jobs:
           if-no-files-found: error
 
   # Signs the Windows installer on a tag, through SignPath Foundation or Microsoft
-  # Artifact Signing (ADR-0022). It's switched off until the maintainer sets the repository
-  # variable SIGNING_PROVIDER (signpath or artifact-signing) and that provider's variables
-  # and secret (docs/dev/packaging.md, "Signing"). Switched off, it leaves a notice and
-  # succeeds: it never fails a release over missing settings.
+  # Artifact Signing (ADR-0022). It's switched off until the maintainer sets the variable
+  # SIGNING_PROVIDER (signpath or artifact-signing) and that provider's variables and secret
+  # on the release-signing environment, not the repository, so signing can't run outside
+  # that environment's approval (docs/dev/packaging.md, "Signing"). Switched off, it leaves
+  # a notice and succeeds: it never fails a release over missing settings. Its output
+  # `provider` tells release-files whether a signed installer must replace the unsigned one.
   sign-windows:
     name: Sign the Windows installer
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
+    outputs:
+      provider: ${{ steps.gate.outputs.provider }}
     # The maintainer approves each signing by hand: the environment's required reviewer.
     # Artifact Signing's Azure login is bound to this environment, so it works nowhere else.
     environment: release-signing
@@ -405,7 +419,8 @@ jobs:
           if-no-files-found: error
 
   # The wheel and the sdist, built and checked on every run (slice d6). Only a tag
-  # publishes them, through the testpypi and pypi jobs below.
+  # publishes them, through the testpypi and pypi jobs below. On a tag it also checks the
+  # tag is `v` plus the package's version, so every file the release carries has it.
   python-dist:
     name: Wheel and sdist
     runs-on: ubuntu-24.04
@@ -426,28 +441,32 @@ jobs:
           uv sync --locked
           uv run python scripts/i18n.py check-wheel dist/*.whl
 
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(uv run python -c "import caddcalc; print(caddcalc.__version__)")
+          python3 packaging/release_files.py check-tag "$GITHUB_REF_NAME" "$version"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: python-dist
           path: dist/*
           if-no-files-found: error
 
-  # Every release file in one place, with the signed installer in place of the unsigned one
-  # when signing ran; then SHA256SUMS over all of them, and on a tag, a GitHub artifact
-  # attestation for each (slice d6). It runs on dry runs too, so SHA256SUMS is tested; only
-  # a tag attests.
+  # The release's files in one place: the RELEASE_PLATFORMS' files, with the signed
+  # installer in place of the unsigned one when a signing provider ran, then SHA256SUMS over
+  # them (slice d6; packaging/release_files.py). It runs on dry runs too, so it's tested on
+  # every push, and it holds no token beyond reading: the attest job signs, on tags only.
   release-files:
-    name: Release files, checksums, and attestations
+    name: Release files and checksums
     needs: [build, python-dist, sign-windows]
     if: >-
       !cancelled() && needs.build.result == 'success' && needs.python-dist.result == 'success'
       && contains(fromJSON('["success", "skipped"]'), needs.sign-windows.result)
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      id-token: write  # attestations sign with the workflow's OIDC identity
-      attestations: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           pattern: CADDCalculator-generic-*
@@ -459,43 +478,26 @@ jobs:
           name: python-dist
           path: downloads
 
+      # Only when a provider signed: then the signed installer must be there (S&R's d6 M2).
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
-        if: needs.sign-windows.result == 'success'
-        continue-on-error: true
+        if: needs.sign-windows.outputs.provider != ''
         with:
           name: CADDCalculator-signed-installer
           path: signed
 
       - name: Collect the release files and write SHA256SUMS
-        shell: bash
+        env:
+          PROVIDER: ${{ needs.sign-windows.outputs.provider }}
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          mkdir release
-          # The archives (the sdist is a .tar.gz too), the installer, the AppImage, the
-          # .dmg, and the wheel; not the build reports.
-          cp downloads/*.zip downloads/*.tar.gz downloads/*-setup.exe downloads/*.AppImage \
-            downloads/*.dmg downloads/*.whl release/
-          signed=(signed/*-setup.exe)
-          if (( ${#signed[@]} )); then cp -f "${signed[@]}" release/; fi
-          for kind in .zip .tar.gz -setup.exe .AppImage .dmg .whl; do
-            files=(release/*"$kind")
-            if (( ! ${#files[@]} )); then
-              echo "::error title=Release files::no *$kind among the release files"
-              exit 1
-            fi
-          done
+          version=$(python3 -c "import ast, sys; tree = ast.parse(open('src/caddcalc/__init__.py').read()); print(next(n.value.value for n in tree.body if isinstance(n, ast.Assign) and n.targets[0].id == '__version__'))")
+          # RELEASE_PLATFORMS is a space-separated list, split on purpose.
+          # shellcheck disable=SC2086
+          python3 packaging/release_files.py collect downloads release --version "$version" \
+            --platforms $RELEASE_PLATFORMS --signed signed --provider "$PROVIDER"
           cd release
-          ls -l
-          sha256sum -- * > SHA256SUMS
           cat SHA256SUMS
           sha256sum --check --strict SHA256SUMS
-
-      - name: Attest every release file
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
-        with:
-          subject-checksums: release/SHA256SUMS
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
@@ -503,35 +505,66 @@ jobs:
           path: release/*
           if-no-files-found: error
 
-  draft-release:
-    name: Draft GitHub release
+  # A GitHub artifact attestation for each release file, from SHA256SUMS, on tags only: the
+  # only job with id-token and attestations write (S&R's d6 Low 2).
+  attest:
+    name: Attest the release files
     needs: release-files
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
+      id-token: write  # attestations sign with the workflow's OIDC identity
+      attestations: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: release-files
           path: release
 
-      # A draft: the maintainer checks the files and publishes the release by hand.
+      - name: Attest every release file
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+
+  draft-release:
+    name: Draft GitHub release
+    needs: [release-files, attest]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: release-files
+          path: release
+
+      # A draft: the maintainer checks the files and publishes the release by hand. A tag
+      # like v0.1.0a1, b1, or rc1 makes a pre-release.
       - name: Create a draft release with every file and SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
+          prerelease=""
+          if [ "$(python3 packaging/release_files.py prerelease "$GITHUB_REF_NAME")" = true ]; then
+            prerelease="--prerelease"
+          fi
+          # shellcheck disable=SC2086
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft $prerelease \
             --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes release/*
 
-  # PyPI Trusted Publishing, on tags only: TestPyPI first, then PyPI, each behind its own
+  # PyPI Trusted Publishing, on tags only, and only once the maintainer sets the repository
+  # variable PUBLISH_PYPI to true, after the one-time setup (docs/dev/packaging.md, "PyPI"):
+  # until then a tag's run skips both jobs. TestPyPI first, then PyPI, each behind its own
   # environment, whose required reviewer is the maintainer. No token is stored anywhere:
-  # PyPI trusts this workflow's OIDC identity (docs/dev/packaging.md, "PyPI"). The action
-  # makes PEP 740 attestations for both files.
+  # PyPI trusts this workflow's OIDC identity. The action makes PEP 740 attestations.
   testpypi:
     name: Publish to TestPyPI
     needs: [python-dist, release-files]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_PYPI == 'true'
     runs-on: ubuntu-24.04
     environment:
       name: testpypi
@@ -551,7 +584,7 @@ jobs:
   pypi:
     name: Publish to PyPI
     needs: testpypi
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_PYPI == 'true'
     runs-on: ubuntu-24.04
     environment:
       name: pypi

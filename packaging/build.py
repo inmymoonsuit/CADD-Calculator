@@ -26,6 +26,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import sysconfig
 import time
 import tomllib
 from importlib.metadata import distribution
@@ -53,6 +54,7 @@ from fetch_notices import NOTICES_DIR
 from fetch_notices import check as check_notices
 from fetch_notices import expected_files as notice_files
 from icons import ROOT, ensure_qt_app, save_icns, save_ico
+from library_notices import INTERPRETER_LICENSE, bundled_libraries, texts_needed, uncovered
 
 BUILDS = ROOT / "builds"
 BRANDING_DIR = ROOT / "branding"
@@ -229,6 +231,19 @@ LICENSES_DIR = "licenses"
 """Where a build keeps the runtime's license texts, from packaging/notices/ (KI-016)."""
 
 
+def interpreter_license() -> Path:
+    """Return the LICENSE.txt of the Python the build runs on, which it bundles.
+
+    python-build-standalone keeps it beside ``python.exe`` on Windows, where it also
+    carries the licenses of what the interpreter bundles, and in the standard library's
+    folder on Linux and macOS (S&R M1).
+    """
+    for folder in (Path(sys.base_prefix), Path(sysconfig.get_path("stdlib"))):
+        if (folder / "LICENSE.txt").is_file():
+            return folder / "LICENSE.txt"
+    raise BuildError(f"no LICENSE.txt found for the interpreter in {sys.base_prefix}")
+
+
 def copy_notices(output: Path) -> None:
     """Copy the project's license, the index, and the runtime's license texts into a build."""
     for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
@@ -237,6 +252,7 @@ def copy_notices(output: Path) -> None:
     folder.mkdir(exist_ok=True)
     for name in notice_files():
         shutil.copy2(NOTICES_DIR / name, folder / name)
+    shutil.copy2(interpreter_license(), folder / INTERPRETER_LICENSE)
 
 
 def locked_version(package: str) -> str | None:
@@ -266,38 +282,78 @@ def pyside6_source() -> dict[str, object]:
     }
 
 
-def openssl_version(output: Path) -> str | None:
-    """Return the OpenSSL release a build's libcrypto reports, or ``None`` if it has none."""
-    for path in sorted(output.rglob("libcrypto*")):
-        if path.is_file():
-            match = re.search(rb"OpenSSL (\d+\.\d+\.\d+) ", path.read_bytes())
-            if match:
-                return match.group(1).decode()
-    return None
+def runtime_versions() -> dict[str, str]:
+    """Return the OpenSSL, zlib, and expat releases the build's interpreter carries.
+
+    The build bundles the interpreter it runs on, and each platform's python-build-standalone
+    brings its own releases (inside ``libpython`` on Linux and macOS), so it asks that
+    interpreter's own modules (S&R's d6 M1).
+    """
+    import pyexpat
+    import ssl
+    import zlib
+
+    versions = {
+        "zlib": zlib.ZLIB_RUNTIME_VERSION,
+        "expat": pyexpat.EXPAT_VERSION.removeprefix("expat_"),
+    }
+    match = re.match(r"OpenSSL (\d+\.\d+\.\d+)", ssl.OPENSSL_VERSION)
+    if match:
+        versions["OpenSSL"] = match.group(1)
+    return versions
 
 
-def notice_version_problems(output: Path, index: str | None = None) -> list[str]:
+def notice_version_problems(
+    index: str | None = None, versions: dict[str, str] | None = None
+) -> list[str]:
     """Return what THIRD_PARTY_NOTICES.md gets wrong about the versions a build ships.
 
-    It must name the Qt and PySide6 versions, and the libcrypto must be an OpenSSL 3
-    release, since ``licenses/OpenSSL-LICENSE.txt`` is OpenSSL 3's license (M1, Low 1).
+    It must name the Qt and PySide6 versions, and the OpenSSL, zlib, and expat releases the
+    interpreter carries; and OpenSSL must be a 3 release, since
+    ``licenses/OpenSSL-LICENSE.txt`` is OpenSSL 3's license (M1, Low 1; S&R's d6 M1).
     """
     text = index if index is not None else (ROOT / "THIRD_PARTY_NOTICES.md").read_text("utf-8")
     problems = []
     qt, pyside = qVersion(), PySide6.__version__
     if f"### Qt {qt} and Qt for Python (PySide6, Shiboken6) {pyside}" not in text:
         problems.append(f"THIRD_PARTY_NOTICES.md doesn't name Qt {qt} and PySide6 {pyside}")
-    ssl = openssl_version(output)
-    if ssl is not None and not ssl.startswith("3."):
-        problems.append(f"the build ships OpenSSL {ssl}, but the notice is OpenSSL 3's license")
+    versions = runtime_versions() if versions is None else versions
+    for name, release in versions.items():
+        if f"{name} {release}" not in text:
+            problems.append(
+                f"the build ships {name} {release}, which THIRD_PARTY_NOTICES.md doesn't name"
+            )
+    if not versions.get("OpenSSL", "3.").startswith("3."):
+        problems.append(
+            f"the build ships OpenSSL {versions['OpenSSL']}, but the notice is OpenSSL 3's license"
+        )
     return problems
 
 
 def missing_notices(output: Path) -> list[str]:
     """Return the notices a build lacks: our license, the index, or a runtime license text."""
-    wanted = ["LICENSE.md", "THIRD_PARTY_NOTICES.md"]
+    wanted = ["LICENSE.md", "THIRD_PARTY_NOTICES.md", f"{LICENSES_DIR}/{INTERPRETER_LICENSE}"]
     wanted += [f"{LICENSES_DIR}/{name}" for name in notice_files()]
     return [name for name in wanted if not (output / name).is_file()]
+
+
+def library_problems(output: Path, libraries: dict[str, str | None]) -> list[str]:
+    """Return what a build's notices miss about its native binaries (S&R's d6 M1).
+
+    Every bundled library, extension module, and executable must belong to a component in
+    ``library_notices.py``, and each component's texts must be in ``licenses/``.
+    """
+    problems = []
+    unknown = uncovered(libraries)
+    if unknown:
+        problems.append(
+            f"{len(unknown)} bundled binaries have no notice entry in packaging/library_notices.py"
+            f" ({platform_tag()}): {' '.join(unknown)}"
+        )
+    for text in texts_needed(libraries):
+        if not (output / LICENSES_DIR / text).is_file():
+            problems.append(f"licenses/{text} is missing, and the build's binaries need it")
+    return problems
 
 
 def trimmed_files(output: Path) -> list[str]:
@@ -512,12 +568,18 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         raise BuildError(f"pyside6-deploy failed (exit {result.returncode}); log: {log}")
 
     output, exe = locate_output(edition_dir, name, mode)
+    libraries: dict[str, str | None] = {}
+    versions = runtime_versions()
     if output.is_dir():
         copy_notices(output)
         for missing in missing_notices(output):
             raise BuildError(f"the notice {missing} is missing from the build (KI-016)")
-        for problem in notice_version_problems(output):
-            raise BuildError(problem)
+        libraries = bundled_libraries(output)
+        # Every problem at once: on CI each one costs a run to find.
+        problems = library_problems(output, libraries)
+        problems += notice_version_problems(versions=versions)
+        if problems:
+            raise BuildError("; ".join(problems))
         extras = trimmed_files(output)
         if extras:
             reasons = inclusion_reasons(work / "compilation-report.xml")
@@ -561,7 +623,10 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "reference_tables": [f"{s.package}/{s.filename}" for s in REFERENCE_TABLES],
         "catalogs": languages,
         "qt_catalogs": len(qt_catalogs()),
-        "openssl": openssl_version(output) if output.is_dir() else None,
+        "openssl": versions.get("OpenSSL"),
+        "runtime_versions": versions,
+        "interpreter_license": str(interpreter_license()),
+        "bundled_libraries": libraries,
     }
 
 

@@ -92,8 +92,8 @@ TEXTS = (
     ),
     Text(
         "expat-COPYING.txt",
-        "expat (pyexpat)",
-        f"{RAW}/python/cpython/{CPYTHON_TAG}/Modules/expat/COPYING",
+        "expat (pyexpat), at the release python-build-standalone 3.12.14 carries",
+        f"{RAW}/libexpat/libexpat/R_2_8_3/expat/COPYING",
     ),
     Text(
         "OpenSSL-LICENSE.txt",
@@ -105,7 +105,11 @@ TEXTS = (
         "libffi (_ctypes)",
         f"{RAW}/python/cpython-source-deps/libffi-3.4.4/LICENSE",
     ),
-    Text("zlib-LICENSE.txt", "zlib", f"{RAW}/python/cpython-source-deps/zlib-1.3.1/LICENSE"),
+    Text(
+        "zlib-LICENSE.txt",
+        "zlib, at the release python-build-standalone 3.12.14 carries",
+        f"{RAW}/madler/zlib/v1.3.2/LICENSE",
+    ),
     Text(
         "bzip2-LICENSE.txt", "bzip2 (_bz2)", f"{RAW}/python/cpython-source-deps/bzip2-1.0.8/LICENSE"
     ),
@@ -118,6 +122,28 @@ TEXTS = (
         "xz-COPYING.0BSD.txt",
         "xz's liblzma from 5.4 on (_lzma)",
         f"{RAW}/tukaani-project/xz/v5.8.1/COPYING.0BSD",
+    ),
+    Text(
+        "libuuid-COPYING.txt",
+        "util-linux's libuuid (_uuid), linked into libpython on Linux: the app's own copy of"
+        " its source's notice, since its COPYING has no copyright line",
+        None,
+    ),
+    Text(
+        "libedit-LICENSE.txt",
+        "libedit (readline), linked into libpython on Linux: the app's own copy of its"
+        " BSD-3-Clause notice, since libedit has no license file to fetch",
+        None,
+    ),
+    Text(
+        "ncurses-COPYING.txt",
+        "ncurses (curses, readline), linked into libpython on Linux",
+        f"{RAW}/ThomasDickey/ncurses-snapshots/v6_5_20240427/COPYING",
+    ),
+    Text(
+        "ICU-LICENSE.txt",
+        "ICU 73, which PySide6's Linux wheel bundles for Qt Core (Unicode-3.0 and its notices)",
+        f"{RAW}/unicode-org/icu/release-73-2/icu4c/LICENSE",
     ),
     Text(
         "Nuitka-LICENSE.txt",

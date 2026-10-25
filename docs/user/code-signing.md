@@ -61,7 +61,8 @@ maintainer alone.
 ## Accounts
 
 The maintainer's GitHub account, which every change to this repository goes through, has
-two-factor authentication on (confirmed on 2026-10-25). Anyone given write access later
+two-factor authentication on. In the maintainer's words, on 2026-10-25: "Yes, two-factor
+authentication is on for my GitHub account." Anyone given write access later
 must turn it on first. The signing service's account will need it too, before signing is
 switched on, as SignPath's conditions require.
 

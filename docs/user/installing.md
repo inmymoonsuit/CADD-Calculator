@@ -1,12 +1,15 @@
 # Installing CADD Calculator
 
-Downloads are on the project's
-[GitHub releases page](https://github.com/inmymoonsuit/CADD-Calculator/releases). Each
-release has a file for Windows, macOS, and Linux. They come from this repository's own
-build ([code signing policy](code-signing.md)).
+From the first release, `v0.1.0a1`, downloads are on the project's
+[GitHub releases page](https://github.com/inmymoonsuit/CADD-Calculator/releases). They come
+from this repository's own build ([code signing policy](code-signing.md)). The first
+release is an early pre-release for testing, with files for Windows and Linux; a macOS
+download comes later.
 
-**The downloads aren't signed yet.** Signing them costs money every year, so the project
-is starting without it and adding it in steps ([ADR-0022](../dev/decisions/0022-distribution-and-signing.md)).
+**The downloads aren't signed yet.** The project is starting without signing and adding it
+in steps ([ADR-0022](../dev/decisions/0022-distribution-and-signing.md)): Apple's
+notarization needs a yearly paid membership, and for Windows the free route, SignPath
+Foundation's program for open-source projects, asks for a project that's already released.
 Until then, Windows and macOS warn you the first time you open the app, because they
 can't tell who made it. The steps below get you past that warning safely. Check the
 download first ([below](#checking-a-download)).
@@ -30,7 +33,8 @@ A zip of the same app (`…-windows-x64.zip`) is there too: unzip it anywhere an
 
 ## macOS
 
-The macOS build is for Apple silicon (M1 and later). There's no Intel build yet.
+There's no macOS download yet; the first release is Windows and Linux only. When it comes,
+it will be for Apple silicon (M1 and later), and these steps apply.
 
 1. Download `CADDCalculator-<version>-generic-macos-arm64.dmg` and open it.
 2. Drag **CADD Calculator** onto the **Applications** folder in the same window.
@@ -53,9 +57,9 @@ You do this once; after that the app opens normally.
 
 ## As a Python package
 
-The calculators and the command line are also on PyPI as `cadd-calculator`, from the first
-release on: `pipx install cadd-calculator`, or `pipx install "cadd-calculator[gui]"` for the
-window too. This needs Python 3.12 or later.
+The calculators and the command line will also be on PyPI as `cadd-calculator`, once
+publishing there is switched on: then `pipx install cadd-calculator`, or
+`pipx install "cadd-calculator[gui]"` for the window too. This needs Python 3.12 or later.
 
 ## Checking a download
 

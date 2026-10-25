@@ -27,7 +27,13 @@ def test_the_dmg_links_applications_and_is_smoke_tested_from_the_image() -> None
     assert module.VOLUME_NAME == "CADD Calculator"
     workflow = WORKFLOW.read_text(encoding="utf-8")
     assert "packaging/macos/make_dmg.py builds/generic/*-macos-*.app --smoke-test" in workflow
-    assert "builds/generic/*.dmg" in workflow and "downloads/*.dmg" in workflow
+    assert "builds/generic/*.dmg" in workflow, "built and uploaded on every run"
+    # Out of the first release, and one word away from coming back (RELEASE_PLATFORMS).
+    assert "RELEASE_PLATFORMS: Windows Linux" in workflow
+    release_files = (ROOT / "packaging" / "release_files.py").read_text(encoding="utf-8")
+    assert (
+        '"macOS": ("CADDCalculator-*-macos-*.zip", "CADDCalculator-*-macos-*.dmg")' in release_files
+    )
 
 
 def test_notarization_is_a_stub_gated_off_on_tags_only() -> None:
