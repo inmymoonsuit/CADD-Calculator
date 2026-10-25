@@ -69,8 +69,8 @@ from caddcalc.gui.welcome_style import (
     WelcomeStyle,
     every_pixel,
     opaque_fill,
-    pane_fill,
     pane_pairs,
+    settled_fill,
     style,
 )
 
@@ -264,6 +264,16 @@ class _LogoBox(QWidget):
         p.end()
 
 
+def _pixels(art: QImage, logical: Rect) -> list[RGB]:
+    """Return every device pixel of ``art`` within ``logical``, at the art's ratio."""
+    device = device_rect(logical, art.devicePixelRatio())
+    rect = QRect(round(device.x), round(device.y), round(device.width), round(device.height))
+    under = art.copy(rect.intersected(art.rect()))
+    under = under.convertToFormat(QImage.Format.Format_RGBX8888)
+    pixels = bytes(under.constBits())  # under stays alive while its pixels are read
+    return every_pixel(pixels, under.width(), under.height())
+
+
 class _Pane(QWidget):
     """A quiet pane over the art: text in a translucent fill and a thin border (ADR-0016 §5).
 
@@ -291,6 +301,9 @@ class _Pane(QWidget):
         self.scale = 1.0
         self.art: list[RGB] | None = None
         """The art's colours under the pane, every device pixel, once measured."""
+        self.region: list[RGB] | None = None
+        """The art's colours over the pane's safe area and the pane, every device pixel:
+        what its pair is chosen over, the same whatever its text (ADR-0016, amendments)."""
         self.text_font = QFont()
         """The font its text is drawn in, at its size in device pixels."""
         self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
@@ -302,14 +315,16 @@ class _Pane(QWidget):
     def fill(self, scheme: Scheme) -> tuple[str, str, int]:
         """Return the text's role, its fill's role, and the fill's alpha, 0 to 255.
 
-        Until the art is measured, the fill is opaque.
+        The pair is chosen over the pane's safe area, and the opacity is what the pane's
+        own pixels need (``settled_fill``). Until the art is measured, the fill is opaque.
         """
         if scheme not in self._fills:
             pairs = pane_pairs(self.panes, scheme)
-            if self.art is None:
+            if self.art is None or self.region is None:
                 index, alpha = opaque_fill(pairs)
             else:
-                index, alpha = pane_fill(self.art, pairs, self.panes, self.tokens.min_contrast)
+                needed = self.tokens.min_contrast
+                index, alpha = settled_fill(self.region, self.art, pairs, self.panes, needed)
             self._fills[scheme] = self.panes.text_roles[index], self.panes.fill_roles[index], alpha
         return self._fills[scheme]
 
@@ -344,20 +359,21 @@ class _Pane(QWidget):
         self.setGeometry(round(rect.x), round(rect.y), int(size.width), int(size.height))
         self.scale, self._ratio, self._run, self.text_font = scale, ratio, run, font
 
-    def measure(self, art: QImage) -> None:
-        """Measure every pixel of the art under the pane, from ``art`` as the slot shows it.
+    def measure(self, art: QImage, safe_area: Rect) -> None:
+        """Measure every pixel of the art under the pane and over its ``safe_area``.
 
-        ``art`` is drawn at the display's device pixel ratio, so detail finer than a
-        logical pixel is measured as the screen shows it, not averaged away.
+        ``art`` is the art as the slot shows it, drawn at the display's device pixel
+        ratio, so detail finer than a logical pixel is measured as the screen shows it,
+        not averaged away. ``safe_area`` is in the slot's logical pixels; it's measured
+        with the pane's own box, in case a long text outgrows it.
         """
         box = self.geometry()
         logical = Rect(box.x(), box.y(), box.width(), box.height())
-        device = device_rect(logical, art.devicePixelRatio())
-        rect = QRect(round(device.x), round(device.y), round(device.width), round(device.height))
-        under = art.copy(rect.intersected(art.rect()))
-        under = under.convertToFormat(QImage.Format.Format_RGBX8888)
-        pixels = bytes(under.constBits())  # under stays alive while its pixels are read
-        self.art = every_pixel(pixels, under.width(), under.height())
+        left, top = min(logical.x, safe_area.x), min(logical.y, safe_area.y)
+        right = max(logical.x + logical.width, safe_area.x + safe_area.width)
+        bottom = max(logical.y + logical.height, safe_area.y + safe_area.height)
+        self.art = _pixels(art, logical)
+        self.region = _pixels(art, Rect(left, top, right - left, bottom - top))
         self._fills.clear()
         self.fill(current_scheme())  # now, so the card's first paint doesn't wait on it
         self.update()
@@ -400,6 +416,7 @@ class _ArtSlot(QWidget):
         """Where the art came from: ``"pack"``, or ``"generic"`` when there was none or it
         couldn't be used."""
         tokens = branding.welcome_tokens
+        self.tokens = tokens
         self.slot = tokens.art.slot
         self.radius = 0.0
         """The card's corner radius, which rounds the art's lower corners."""
@@ -456,10 +473,11 @@ class _ArtSlot(QWidget):
         self.measure()
 
     def measure(self) -> None:
-        """Measure the art under each pane, as the slot shows it over the card."""
+        """Measure the art under each pane and over its safe area, as the slot shows it."""
         art = self.shown_art()
+        scale = self.width() / self.slot.width
         for pane in (self.name_pane, self.version_pane):
-            pane.measure(art)
+            pane.measure(art, scaled(self.tokens.safe_area(pane.tokens), scale))
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:

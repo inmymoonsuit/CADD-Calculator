@@ -31,6 +31,7 @@ from caddcalc.gui.welcome_style import (
     pane_reads,
     parse_style,
     rgb,
+    settled_fill,
     style,
     with_overrides,
 )
@@ -377,6 +378,44 @@ def test_calm_art_stays_at_the_floor_with_room_to_spare() -> None:
     floor = math.ceil(panes.fill_opacity_min * 255)
     assert background_spread(CALM, WHITE, floor, panes.percentile) < 1.2
     assert pane_fill(CALM, PAIRS, panes, 3) == (0, floor)
+
+
+MID: RGB = (128, 128, 128)
+"""A mid grey, which both pairs read over at the floor: a near-tie under a pane."""
+
+
+@pytest.mark.parametrize(
+    ("tint", "pair"),
+    [((144, 144, 144), 0), ((112, 112, 112), 1)],
+    ids=["a lighter area", "a darker area"],
+)
+def test_the_safe_area_chooses_the_pair_whatever_is_under_the_text(tint: RGB, pair: int) -> None:
+    """Over the same near-tie under the text, the pane's calm safe area decides (ADR-0016).
+
+    The pane covers a quarter of its area. So the pair can't flip with the text's width,
+    as the version line's did.
+    """
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    under, region = mixed((MID, 1.0)), mixed((MID, 0.25), (tint, 0.75))
+    for text, fill in PAIRS:
+        assert pane_reads(under, text, fill, floor, panes, 3), "a near-tie under the text"
+    assert settled_fill(region, under, PAIRS, panes, 3) == (pair, floor)
+
+
+def test_the_text_still_reads_where_the_pane_needs_more_than_its_safe_area() -> None:
+    """The pair is the safe area's, but the opacity is what the pane's own pixels need."""
+    panes = style().panes
+    floor = math.ceil(panes.fill_opacity_min * 255)
+    region, under = CALM, mixed((BLACK, 0.5), (WHITE, 0.5))
+    index, alpha = settled_fill(region, under, PAIRS, panes, 3)
+    text, fill = PAIRS[index]
+    assert (index, pane_fill(region, PAIRS, panes, 3)) == (0, (0, floor)), "the area's pair"
+    assert alpha > floor
+    assert pane_reads(under, text, fill, alpha, panes, 3)
+    assert not pane_reads(under, text, fill, alpha - 1, panes, 3), "the least opacity"
+    assert art_contrast(under, text, fill, alpha, panes.percentile) >= 3
+    assert background_spread(under, fill, alpha, panes.percentile) <= panes.max_background_spread
 
 
 def test_saturated_art_is_held_to_the_contrast_where_two_percentiles_were_not() -> None:
