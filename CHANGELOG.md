@@ -7,6 +7,13 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- A Windows installer: `packaging/build.py --installer` wraps the app in an Inno Setup
+  installer that installs per user with no admin rights (per-machine optional), with a
+  Start-menu shortcut, an uninstaller, and a stable AppId. CI installs it, starts the
+  installed app, and uninstalls it on every Windows dry run. Signing through SignPath
+  Foundation or Microsoft Artifact Signing is wired in on tags, switched off until the
+  maintainer configures one. winget manifest templates are validated against winget's
+  schema (`docs/dev/packaging.md`).
 - A code signing policy page (`docs/user/code-signing.md`), written to SignPath
   Foundation's conditions: who builds and signs, the review before a release, how to check
   a download, and the privacy statement. ADR-0022's research claims now have sources,

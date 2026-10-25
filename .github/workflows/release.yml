@@ -24,6 +24,12 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or pull request supersedes a dry run; a tag's run is never
+# cancelled.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   build:
     name: Generic / ${{ matrix.os }}
@@ -72,7 +78,12 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          uv run python packaging/build.py --smoke-test --archive 2>&1 | tee build-output.txt
+          # Windows also wraps the folder in its Inno Setup installer; windows-latest has
+          # Inno Setup 6 (slice d3).
+          installer=""
+          if [ "$RUNNER_OS" = "Windows" ]; then installer="--installer"; fi
+          uv run python packaging/build.py --smoke-test --archive $installer 2>&1 \
+            | tee build-output.txt
 
       # Job logs need a signed-in reader, but annotations are public: put the end of a
       # failed build's output, and of pyside6-deploy's log, where anyone can read it.
@@ -85,18 +96,159 @@ jobs:
             uv run --no-project python -c "import sys; f = sys.argv[1]; tail = open(f, encoding='utf-8', errors='replace').read().splitlines()[-60:]; print('::error title=' + f + '::' + '%0A'.join(x.replace('%', '%25') for x in tail))" "$f"
           done
 
+      # Install silently for this user, start the installed app with --smoke-test, then
+      # uninstall and check nothing is left; every step's exit code is checked.
+      - name: Install, start, and uninstall the installer (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: uv run python packaging/windows/test_installer.py builds/generic/*-setup.exe
+
+      - name: Validate the winget manifests (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          setup=$(ls builds/generic/*-setup.exe)
+          version=$(uv run python -c "import caddcalc; print(caddcalc.__version__)")
+          sha=$(sha256sum "$setup" | cut -d' ' -f1)
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${version}/$(basename "$setup")"
+          uv run python packaging/windows/winget.py render --version "$version" \
+            --url "$url" --sha256 "$sha" --out builds/winget
+          uv run --no-project --with jsonschema==4.26.0 --with pyyaml==6.0.3 \
+            python packaging/windows/winget.py validate builds/winget
+
       - uses: actions/upload-artifact@v7
         with:
           name: CADDCalculator-generic-${{ runner.os }}
           path: |
             builds/generic/*.zip
             builds/generic/*.tar.gz
+            builds/generic/*-setup.exe
             builds/generic/*.build.json
+          if-no-files-found: error
+
+  # Signs the Windows installer on a tag, through SignPath Foundation or Microsoft
+  # Artifact Signing (ADR-0022). It's switched off until the maintainer sets the repository
+  # variable SIGNING_PROVIDER (signpath or artifact-signing) and that provider's variables
+  # and secret (docs/dev/packaging.md, "Signing"). Switched off, it leaves a notice and
+  # succeeds: it never fails a release over missing settings.
+  sign-windows:
+    name: Sign the Windows installer
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read  # SignPath downloads the unsigned artifact
+      id-token: write  # Artifact Signing signs in to Azure through OIDC
+    steps:
+      - name: Is signing switched on?
+        id: gate
+        shell: bash
+        env:
+          PROVIDER: ${{ vars.SIGNING_PROVIDER }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_POLICY_SLUG: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          SIGNPATH_TOKEN_SET: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+        run: |
+          off() {
+            echo "::notice title=Signing is switched off::$1 The installer stays unsigned (docs/dev/packaging.md, Signing)."
+            echo "provider=" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          case "$PROVIDER" in
+            signpath) needed="SIGNPATH_ORGANIZATION_ID SIGNPATH_PROJECT_SLUG SIGNPATH_POLICY_SLUG" ;;
+            artifact-signing) needed="AZURE_TENANT_ID AZURE_CLIENT_ID ARTIFACT_SIGNING_ENDPOINT ARTIFACT_SIGNING_ACCOUNT ARTIFACT_SIGNING_PROFILE" ;;
+            "") off "SIGNING_PROVIDER isn't set." ;;
+            *) off "SIGNING_PROVIDER is '$PROVIDER', not signpath or artifact-signing." ;;
+          esac
+          missing=""
+          for name in $needed; do
+            [ -n "$(printenv "$name")" ] || missing="$missing $name"
+          done
+          if [ "$PROVIDER" = "signpath" ] && [ "$SIGNPATH_TOKEN_SET" != "true" ]; then
+            missing="$missing SIGNPATH_API_TOKEN"
+          fi
+          [ -z "$missing" ] || off "$PROVIDER is chosen, but these aren't set:$missing."
+          echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v8
+        if: steps.gate.outputs.provider != ''
+        with:
+          name: CADDCalculator-generic-Windows
+          path: unsigned
+
+      - name: Keep only the installer
+        if: steps.gate.outputs.provider != ''
+        shell: bash
+        run: |
+          mkdir -p installer signed
+          mv unsigned/*-setup.exe installer/
+
+      - name: Upload the unsigned installer for SignPath
+        id: unsigned
+        if: steps.gate.outputs.provider == 'signpath'
+        uses: actions/upload-artifact@v7
+        with:
+          name: CADDCalculator-unsigned-installer
+          path: installer/*-setup.exe
+          if-no-files-found: error
+
+      - name: Sign through SignPath Foundation
+        if: steps.gate.outputs.provider == 'signpath'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2
+        with:
+          connector-url: https://app.signpath.io/Api/v1/GitHubActions
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Sign in to Azure for Artifact Signing
+        if: steps.gate.outputs.provider == 'artifact-signing'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906  # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Sign through Microsoft Artifact Signing
+        if: steps.gate.outputs.provider == 'artifact-signing'
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82  # v2.0.0
+        with:
+          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+          files-folder: installer
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Collect the Artifact Signing result
+        if: steps.gate.outputs.provider == 'artifact-signing'
+        shell: bash
+        run: cp installer/*-setup.exe signed/
+
+      - uses: actions/upload-artifact@v7
+        if: steps.gate.outputs.provider != ''
+        with:
+          name: CADDCalculator-signed-installer
+          path: signed/*-setup.exe
           if-no-files-found: error
 
   draft-release:
     name: Draft GitHub release
-    needs: build
+    needs: [build, sign-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -104,8 +256,20 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
+          pattern: CADDCalculator-generic-*
           path: dist
           merge-multiple: true
+
+      # When signing ran, its installer replaces the unsigned one.
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: CADDCalculator-signed-installer
+          path: signed
+
+      - name: Use the signed installer, if there is one
+        run: |
+          if compgen -G "signed/*-setup.exe" > /dev/null; then cp -f signed/*-setup.exe dist/; fi
 
       # A draft: the maintainer checks the archives and publishes the release by hand.
       - name: Create a draft release with the generic archives
@@ -114,4 +278,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes \
-            dist/*.zip dist/*.tar.gz
+            dist/*.zip dist/*.tar.gz dist/*-setup.exe

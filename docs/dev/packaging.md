@@ -218,17 +218,98 @@ antivirus software tends to dislike (ADR-0009).
   quarantined, note its exact name before changing any exclusions.
 * **Slow start on machines with many fonts.** See KI-015.
 
+## The Windows installer
+
+`build.py --installer` wraps the standalone Windows folder in an Inno Setup 6 installer,
+`…-windows-x64-setup.exe`, from `packaging/windows/CADDCalculator.iss` (ADR-0022, slice d3).
+It needs Inno Setup 6's `ISCC.exe` ([jrsoftware.org](https://jrsoftware.org/isinfo.php));
+GitHub's windows-latest runner has it.
+
+* It installs for the current user by default, into `%LOCALAPPDATA%\Programs\CADD
+  Calculator`, with no admin rights. The installer offers a per-machine install instead,
+  which `/ALLUSERS` also chooses.
+* It adds a Start-menu shortcut and an uninstaller, and shows the license.
+* The version comes from the build (`caddcalc.__version__`). The `AppId` in the script
+  never changes, since it's how Windows knows a new version upgrades the old one. A test
+  pins it.
+
+`packaging/windows/test_installer.py <setup.exe>` installs silently into a temporary
+folder, starts the installed app with `--smoke-test`, uninstalls silently, and checks the
+folder and the shortcut are gone, checking every step's exit code. The release workflow
+runs it on every Windows dry run. It installs software, so run it on your own machine only
+on purpose.
+
+## Signing
+
+The release workflow's `sign-windows` job signs the installer on a `v*` tag, through
+SignPath Foundation or Microsoft Artifact Signing (ADR-0022). The maintainer hasn't chosen
+yet, so it's **switched off**. It runs only on tags, and until its settings exist it leaves
+a "Signing is switched off" notice and succeeds, so a missing setting never fails a release.
+When it signs, the draft release gets the signed installer in place of the unsigned one.
+
+To switch it on, set the repository **variable** `SIGNING_PROVIDER` (Settings > Secrets
+and variables > Actions > Variables) to one provider, and set that provider's settings:
+
+**SignPath Foundation** (`SIGNING_PROVIDER` = `signpath`):
+
+1. Apply at [signpath.org](https://signpath.org/apply). SignPath signs a project that's
+   already released, in the form to be signed, and asks for some reputation
+   ([research](research/distribution.md), S1).
+2. Follow [the code signing policy](../user/code-signing.md), and turn on MFA for every
+   team member, on GitHub and on SignPath.
+3. In SignPath, add GitHub as a trusted build system for this repository, and make a
+   project and a signing policy with manual approval.
+4. Set the variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, and
+   `SIGNPATH_POLICY_SLUG`, and the **secret** `SIGNPATH_API_TOKEN` (a CI user's token).
+5. Each tagged release then waits for you to approve its signing request in SignPath.
+
+**Microsoft Artifact Signing** (`SIGNING_PROVIDER` = `artifact-signing`):
+
+1. On a paid Azure subscription, create an Artifact Signing account, finish identity
+   validation, and create a public-trust certificate profile. An individual must be in the
+   US or Canada.
+2. Register an app in Microsoft Entra ID, give it the "Artifact Signing Certificate Profile
+   Signer" role on the profile, and add a federated credential for this repository's
+   tags (`repo:inmymoonsuit/CADD-Calculator:ref:refs/tags/*`). No client secret is needed:
+   the job signs in through OIDC.
+3. Set the variables `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `ARTIFACT_SIGNING_ENDPOINT`
+   (the account's regional endpoint, such as `https://eus.codesigning.azure.net/`),
+   `ARTIFACT_SIGNING_ACCOUNT`, and `ARTIFACT_SIGNING_PROFILE`.
+
+No key or certificate file is ever stored in the repository or its secrets: both services
+keep the key in their own hardware (ADR-0022's amendment, W5).
+
+## winget
+
+`packaging/windows/winget/` holds the winget manifest templates (schema 1.10.0) for
+`inmymoonsuit.CADDCalculator`. `packaging/windows/winget.py render` fills in a release's
+version, installer URL, and SHA-256, and `validate` checks the result against winget's
+schema, which is downloaded from winget-cli at a pinned tag and checked against its SHA-256.
+Every Windows dry run renders and validates them, with the build's installer.
+
+Submitting to [winget-pkgs](https://github.com/microsoft/winget-pkgs) is the maintainer's
+job, after the first **signed** release, since an unsigned installer trips SmartScreen in
+winget's validation:
+
+1. Render the manifests for the published release, with the release asset's URL and the
+   SHA-256 from its `SHA256SUMS`.
+2. Validate them locally with `winget validate --manifest <folder>`, and test
+   `winget install --manifest <folder>` in Windows Sandbox.
+3. Fork winget-pkgs, add the folder as `manifests/i/inmymoonsuit/CADDCalculator/<version>/`,
+   and open a pull request. Its bots check the manifest and the installer.
+
 ## CI
 
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml) builds the generic
-edition on Windows, macOS, and Linux when a `v*` tag is pushed, and attaches the archives
-to a **draft** GitHub release for the maintainer to publish. It never builds a branded
-edition.
+edition on Windows, macOS, and Linux. Branded editions are never built there.
 
-Status:
-* It is a sketch from the 0.3 packaging spike. The Windows build and smoke test have run
-  locally with the same commands, but the workflow hasn't run on GitHub yet, and the macOS
-  and Linux jobs are untested.
-* The output is a portable archive per OS. Real installers (Inno Setup, .dmg, AppImage)
-  come later (roadmap 0.3).
-* Nothing is signed yet (ADR-0009, open questions).
+* **On a push to the `distribution` branch, or a pull request** that touches packaging,
+  the workflow, `pyproject.toml`, or `uv.lock`, it's a **dry run**: it builds, smoke-tests,
+  and uploads each platform's artifacts, and on Windows also builds the installer, installs
+  and uninstalls it, and validates the winget manifests. It never signs, drafts a release,
+  or publishes. A newer push cancels a superseded dry run.
+* **On a `v*` tag** it also signs the installer, once signing is switched on, and attaches
+  the archives and the installer to a **draft** GitHub release for the maintainer to publish.
+* A failed build's last lines become a public annotation, since job logs need a signed-in
+  reader.
+* The macOS .dmg and the Linux AppImage come later (slices d4 and d5).

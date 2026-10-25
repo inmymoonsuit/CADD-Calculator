@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+# Template: packaging/windows/winget.py render fills the placeholders (distribution slice d3).
+PackageIdentifier: inmymoonsuit.CADDCalculator
+PackageVersion: {{VERSION}}
+PackageLocale: en-US
+Publisher: CADD Calculator contributors
+PublisherUrl: https://github.com/inmymoonsuit
+PublisherSupportUrl: https://github.com/inmymoonsuit/CADD-Calculator/issues
+PackageName: CADD Calculator
+PackageUrl: https://github.com/inmymoonsuit/CADD-Calculator
+License: Apache-2.0
+LicenseUrl: https://github.com/inmymoonsuit/CADD-Calculator/blob/main/LICENSE.md
+ShortDescription: Drafting calculators that show their work, with the formula and its source.
+Description: Open-source calculators for drafting and design. Every result shows its work, names its method and source, and says how far it has been checked.
+Moniker: caddcalc
+Tags:
+  - cad
+  - drafting
+  - sheet-metal
+  - calculator
+  - engineering
+ReleaseNotesUrl: https://github.com/inmymoonsuit/CADD-Calculator/releases/tag/v{{VERSION}}
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

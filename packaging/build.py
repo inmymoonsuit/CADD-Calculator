@@ -88,6 +88,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--smoke-test", action="store_true", help="start the built app, check it")
     parser.add_argument("--runs", type=int, default=3, help="smoke-test starts to time (default 3)")
     parser.add_argument("--archive", action="store_true", help="pack the output for distribution")
+    parser.add_argument(
+        "--installer",
+        action="store_true",
+        help="Windows: wrap the folder in an Inno Setup installer",
+    )
     parser.add_argument("--verbose", action="store_true", help="show pyside6-deploy's log")
     args = parser.parse_args(argv)
     try:
@@ -100,6 +105,10 @@ def main(argv: list[str] | None = None) -> int:
             archive = make_archive(output)
             report["archive"] = str(archive)
             report["archive_mb"] = round(archive.stat().st_size / 1e6, 1)
+        if args.installer:
+            installer = make_installer(output, branding)
+            report["installer"] = str(installer)
+            report["installer_mb"] = round(installer.stat().st_size / 1e6, 1)
     except (BuildError, BrandingError) as exc:
         print(f"build.py: error: {exc}", file=sys.stderr)
         return 1
@@ -616,6 +625,68 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
     if problems:
         raise BuildError(f"smoke test failed: {'; '.join(problems)}")
     return {"start_to_exit_s": times, "report_dir": str(report_dir), **report}
+
+
+INNO_SCRIPT = Path(__file__).resolve().parent / "windows" / "CADDCalculator.iss"
+"""The Inno Setup script that wraps a standalone Windows build (ADR-0022, slice d3)."""
+
+
+def find_iscc() -> Path:
+    """Return Inno Setup 6's command-line compiler.
+
+    Raises:
+        BuildError: It isn't installed.
+    """
+    found = shutil.which("ISCC")
+    candidates = [Path(found)] if found else []
+    for base in ("ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"):
+        root = os.environ.get(base)
+        if root:
+            candidates += [
+                Path(root) / "Inno Setup 6" / "ISCC.exe",
+                Path(root) / "Programs" / "Inno Setup 6" / "ISCC.exe",
+            ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise BuildError("Inno Setup 6's ISCC.exe isn't installed (https://jrsoftware.org/isinfo.php)")
+
+
+def installer_defines(output: Path, icon: Path) -> dict[str, str]:
+    """Return the ISCC defines for wrapping ``output``: its folder, version, and names."""
+    return {
+        "SourceDir": str(output),
+        "AppVersion": __version__,
+        "NumericVersion": numeric_version(__version__),
+        "IconFile": str(icon),
+        "OutputDir": str(output.parent),
+        "OutputBase": f"{output.name}-setup",
+    }
+
+
+def make_installer(output: Path, branding: Branding) -> Path:
+    """Wrap a standalone Windows build in an Inno Setup installer; return its path.
+
+    Raises:
+        BuildError: Not a standalone Windows build, no Inno Setup, or ISCC failed.
+    """
+    if sys.platform != "win32" or not output.is_dir():
+        raise BuildError("--installer needs a standalone Windows build")
+    work = output.parent / "work"
+    defines = installer_defines(output, exe_icon(branding, work))
+    command = [
+        str(find_iscc()),
+        "/Q",
+        *(f"/D{k}={v}" for k, v in defines.items()),
+        str(INNO_SCRIPT),
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    if result.returncode:
+        raise BuildError(f"ISCC failed (exit {result.returncode}): {result.stdout}{result.stderr}")
+    installer = output.parent / f"{defines['OutputBase']}.exe"
+    if not installer.is_file():
+        raise BuildError(f"ISCC made no {installer.name}")
+    return installer
 
 
 def make_archive(output: Path) -> Path:
