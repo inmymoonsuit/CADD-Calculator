@@ -65,7 +65,9 @@ uv run caddcalc run sheet_metal.truncated_cone_layout --json        # machine-re
 input's default unit, which `caddcalc show` lists, inches and degrees for every
 sheet-metal and geometry input. `--unit NAME=ID` reads an input as a field picked in that
 unit or form does, with its arithmetic and its forms, `--unit L=ft_in L=10-2`; its text
-then names no unit. `--output-set` chooses the units the results show in, from the sets
+then names no unit. A unit there may be any of its spellings, `--unit A=in2` or `--unit
+"A=sq in"` for `in²`; a form is named by its id, `ft_in` or `dms`. A value with a set of
+allowed values, such as a fineness, takes its label too: `F=1/16` or `F=16`. `--output-set` chooses the units the results show in, from the sets
 `caddcalc show` lists (the first is the default), and `--output-unit KEY=ID` a result
 with its own picker, named by its key or symbol as an input is. Each option is given
 once per input or result, and `--output-set` once; `--unit` can go before, between or

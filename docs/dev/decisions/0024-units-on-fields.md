@@ -1561,3 +1561,24 @@ the branch.
   * **Mutation probes, 8 of 8 killed:** the signed check skipped; forms kept in the
     sets; the error without its precision; and the typed listing never used, used
     whatever the run used, in any decimal mark, in any choice, and for a fraction.
+* **The converters' help says pick, then type** (S&R's Low 1, UI/UX's L2 and call). It
+  read "such as 3/16 in, 5 mm, or 1'-4 3/16"" and "36 ksi, 250 MPa, or 14 psi", which
+  asks for a typed unit the fields refuse (Q5). Each now reads "Pick its unit, then type
+  the number, such as 3, 25, or 500", with "the fraction" for Fraction to decimal;
+  Length's and Angle's add a form's own example after "; in": `in ft-in, 1'-4 3/16"` and
+  `in DMS, 40 30 15`. A test holds every converter's help free of a unit after a number
+  before that clause. **No example has a decimal mark:** UI/UX's proposed "0.19 or 4.8"
+  and "25.4" would show "." in a "," locale, where the field reads "0,19", and the string
+  sweep (ADR-0020 M4) refuses them. So Decimal to fraction's says "Pick its unit, then
+  type the length as a decimal", with no example.
+* **The CLI reads a fineness by its label** (S&R's Low 2): `F=17` said "must be one of
+  1/16, 1/32, 1/64", but `F=1/16` was refused as not a whole number. A value of an input
+  with allowed values now reads by its label too, in any case, entered as its value
+  (`16`), since a typed value's text must read as that value. A text that's neither, such
+  as `1/17`, gets the allowed values' message.
+* **`--unit` takes a unit's spellings** (S&R's Low 3): `--unit X=in2`, `X=in^2`, `"X=sq in"`
+  and `X=IN2` are `in²`, as a unit's text reads, so a script typed on any keyboard can give
+  an area's unit. A form is named by its id only. The help and the getting-started guide
+  say so.
+* **Probes, 4 of 4 killed:** labels not read; the allowed-values message dropped; `--unit`
+  by id only; a help that names a unit.

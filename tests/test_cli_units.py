@@ -398,3 +398,30 @@ def test_an_output_follows_its_input_until_given_its_unit(
     assert status == 0 and "0.00500000 m" in out
     (line,) = [line for line in out.splitlines() if line.lstrip().startswith("X ")]
     assert "5.0000 mm" in line, "the Inputs line in the field's own unit"
+
+
+@pytest.mark.parametrize("given", ["F=1/32", "F=32", "fineness=1/32", "F= 1/32 "])
+def test_a_fineness_reads_by_its_label_as_its_message_names_it(
+    capsys: pytest.CaptureFixture[str], given: str
+) -> None:
+    """``F=17`` says "must be one of 1/16, 1/32, 1/64", so those read (S&R's PR #3 Low 2)."""
+    argv = ["run", "conversions.decimal_to_fraction", "X=0.31in", given, "--json"]
+    status, out, _err = _run(capsys, *argv)
+    assert status == 0
+    data = json.loads(out)
+    assert data["inputs"]["fineness"]["base"]["value"] == 32
+    assert data["inputs"]["fineness"]["entered"]["text"] == "32", "entered as its value"
+    status, _out, err = _run(capsys, "run", "conversions.decimal_to_fraction", "F=1/17")
+    assert status == 2 and "must be one of 1/16, 1/32, 1/64" in err
+
+
+@pytest.mark.parametrize("name", ["in²", "in2", "in^2", "sq in", "square inches", "IN2"])
+def test_unit_takes_a_unit_s_spellings(capsys: pytest.CaptureFixture[str], name: str) -> None:
+    """``--unit`` reads ``in2`` and ``sq in`` as ``in²``, as a unit's text does (Low 3)."""
+    argv = ["run", "conversions.area", "X=3", "--unit", f"X={name}", "--json"]
+    status, out, _err = _run(capsys, *argv)
+    assert status == 0, name
+    entered = json.loads(out)["inputs"]["value"]["entered"]
+    assert (entered["unit"], entered["text"]) == ("in²", "3")
+    status, _out, err = _run(capsys, "run", "conversions.area", "X=3", "--unit", "X=deg")
+    assert status == 2 and "'deg' isn't a unit for X/value" in err

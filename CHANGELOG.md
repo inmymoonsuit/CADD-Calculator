@@ -592,7 +592,10 @@ All notable changes are recorded here. The format follows
   `shown.text`. For calculator authors: `Output.follows` and
   `Output.counterparts`, `Param.allowed`, `Output.precision` in any unit an output is
   shown in, and `Calculator.forms_in_sets`; a signed output in a form, fixed, picked or in
-  a set, is refused at registration.
+  a set, is refused at registration. The converters' help says to pick the unit, then type the
+  number, and gives examples with no unit. On the command line, a fineness reads by its
+  label, `F=1/16`, and `--unit` takes any of a unit's spellings, `--unit X=in2` or
+  `"X=sq in"` for `in²`.
 - **Each family setting with a unit has a picker** (ADR-0024 E-5, U2b), as a
   calculator's inputs do, and its number is read in the unit the picker shows; a unit
   typed in the field, as `3 mm`, is refused, with where it goes. Switching it re-reads

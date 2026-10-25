@@ -90,9 +90,16 @@ def _method(scope: str, note: str, *references: Reference) -> Method:
 
 
 def _value(
-    dimension: Dimension, label: str, default: str, examples: str, *, unit: str = ""
+    dimension: Dimension, label: str, default: str, what: str, examples: str, *, unit: str = ""
 ) -> Param:
-    """The converter's input: any finite value, of any sign, in its picked unit."""
+    """The converter's input: any finite value, of any sign, in its picked unit.
+
+    Its help says to pick the unit, then type ``what``, such as ``examples``: numbers
+    with no unit, since a field refuses a typed one (ADR-0024 Q5). A form's example
+    may give the form's own marks, which are its grammar. No example has a decimal
+    mark, which prose would show as "." in a "," locale (ADR-0020 M4).
+    """
+    such = f", such as {examples}" if examples else ""
     return Param(
         "value",
         "X",
@@ -100,8 +107,7 @@ def _value(
         dimension,
         default=default,
         unit=unit,
-        help=f"Pick its unit, then type it, such as {examples}. Zero and negative values "
-        "convert too.",
+        help=f"Pick its unit, then type {what}{such}. Zero and negative values convert too.",
     )
 
 
@@ -172,7 +178,11 @@ class LengthConverter(_Converter):
         "A length in another unit: inches, feet, millimeters, centimeters, meters, or feet "
         "and inches."
     )
-    params = (_value(LENGTH, "Length", "1 in", "3/16 in, 5 mm, or 1'-4 3/16\""),)
+    params = (
+        _value(
+            LENGTH, "Length", "1 in", "the number", "3/16, 1 3/16, or 25; in ft-in, 1'-4 3/16\""
+        ),
+    )
     outputs = (_converted(LENGTH, "Converted length", LENGTHS, LENGTH_COUNTERPARTS),)
     methods = (LENGTH_METHOD,)
 
@@ -184,7 +194,9 @@ class FractionToDecimal(_Converter):
     name = N_("Fraction to decimal")
     domain = DOMAIN.id
     summary = N_("A fraction, such as 3/16 or 1 3/16 inches, as a decimal, in any length unit.")
-    params = (_value(LENGTH, "Fraction", "3/16 in", "3/16, 1 3/16, or 1-3/16", unit="in"),)
+    params = (
+        _value(LENGTH, "Fraction", "3/16 in", "the fraction", "3/16, 1 3/16, or 1-3/16", unit="in"),
+    )
     outputs = (_converted(LENGTH, "Decimal", ("in", "ft", "mm", "cm", "m"), {}),)
     methods = (LENGTH_METHOD,)
 
@@ -201,7 +213,7 @@ class DecimalToFraction(Calculator):
     domain = DOMAIN.id
     summary = N_("A length as its nearest 1/16, 1/32, or 1/64 inch, with the fraction's error.")
     params = (
-        _value(LENGTH, "Length", "0.19 in", "a decimal in inches or millimeters"),
+        _value(LENGTH, "Length", "0.19 in", "the length as a decimal", ""),
         Param(
             "fineness",
             "F",
@@ -276,7 +288,7 @@ class AngleConverter(_Converter):
     name = N_("Angle")
     domain = DOMAIN.id
     summary = N_("An angle in another unit: degrees, radians, or degrees, minutes, and seconds.")
-    params = (_value(ANGLE, "Angle", "1 deg", "30°, 1 rad, or 40°30′15″"),)
+    params = (_value(ANGLE, "Angle", "1 deg", "the number", "30 or 90; in DMS, 40 30 15"),)
     outputs = (
         _converted(
             ANGLE,
@@ -307,7 +319,7 @@ class AreaConverter(_Converter):
         "An area in another unit: square inches, square feet, square millimeters, square "
         "centimeters, or square meters."
     )
-    params = (_value(AREA, "Area", "1 ft²", "3 sq in, 2 ft², or 500 mm²"),)
+    params = (_value(AREA, "Area", "1 ft²", "the number", "3, 25, or 500"),)
     outputs = (
         _converted(
             AREA,
@@ -335,7 +347,7 @@ class StressConverter(_Converter):
     name = N_("Stress and pressure")
     domain = DOMAIN.id
     summary = N_("A stress or pressure in another unit: psi, ksi, kPa, MPa, or GPa.")
-    params = (_value(STRESS, "Stress or pressure", "1 psi", "36 ksi, 250 MPa, or 14 psi"),)
+    params = (_value(STRESS, "Stress or pressure", "1 psi", "the number", "36, 250, or 14"),)
     outputs = (
         _converted(
             STRESS,

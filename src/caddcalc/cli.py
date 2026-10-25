@@ -28,6 +28,7 @@ from caddcalc.core import (
     Param,
     Result,
     TypedValue,
+    UsageError,
     i18n,
 )
 from caddcalc.core.formatting import (
@@ -156,7 +157,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="NAME=ID",
         help="read input NAME in the unit or form ID, as a field picked in it reads it, "
-        "e.g. --unit L=ft_in L=10-2; repeatable",
+        "e.g. --unit L=ft_in L=10-2; a unit may be any of its spellings, as in2 or "
+        "'sq in' for in²; repeatable",
     )
     p_run.add_argument(
         "--output-set",
@@ -392,6 +394,7 @@ def _picked_choices(
                 f"--unit names {p.symbol}/{p.key} twice, as {picked[p.key][1]!r} and "
                 f"{item!r}; give it once"
             )
+        choice = _choice_named(p, choice)
         if choice not in p.choices:
             offered = ", ".join(c for c in p.choices if c) or "none: it takes a plain number"
             raise InputError(
@@ -402,11 +405,43 @@ def _picked_choices(
     return picked
 
 
+def _choice_named(p: Param, name: str) -> str:
+    """Return the choice ``name`` names for ``p``: its id, or one of its unit's aliases.
+
+    So ``--unit A=in2`` and ``--unit A="sq in"`` are ``in²``, typed on any keyboard, as a
+    unit's text reads (S&R's PR #3 Low 3), and ``--unit T=IN`` is ``in``. A form is named
+    by its id only, ``ft_in``. A name that isn't one is returned as it is, to be refused.
+    """
+    if name in p.choices:
+        return name
+    try:
+        unit = registry().find(name, p.dimension)
+    except (InputError, UsageError):
+        return name
+    return unit.symbol if unit.dimension is p.dimension else name
+
+
 def _read(p: Param, text: str, picked: tuple[str, str] | None) -> TypedValue:
-    """Read one input's text: in its ``--unit`` choice, or with its unit in its text."""
+    """Read one input's text: in its ``--unit`` choice, or with its unit in its text.
+
+    An input with allowed values also reads each by its label, as its message names
+    them: ``F=1/16`` is a fineness of 16 (S&R's PR #3 Low 2). It's entered as its value,
+    ``16``, since a typed value's text must read as that value.
+    """
     if picked is None:
+        label = text.strip().casefold()
+        allowed = next((v for v, lb in p.allowed if lb.casefold() == label), None)
+        if allowed is not None:
+            text = f"{allowed:g}"
         default = choice_unit(p.default_choice or "", p.dimension)
-        return TypedValue.parse(text, p.dimension, default.symbol)
+        try:
+            return TypedValue.parse(text, p.dimension, default.symbol)
+        except InputError:
+            if not p.allowed:
+                raise
+            # Neither a label nor a value, such as 1/17: say what is, as the check does.
+            labels = ", ".join(lb for _v, lb in p.allowed)
+            raise InputError(f"{p.named} must be one of {labels}") from None
     choice, item = picked
     try:
         return TypedValue.read(text, choice, p.dimension)

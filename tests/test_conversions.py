@@ -552,3 +552,22 @@ def test_the_cli_lists_a_typed_decimal_as_typed(capsys: pytest.CaptureFixture[st
     data = json.loads(capsys.readouterr().out)
     assert data["inputs"]["value"]["shown"]["text"] == "0.09375 in"
     assert data["outputs"]["error"]["shown"]["text"] == "+0.031250 in"
+
+
+@pytest.mark.parametrize("calc", CALCULATORS)
+def test_no_converter_s_help_asks_for_a_typed_unit(calc: type[Calculator]) -> None:
+    """Pick, then type: a field refuses a typed unit (ADR-0024 Q5; S&R's and UI/UX's Low).
+
+    Only a form's own example, after "; in", may give the form's marks, its grammar.
+    """
+    import re
+
+    from caddcalc.core.units import registry
+
+    value = next(p for p in calc.params if p.key == "value")
+    assert value.help.startswith("Pick its unit, then type "), value.help
+    examples = value.help.split("; in ", 1)[0]
+    for unit in registry().units_for(value.dimension):
+        for key in unit.keys:
+            typed = re.search(rf"\d\s*{re.escape(key)}(?!\w)", examples, re.IGNORECASE)
+            assert typed is None, f"{calc.id}: {typed and typed.group()!r} in {value.help!r}"
