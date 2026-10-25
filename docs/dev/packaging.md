@@ -247,8 +247,27 @@ yet, so it's **switched off**. It runs only on tags, and until its settings exis
 a "Signing is switched off" notice and succeeds, so a missing setting never fails a release.
 When it signs, the draft release gets the signed installer in place of the unsigned one.
 
-To switch it on, set the repository **variable** `SIGNING_PROVIDER` (Settings > Secrets
-and variables > Actions > Variables) to one provider, and set that provider's settings:
+### First, for either provider: the approval gate and the tags
+
+Signing must never happen without the maintainer approving it by hand
+([the code signing policy](../user/code-signing.md)). Set these up before switching
+signing on:
+
+1. **The `release-signing` environment.** Settings > Environments > New environment,
+   named `release-signing`. Under "Deployment protection rules", add yourself as a
+   **required reviewer**, and turn on "Prevent self-review" only if another maintainer can
+   approve. Under "Deployment branches and tags", choose "Selected branches and tags" and
+   add the tag rule `v*`. The `sign-windows` job runs in this environment, so each signing
+   waits for your approval in the run's page, and the job can't run from anywhere else.
+2. **A tag ruleset.** Settings > Rules > Rulesets > New tag ruleset, targeting tags that
+   match `v*`, enforced, restricting creation, update, and deletion, with yourself (the
+   repository admin role) as the only bypass. Then only you can create the release tags
+   that trigger signing.
+
+### Then choose a provider
+
+Set the repository **variable** `SIGNING_PROVIDER` (Settings > Secrets and variables >
+Actions > Variables) to one provider, and set that provider's settings:
 
 **SignPath Foundation** (`SIGNING_PROVIDER` = `signpath`):
 
@@ -261,7 +280,9 @@ and variables > Actions > Variables) to one provider, and set that provider's se
    project and a signing policy with manual approval.
 4. Set the variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, and
    `SIGNPATH_POLICY_SLUG`, and the **secret** `SIGNPATH_API_TOKEN` (a CI user's token).
-5. Each tagged release then waits for you to approve its signing request in SignPath.
+5. Each tagged release then waits for you twice: to approve the `release-signing`
+   environment in GitHub, and to approve its signing request in SignPath. SignPath's
+   manual approval is its own gate, required by its conditions.
 
 **Microsoft Artifact Signing** (`SIGNING_PROVIDER` = `artifact-signing`):
 
@@ -269,9 +290,11 @@ and variables > Actions > Variables) to one provider, and set that provider's se
    validation, and create a public-trust certificate profile. An individual must be in the
    US or Canada.
 2. Register an app in Microsoft Entra ID, give it the "Artifact Signing Certificate Profile
-   Signer" role on the profile, and add a federated credential for this repository's
-   tags (`repo:inmymoonsuit/CADD-Calculator:ref:refs/tags/*`). No client secret is needed:
-   the job signs in through OIDC.
+   Signer" role on the profile, and add a federated credential for the `release-signing`
+   environment: entity type "Environment", subject
+   `repo:inmymoonsuit/CADD-Calculator:environment:release-signing`. Azure then accepts a
+   login only from a job in that environment, which runs only after you approve it. No
+   client secret is needed: the job signs in through OIDC.
 3. Set the variables `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `ARTIFACT_SIGNING_ENDPOINT`
    (the account's regional endpoint, such as `https://eus.codesigning.azure.net/`),
    `ARTIFACT_SIGNING_ACCOUNT`, and `ARTIFACT_SIGNING_PROFILE`.

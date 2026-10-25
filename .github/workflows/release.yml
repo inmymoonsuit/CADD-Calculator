@@ -137,6 +137,9 @@ jobs:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
+    # The maintainer approves each signing by hand: the environment's required reviewer.
+    # Artifact Signing's Azure login is bound to this environment, so it works nowhere else.
+    environment: release-signing
     permissions:
       contents: read
       actions: read  # SignPath downloads the unsigned artifact

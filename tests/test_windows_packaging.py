@@ -136,6 +136,24 @@ def test_signing_runs_only_on_tags_and_is_gated_on_its_settings() -> None:
     assert "secrets." not in job.replace("secrets.SIGNPATH_API_TOKEN", ""), "one secret only"
 
 
+def test_every_signing_waits_for_the_maintainers_approval() -> None:
+    """M2: each signing waits in the release-signing environment for its reviewer.
+
+    The docs bind Artifact Signing's Azure login to that environment.
+    """
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    job = workflow[
+        workflow.index("  sign-windows:") : workflow.index(
+            "  steps:", workflow.index("  sign-windows:")
+        )
+    ]
+    assert "environment: release-signing" in job
+    guide = (ROOT / "docs" / "dev" / "packaging.md").read_text(encoding="utf-8")
+    assert "repo:inmymoonsuit/CADD-Calculator:environment:release-signing" in guide
+    assert "required reviewer" in guide
+    assert "tag ruleset" in guide, "Low 6: only the maintainer creates v* tags"
+
+
 def test_the_dry_run_builds_and_tests_the_installer() -> None:
     workflow = WORKFLOW.read_text(encoding="utf-8")
     assert '--installer"' in workflow
