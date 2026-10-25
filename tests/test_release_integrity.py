@@ -102,7 +102,9 @@ def test_the_release_carries_windows_and_linux_and_checks_its_sums() -> None:
     text = RELEASE.read_text(encoding="utf-8")
     assert "\nenv:\n" in text and "\n  RELEASE_PLATFORMS: Windows Linux\n" in text
     job = _jobs()["release-files"]
-    assert "needs: [build, python-dist, sign-windows]" in job
+    assert "needs: [build, python-dist, linux-metadata, appimage-x11, sign-windows]" in job
+    assert "needs.linux-metadata.result == 'success'" in job, "S&R Low 3"
+    assert "needs.appimage-x11.result == 'success'" in job
     assert "\n    if: >-" in job and "refs/tags" not in job, "dry runs too"
     assert "release_files.py collect downloads release" in job
     assert '--platforms $RELEASE_PLATFORMS --signed signed --provider "$PROVIDER"' in job

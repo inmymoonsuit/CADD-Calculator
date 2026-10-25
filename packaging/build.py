@@ -244,6 +244,42 @@ def interpreter_license() -> Path:
     raise BuildError(f"no LICENSE.txt found for the interpreter in {sys.base_prefix}")
 
 
+HOST_LIBRARIES = ("libxcb-cursor.so.0",)
+"""Libraries Linux builds take from the build host, beside Qt's xcb support library: Qt's
+xcb platform plugin needs libxcb-cursor, which a stock Ubuntu 22.04 desktop doesn't
+install, so the app brings its own (S&R's AppImage Medium). The build host installs it
+(``apt install libxcb-cursor0``)."""
+
+
+def bundle_host_libraries(output: Path) -> list[str]:
+    """Copy ``HOST_LIBRARIES`` into a Linux build, beside ``libQt6XcbQpa``; return them.
+
+    Qt's libraries find their neighbours through their ``$ORIGIN`` run path, so the copy
+    needs no other setup.
+
+    Raises:
+        BuildError: A library isn't installed on the build host.
+    """
+    if not sys.platform.startswith("linux"):
+        return []
+    xcb = next(iter(sorted(output.rglob("libQt6XcbQpa.so*"))), None)
+    if xcb is None:
+        return []
+    machine = platform.machine()
+    folders = [Path(f"/usr/lib/{machine}-linux-gnu"), Path("/usr/lib64"), Path("/usr/lib")]
+    copied = []
+    for name in HOST_LIBRARIES:
+        source = next((folder / name for folder in folders if (folder / name).exists()), None)
+        if source is None:
+            raise BuildError(
+                f"{name} isn't installed on the build host (apt install libxcb-cursor0)"
+            )
+        target = xcb.parent / name
+        shutil.copy2(source.resolve(), target)
+        copied.append(str(target.relative_to(output).as_posix()))
+    return copied
+
+
 def copy_notices(output: Path) -> None:
     """Copy the project's license, the index, and the runtime's license texts into a build."""
     for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
@@ -569,8 +605,10 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
 
     output, exe = locate_output(edition_dir, name, mode)
     libraries: dict[str, str | None] = {}
+    host_libraries: list[str] = []
     versions = runtime_versions()
     if output.is_dir():
+        host_libraries = bundle_host_libraries(output)
         copy_notices(output)
         for missing in missing_notices(output):
             raise BuildError(f"the notice {missing} is missing from the build (KI-016)")
@@ -627,6 +665,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "runtime_versions": versions,
         "interpreter_license": str(interpreter_license()),
         "bundled_libraries": libraries,
+        "host_libraries": host_libraries,
     }
 
 

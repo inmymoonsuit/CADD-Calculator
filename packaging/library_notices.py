@@ -10,6 +10,8 @@ platform. THIRD_PARTY_NOTICES.md is the index for the texts.
 from __future__ import annotations
 
 import re
+import sys
+import sysconfig
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +43,32 @@ QT_TEXTS = ("LGPL-3.0.txt", "GPL-3.0.txt", "Qt-third-party.txt")
 _LIB = r"(\.dll|\.pyd|\.so(\.\d+)*|\.dylib|\.abi3\.so(\.\d+)*|\.abi3(\.\d+)*\.dylib)"
 
 
+def stdlib_extensions() -> frozenset[str]:
+    """Return the names of the extension modules the running interpreter ships itself.
+
+    They're the files in its ``DLLs`` folder on Windows and its ``lib-dynload`` folder
+    elsewhere; ``build.py`` runs on the interpreter it bundles, so these are the build's.
+    Modules built into ``libpython`` aren't files, and need no entry.
+    """
+    folders = (
+        Path(sys.base_prefix) / "DLLs",
+        Path(sysconfig.get_path("platstdlib")) / "lib-dynload",
+    )
+    return frozenset(
+        path.name.split(".")[0].lower()
+        for folder in folders
+        if folder.is_dir()
+        for path in folder.iterdir()
+        if path.suffix in {".pyd", ".so"}
+    )
+
+
+def _stdlib_extensions_pattern() -> str:
+    """Return a regular expression for any of ``stdlib_extensions()``, or one matching none."""
+    names = sorted(stdlib_extensions())
+    return f"({'|'.join(re.escape(n) for n in names)})" if names else "(?!)"
+
+
 @dataclass(frozen=True)
 class Component:
     """What covers some of a build's binaries: a name, path patterns, and its texts."""
@@ -62,6 +90,11 @@ COMPONENTS = (
         ("ICU-LICENSE.txt",),
     ),
     Component(
+        "xcb-util-cursor (Linux: Qt's xcb plugin)",
+        (r"(.*/)?libxcb-cursor\.so(\.\d+)*",),
+        ("libxcb-cursor-COPYING.txt",),
+    ),
+    Component(
         "Qt and PySide6, Shiboken6",
         (
             rf"(.*/)?(lib)?qt6\w*{_LIB}",
@@ -79,11 +112,11 @@ COMPONENTS = (
         "Python (python-build-standalone) and its extension modules",
         (
             rf"(.*/)?(lib)?python3(\.?\d+)?{_LIB}",
-            r"(.*/)?_?\w+\.(pyd|cpython-3\d+-[\w-]+\.so|abi3\.so)",
-            # macOS: libpython becomes Contents/MacOS/Python, and the extension modules
-            # sit beside it with a plain .so.
+            # Only the interpreter's own extension modules, by name: a third-party C
+            # extension (cffi's, numpy's) needs a component of its own (S&R's Low 2).
+            rf"(.*/)?{_stdlib_extensions_pattern()}(\.cpython-3\d+-[\w-]+)?\.(pyd|so)",
+            # macOS: libpython becomes Contents/MacOS/Python.
             r"contents/macos/python",
-            r"contents/macos/_?\w+\.so",
         ),
         PYTHON_TEXTS,
     ),

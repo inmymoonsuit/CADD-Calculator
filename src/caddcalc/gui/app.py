@@ -417,6 +417,7 @@ def _write_smoke_report(
         "qt_catalog": _loads_qt_catalog(),
         "qt_translations": _qt_translations(),
         "packaged": packaged_app_dir() is not None,
+        "qt_platform": app.platformName(),
         "main_to_ready_s": round(ready_seconds, 3),
     }
     (report_dir / "smoke-test.json").write_text(json.dumps(report, indent=2), encoding="utf-8")

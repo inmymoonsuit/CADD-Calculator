@@ -68,8 +68,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # libxcb-cursor0 is bundled into the build for Qt's xcb plugin (build.py,
+          # HOST_LIBRARIES); the rest are for the offscreen smoke test.
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
-            libfontconfig1 libdbus-1-3 ccache
+            libfontconfig1 libdbus-1-3 libxcb-cursor0 ccache
           echo "QT_QPA_PLATFORM=offscreen" >> "$GITHUB_ENV"
 
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
@@ -204,6 +206,59 @@ jobs:
           done
           echo "::error title=Notarization isn't written yet::Write and test the codesign, notarytool, and stapler steps before switching it on (docs/dev/packaging.md)."
           exit 1
+
+  # The AppImage on a real X11 display, with only a stock Ubuntu 22.04 desktop's libraries:
+  # a clean ubuntu:22.04 container with Xvfb and the packages in
+  # packaging/linux/desktop-baseline.txt, each checked against Ubuntu's own desktop
+  # manifest. The build job's smoke tests run offscreen, which loads neither the xcb nor
+  # the Wayland plugin (S&R's AppImage Medium).
+  appimage-x11:
+    name: AppImage / X11 on Ubuntu 22.04
+    needs: build
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: CADDCalculator-generic-Linux
+          path: dist
+
+      - name: Install Xvfb and a stock desktop's libraries, nothing else
+        run: |
+          apt-get update
+          # The baseline is a list of package names, split on purpose.
+          # shellcheck disable=SC2046
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates python3 xvfb xauth $(grep -v '^#' packaging/linux/desktop-baseline.txt)
+
+      - name: Check the baseline is a stock Ubuntu 22.04 desktop's
+        run: python3 packaging/linux/check_desktop.py manifest
+
+      - name: Check every library the AppImage needs is there
+        run: |
+          cd dist
+          chmod +x ./*.AppImage
+          ./*.AppImage --appimage-extract > /dev/null
+          python3 ../packaging/linux/check_desktop.py ldd squashfs-root
+
+      # Runs even when the check above fails, so one run shows both.
+      - name: Start the AppImage on X11 under Xvfb
+        if: success() || failure()
+        env:
+          QT_QPA_PLATFORM: xcb
+        run: |
+          set -u
+          report="$PWD/x11-smoke-test"
+          if ! out=$(xvfb-run -a -s "-screen 0 1280x800x24" \
+              dist/*.AppImage --appimage-extract-and-run --smoke-test="$report" 2>&1); then
+            echo "$out"
+            echo "::error title=AppImage on X11::$(echo "$out" | tail -n 30 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          python3 -c "import json, sys; r = json.load(open(sys.argv[1])); print(r); assert r['qt_platform'] == 'xcb' and r['packaged'] and r['calculators'] > 0, r" \
+            "$report/smoke-test.json"
 
   # The .desktop file and the AppStream metainfo, checked with current tools: Ubuntu
   # 22.04's appstreamcli predates the <developer> tag and the vcs-browser URL that Flathub
@@ -481,9 +536,11 @@ jobs:
   # every push, and it holds no token beyond reading: the attest job signs, on tags only.
   release-files:
     name: Release files and checksums
-    needs: [build, python-dist, sign-windows]
+    # The Linux metadata and the AppImage's X11 start gate it too: their files ship.
+    needs: [build, python-dist, linux-metadata, appimage-x11, sign-windows]
     if: >-
       !cancelled() && needs.build.result == 'success' && needs.python-dist.result == 'success'
+      && needs.linux-metadata.result == 'success' && needs.appimage-x11.result == 'success'
       && contains(fromJSON('["success", "skipped"]'), needs.sign-windows.result)
     runs-on: ubuntu-24.04
     steps:

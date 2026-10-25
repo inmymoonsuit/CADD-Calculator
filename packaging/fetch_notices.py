@@ -146,6 +146,12 @@ TEXTS = (
         f"{RAW}/unicode-org/icu/release-73-2/icu4c/LICENSE",
     ),
     Text(
+        "libxcb-cursor-COPYING.txt",
+        "xcb-util-cursor 0.1.1 (Linux): Ubuntu 22.04's libxcb-cursor0, which the Linux build"
+        " bundles for Qt's xcb plugin",
+        "https://gitlab.freedesktop.org/xorg/lib/libxcb-cursor/-/raw/0.1.1/COPYING",
+    ),
+    Text(
         "Nuitka-LICENSE.txt",
         "Nuitka's runtime, compiled into the executable (Apache-2.0)",
         f"{RAW}/Nuitka/Nuitka/4.1.1/LICENSE.txt",
