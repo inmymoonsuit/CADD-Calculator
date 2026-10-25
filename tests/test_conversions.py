@@ -24,7 +24,7 @@ from caddcalc.calculators.conversions import (
     LengthConverter,
     StressConverter,
 )
-from caddcalc.core import Calculator, Dimension, InputError, UsageError, Verification
+from caddcalc.core import Calculator, Dimension, InputError, Output, UsageError, Verification
 from caddcalc.core.formatting import (
     CopyForm,
     DisplayPrefs,
@@ -221,18 +221,18 @@ def test_a_length_in_feet_and_inches() -> None:
 def test_0_1875_in_is_three_sixteenths_with_no_error() -> None:
     """ADR-0024 U3: 0.1875 in → 3/16" with an error of 0, at every fineness."""
     for fineness in (16, 32, 64):
-        assert _fraction("0.1875 in", fineness) == ('3/16"', "0.0000 in")
+        assert _fraction("0.1875 in", fineness) == ('3/16"', "0.000000 in")
     result = DecimalToFraction().run({"value": parse_quantity("0.1875 in", L)})
     assert result.outputs["error"] == 0.0
 
 
 def test_the_nearest_fraction_and_its_error() -> None:
     """The error is the fraction less the value: positive where the fraction is longer."""
-    assert _fraction("0.31 in") == ('5/16"', "+0.0025 in")
-    assert _fraction("0.315 in") == ('5/16"', "-0.0025 in")
-    assert _fraction("23.984375 in") == ('24"', "+0.0156 in")
-    assert _fraction("23.984375 in", 64) == ('23 63/64"', "0.0000 in")
-    assert _fraction("0.31 in", units=ShownUnits.generated("mm"))[1] == "+0.0635 mm", (
+    assert _fraction("0.31 in") == ('5/16"', "+0.002500 in")
+    assert _fraction("0.315 in") == ('5/16"', "-0.002500 in")
+    assert _fraction("23.984375 in") == ('24"', "+0.015625 in")
+    assert _fraction("23.984375 in", 64) == ('23 63/64"', "0.000000 in")
+    assert _fraction("0.31 in", units=ShownUnits.generated("mm"))[1] == "+0.063500 mm", (
         "the error in the set's unit"
     )
     calc = DecimalToFraction()
@@ -275,7 +275,7 @@ def test_a_value_and_its_negative_show_the_same_error_digits() -> None:
 
 def test_a_length_that_rounds_to_zero_has_no_minus_sign() -> None:
     """−0.01 in is 0" to the nearest 1/16 inch, never -0"; to the 1/64, -1/64"."""
-    assert _fraction("-0.01 in") == ('0"', "+0.0100 in")
+    assert _fraction("-0.01 in") == ('0"', "+0.010000 in")
     assert _fraction("-0.01 in", 64)[0] == '-1/64"'
 
 
@@ -406,33 +406,78 @@ def test_an_error_s_sign_shows_in_its_work_and_tsv_but_not_json() -> None:
         assert step.signed and render_step(step, result, IN, PREFS)[2] == shown, typed
     result = calc.run({"value": parse_quantity("0.31 in", L)})
     row = next(r for r in results_tsv(calc, result, IN, PREFS).splitlines() if r.startswith("E"))
-    assert row.split("\t")[2] == "+0.0025", "a number, not quoted as text"
+    assert row.split("\t")[2] == "+0.002500", "a number, not quoted as text"
     data = result_json(calc, result, IN, PREFS)
     assert "signed" not in data["steps"][0], "JSON's shape has no sign of its own"
     assert data["inputs"]["fineness"]["shown"]["text"] == "1/16"
 
 
-def test_a_precision_needs_a_unit_or_picks_and_a_follow_needs_its_input() -> None:
-    from caddcalc.core import Method, Output, Param, SpecError
+def _one_output(output: Output, *, forms_in_sets: bool = True) -> type[Calculator]:
+    """A calculator of one length input and ``output``, for its definition's checks."""
+    from caddcalc.core import Method, Param
+
+    class OneOutput(Calculator):
+        id = "test.one_output"
+        name = "One output"
+        domain = "test"
+        summary = "One output."
+        params = (Param("value", "X", "Value", L, default="1 in"),)
+        outputs = (output,)
+        methods = (Method("only", "Only", "R", Verification.UNVERIFIED),)
+
+        def compute(self, ctx: object) -> None:  # pragma: no cover - never run
+            raise AssertionError(ctx)
+
+    OneOutput.forms_in_sets = forms_in_sets
+    return OneOutput
+
+
+def test_a_signed_output_is_never_in_a_form_fixed_picked_or_set() -> None:
+    """A form rounds an error to its fineness: 1/32 in out shows 0" (UI/UX's PR #3 M1)."""
+    from caddcalc.core import Output, SpecError
     from caddcalc.core.units import Precision
 
-    def bad(output: Output) -> type[Calculator]:
-        class Bad(Calculator):
-            id = "test.bad"
-            name = "Bad"
-            domain = "test"
-            summary = "A bad output."
-            params = (Param("value", "X", "Value", L, default="1 in"),)
-            outputs = (output,)
-            methods = (Method("only", "Only", "R", Verification.UNVERIFIED),)
+    error = Output("error", "E", "Error", L, signed=True, precision=Precision(6))
+    with pytest.raises(SpecError, match="output set 'in_16' shows it in the form 'in_16'"):
+        _one_output(error).validate_spec()
+    _one_output(error, forms_in_sets=False).validate_spec()  # decimal sets only
+    assert [s.key for s in _one_output(error, forms_in_sets=False).unit_sets()] == [
+        "in",
+        "ft",
+        "mm",
+        "cm",
+        "m",
+    ]
+    picked = Output("error", "E", "Error", L, signed=True, picks=("in", "in_16"))
+    with pytest.raises(SpecError, match="can't be picked in a form such as 'in_16'"):
+        _one_output(picked).validate_spec()
+    with pytest.raises(SpecError, match="is signed and in a form"):
+        _one_output(Output("error", "E", "Error", L, signed=True, form="in_64")).validate_spec()
+    unsigned = Output("value", "V", "Value", L, precision=Precision(6))
+    _one_output(unsigned).validate_spec()  # a precision in a set's unit; a form keeps its own
 
-            def compute(self, ctx: object) -> None:  # pragma: no cover - never run
-                raise AssertionError(ctx)
 
-        return Bad
+def test_every_set_shows_decimal_to_fraction_s_error_as_a_decimal() -> None:
+    """At every set and fineness, never a fraction or feet and inches (UI/UX's PR #3 M1)."""
+    calc = DecimalToFraction()
+    output = calc.output("error")
+    for unit_set in DecimalToFraction.unit_sets():
+        units = ShownUnits.of(unit_set)
+        for fineness in (16.0, 32.0, 64.0):
+            result = calc.run({"value": parse_quantity("0.09375 in", L), "fineness": fineness})
+            parts = output_parts(output, result.outputs["error"], units, PREFS)
+            assert parts.compound is None and parts.unit == unit_set.key, (unit_set.key, fineness)
+            if fineness == 16.0:  # 1/8" is 1/32 in longer than 0.09375 in
+                assert parts.number == {"in": "+0.031250", "mm": "+0.793750"}.get(
+                    unit_set.key, parts.number
+                )
+                assert parts.number.strip("+0.") != "", "never a false zero"
+
+
+def test_a_follow_needs_its_input() -> None:
+    from caddcalc.core import Output, SpecError
 
     cases = [
-        (Output("row", "R", "Row", L, precision=Precision(6)), "a precision but no unit or picks"),
         (Output("row", "R", "Row", L, follows="value"), "follows 'value', which must be"),
         (Output("row", "R", "Row", L, picks=("in",), follows="gap"), "follows 'gap'"),
         (
@@ -443,7 +488,7 @@ def test_a_precision_needs_a_unit_or_picks_and_a_follow_needs_its_input() -> Non
     ]
     for output, why in cases:
         with pytest.raises(SpecError, match=why):
-            bad(output).validate_spec()
+            _one_output(output).validate_spec()
 
 
 def test_allowed_values_must_differ_and_each_have_a_label() -> None:
@@ -465,3 +510,45 @@ def test_allowed_values_must_differ_and_each_have_a_label() -> None:
 
         with pytest.raises(SpecError, match="allowed values must differ, each with a label"):
             Bad.validate_spec()
+
+
+def test_a_typed_plain_decimal_is_listed_as_typed() -> None:
+    """The Inputs list gives ``0.09375 in``, not ``0.0938 in`` (UI/UX's PR #3 call, §5)."""
+    from caddcalc.core.formatting import NumberSymbols, param_parts
+
+    calc = DecimalToFraction()
+    param = calc.params[0]
+
+    def listed(text: str, choice: str = "in", mark: str = ".", picked: str = "in") -> str:
+        entry = TypedValue.read(text, choice, L, decimal=mark)
+        units = _units(picked)
+        prefs = DisplayPrefs(symbols=NumberSymbols(mark))
+        return param_parts(param, entry.value, units, prefs, entry).with_unit
+
+    assert listed("0.09375") == "0.09375 in"
+    assert listed("−0.09375") == "-0.09375 in", "an ASCII sign, as every number shown"
+    assert listed("+0.09375") == "0.09375 in"
+    assert listed("0,09375", mark=",") == "0,09375 in", "the screen's own mark"
+    assert listed("3/32") == "0.0938 in", "a fraction is listed as read; its echo reads it"
+    assert listed("0.1 - 0.00625") == "0.0938 in", "so is an expression"
+    assert listed("2.38125", "mm", picked="mm") == "2.38125 mm"
+    entry = TypedValue.read("0.09375", "in", L)
+    other = param_parts(param, entry.value * 2, IN, PREFS, entry).with_unit
+    assert other == "0.1875 in", "only what the run used"
+    comma = DisplayPrefs(symbols=NumberSymbols(","))
+    app_s = param_parts(param, entry.value, IN, comma, entry).with_unit
+    assert app_s == "0,0938 in", "text read in another mark than the screen's is the app's"
+    converted = param_parts(param, entry.value, _units("mm"), PREFS, entry).with_unit
+    assert converted == "2.3812 mm", "listed in another unit, converted (a tie, to even)"
+
+
+def test_the_cli_lists_a_typed_decimal_as_typed(capsys: pytest.CaptureFixture[str]) -> None:
+    from caddcalc.cli import main
+
+    assert main(["run", "conversions.decimal_to_fraction", "X=0.09375"]) == 0
+    out = capsys.readouterr().out
+    assert "0.09375 in" in out and "+0.031250 in" in out
+    assert main(["run", "conversions.decimal_to_fraction", "X=0.09375", "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["inputs"]["value"]["shown"]["text"] == "0.09375 in"
+    assert data["outputs"]["error"]["shown"]["text"] == "+0.031250 in"

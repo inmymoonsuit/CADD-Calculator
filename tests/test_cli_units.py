@@ -348,7 +348,7 @@ def test_the_inputs_are_listed_in_their_own_choice_not_the_set_s(
     status, out, _err = _run(capsys, "run", BEND, "T=0.1", "--output-set", "mm", "--no-work")
     assert status == 0
     (line,) = [line for line in out.splitlines() if "Material thickness" in line]
-    assert "0.1000 in" in line
+    assert "  0.1 in  " in line, "in its own choice, as typed"
 
 
 LENGTH = "conversions.length"

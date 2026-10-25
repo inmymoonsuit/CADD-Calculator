@@ -7,7 +7,7 @@ import math
 import sys
 import traceback
 import weakref
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
 from functools import cache
@@ -1625,12 +1625,27 @@ class MainWindow(QMainWindow):
             self.results.show_result(result, units, self.prefs)
             self.output.setHtml(
                 result_html(
-                    calc, result, units, self.prefs, current_scheme(), include_results=False
+                    calc,
+                    result,
+                    units,
+                    self.prefs,
+                    current_scheme(),
+                    include_results=False,
+                    typed=self._typed(calc),
                 )
             )
             self.result = result
         except Exception as exc:  # noqa: BLE001
             self._report_failure(exc)
+
+    def _typed(self, calc: Calculator) -> dict[str, TypedValue]:
+        """Return what the user typed in each of ``calc``'s fields, by parameter key."""
+        own = self.entries.get(calc.id, {})
+        return {
+            key: entry.value
+            for key, entry in own.items()
+            if entry.origin is EntryOrigin.TYPED and isinstance(entry.value, TypedValue)
+        }
 
     def _show_output_units(self, units: ShownUnits) -> None:
         """Show the set and each output's pick, or what it follows, in the output pickers."""
@@ -2429,13 +2444,17 @@ def result_html(
     scheme: Scheme = "light",
     *,
     include_results: bool = True,
+    typed: Mapping[str, TypedValue] | None = None,
 ) -> str:
     """Return the results as rich text: results, notes, inputs, work, and method.
 
     The window shows the results in their own fields (ADR-0017), so it leaves them out;
     the whole document stays available, for export and for print. Each input is shown in
     its field's choice where ``units`` names one, and everything else in the set's.
+    ``typed`` holds what the user typed in each field they typed in, so a plain decimal
+    is listed as typed (``param_parts``).
     """
+    typed = typed or {}
     method = calc.get_method(result.method)
     rows = "".join(
         f"<tr><td><b>{escape(o.symbol)}</b></td><td>{escape(o.label)}</td>"
@@ -2469,7 +2488,7 @@ def result_html(
     }
     input_rows = []
     for p in params:
-        shown = param_parts(p, result.inputs[p.key], units, prefs)
+        shown = param_parts(p, result.inputs[p.key], units, prefs, typed.get(p.key))
         number, unit = (shown.with_unit, "") if shown.unit_close_up else (shown.number, shown.unit)
         source = _secondary(describe_source(result.source_of(p.key)), scheme)
         converted = f"<td>{escape(in_set.get(p.key, ''))}</td>" if in_set else ""

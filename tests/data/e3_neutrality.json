@@ -381,12 +381,12 @@
 "error": {
 "copies": {
 "full": "-0.0025",
-"shown": "-0,0025",
-"value": "-0.0025",
-"with_unit": "-0.0025 in"
+"shown": "-0,002500",
+"value": "-0.002500",
+"with_unit": "-0.002500 in"
 },
-"shown": "-0,0025 in",
-"spoken": "minus 0,0025 inches"
+"shown": "-0,002500 in",
+"spoken": "minus 0,002500 inches"
 },
 "nearest": {
 "copies": {
@@ -411,7 +411,7 @@ null,
 "-0,0025 in"
 ]
 ],
-"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0,0025\tin\n"
+"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0,002500\tin\n"
 },
 "conversions.decimal_to_fraction|exact|in|,|low fineness": {
 "error": "Fineness (F) must be one of 1/16, 1/32, 1/64"
@@ -430,12 +430,12 @@ null,
 "error": {
 "copies": {
 "full": "-0.009842519685",
-"shown": "-0,0098",
-"value": "-0.0098",
-"with_unit": "-0.0098 in"
+"shown": "-0,009843",
+"value": "-0.009843",
+"with_unit": "-0.009843 in"
 },
-"shown": "-0,0098 in",
-"spoken": "minus 0,0098 inches"
+"shown": "-0,009843 in",
+"spoken": "minus 0,009843 inches"
 },
 "nearest": {
 "copies": {
@@ -460,34 +460,34 @@ null,
 "-0,0098 in"
 ]
 ],
-"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0,0098\tin\n"
+"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0,009843\tin\n"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.01 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.01 value": {
-"sha256": "2932e7eda0a37ee52756318d92a5c85beff9f451fe7c6a3e07e0a0e75e34e7bc"
+"sha256": "9fa3ed037045e9e76be7363094f8c6573788b685e64ca663117a0d56b2e0f9f3"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.1 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.1 value": {
-"sha256": "59cb8f7d52c7c7b32b19fad9616a07aec020cbe62753b56eab86b515342d46a8"
+"sha256": "82378ecff3807011ec44eedb12451faf4b826fb3286bea27a67775cbf0a75fe7"
 },
 "conversions.decimal_to_fraction|exact|in|,|x10.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|,|x10.0 value": {
-"sha256": "fd6d24762d7b581eb42bc22e4e46669a0619101e43b419e64a87b6356ed9c930"
+"sha256": "749d735db0a8a1e27557f529d6d6f67593f0caf19c2447e815071bc15b82f5c0"
 },
 "conversions.decimal_to_fraction|exact|in|,|x100.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|,|x100.0 value": {
-"sha256": "d94798004c88b7416aad7833ee4081d707736a108e4cf97f7a82d87f890e6190"
+"sha256": "1dc55f2ae8d4a08b3ff62e069c2ad468d40e46664ddbf7f74a38c311e829d30d"
 },
 "conversions.decimal_to_fraction|exact|in|.|defaults": {
-"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           0.1900 in  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 0.1875 in\n  E = N - X\n    = 0.1875 - 0.1900\n    = -0.0025 in\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.0025 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           0.1900 in  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 0.1875 in\n  E = N - X\n    = 0.1875 - 0.1900\n    = -0.0025 in\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.002500 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "fineness": "16",
 "value": "0.1900 in"
@@ -501,12 +501,12 @@ null,
 "error": {
 "copies": {
 "full": "-0.0025",
-"shown": "-0.0025",
-"value": "-0.0025",
-"with_unit": "-0.0025 in"
+"shown": "-0.002500",
+"value": "-0.002500",
+"with_unit": "-0.002500 in"
 },
-"shown": "-0.0025 in",
-"spoken": "minus 0.0025 inches"
+"shown": "-0.002500 in",
+"spoken": "minus 0.002500 inches"
 },
 "nearest": {
 "copies": {
@@ -531,13 +531,13 @@ null,
 "-0.0025 in"
 ]
 ],
-"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0.0025\tin\n"
+"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0.002500\tin\n"
 },
 "conversions.decimal_to_fraction|exact|in|.|low fineness": {
 "error": "Fineness (F) must be one of 1/16, 1/32, 1/64"
 },
 "conversions.decimal_to_fraction|exact|in|.|low value": {
-"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           -39370078.7402 in  (entered)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = -39370078.7500 in\n  E = N - X\n    = (-39370078.7500) - (-39370078.7402)\n    = -0.0098 in\n\nResults\n  N      Nearest fraction                 -39370078 3/4\"\n  E      Error                            -0.0098 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           -39370078.7402 in  (entered)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = -39370078.7500 in\n  E = N - X\n    = (-39370078.7500) - (-39370078.7402)\n    = -0.0098 in\n\nResults\n  N      Nearest fraction                 -39370078 3/4\"\n  E      Error                            -0.009843 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "fineness": "16",
 "value": "-39370078.7402 in"
@@ -551,12 +551,12 @@ null,
 "error": {
 "copies": {
 "full": "-0.009842519685",
-"shown": "-0.0098",
-"value": "-0.0098",
-"with_unit": "-0.0098 in"
+"shown": "-0.009843",
+"value": "-0.009843",
+"with_unit": "-0.009843 in"
 },
-"shown": "-0.0098 in",
-"spoken": "minus 0.0098 inches"
+"shown": "-0.009843 in",
+"spoken": "minus 0.009843 inches"
 },
 "nearest": {
 "copies": {
@@ -581,34 +581,34 @@ null,
 "-0.0098 in"
 ]
 ],
-"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0.0098\tin\n"
+"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0.009843\tin\n"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.01 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.01 value": {
-"sha256": "969849bcd9ae4ab24d5bad4007baed837a4964b76e9494eb97f17930d66b1d1d"
+"sha256": "da77ff0d75641b18b7a6d779ac7fc43ad3afedf01e82baccff959b11c99519d1"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.1 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.1 value": {
-"sha256": "0dd1b9efa5ef0369000719cf5781b5e844a6eca5018d1473361f53984c1eefdd"
+"sha256": "a05b2c856efc4d1cb107d35875e3f3412bcdb7e7863dff44b945d6e4567489f9"
 },
 "conversions.decimal_to_fraction|exact|in|.|x10.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|.|x10.0 value": {
-"sha256": "bee069808aacf74c479fb51f7eb749ec4b46fe3de1934cd8bd33bf8a2c4b97d3"
+"sha256": "5afcfb71a5ca709e8ebcde7098c41348a02ac4703ed46baf493bbae99de326ef"
 },
 "conversions.decimal_to_fraction|exact|in|.|x100.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|.|x100.0 value": {
-"sha256": "c74a5f1440af733eabd0e82ac7de660d5a5d1dd97a9e00096a878a807fb4588c"
+"sha256": "5796206fe994bc12e56d02b4af3a96919484d560aeba1b97806baa0d752e5ada"
 },
 "conversions.decimal_to_fraction|exact|mm|.|defaults": {
-"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           4.8260 mm  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 4.7625 mm\n  E = N - X\n    = 4.7625 - 4.8260\n    = -0.0635 mm\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.0635 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           4.8260 mm  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 4.7625 mm\n  E = N - X\n    = 4.7625 - 4.8260\n    = -0.0635 mm\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.063500 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "fineness": "16",
 "value": "4.8260 mm"
@@ -622,12 +622,12 @@ null,
 "error": {
 "copies": {
 "full": "-0.0635",
-"shown": "-0.0635",
-"value": "-0.0635",
-"with_unit": "-0.0635 mm"
+"shown": "-0.063500",
+"value": "-0.063500",
+"with_unit": "-0.063500 mm"
 },
-"shown": "-0.0635 mm",
-"spoken": "minus 0.0635 millimeters"
+"shown": "-0.063500 mm",
+"spoken": "minus 0.063500 millimeters"
 },
 "nearest": {
 "copies": {
@@ -652,13 +652,13 @@ null,
 "-0.0635 mm"
 ]
 ],
-"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0.0635\tmm\n"
+"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0.063500\tmm\n"
 },
 "conversions.decimal_to_fraction|exact|mm|.|low fineness": {
 "error": "Fineness (F) must be one of 1/16, 1/32, 1/64"
 },
 "conversions.decimal_to_fraction|exact|mm|.|low value": {
-"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           -1000000000.0000 mm  (entered)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = -1000000000.2500 mm\n  E = N - X\n    = (-1000000000.2500) - (-1000000000.0000)\n    = -0.2500 mm\n\nResults\n  N      Nearest fraction                 -39370078 3/4\"\n  E      Error                            -0.2500 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           -1000000000.0000 mm  (entered)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = -1000000000.2500 mm\n  E = N - X\n    = (-1000000000.2500) - (-1000000000.0000)\n    = -0.2500 mm\n\nResults\n  N      Nearest fraction                 -39370078 3/4\"\n  E      Error                            -0.250000 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "fineness": "16",
 "value": "-1000000000.0000 mm"
@@ -672,12 +672,12 @@ null,
 "error": {
 "copies": {
 "full": "-0.25",
-"shown": "-0.2500",
-"value": "-0.2500",
-"with_unit": "-0.2500 mm"
+"shown": "-0.250000",
+"value": "-0.250000",
+"with_unit": "-0.250000 mm"
 },
-"shown": "-0.2500 mm",
-"spoken": "minus 0.2500 millimeters"
+"shown": "-0.250000 mm",
+"spoken": "minus 0.250000 millimeters"
 },
 "nearest": {
 "copies": {
@@ -702,31 +702,31 @@ null,
 "-0.2500 mm"
 ]
 ],
-"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0.2500\tmm\n"
+"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0.250000\tmm\n"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.01 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.01 value": {
-"sha256": "1d09a5e26e567bd7d520ef6606214ec8b37848cbf97d4aa62b641de216440d45"
+"sha256": "dfde073239bef4236689760d9083cd3e0ee2cf710400d9a3a9cf601213ae7232"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.1 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.1 value": {
-"sha256": "b400476f08bdb601f4b2330e22348a7e16ed64468216709d18e9f7293f8e48cc"
+"sha256": "eac1c74a91a640c129df67b4b1a7708a31747a0db3e1faa754b89bcc90aaf299"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x10.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x10.0 value": {
-"sha256": "fa7f3170f6fe03e4f9968a16ee0dbd9fd58b05e29ab593981b170f69294c045d"
+"sha256": "3ab61aa83e87b834c0aac2996a21e9301899aaf32bfdbaa37ba2bd351af52446"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x100.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x100.0 value": {
-"sha256": "c7b7230a0e43b34bb9456b573fe88ed42f34bbdaa5f9ebcb5d629f4b2e1c7697"
+"sha256": "43fee852616b8500d03336f0fcbf2f041cec2cc55c7e8c0832394e88c6977c8c"
 },
 "conversions.fraction_to_decimal|exact|in|,|defaults": {
 "inputs": {

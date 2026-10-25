@@ -289,6 +289,10 @@ class Calculator(ABC):
     output_sets: ClassVar[tuple[UnitSet, ...]] = ()
     """The sets of units its results can be shown in, the first the default (ADR-0024
     E1); empty for the generated ones, one per length choice (``unit_sets``)."""
+    forms_in_sets: ClassVar[bool] = True
+    """Whether its generated sets include those whose length is a form, feet and inches
+    or an inch fraction; ``False`` where a result in the set must stay a decimal, as
+    Decimal to fraction's error does, which a fraction would round to nothing."""
 
     @abstractmethod
     def compute(self, ctx: Context) -> None:
@@ -317,7 +321,8 @@ class Calculator(ABC):
 
         A generated set is labelled by its choices for the dimensions its outputs show
         in a set, in their order: ``in · ° · in²`` on the right triangle, ``in`` on a
-        sheet-metal page (ADR-0024 §5).
+        sheet-metal page (ADR-0024 §5). Without ``forms_in_sets``, the sets whose length
+        is a form are left out.
         """
         if cls.output_sets:
             return cls.output_sets
@@ -327,6 +332,8 @@ class Calculator(ABC):
             return ()  # every output has its own unit, form or picks: there's nothing to set
         sets = []
         for key, choices in units.generated_sets():
+            if not cls.forms_in_sets and _is_form(choices[Dimension.LENGTH], Dimension.LENGTH):
+                continue
             written = [_written(choices[d], d) for d in shown]
             sets.append(UnitSet(key, " · ".join(w for w in written if w), choices))
         return tuple(sets)
@@ -529,6 +536,8 @@ class Calculator(ABC):
                     f"{cls.id}: output {o.key!r} gives picks and a fixed unit or form; give one"
                 )
         _check_sets(cls)
+        for o in cls.outputs:
+            _check_signed(cls, o)
         for p in cls.params:
             if not expr.is_usable_symbol(p.symbol):
                 raise SpecError(
@@ -563,6 +572,42 @@ def _written(choice: str, dimension: Dimension) -> str:
     """Return a choice as a picker shows it: a unit's written symbol, or a form's."""
     picked = registry().choice(choice, dimension)
     return picked.written if isinstance(picked, Unit) else picked.symbol
+
+
+def _is_form(choice: str, dimension: Dimension) -> bool:
+    """Whether a choice is a compound form, such as feet and inches, rather than a unit."""
+    return not isinstance(registry().choice(choice, dimension), Unit)
+
+
+def _check_signed(cls: type[Calculator], output: Output) -> None:
+    """Check that a signed output can only be shown in a unit, never in a form.
+
+    A signed output is a difference whose size and sign matter, such as an error. A form
+    rounds to its own fineness and writes its own sign, so an error of 1/32 inch would
+    show as ``0"`` to the nearest 1/16 (UI/UX's review of PR #3, M1). A fixed form is
+    refused in ``_check_output_unit``; this checks its picks and its sets.
+
+    Raises:
+        SpecError: A signed output's picks, or a set it's shown in, give a form.
+    """
+    if not output.signed:
+        return
+    forms = [pick for pick in output.picks if _is_form(pick, output.dimension)]
+    if forms:
+        raise SpecError(
+            f"{cls.id}: output {output.key!r} is signed, so it can't be picked in a form "
+            f"such as {forms[0]!r}; a form writes its own sign and rounds to its fineness"
+        )
+    if not output.follows_set:
+        return
+    for unit_set in cls.unit_sets():
+        choice = unit_set.choices.get(output.dimension, "")
+        if choice and _is_form(choice, output.dimension):
+            raise SpecError(
+                f"{cls.id}: output {output.key!r} is signed, but output set {unit_set.key!r} "
+                f"shows it in the form {choice!r}; give sets in units only "
+                "(forms_in_sets = False)"
+            )
 
 
 def _check_follows(cls: type[Calculator], output: Output) -> None:
@@ -633,11 +678,7 @@ def _check_output_unit(owner: str, output: Output) -> None:
             )
         return
     if not output.unit:
-        if output.precision is not None and not output.picks:
-            raise SpecError(
-                f"{owner}: output {output.key!r} gives a precision but no unit or picks of its own"
-            )
-        return
+        return  # a precision applies in whatever unit it's picked or set in, never a form
     try:
         unit = get_unit(output.unit, output.dimension)
     except (InputError, UsageError) as exc:

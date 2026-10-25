@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from caddcalc.core.formatting import POINT, DisplayPrefs, ShownUnits, output_parts
-from tests.qt_helpers import open_window, results_text, settle, type_into
+from tests.qt_helpers import open_window, results_text, settle, show_in, type_into
 
 pytestmark = [pytest.mark.gui, pytest.mark.usefixtures("qt")]
 
@@ -681,14 +681,36 @@ def test_an_error_row_shows_its_sign_and_says_which_way_it_runs() -> None:
     field = window.results.fields["error"]
     help_text = "The nearest fraction less the length: positive where the fraction is longer"
     assert field.output.help.startswith(help_text)
-    assert field.value.text() == "+0.0025" and field.unit.text() == "in"
+    assert field.value.text() == "+0.002500" and field.unit.text() == "in"
     assert field.label.toolTip() == field.output.help == field.accessibleDescription()
-    assert "plus 0.0025 inches" in field.accessibleName()
+    assert "plus 0.002500 inches" in field.accessibleName()
     description = field.copy_button.accessibleDescription()
-    assert description == f"E: plus 0.0025 inches. {field.output.help}", "Tab reaches it"
+    assert description == f"E: plus 0.002500 inches. {field.output.help}", "Tab reaches it"
     assert "Copy with unit" in [a.text() for a in field.context_menu().actions()]
     field.label.resize(8, field.label.height())
     assert field.label.toolTip() == tip_text(field.output.label, field.output.help), "elided"
+    window.close()
+
+
+def test_decimal_to_fraction_lists_its_input_as_typed_and_its_error_as_a_decimal() -> None:
+    """UI/UX's review of PR #3: M1, and its call on the page's display."""
+    window = open_window()
+    window.show()
+    window.select_calculator("conversions.decimal_to_fraction")
+    settle(window)
+    picker = window.results.set_picker
+    sets = [picker.itemData(i) for i in range(picker.count())]
+    assert sets == ["in", "ft", "mm", "cm", "m"], "Show in offers decimals only"
+    _param, value = window.fields["value"]
+    type_into(value, "0.09375")
+    settle(window)
+    assert window.results.fields["nearest"].value.text() == '1/8"'
+    assert window.results.fields["error"].value.text() == "+0.031250", "never a false 0"
+    assert "0.09375" in window.output.toPlainText(), "the Inputs list, as typed"
+    show_in(window, "mm")
+    settle(window)
+    error = window.results.fields["error"]
+    assert (error.value.text(), error.unit.text()) == ("+0.793750", "mm")
     window.close()
 
 

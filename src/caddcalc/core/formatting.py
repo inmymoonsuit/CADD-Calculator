@@ -543,16 +543,58 @@ def format_value(
     return parts.with_unit if unit else parts.number
 
 
-def param_parts(param: Param, value: float, units: ShownUnits, prefs: DisplayPrefs) -> ValueParts:
+def param_parts(
+    param: Param,
+    value: float,
+    units: ShownUnits,
+    prefs: DisplayPrefs,
+    typed: TypedValue | None = None,
+) -> ValueParts:
     """Return an input's value as listed, by its label where it's an allowed value.
 
-    A fineness is ``1/16`` (``Param.allowed``, ADR-0024 E7); any other value is as
-    ``input_parts`` shows it.
+    A fineness is ``1/16`` (``Param.allowed``, ADR-0024 E7). A plain decimal the user
+    typed is listed as typed, ``0.09375 in``, not rounded to ``0.0938 in``: the Inputs
+    list gives each input as typed (ADR-0024 §5, ADR-0013 §9 rule 3). Any other value is
+    as ``input_parts`` shows it, a fraction or an expression included, which the field's
+    echo reads out.
+
+    Args:
+        param: The input.
+        value: The value the run used, in base units.
+        units: The units it's shown in, with each input's choice.
+        prefs: How numbers are shown.
+        typed: What the user typed in the input's field, if they typed it.
     """
     label = next((lb for v, lb in param.allowed if v == value), None)
     if label is not None:
         return ValueParts(label, "")
+    if typed is not None and (as_typed := _as_typed(param.key, typed, value, units, prefs)):
+        return as_typed
     return input_parts(param.key, value, param.dimension, units, prefs)
+
+
+def _as_typed(
+    key: str, typed: TypedValue, value: float, units: ShownUnits, prefs: DisplayPrefs
+) -> ValueParts | None:
+    """Return a typed plain decimal as listed, in its own unit, or ``None`` if it isn't one.
+
+    It's the user's own digits only where they're what the run used, read in the unit the
+    input is listed in, and in the screen's decimal mark: text read otherwise, such as a
+    default written with ".", is the app's, and is listed converted (``picked_text``).
+    """
+    if typed.value != value or not _PLAIN.fullmatch(typed.text):
+        return None
+    # A plain decimal names no unit, so it was read in its picked choice, or, on the
+    # command line, as a bare number in the input's default unit.
+    choice = typed.unit.symbol if typed.choice is None else typed.choice
+    if choice != units.input_choice(key, typed.dimension):
+        return None
+    picked = registry().choice(choice, typed.dimension)
+    own_mark = typed.decimal == prefs.symbols.decimal or "." not in typed.text
+    if not isinstance(picked, Unit) or not own_mark:
+        return None
+    number = typed.text.replace(MINUS_SIGN, "-").removeprefix("+")
+    return ValueParts(number, picked.written)
 
 
 def format_input(
@@ -1134,7 +1176,7 @@ def result_json(
     for key, value in result.inputs.items():
         dimension = result.dimensions[key]
         choice = units.input_choice(key, dimension)
-        parts = param_parts(params[key], value, units, prefs)
+        parts = param_parts(params[key], value, units, prefs, entered.get(key))
         shown = _shown_json(value, choice_unit(choice, dimension), parts, choice)
         typed = _typed_amount(entered[key], shown["unit"]) if key in entered else None
         if typed is not None:

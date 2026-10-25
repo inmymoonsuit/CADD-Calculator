@@ -1534,4 +1534,30 @@ the branch.
   foot through each: 1 ft is 0.3048 m, and 0.3048 m is `12"` with an error of exactly 0.
   Decimal to fraction's verification note says what B.8 covers, the inch and the foot,
   and that its rounding to the nearest fraction is its own rule, which no published
-  example covers.
+  example covers. E-3's golden holds method notes, so Decimal to fraction's 18 entries
+  were captured again; each differed by that note only (with the old note put back, all
+  24 of its digests match).
+* **Decimal to fraction's error is never a fraction (UI/UX's M1).** Under "Show in: in
+  1/16", 0.09375 in showed its +1/32 in error as `0"`, and under ft-in as `0'-0"`: a form
+  rounds the error to the very fineness it measures.
+  * **The rule, for every calculator:** a signed output, a difference such as an error,
+    is never shown in a form. A fixed form was refused already; now a pick that's a form
+    is refused, and so is a set that shows it in one (`_check_signed`).
+  * **So this page's Show in offers decimal units only,** `in`, `ft`, `mm`, `cm` and `m`
+    (`Calculator.forms_in_sets = False`). That keeps the error and the work in one unit,
+    as Show in sets them; giving the error its own picker instead, as the other five
+    converters' results have, would have left the work in the page's hidden set.
+  * **The error shows 6 decimals in any unit,** `+0.031250 in` and `+0.793750 mm`, PR
+    #1's precision for these rows (UI/UX's call). `Output.precision` now applies in
+    whatever unit an output is shown in, its set's included; a form keeps its own
+    fineness. The work keeps the dimension's decimals, as PR #1's did.
+  * **A typed plain decimal is listed as typed** (UI/UX's call; §5 and ADR-0013 §9 rule
+    3): `0.09375 in` in the window's Inputs list, the CLI's report and JSON's
+    `shown.text`, not `0.0938 in`. Only where the text is what the run used, read in the
+    unit it's listed in, in the screen's decimal mark; a fraction or an expression is
+    listed as read, which the field's echo spells out.
+  * E-3's golden changes in Decimal to fraction's 18 entries, in the error's text only:
+    re-rendered with the error's old precision, all 33 of its entries match.
+  * **Mutation probes, 8 of 8 killed:** the signed check skipped; forms kept in the
+    sets; the error without its precision; and the typed listing never used, used
+    whatever the run used, in any decimal mark, in any choice, and for a fraction.

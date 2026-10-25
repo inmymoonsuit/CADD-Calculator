@@ -20,7 +20,7 @@ open.
 
 Each converter is *verified* against SP 811's Appendix B.8 for the units its status
 names. A unit-to-unit converter has no **Show in** picker, since its result has its
-own; Decimal to fraction has one, for its error.
+own; Decimal to fraction has one, for its error, which offers decimal units only.
 
 ## Length
 
@@ -44,10 +44,13 @@ two results:
 | Result | Shows | Copy gives |
 |---|---|---|
 | Nearest fraction | `3/16"`, at the fineness | `3/16"` |
-| Error | `-0.0025 in`, in the Show in picker's unit | `-0.0025` |
+| Error | `-0.002500 in`, in the Show in picker's unit, to 6 decimals | `-0.002500` |
 
 The error is the nearest fraction less the length: positive where the fraction is longer
-than the length, and shown with its `+` so its direction reads at a glance. The error's
+than the length, and shown with its `+` so its direction reads at a glance. It's always a
+decimal, to the millionth, so a residual of 1/128 inch shows: a fraction or feet and
+inches would round it to the very fineness it measures, and show `0"`. The Inputs list
+gives the length as you typed it, `0.09375 in`, not rounded. The error's
 tooltip says so too. A length that is that very fraction has an error of exactly 0,
 whether it's typed in inches or in millimeters, such as `411.1625 mm` for 16 3/16 in. A
 length half-way between two fractions takes the one with the even numerator: `3/32 in`

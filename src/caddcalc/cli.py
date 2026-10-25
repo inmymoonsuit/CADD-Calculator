@@ -531,7 +531,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         data = result_json(calc, result, units, prefs, entries)
         print(json.dumps(data, indent=2, ensure_ascii=False))
         return 0
-    print(format_result(calc, result, units, prefs, show_work=not args.no_work))
+    print(format_result(calc, result, units, prefs, show_work=not args.no_work, entered=entries))
     return 0
 
 
@@ -546,8 +546,14 @@ def format_result(
     prefs: DisplayPrefs,
     *,
     show_work: bool = True,
+    entered: Mapping[str, TypedValue] | None = None,
 ) -> str:
-    """Render a result as plain text, in ``units``: inputs, work, results, notes, status."""
+    """Render a result as plain text, in ``units``: inputs, work, results, notes, status.
+
+    ``entered`` holds the text of each input the run was given, by parameter key, so a
+    plain decimal is listed as typed (``param_parts``).
+    """
+    entered = entered or {}
     method = calc.get_method(result.method)
     params = calc.params_for(result.method)
     # The label column is as wide as its longest label, and at least LABEL_WIDTH.
@@ -555,7 +561,7 @@ def format_result(
     width = max(LABEL_WIDTH, *(len(label) for label in labels))
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in params:
-        value = param_parts(p, result.inputs[p.key], units, prefs).with_unit
+        value = param_parts(p, result.inputs[p.key], units, prefs, entered.get(p.key)).with_unit
         source = describe_source(result.source_of(p.key))
         lines.append(f"  {p.symbol:<6} {p.label:<{width}} {value}  ({source})")
     if show_work:

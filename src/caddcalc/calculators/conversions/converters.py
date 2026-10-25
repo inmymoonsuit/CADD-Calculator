@@ -228,8 +228,13 @@ class DecimalToFraction(Calculator):
             LENGTH,
             "The nearest fraction less the length: positive where the fraction is longer.",
             signed=True,
+            # To the millionth, as PR #1's error rows were, so a 1/128 inch residual shows.
+            precision=Precision(6),
         ),
     )
+    # The error is a decimal in every set: a fraction would round it to the very fineness
+    # it measures, and show 1/32 in out as 0" (UI/UX's review of PR #3, M1).
+    forms_in_sets = False
     methods = (
         _method(
             "for in and ft",

@@ -155,7 +155,7 @@ def test_a_form_never_stands_for_an_input_it_rounds() -> None:
     type_into(window.fields["inside_radius"][1], "3.175")
     inputs = _inputs(window)
     assert "2.6568\nmm\n= 0.1046 in" in inputs
-    assert "3.1750\nmm\n= 0'-0 1/8\"" in inputs, "exactly 1/8 in"
+    assert "3.175\nmm\n= 0'-0 1/8\"" in inputs, "exactly 1/8 in, listed as typed"
     window.close()
 
 
@@ -510,7 +510,8 @@ def test_a_copy_menu_never_offers_the_same_text_twice() -> None:
     assert labels[-1] == "Copy 0.1875, in inches", "full precision names its unit"
     error = window.results.fields["error"]
     copies = [a.text() for a in error.context_menu().actions()]
-    assert copies == ["Copy -0.0025", "Copy -0,0025", "Copy -0.0025 in"], "full is the value here"
+    # Shown to six decimals, so full precision, ten digits less its trailing zeros, differs.
+    assert copies == ["Copy -0.002500", "Copy -0,002500", "Copy -0.002500 in", "Copy -0.0025"]
     window.close()
 
 

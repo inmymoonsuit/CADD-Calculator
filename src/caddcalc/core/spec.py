@@ -237,10 +237,11 @@ class Output:
     It's shown with ``precision`` if it gives one, else the registry's precision for that
     unit (``precision_for``)."""
     precision: Precision | None = None
-    """The precision an output in a unit of its own is shown with, where the unit's own
-    doesn't suit it, such as an error to fixed decimals, or a converter's value to
-    significant figures; ``None`` for the registry's, or for a pick, its dimension's. Only
-    an output with a ``unit`` or ``picks`` may give one: a form has its own fineness."""
+    """The precision it's shown with in a unit, where the unit's own doesn't suit it, such
+    as an error to fixed decimals, or a converter's value to significant figures, in its
+    fixed unit, its pick or its set's unit; ``None`` for the registry's, for a fixed unit,
+    or else its dimension's. A form has its own fineness, so an output with a fixed form
+    can't give one, and one picked or set in a form is shown to the form's."""
     form: str = ""
     """The key of a compound form it's always shown in, e.g. ``"ft_in"`` for feet and
     inches or ``"dms"`` for degrees, minutes and seconds (ADR-0019 §2); empty for none.
@@ -248,8 +249,8 @@ class Output:
     signed: bool = False
     """Whether it's a difference whose direction matters, such as an error: a value shown
     above zero gets a plus sign, as ``+0.002500 in``, in its row and its work line, and it
-    takes no inch fraction hint. A compound form writes its own sign, so an output in one
-    can't be signed."""
+    takes no inch fraction hint. A compound form writes its own sign and rounds to its
+    fineness, so a signed output can't be in one: not fixed, picked, or in a set."""
     picks: tuple[str, ...] = ()
     """The ids of its own picker's choices, the first its default, where it's shown in a
     choice of its own rather than its calculator's output set (ADR-0024 D3, E1); empty

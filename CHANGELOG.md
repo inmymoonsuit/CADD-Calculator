@@ -585,9 +585,14 @@ All notable changes are recorded here. The format follows
   MPa) until you pick it. Decimal to fraction takes its fineness, 1/16, 1/32 or 1/64, as
   a choice, and gives the nearest fraction and its error. The CLI and JSON give each
   converter's result as `value`, and `caddcalc show` lists a fineness's values and what
-  a result follows. KI-029 is resolved. For calculator authors: `Output.follows` and
-  `Output.counterparts`, `Param.allowed`, and `Output.precision` for an output with its
-  own picker.
+  a result follows. KI-029 is resolved. Its error is always a decimal, to 6 decimals in
+  any unit, so its **Show in** offers decimal units only: in a fraction it read `0"` for an
+  error of 1/32 inch. In every calculator, an input typed as a plain decimal is listed as
+  typed, `0.09375 in`, not `0.0938 in`: in the Inputs list, the CLI's report and JSON's
+  `shown.text`. For calculator authors: `Output.follows` and
+  `Output.counterparts`, `Param.allowed`, `Output.precision` in any unit an output is
+  shown in, and `Calculator.forms_in_sets`; a signed output in a form, fixed, picked or in
+  a set, is refused at registration.
 - **Each family setting with a unit has a picker** (ADR-0024 E-5, U2b), as a
   calculator's inputs do, and its number is read in the unit the picker shows; a unit
   typed in the field, as `3 mm`, is refused, with where it goes. Switching it re-reads
