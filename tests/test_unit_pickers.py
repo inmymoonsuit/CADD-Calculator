@@ -6,6 +6,7 @@ text is refused with its fix, and the field shows what arithmetic or a form read
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
@@ -734,6 +735,25 @@ def test_the_focus_the_list_takes_as_it_opens_settles_nothing(
     window.close()
 
 
+@pytest.fixture
+def _lists_open_at_once() -> Iterator[None]:
+    """Turn off a native platform's animation of a combo box's list opening, then restore it.
+
+    Windows animates the list open, so it isn't visible yet right after F4; without the
+    animation it shows at once, as offscreen (the tooltips' test does the same).
+    """
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
+    animated = QApplication.isEffectEnabled(Qt.UIEffect.UI_AnimateCombo)
+    QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateCombo, False)
+    try:
+        yield
+    finally:
+        QApplication.setEffectEnabled(Qt.UIEffect.UI_AnimateCombo, animated)
+
+
+@pytest.mark.usefixtures("_lists_open_at_once")
 @pytest.mark.parametrize("close", ["escape", "click outside", "closed by the app"])
 def test_a_list_closed_without_a_choice_leaves_the_step_to_settle(close: str) -> None:
     """Escape, or the app closing the list for a click outside it, skips ``hidePopup``.
