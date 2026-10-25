@@ -1593,3 +1593,18 @@ the branch.
   and fails when Qt is fixed. The 400-width sweep now checks labels' heights too, with
   the facts shown. Probe: without the once-per-geometry guard, the guard's test fails;
   without the repair, the preferred-width test does.
+* **A settings page offers a typed unit as a pick (UI/UX's L3).** U2b's settings page
+  refused `3 mm` with "Units go in the picker: '3 mm' names mm." and no button, since it
+  had none, so its fields differed from a calculator's (Q5). Each setting now has the
+  calculator field's fix row: "Units go in the picker. Use 3 mm?" and "Use 3 mm", which
+  picks mm and applies 3; the Not applied list then says only "'3 mm' names a unit", so
+  the sentence shows once. A unit the picker doesn't offer gets the old sentence and no
+  button, as on a calculator page. The click hides only the fix's row, and rebuilds
+  nothing under its own signal (KI-019). This supersedes stop 3's "the page has no fix
+  button" above.
+* **A settings pick says what it did (UI/UX's L4),** in a calculator field's words: "3
+  now read as millimeters" for a number the user typed, "can't be read in millimeters"
+  for one refused there, "shown in millimeters, 2.65684" for a value applied rather than
+  typed, and "in millimeters" for an empty field. It said "in millimeters" for all four.
+* **Probes, 4 of 4 killed:** the fix row never shown; the fix without its pick; a pick
+  that always says "in"; one that never says "shown in".

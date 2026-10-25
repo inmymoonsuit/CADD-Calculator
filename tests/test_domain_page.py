@@ -185,14 +185,26 @@ def test_a_setting_reads_in_its_picker_whatever_the_results_show() -> None:
     window.close()
 
 
-def test_a_unit_typed_in_a_setting_is_refused_and_says_where_it_goes() -> None:
+def test_a_unit_typed_in_a_setting_is_refused_and_offered_as_a_pick() -> None:
+    """As a calculator field offers it: "Use 3 mm?" (Q5; UI/UX's PR #3 L3)."""
     window = open_window()
+    window.show()
     window.select_domain("sheet_metal")
-    type_into(window.setting_fields["inside_radius"][1], "3 mm")
+    edit = window.setting_fields["inside_radius"][1]
+    type_into(edit, "3 mm")
     assert window.domain_settings.get(SHEET_METAL, "inside_radius") is None
     note = plain(window.domain_note.text())
-    assert "Inside bend radius (R): Units go in the picker: '3 mm' names mm." in note
-    assert "Use " not in note, "no button to offer it with"
+    assert "Inside bend radius (R): '3 mm' names a unit" in note
+    assert "Use " not in note, "the fix's sentence shows once, by the field"
+    fix, fix_note, button = window.setting_fixes["inside_radius"]
+    assert fix.isVisible()
+    assert (fix_note.text(), button.text()) == ("Units go in the picker. Use 3 mm?", "Use 3 mm")
+    button.click()
+    assert window.setting_pickers["inside_radius"].choice == "mm"
+    assert edit.text() == "3" and not fix.isVisible()
+    assert window.domain_settings.for_domain(SHEET_METAL).values["inside_radius"] == 3.0
+    assert "names a unit" not in plain(window.domain_note.text())
+    assert window.statusBar().currentMessage() == "Inside bend radius: 3 now read as millimeters"
     window.close()
 
 
@@ -204,13 +216,34 @@ def test_a_pick_re_reads_a_typed_setting_and_keeps_text_it_refuses() -> None:
     pick_setting(window, "thickness", "mm")
     assert window.setting_fields["thickness"][1].text() == "3"
     assert window.domain_settings.for_domain(SHEET_METAL).values["thickness"] == 3.0
-    assert window.statusBar().currentMessage() == "Material thickness: in millimeters"
+    assert window.statusBar().currentMessage() == "Material thickness: 3 now read as millimeters"
     pick_setting(window, "thickness", "ft_in")
     assert window.domain_settings.for_domain(SHEET_METAL).values["thickness"] == 3 * 25.4
     type_into(window.setting_fields["thickness"][1], "1'-4\"")
     pick_setting(window, "thickness", "mm")
     assert window.domain_settings.get(SHEET_METAL, "thickness") is None, "refused in mm"
     assert window.setting_fields["thickness"][1].text() == "1'-4\"", "kept to be fixed"
+    message = window.statusBar().currentMessage()
+    assert message == "Material thickness: 1'-4\" can't be read in millimeters"
+    window.close()
+
+
+def test_a_setting_s_pick_says_what_happened_to_its_number() -> None:
+    """A calculator field's words: re-read, can't be read, shown converted, or only the unit."""
+    window = open_window()
+    window.select_domain("sheet_metal")
+    thickness = SHEET_METAL.setting("thickness")
+    said = window._setting_said
+    assert said(thickness, "mm", "", read=True) == "Material thickness: in millimeters"
+    assert said(thickness, "mm", "3", read=True) == "Material thickness: 3 now read as millimeters"
+    assert said(thickness, "mm", "2.65684", read=False) == (
+        "Material thickness: shown in millimeters, 2.65684"
+    ), "a value applied rather than typed keeps its size"
+    assert said(thickness, "mm", "abc", read=True) == (
+        "Material thickness: abc can't be read in millimeters"
+    )
+    pick_setting(window, "thickness", "mm")
+    assert window.statusBar().currentMessage() == "Material thickness: in millimeters", "empty"
     window.close()
 
 

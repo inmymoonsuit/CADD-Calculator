@@ -379,6 +379,8 @@ class MainWindow(QMainWindow):
         """The choice box of each input that takes only certain values (``Param.allowed``)."""
         self.setting_pickers: dict[str, UnitPicker] = {}
         """Each family setting's unit picker, for a setting with a unit (ADR-0024 U2b)."""
+        self.setting_fixes: dict[str, tuple[QWidget, QLabel, QPushButton]] = {}
+        """Each setting's "Use 3 mm?" row, shown while its text names a unit (Q5)."""
         self.choice_rows: dict[str, tuple[QComboBox | None, QComboBox]] = {}
         """Each choice's group box (``None`` when its options have no groups) and option box."""
         self.choice_groups: dict[tuple[str, str], str] = {}
@@ -1733,6 +1735,20 @@ class MainWindow(QMainWindow):
             starts.addStretch(1)
             row = QVBoxLayout()
             row.addLayout(field)
+            # As a calculator field offers it: a unit typed in the text moves to the
+            # picker at a click, its number kept (ADR-0024 Q5; UI/UX's PR #3 L3).
+            fix = QWidget()
+            fix_row = QHBoxLayout(fix)
+            fix_row.setContentsMargins(0, 0, 0, 0)
+            fix_note = QLabel()
+            fix_note.setWordWrap(True)
+            fix_button = QPushButton()
+            fix_button.clicked.connect(_slot(self._apply_setting_fix, setting.key))
+            fix_row.addWidget(fix_note, 1)
+            fix_row.addWidget(fix_button)
+            fix.hide()
+            row.addWidget(fix)
+            self.setting_fixes[setting.key] = (fix, fix_note, fix_button)
             row.addLayout(starts)
             row.addWidget(about)
             self.start_rows[setting.key] = starts
@@ -1766,6 +1782,7 @@ class MainWindow(QMainWindow):
         self.setting_fields.clear()
         self.setting_abouts.clear()
         self.setting_pickers.clear()
+        self.setting_fixes.clear()
         self.choice_rows.clear()
         self.start_rows.clear()
         self.start_buttons.clear()
@@ -2015,7 +2032,10 @@ class MainWindow(QMainWindow):
         try:
             self.domain_settings.set_text(domain, setting.key, text, decimal=self._decimal)
         except UnitInTextError as exc:
-            # The settings page has no fix button: it says where the unit goes.
+            if exc.choice is not None and exc.choice in setting.choices:
+                # The fix's sentence and button are under the field; the list says only
+                # what's wrong, so the sentence shows once, as on a calculator page.
+                return f"{named(setting.label, setting.symbol)}: {exc.text!r} names a unit"
             return f"{named(setting.label, setting.symbol)}: {_unit_fix_text(exc, offered=False)}"
         except InputError as exc:
             message = describe_error(exc, self._setting_units(domain, setting), self.prefs)
@@ -2023,6 +2043,66 @@ class MainWindow(QMainWindow):
                 return message
             return f"{named(setting.label, setting.symbol)}: {message}"
         return None
+
+    def _setting_fix(self, setting: Param, text: str) -> UnitInTextError | None:
+        """Return the fix for a setting's text that names a unit, if it does and it's one."""
+        domain = self.domain
+        if domain is None:
+            return None
+        try:
+            self.domain_settings.set_text(domain, setting.key, text, decimal=self._decimal)
+        except UnitInTextError as exc:
+            return exc if exc.choice is not None and exc.choice in setting.choices else None
+        except InputError:
+            return None
+        return None
+
+    @_settings_boundary
+    def _apply_setting_fix(self, key: str) -> None:
+        """Move a unit typed in a setting into its picker, and apply the number (Q5).
+
+        As a calculator field's fix does: the click picks the unit, and the number is then
+        read as typed in it. Only the fix's row hides; the form isn't rebuilt under the
+        button's own signal (KI-019).
+        """
+        domain = self.domain
+        if domain is None or key not in self.setting_fields:
+            return
+        setting, edit = self.setting_fields[key]
+        pending = self.pending_settings.get((domain.id, key))
+        fix = None if pending is None else self._setting_fix(setting, pending)
+        if fix is None or fix.choice is None:
+            return
+        picker = self.setting_pickers.get(key)
+        if fix.choice and fix.choice != self.domain_settings.field_choice(domain, key):
+            self.domain_settings = self.domain_settings.set_field_choice(domain, key, fix.choice)
+            if picker is not None:
+                picker.set_choice(fix.choice)
+        edit.setText(fix.number)
+        edit.setModified(True)
+        self.pending_settings[domain.id, key] = fix.number
+        self._apply_setting(key)
+        if fix.choice:
+            said = self._setting_said(setting, fix.choice, fix.number, read=True)
+            self.statusBar().showMessage(said, round(ui_style().result_field.copied_status_ms))
+            announce(picker if picker is not None else self, said)
+        edit.setFocus()
+
+    def _setting_said(self, setting: Param, choice: str, text: str, *, read: bool) -> str:
+        """Say how a setting's field reads after a pick, in a calculator field's words.
+
+        A number the user typed is re-read, "25 now read as millimeters", or "can't be read
+        in" it; a value they didn't type is shown converted, "shown in millimeters,
+        2.65684"; an empty field is only "in millimeters" (ADR-0024 §2; UI/UX's PR #3 L4).
+        """
+        name = choice_name(choice, setting.dimension)
+        if not text:
+            return f"{setting.label}: in {name}"
+        if not read:
+            return f"{setting.label}: shown in {name}, {text}"
+        if self._setting_problem(setting, text) is not None:
+            return f"{setting.label}: {text} can't be read in {name}"
+        return f"{setting.label}: {text} now read as {name}"
 
     @_settings_boundary
     def _on_setting_picked(self, key: str, choice: str) -> None:
@@ -2051,13 +2131,14 @@ class MainWindow(QMainWindow):
         if pending is not None:
             edit.setText(pending)
             edit.setModified(True)
+            said = self._setting_said(setting, choice, pending, read=True)
         else:
             current = self.domain_settings.get(domain, key)
             edit.setText("" if current is None else picked_text(current, choice, self.prefs))
             edit.setModified(False)
+            said = self._setting_said(setting, choice, edit.text(), read=typed)
         self._refresh_domain_details()
         self._show_setting_problems()
-        said = f"{setting.label}: in {choice_name(choice, setting.dimension)}"
         self.statusBar().showMessage(said, round(ui_style().result_field.copied_status_ms))
         announce(self.setting_pickers.get(key, self), said)
 
@@ -2120,6 +2201,12 @@ class MainWindow(QMainWindow):
             _set_outline(edit, error_outline() if problem else None)
             if problem:
                 problems.append(problem)
+            fix_row, fix_note, fix_button = self.setting_fixes[key]
+            fix = None if pending is None else self._setting_fix(setting, pending)
+            fix_row.setVisible(fix is not None)
+            if fix is not None:
+                fix_note.setText(_unit_fix_text(fix))
+                fix_button.setText(_unit_fix_button(fix))
         self.domain_note.setText(
             _domain_note_html(
                 domain,

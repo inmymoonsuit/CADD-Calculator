@@ -603,9 +603,10 @@ All notable changes are recorded here. The format follows
   `"X=sq in"` for `in²`.
 - **Each family setting with a unit has a picker** (ADR-0024 E-5, U2b), as a
   calculator's inputs do, and its number is read in the unit the picker shows; a unit
-  typed in the field, as `3 mm`, is refused, with where it goes. Switching it re-reads
-  the number you typed, and a calculator shows an inherited setting in its own field's
-  unit. A material's facts are in the unit their source gives (Q13). KI-027 is
+  typed in the field, as `3 mm`, is refused, and offered as a pick, "Use 3 mm?", as a
+  calculator field offers it. Switching it re-reads the number you typed, and says so,
+  "3 now read as millimeters", as a calculator field does; a calculator shows an
+  inherited setting in its own field's unit. A material's facts are in the unit their source gives (Q13). KI-027 is
   resolved. For calculator and plugin authors: `DomainSettings.set_text` reads in the
   setting's picked choice (`field_choice`, `set_field_choice`) and no longer takes a
   default unit; a domain's setting must name its unit (`Param.unit`), checked at
