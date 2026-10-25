@@ -651,6 +651,53 @@ def test_the_build_copies_and_checks_every_notice(build_script: ModuleType, tmp_
     assert build_script.missing_notices(tmp_path) == ["licenses/Qt-third-party.txt"]
 
 
+def test_the_notices_give_qt_and_pyside6_their_copyright_and_source() -> None:
+    """M1: LGPL-3.0's notice, its source location, and how to replace or rebuild it."""
+    index = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    section = index[index.index("### Qt 6.12.0 and Qt for Python") :]
+    section = section[: section.index("### The rest of the runtime")]
+    assert "The Qt Company Ltd. and other contributors" in section
+    assert "licenses/LGPL-3.0.txt" in section and "licenses/GPL-3.0.txt" in section
+    assert "qtbase-everywhere-src-6.12.0.tar.xz" in section
+    assert "pyside-setup-everywhere-src-6.12.0.zip" in section
+    assert "PySide6.support" in section, "the part compiled into the executable"
+    assert "uv run python packaging/build.py" in section, "the rebuild route"
+    assert "OpenSSL 3.5.7" in index
+
+
+@pytest.mark.gui
+def test_about_names_qt_and_pyside6_at_their_running_versions() -> None:
+    """M1, LGPL-3.0 §4(c): About shows the library's notice and where its license is."""
+    pyside6 = pytest.importorskip("PySide6")
+    from PySide6.QtCore import qVersion
+
+    from caddcalc.gui.actions import about_html, qt_credit
+
+    credit = qt_credit()
+    assert f"Qt {qVersion()}" in credit
+    assert f"(PySide6) {pyside6.__version__}" in credit
+    assert "The Qt Company Ltd." in credit
+    assert "GNU LGPL v3" in credit
+    assert "THIRD_PARTY_NOTICES.md" in credit
+    assert credit in about_html(GENERIC)
+
+
+@pytest.mark.gui
+def test_the_build_checks_the_notices_name_the_versions_it_ships(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    """M1 and Low 1: the index names Qt and PySide6; libcrypto is an OpenSSL 3."""
+    assert build_script.notice_version_problems(tmp_path) == []
+    assert build_script.notice_version_problems(tmp_path, "no versions") != []
+    (tmp_path / "libcrypto-3-x64.dll").write_bytes(b"\0junk OpenSSL 3.5.7 9 Jun 2026\0")
+    assert build_script.openssl_version(tmp_path) == "3.5.7"
+    assert build_script.notice_version_problems(tmp_path) == []
+    (tmp_path / "libcrypto-3-x64.dll").write_bytes(b"\0OpenSSL 1.1.1 11 Sep 2023\0")
+    assert build_script.openssl_version(tmp_path) == "1.1.1"
+    [problem] = build_script.notice_version_problems(tmp_path)
+    assert "OpenSSL 1.1.1" in problem
+
+
 @pytest.mark.gui
 def test_the_trim_finds_every_platforms_left_out_files(
     build_script: ModuleType, tmp_path: Path

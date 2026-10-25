@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from html import escape
 
-from PySide6.QtCore import QObject
+import PySide6
+from PySide6.QtCore import QObject, qVersion
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QApplication, QMenuBar, QMessageBox
 
@@ -38,7 +39,21 @@ def about_html(branding: Branding) -> str:
         '<p>Icons: <a href="https://tabler.io/icons">Tabler Icons</a>, MIT License. '
         'Display typeface: <a href="https://github.com/phoikoi/VT323">VT323</a> by Peter '
         "Hull, SIL Open Font License 1.1. "
-        "Third-party notices are in THIRD_PARTY_NOTICES.md.</p>"
+        "Third-party notices are in THIRD_PARTY_NOTICES.md.</p>" + qt_credit()
+    )
+
+
+def qt_credit() -> str:
+    """Return About's line for Qt and PySide6, at the versions the app runs on.
+
+    LGPL-3.0 §4(c): an app that shows copyright notices while it runs shows the library's,
+    with where its license is (THIRD_PARTY_NOTICES.md, "Qt and Qt for Python").
+    """
+    return (
+        f"<p>Built with Qt {escape(qVersion())} and Qt for Python (PySide6) "
+        f"{escape(PySide6.__version__)}, © The Qt Company Ltd. and other "
+        "contributors, under the GNU LGPL v3. The license texts are in the licenses folder, "
+        "and how to replace or rebuild them is in THIRD_PARTY_NOTICES.md.</p>"
     )
 
 

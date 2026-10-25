@@ -204,35 +204,74 @@ SPDX-License-Identifier: Unicode-3.0
 Packaged builds (`packaging/build.py`) also contain the runtime components below. Their
 full license texts ship in the app folder's `licenses/`, vendored by
 `packaging/fetch_notices.py` from each project's repository at a pinned tag, with their
-SHA-256 in `packaging/notices/manifest.toml`. The build fails if any is missing.
+SHA-256 in `packaging/notices/manifest.toml`. The build fails if any is missing, or if this
+index doesn't name the Qt and PySide6 versions it ships.
+
+### Qt 6.12.0 and Qt for Python (PySide6, Shiboken6) 6.12.0
+
+* **Copyright:** The Qt Company Ltd. and other contributors.
+* **License:** GNU Lesser General Public License v3 (`licenses/LGPL-3.0.txt`), which
+  builds on the GNU General Public License v3 (`licenses/GPL-3.0.txt`).
+* **What ships:** Qt Core, Gui, Widgets, and Svg (and DBus on Linux) with their plugins,
+  Qt's `qtbase_*.qm` translations, PySide6's and Shiboken6's libraries, and PySide6's own
+  Python support code (`PySide6.support`), which Nuitka compiles into the executable.
+* **Source code**, at the versions that ship:
+  * Qt 6.12.0: https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/
+    (`qtbase-everywhere-src-6.12.0.tar.xz`, `qtsvg-…`, `qttranslations-…`), or the
+    `v6.12.0` tags of https://github.com/qt/qtbase, https://github.com/qt/qtsvg, and
+    https://github.com/qt/qttranslations
+  * PySide6 and Shiboken6 6.12.0:
+    https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/
+    (`pyside-setup-everywhere-src-6.12.0.zip`), or the `v6.12.0` tag of
+    https://code.qt.io/cgit/pyside/pyside-setup.git
+
+#### Replacing or rebuilding Qt and PySide6
+
+The LGPL-3.0 lets you use the app with a modified Qt or PySide6. Two routes:
+
+* **Replace the shared libraries.** Qt's and PySide6's libraries ship as separate files in
+  the app folder (the `Qt6*` and `pyside6`/`shiboken6` libraries, and the plugins under
+  `PySide6/qt-plugins/`), and Qt's translations as separate files (in
+  `PySide6/translations/`, or `PySide6/Qt/translations/` on Linux and macOS). Swap in other
+  compatible builds of the same version.
+* **Rebuild the whole app.** PySide6's support code is compiled into the executable, so to
+  change it, rebuild the app. Its complete source is public under the Apache License 2.0,
+  and the build is one command. From the release's tag:
+
+  ```bash
+  git clone https://github.com/inmymoonsuit/CADD-Calculator.git
+  cd CADD-Calculator
+  git checkout v<version>
+  uv sync --extra gui --group build
+  # optional: put your modified PySide6 into .venv here, e.g. uv pip install <your wheel>
+  uv run python packaging/build.py
+  ```
+
+  The new app is in `builds/generic/` (`docs/dev/packaging.md`).
+
+### The rest of the runtime
 
 | Component | License | Text in `licenses/` |
 |---|---|---|
-| Qt 6 (Core, Gui, Widgets, Svg, and on Linux DBus) | LGPL-3.0 | `LGPL-3.0.txt`, `GPL-3.0.txt` |
-| Qt translations (`qtbase_*.qm`, from qttranslations) | LGPL-3.0 | `LGPL-3.0.txt`, `GPL-3.0.txt` |
 | Third-party code inside Qt: FreeType, HarfBuzz, libpng, libjpeg-turbo, PCRE2, zlib, MD4C, double-conversion, TinyCBOR, the Unicode Character Database, the Wayland protocols, and others | each entry's own (BSD, MIT, zlib, FTL, Unicode, and others) | `Qt-third-party.txt`, one entry each with its copyright and full license text, from qtbase 6.12.0's `qt_attribution.json` files |
-| PySide6 and Shiboken6 (Qt for Python) | LGPL-3.0 | `LGPL-3.0.txt`, `GPL-3.0.txt` |
 | CPython | Python Software Foundation License 2.0 | `Python-LICENSE.txt` (CPython 3.12.14) |
 | Software CPython includes: expat, libmpdec, zlib, libffi, OpenSSL | each one's own | `Python-incorporated-software.rst` (CPython 3.12.14's `Doc/license.rst`), and below |
 | expat (`pyexpat`) | MIT | `expat-COPYING.txt` |
-| OpenSSL's libcrypto | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.0.16) |
+| OpenSSL 3's libcrypto | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.5.7, the Windows build's; every OpenSSL 3 release has this license) |
 | libffi (`_ctypes`) | MIT | `libffi-LICENSE.txt` (libffi 3.4.4) |
 | zlib | zlib License | `zlib-LICENSE.txt` (zlib 1.3.1) |
 | bzip2 (`_bz2`) | bzip2 License | `bzip2-LICENSE.txt` (bzip2 1.0.8) |
 | xz's liblzma (`_lzma`) | public domain before 5.4; 0BSD from 5.4 on | `xz-5.2-COPYING.txt`, `xz-COPYING.0BSD.txt` |
 | Nuitka's runtime, compiled into the executable | Apache-2.0 | `Nuitka-LICENSE.txt` (Nuitka 4.1.1) |
-| Microsoft Visual C++ runtime (Windows builds) | Microsoft Distributable Code terms | `Microsoft-Visual-C++-runtime.txt` (CPython 3.12.14's `PC/crtlicense.txt`) |
+| Microsoft Visual C++ runtime (Windows builds) | Microsoft's Distributable Code terms | `Microsoft-Visual-C++-runtime.txt`, the app's own notice, with links to Microsoft's terms |
 
-The texts are pinned to the versions CPython 3.12.14's own Windows build uses. Each
-platform's Python may bundle other releases of the same libraries, under the same
-licenses; xz's two texts cover both of its licensing eras.
+The library texts other than OpenSSL's are pinned to the versions CPython 3.12.14's own
+Windows build uses. Each platform's Python may bundle other releases of the same
+libraries, under the same licenses; xz's two texts cover both of its licensing eras. The
+build reads the OpenSSL version from the shipped libcrypto and fails if it isn't an
+OpenSSL 3 release, whose license this text is.
 
-The builds leave out Qt's network module, its TLS backends, and the image plugins the app
-doesn't read (PDF, TIFF, WebP, TGA, WBMP, ICNS), so their notices aren't needed
-(`docs/dev/packaging.md`, "What the build leaves out"). OpenSSL's libcrypto stays:
-Python's `hashlib` uses it.
-
-The Qt and PySide6 libraries ship as separate shared libraries in the app folder, and
-Qt's translations as separate files (in `PySide6/translations/`, or `PySide6/Qt/translations/`
-on Linux and macOS), so they can be replaced with other compatible builds, as the
-LGPL-3.0 allows.
+The builds leave out Qt's network module, its TLS backends, the VNC platform plugin, and
+the image plugins the app doesn't read (PDF, TIFF, WebP, TGA, WBMP, ICNS), so their notices
+aren't needed (`docs/dev/packaging.md`, "What the build leaves out"). OpenSSL's libcrypto
+stays: Python's `hashlib` uses it.

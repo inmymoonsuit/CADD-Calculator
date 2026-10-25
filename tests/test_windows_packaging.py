@@ -52,6 +52,7 @@ def test_the_installer_script_refuses_to_compile_without_the_builds_defines() ->
         "SourceDir",
         "AppVersion",
         "NumericVersion",
+        "LicenseFile",
         "IconFile",
         "OutputDir",
         "OutputBase",
@@ -72,7 +73,15 @@ def test_the_build_passes_the_version_and_folder_to_the_installer(tmp_path: Path
     from caddcalc import __version__
 
     output = tmp_path / "CADDCalculator-1.2.3-generic-windows-x64"
-    defines = build.installer_defines(output, tmp_path / "app.ico")
+    output.mkdir()
+    (output / "LICENSE.md").write_text("Apache License\n", encoding="utf-8")
+    page = build.installer_license(output, tmp_path)
+    text = page.read_text(encoding="utf-8")
+    assert text.startswith("Apache License")
+    assert "Microsoft-Visual-C++-runtime.txt" in text, "Low 5: the runtime's terms"
+    assert "GNU LGPL v3" in text
+    defines = build.installer_defines(output, tmp_path / "app.ico", page)
+    assert defines["LicenseFile"] == str(page)
     assert defines["SourceDir"] == str(output)
     assert defines["AppVersion"] == __version__
     assert re.fullmatch(r"\d+\.\d+\.\d+\.\d+", defines["NumericVersion"])

@@ -7,7 +7,7 @@ cpython_tag = "v3.12.14"
 [files]
 "GPL-3.0.txt" = "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
 "LGPL-3.0.txt" = "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
-"Microsoft-Visual-C++-runtime.txt" = "3c71b3ae243121f6f227374cd1ef7c59ed07b1969b330d0e947f91a3a1b3fd73"
+"Microsoft-Visual-C++-runtime.txt" = "724778c3d4c76c19e4ee34c149a1c95c02dcc4db980be0bf0158928a42a51fcb"
 "Nuitka-LICENSE.txt" = "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
 "OpenSSL-LICENSE.txt" = "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
 "Python-LICENSE.txt" = "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"

@@ -15,6 +15,9 @@
 #ifndef NumericVersion
   #error NumericVersion must be the version as four numbers
 #endif
+#ifndef LicenseFile
+  #error LicenseFile must name the license page: LICENSE.md and the third-party note
+#endif
 #ifndef IconFile
   #error IconFile must name the executable's .ico
 #endif
@@ -48,7 +51,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog commandline
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-LicenseFile={#SourceDir}\LICENSE.md
+LicenseFile={#LicenseFile}
 SetupIconFile={#IconFile}
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}

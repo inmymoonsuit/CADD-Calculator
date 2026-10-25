@@ -53,11 +53,15 @@ QT_SKIPPED_PATHS = (
 
 @dataclass(frozen=True)
 class Text:
-    """One license text: the file it's saved as, what it covers, and where it comes from."""
+    """One license text: the file it's saved as, what it covers, and where it comes from.
+
+    A text with no URL is the project's own, written for the app (the Microsoft runtime's
+    notice); it's committed, not downloaded, and its hash is checked all the same.
+    """
 
     file: str
     covers: str
-    url: str
+    url: str | None
 
 
 TEXTS = (
@@ -83,8 +87,8 @@ TEXTS = (
     ),
     Text(
         "Microsoft-Visual-C++-runtime.txt",
-        "the Microsoft Visual C++ runtime DLLs (Windows builds)",
-        f"{RAW}/python/cpython/{CPYTHON_TAG}/PC/crtlicense.txt",
+        "the Microsoft Visual C++ runtime DLLs (Windows builds): the app's own notice",
+        None,
     ),
     Text(
         "expat-COPYING.txt",
@@ -93,8 +97,8 @@ TEXTS = (
     ),
     Text(
         "OpenSSL-LICENSE.txt",
-        "OpenSSL's libcrypto (Apache-2.0)",
-        f"{RAW}/python/cpython-source-deps/openssl-3.0.16/LICENSE.txt",
+        "OpenSSL's libcrypto (Apache-2.0), at the release the Windows build ships",
+        f"{RAW}/openssl/openssl/openssl-3.5.7/LICENSE.txt",
     ),
     Text(
         "libffi-LICENSE.txt",
@@ -248,7 +252,10 @@ def fetch(update: bool) -> int:
     """Download every text; with ``update``, re-hash, otherwise refuse a changed one."""
     recorded = load_manifest()
     NOTICES_DIR.mkdir(parents=True, exist_ok=True)
-    bodies = {text.file: download(text.url) for text in TEXTS}
+    bodies = {
+        text.file: download(text.url) if text.url else (NOTICES_DIR / text.file).read_bytes()
+        for text in TEXTS
+    }
     bodies[QT_THIRD_PARTY] = qt_third_party_text()
     digests = {name: sha256(body) for name, body in bodies.items()}
     if not update:

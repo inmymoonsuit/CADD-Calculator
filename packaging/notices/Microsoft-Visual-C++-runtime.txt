@@ -1,41 +1,34 @@
+Microsoft Visual C++ runtime, in CADD Calculator's Windows builds
 
+The Windows builds of CADD Calculator include these files from the Microsoft Visual C++
+Redistributable, next to the program and in its shiboken6 folder:
 
-Additional Conditions for this Windows binary build
----------------------------------------------------
+    vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll, msvcp140_1.dll,
+    msvcp140_2.dll, msvcp140_codecvt_ids.dll
 
-This program is linked with and uses Microsoft Distributable Code,
-copyrighted by Microsoft Corporation. The Microsoft Distributable Code
-is embedded in each .exe, .dll and .pyd file as a result of running
-the code through a linker.
+They are Microsoft Corporation's "Distributable Code", copyright Microsoft Corporation.
+They come with Python and with PySide6 (Qt for Python), which are built with Microsoft
+Visual C++. They aren't CADD Calculator's own code, and the Apache License 2.0 that covers
+CADD Calculator doesn't cover them.
 
-If you further distribute programs that include the Microsoft
-Distributable Code, you must comply with the restrictions on
-distribution specified by Microsoft. In particular, you must require
-distributors and external end users to agree to terms that protect the
-Microsoft Distributable Code at least as much as Microsoft's own
-requirements for the Distributable Code. See Microsoft's documentation
-(included in its developer tools and on its website at microsoft.com)
-for specific details.
+Microsoft lets applications redistribute these files under the "Distributable Code"
+terms of the Microsoft Software License Terms for Visual Studio:
 
-Redistribution of the Windows binary build of the Python interpreter
-complies with this agreement, provided that you do not:
+    License terms:      https://visualstudio.microsoft.com/license-terms/
+    The REDIST list:    https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+    Redistributing:     https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
 
-- alter any copyright, trademark or patent notice in Microsoft's
-Distributable Code;
+By installing or using CADD Calculator on Windows, you agree to these conditions for the
+Microsoft files:
 
-- use Microsoft's trademarks in your programs' names or in a way that
-suggests your programs come from or are endorsed by Microsoft;
+  * Don't change or remove their copyright, trademark, or patent notices.
+  * Don't use Microsoft's trademarks in a way that suggests CADD Calculator comes from or
+    is endorsed by Microsoft.
+  * Use them only on Microsoft Windows, with this program.
+  * Don't include them in malicious, deceptive, or unlawful software.
 
-- distribute Microsoft's Distributable Code to run on a platform other
-than Microsoft operating systems, run-time technologies or application
-platforms; or
+If you redistribute CADD Calculator's Windows build, pass these conditions on to the
+people you give it to.
 
-- include Microsoft Distributable Code in malicious, deceptive or
-unlawful programs.
-
-These restrictions apply only to the Microsoft Distributable Code as
-defined above, not to Python itself or any programs running on the
-Python interpreter. The redistribution of the Python interpreter and
-libraries is governed by the Python Software License included with this
-file, or by other licenses as marked.
-
+This notice is CADD Calculator's own summary. Microsoft's license terms are the
+authoritative text.

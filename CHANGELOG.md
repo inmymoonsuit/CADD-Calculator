@@ -24,6 +24,8 @@ All notable changes are recorded here. The format follows
   includes, OpenSSL, libffi, zlib, bzip2, xz, Nuitka, the Microsoft C++ runtime, and
   Qt's own third-party notices (KI-016). They're vendored from upstream at pinned tags
   with checksums (`packaging/fetch_notices.py`), and the build fails if one is missing.
+  THIRD_PARTY_NOTICES.md gives Qt 6.12 and PySide6 6.12 their copyright, source, and how
+  to replace or rebuild them, and Help > About names them and their license.
 - For calculator authors (ADR-0024 E1, E2): a field's text is read in the unit or form
   its picker chooses, by `TypedValue.read(text, choice, dimension)`. It takes numbers,
   fractions, mixed numbers and exact arithmetic (+ − × ÷ and parentheses), with

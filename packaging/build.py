@@ -32,7 +32,7 @@ from importlib.metadata import version as dist_version
 from pathlib import Path
 
 import PySide6
-from PySide6.QtCore import QLibraryInfo
+from PySide6.QtCore import QLibraryInfo, qVersion
 from PySide6.QtGui import QImage
 
 from caddcalc import __version__
@@ -236,6 +236,33 @@ def copy_notices(output: Path) -> None:
     folder.mkdir(exist_ok=True)
     for name in notice_files():
         shutil.copy2(NOTICES_DIR / name, folder / name)
+
+
+def openssl_version(output: Path) -> str | None:
+    """Return the OpenSSL release a build's libcrypto reports, or ``None`` if it has none."""
+    for path in sorted(output.rglob("libcrypto*")):
+        if path.is_file():
+            match = re.search(rb"OpenSSL (\d+\.\d+\.\d+) ", path.read_bytes())
+            if match:
+                return match.group(1).decode()
+    return None
+
+
+def notice_version_problems(output: Path, index: str | None = None) -> list[str]:
+    """Return what THIRD_PARTY_NOTICES.md gets wrong about the versions a build ships.
+
+    It must name the Qt and PySide6 versions, and the libcrypto must be an OpenSSL 3
+    release, since ``licenses/OpenSSL-LICENSE.txt`` is OpenSSL 3's license (M1, Low 1).
+    """
+    text = index if index is not None else (ROOT / "THIRD_PARTY_NOTICES.md").read_text("utf-8")
+    problems = []
+    qt, pyside = qVersion(), PySide6.__version__
+    if f"### Qt {qt} and Qt for Python (PySide6, Shiboken6) {pyside}" not in text:
+        problems.append(f"THIRD_PARTY_NOTICES.md doesn't name Qt {qt} and PySide6 {pyside}")
+    ssl = openssl_version(output)
+    if ssl is not None and not ssl.startswith("3."):
+        problems.append(f"the build ships OpenSSL {ssl}, but the notice is OpenSSL 3's license")
+    return problems
 
 
 def missing_notices(output: Path) -> list[str]:
@@ -461,6 +488,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         copy_notices(output)
         for missing in missing_notices(output):
             raise BuildError(f"the notice {missing} is missing from the build (KI-016)")
+        for problem in notice_version_problems(output):
+            raise BuildError(problem)
         extras = trimmed_files(output)
         if extras:
             reasons = inclusion_reasons(work / "compilation-report.xml")
@@ -503,6 +532,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "reference_tables": [f"{s.package}/{s.filename}" for s in REFERENCE_TABLES],
         "catalogs": languages,
         "qt_catalogs": len(qt_catalogs()),
+        "openssl": openssl_version(output) if output.is_dir() else None,
     }
 
 
@@ -652,10 +682,35 @@ def find_iscc() -> Path:
     raise BuildError("Inno Setup 6's ISCC.exe isn't installed (https://jrsoftware.org/isinfo.php)")
 
 
-def installer_defines(output: Path, icon: Path) -> dict[str, str]:
+INSTALLER_LICENSE_NOTE = """
+
+----------------------------------------------------------------------
+Third-party components
+
+CADD Calculator includes third-party components under their own licenses: Qt and
+Qt for Python under the GNU LGPL v3, and others. Their notices and full license texts are
+in THIRD_PARTY_NOTICES.md and the licenses folder, in the install folder.
+
+On Windows it also includes Microsoft Visual C++ runtime files, which Microsoft lets
+applications redistribute under its terms. By installing, you agree to the conditions
+for those files in licenses\\Microsoft-Visual-C++-runtime.txt.
+"""
+"""What the installer's license page adds after LICENSE.md (Low 5)."""
+
+
+def installer_license(output: Path, work: Path) -> Path:
+    """Write the installer's license page: LICENSE.md, then the third-party note."""
+    page = work / "installer-license.txt"
+    text = (output / "LICENSE.md").read_text(encoding="utf-8").rstrip()
+    page.write_text(text + INSTALLER_LICENSE_NOTE, encoding="utf-8", newline="\r\n")
+    return page
+
+
+def installer_defines(output: Path, icon: Path, license_page: Path) -> dict[str, str]:
     """Return the ISCC defines for wrapping ``output``: its folder, version, and names."""
     return {
         "SourceDir": str(output),
+        "LicenseFile": str(license_page),
         "AppVersion": __version__,
         "NumericVersion": numeric_version(__version__),
         "IconFile": str(icon),
@@ -673,7 +728,7 @@ def make_installer(output: Path, branding: Branding) -> Path:
     if sys.platform != "win32" or not output.is_dir():
         raise BuildError("--installer needs a standalone Windows build")
     work = output.parent / "work"
-    defines = installer_defines(output, exe_icon(branding, work))
+    defines = installer_defines(output, exe_icon(branding, work), installer_license(output, work))
     command = [
         str(find_iscc()),
         "/Q",
