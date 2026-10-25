@@ -661,7 +661,7 @@ def test_the_notices_give_qt_and_pyside6_their_copyright_and_source() -> None:
     assert "qtbase-everywhere-src-6.12.0.tar.xz" in section
     assert "pyside-setup-everywhere-src-6.12.0.zip" in section
     assert "PySide6.support" in section, "the part compiled into the executable"
-    assert "uv run python packaging/build.py" in section, "the rebuild route"
+    assert "uv run --no-sync python packaging/build.py" in section, "the rebuild route"
     assert "OpenSSL 3.5.7" in index
 
 
@@ -696,6 +696,17 @@ def test_the_build_checks_the_notices_name_the_versions_it_ships(
     assert build_script.openssl_version(tmp_path) == "1.1.1"
     [problem] = build_script.notice_version_problems(tmp_path)
     assert "OpenSSL 1.1.1" in problem
+
+
+@pytest.mark.gui
+def test_the_build_report_says_which_pyside6_it_built_against(build_script: ModuleType) -> None:
+    """S&R's re-check: .build.json records the PySide6 a rebuild compiled against."""
+    source = build_script.pyside6_source()
+    assert set(source) >= {"version", "locked_version", "matches_lock", "location", "installer"}
+    assert source["locked_version"] == build_script.locked_version("pyside6-essentials")
+    assert source["matches_lock"] is (
+        source["version"] == source["locked_version"] and source["direct_url"] is None
+    )
 
 
 @pytest.mark.gui

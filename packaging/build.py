@@ -28,6 +28,7 @@ import subprocess
 import sys
 import time
 import tomllib
+from importlib.metadata import distribution
 from importlib.metadata import version as dist_version
 from pathlib import Path
 
@@ -236,6 +237,33 @@ def copy_notices(output: Path) -> None:
     folder.mkdir(exist_ok=True)
     for name in notice_files():
         shutil.copy2(NOTICES_DIR / name, folder / name)
+
+
+def locked_version(package: str) -> str | None:
+    """Return the version ``uv.lock`` pins for ``package``, or ``None`` if it has none."""
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+    for entry in lock.get("package", []):
+        if entry.get("name") == package:
+            return str(entry.get("version"))
+    return None
+
+
+def pyside6_source() -> dict[str, object]:
+    """Return where the PySide6 a build compiles against came from, for its report.
+
+    An LGPL rebuild against a modified PySide6 installs it with ``uv pip install`` and
+    builds with ``uv run --no-sync`` (THIRD_PARTY_NOTICES.md); this says which one it got.
+    """
+    dist = distribution("PySide6-Essentials")
+    direct_url = dist.read_text("direct_url.json")
+    return {
+        "version": dist.version,
+        "locked_version": locked_version("pyside6-essentials"),
+        "matches_lock": dist.version == locked_version("pyside6-essentials") and direct_url is None,
+        "location": str(Path(str(dist.locate_file(""))).resolve()),
+        "installer": (dist.read_text("INSTALLER") or "").strip() or None,
+        "direct_url": json.loads(direct_url) if direct_url else None,
+    }
 
 
 def openssl_version(output: Path) -> str | None:
@@ -528,6 +556,7 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "exe_mb": round(exe.stat().st_size / 1e6, 1),
         "python": platform.python_version(),
         "pyside6": dist_version("PySide6-Essentials"),
+        "pyside6_source": pyside6_source(),
         "nuitka": dist_version("Nuitka"),
         "reference_tables": [f"{s.package}/{s.filename}" for s in REFERENCE_TABLES],
         "catalogs": languages,

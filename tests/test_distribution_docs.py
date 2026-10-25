@@ -45,7 +45,7 @@ def test_the_policy_page_states_each_thing_signpath_asks_for() -> None:
     for role in ("Authors", "Reviewers", "Approvers"):
         assert f"| {role} |" in text, role
     assert "GitHub-hosted runners" in text
-    assert "multi-factor" in text
+    assert "two-factor authentication" in text
     assert "gh attestation verify" in text
     assert "makes no network calls" in text
 
@@ -85,10 +85,20 @@ def test_every_workflow_action_is_pinned_to_a_commit() -> None:
 
 
 def test_the_policy_page_claims_only_what_is_true_today() -> None:
-    """M3 and Low 4: MFA is a requirement before signing, not a fact yet; US English."""
+    """M3 and Low 4: MFA as confirmed, and required of anyone added; US English."""
     text = POLICY.read_text(encoding="utf-8")
-    assert "Before signing is switched on, the maintainer and every committer must use" in text
-    assert "The maintainer and every committer use multi-factor" not in text
+    assert "has\ntwo-factor authentication on (confirmed on 2026-10-25)" in text
+    assert "Anyone given write access later\nmust turn it on first" in text
     assert "Every change reaches `main` through review" not in text
     assert "the Trash" in text and "the Bin" not in text
     assert "AppImage" not in text and "Flatpak" not in text, "they don't exist yet (d4)"
+
+
+def test_the_lgpl_rebuild_route_builds_without_syncing() -> None:
+    """S&R's re-check: a plain ``uv run`` would sync the locked PySide6 back first."""
+    for doc in (ROOT / "THIRD_PARTY_NOTICES.md", ROOT / "docs" / "dev" / "packaging.md"):
+        text = doc.read_text(encoding="utf-8")
+        install = text.index("uv pip install <your modified PySide6 wheels>")
+        after = text[install : text.index("```", install)]
+        assert "uv run --no-sync python packaging/build.py" in after, doc.name
+        assert "\nuv run python packaging/build.py" not in after, doc.name

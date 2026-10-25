@@ -200,6 +200,28 @@ and art.
 but starts about 0.9 s slower and unpacks to a temp folder on every start, which
 antivirus software tends to dislike (ADR-0009).
 
+## Building against a modified PySide6
+
+The LGPL-3.0 lets a user rebuild the app against a modified Qt or PySide6
+(THIRD_PARTY_NOTICES.md, "Replacing or rebuilding Qt and PySide6"). Install the modified
+wheels into the project's `.venv`, then build **without syncing**:
+
+```bash
+uv sync --extra gui --group build
+uv pip install <your modified PySide6 wheels>
+uv run --no-sync python packaging/build.py
+```
+
+A plain `uv run` syncs `.venv` back to `uv.lock` first, and so would build with the stock
+PySide6: installing babel 2.14.0 over the locked 2.18.0, `uv run --no-sync` still sees
+2.14.0, while `uv run` puts 2.18.0 back (checked 2026-10-25). `UV_NO_SYNC=1` does the
+same as `--no-sync`.
+
+The build report (`.build.json`) records which PySide6 the build compiled against, in
+`pyside6_source`: its version, the version `uv.lock` pins, where it's installed, its
+installer, and any `direct_url.json` (a wheel installed from a file or URL).
+`matches_lock` is false for anything but the locked release from the index.
+
 ## Troubleshooting
 
 * **Use the pinned Nuitka.** `pyproject.toml` pins the version that pyside6-deploy's

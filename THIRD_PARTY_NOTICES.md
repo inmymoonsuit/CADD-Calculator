@@ -243,11 +243,13 @@ The LGPL-3.0 lets you use the app with a modified Qt or PySide6. Two routes:
   cd CADD-Calculator
   git checkout v<version>
   uv sync --extra gui --group build
-  # optional: put your modified PySide6 into .venv here, e.g. uv pip install <your wheel>
-  uv run python packaging/build.py
+  uv pip install <your modified PySide6 wheels>     # PySide6, Shiboken6, and their Qt
+  uv run --no-sync python packaging/build.py
   ```
 
-  The new app is in `builds/generic/` (`docs/dev/packaging.md`).
+  `--no-sync` matters: a plain `uv run` puts the locked PySide6 back before it builds. The
+  new app is in `builds/generic/`, and its `.build.json` records which PySide6 it was built
+  against (`docs/dev/packaging.md`, "Building against a modified PySide6").
 
 ### The rest of the runtime
 

@@ -60,9 +60,10 @@ maintainer alone.
 
 ## Accounts
 
-Before signing is switched on, the maintainer and every committer must use multi-factor
-authentication on GitHub, and on the signing service, as SignPath's conditions require.
-This page will say so once that's confirmed.
+The maintainer's GitHub account, which every change to this repository goes through, has
+two-factor authentication on (confirmed on 2026-10-25). Anyone given write access later
+must turn it on first. The signing service's account will need it too, before signing is
+switched on, as SignPath's conditions require.
 
 ## Checking a download
 
