@@ -260,7 +260,7 @@ The LGPL-3.0 lets you use the app with a modified Qt or PySide6. Two routes:
 | The Python interpreter: CPython 3.12.14 as built by [python-build-standalone](https://github.com/astral-sh/python-build-standalone), which uv installs | Python Software Foundation License 2.0 | `Python-interpreter-LICENSE.txt`, the build's own interpreter's `LICENSE.txt`, copied by the build on each platform (on Windows it also carries the licenses of what that build bundles); and `Python-LICENSE.txt` (CPython 3.12.14) |
 | Software CPython includes: libmpdec, expat, zlib, libffi, OpenSSL, and others | each one's own | `Python-incorporated-software.rst` (CPython 3.12.14's `Doc/license.rst`), and below |
 | OpenSSL 3.5.7 (`ssl`, `hashlib`) | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.5.7) |
-| zlib 1.3.2 | zlib License | `zlib-LICENSE.txt` (zlib 1.3.2) |
+| zlib 1.3.2 (Windows and Linux; macOS builds use the system's zlib) | zlib License | `zlib-LICENSE.txt` (zlib 1.3.2) |
 | expat 2.8.3 (`pyexpat`) | MIT | `expat-COPYING.txt` (expat 2.8.3) |
 | libffi (`_ctypes`) | MIT | `libffi-LICENSE.txt` (libffi 3.4.4; the license is the same across 3.x) |
 | bzip2 (`_bz2`) | bzip2 License | `bzip2-LICENSE.txt` (bzip2 1.0.8) |
@@ -273,8 +273,10 @@ The LGPL-3.0 lets you use the app with a modified Qt or PySide6. Two routes:
 | Microsoft Visual C++ runtime (Windows builds) | Microsoft's Distributable Code terms | `Microsoft-Visual-C++-runtime.txt`, the app's own notice, with links to Microsoft's terms |
 
 Every build uses uv's python-build-standalone interpreter, not python.org's. On Linux and
-macOS it links OpenSSL, zlib, expat, bzip2, liblzma, libffi, libmpdec, SQLite, and on
-Linux libuuid, libedit, and ncurses, into `libpython`; on Windows some are separate DLLs.
+macOS it links OpenSSL, expat, bzip2, liblzma, libffi, libmpdec, SQLite, and on Linux
+zlib, libuuid, libedit, and ncurses, into `libpython`; on macOS those four come from the
+system and don't ship, and on Windows some are separate DLLs. CI pins the interpreter:
+python-build-standalone 3.12.14 as uv 0.12.5 installs it, on every platform.
 The build asks its interpreter which OpenSSL, zlib, and expat releases it carries, and fails
 if this index doesn't name them, or if OpenSSL isn't a 3 release, whose license this text
 is. It also lists every native binary it bundles in its `.build.json`

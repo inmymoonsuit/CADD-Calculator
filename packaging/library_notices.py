@@ -70,6 +70,8 @@ COMPONENTS = (
             rf"(.*/)?shiboken6/\w+{_LIB}",
             rf"(.*/)?(qt-plugins|plugins)/[\w-]+/(lib)?[\w-]+{_LIB}",
             r"(.*/)?qt\w+\.framework/(versions/\w+/)?qt\w+",
+            # macOS: Nuitka flattens each framework's binary into Contents/MacOS as QtCore.
+            r"contents/macos/qt[a-z]\w*",
         ),
         QT_TEXTS,
     ),
@@ -78,6 +80,10 @@ COMPONENTS = (
         (
             rf"(.*/)?(lib)?python3(\.?\d+)?{_LIB}",
             r"(.*/)?_?\w+\.(pyd|cpython-3\d+-[\w-]+\.so|abi3\.so)",
+            # macOS: libpython becomes Contents/MacOS/Python, and the extension modules
+            # sit beside it with a plain .so.
+            r"contents/macos/python",
+            r"contents/macos/_?\w+\.so",
         ),
         PYTHON_TEXTS,
     ),

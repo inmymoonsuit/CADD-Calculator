@@ -80,3 +80,21 @@ corrections change only the facts behind it:
 
 The code-signing policy page SignPath asks for is
 [docs/user/code-signing.md](../../user/code-signing.md).
+
+## Amendment (2026-10-25): the first release's scope
+
+The maintainer set the first release's scope on 2026-10-25, relayed by the project
+manager: an **unsigned pre-release, `v0.1.0a1`**, at the least effort and cost, with Windows
+and Linux files and no macOS download yet. Self-signing was considered and dropped: a
+self-signed certificate isn't trusted by Windows, so it would add work with no change to
+the SmartScreen prompt users see.
+
+* **What the release carries:** the Windows zip and installer, the Linux archive and
+  AppImage, and `SHA256SUMS`, each attested. The release workflow's `RELEASE_PLATFORMS`
+  list picks them; macOS is still built and smoke-tested on every run, and comes back by
+  adding it to that list.
+* **What waits:** signing (SignPath asks for a project that's already released), macOS
+  notarization, PyPI (switched off by the `PUBLISH_PYPI` variable), and the Flathub
+  submission.
+* **The pre-release:** `draft-release` marks a tag with an `a`, `b`, `rc`, or `.dev`
+  suffix as a pre-release.

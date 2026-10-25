@@ -287,16 +287,16 @@ def runtime_versions() -> dict[str, str]:
 
     The build bundles the interpreter it runs on, and each platform's python-build-standalone
     brings its own releases (inside ``libpython`` on Linux and macOS), so it asks that
-    interpreter's own modules (S&R's d6 M1).
+    interpreter's own modules (S&R's d6 M1). On macOS zlib is the system's
+    ``/usr/lib/libz.1.dylib``, which the build doesn't ship, so it isn't listed.
     """
     import pyexpat
     import ssl
     import zlib
 
-    versions = {
-        "zlib": zlib.ZLIB_RUNTIME_VERSION,
-        "expat": pyexpat.EXPAT_VERSION.removeprefix("expat_"),
-    }
+    versions = {"expat": pyexpat.EXPAT_VERSION.removeprefix("expat_")}
+    if sys.platform != "darwin":
+        versions["zlib"] = zlib.ZLIB_RUNTIME_VERSION
     match = re.match(r"OpenSSL (\d+\.\d+\.\d+)", ssl.OPENSSL_VERSION)
     if match:
         versions["OpenSSL"] = match.group(1)

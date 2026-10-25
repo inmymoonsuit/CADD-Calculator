@@ -7,6 +7,14 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- The first release's scope: an unsigned pre-release, v0.1.0a1, with Windows and Linux
+  files. The release workflow's RELEASE_PLATFORMS list picks the platforms a release
+  carries (macOS is still built and tested), it checks the tag matches the version, and
+  it marks a/b/rc tags as pre-releases. PyPI publishing waits behind a PUBLISH_PYPI switch.
+- Packaged builds list every native library they bundle in their .build.json, and the
+  build fails on one without a notice. New notices: ICU (Linux), libuuid, libedit, ncurses,
+  and the build's own interpreter's license; zlib and expat now name the releases that
+  ship.
 - Release integrity: every release attaches `SHA256SUMS` over all its files, and on tags
   each file gets a GitHub artifact attestation (`gh attestation verify`). The wheel and the
   sdist are built and checked on every run, and a tag publishes them to TestPyPI, then
