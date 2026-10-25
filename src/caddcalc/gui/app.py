@@ -415,7 +415,9 @@ def _write_smoke_report(
         "reference_tables": _load_reference_tables(),
         "catalogs": list(i18n.shipped_languages()),
         "qt_catalog": _loads_qt_catalog(),
+        "qt_translations": _qt_translations(),
         "packaged": packaged_app_dir() is not None,
+        "qt_platform": app.platformName(),
         "main_to_ready_s": round(ready_seconds, 3),
     }
     (report_dir / "smoke-test.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -431,6 +433,18 @@ def _loads_qt_catalog() -> bool:
 
     folder = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
     return bool(QTranslator().load(QLocale("de"), "qtbase", "_", folder))
+
+
+def _qt_translations() -> dict[str, object]:
+    """Return the folder Qt reports for its translations, and whether it has ``qtbase``.
+
+    It says where to look when ``qt_catalog`` fails on a platform (engineering log,
+    2026-10-25).
+    """
+    from PySide6.QtCore import QLibraryInfo
+
+    folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
+    return {"folder": str(folder), "has_qtbase": any(folder.glob("qtbase_*.qm"))}
 
 
 def _load_reference_tables() -> int:

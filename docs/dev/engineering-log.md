@@ -16,6 +16,33 @@ Template:
 
 ---
 
+## 2026-10-25: Leaving out QtNetwork wasn't enough on Linux
+**Tried:** dropping QtNetwork from packaged builds with `--nofollow-import-to` and the TLS
+plugin family (run 40222824994).
+**Outcome:** Windows and macOS passed; Linux failed the build's own check:
+`libQt6Network.so.6` was still in the folder.
+**Why:** on Linux the `platforms` family includes `libqvnc.so`, the VNC platform plugin,
+which links QtNetwork. Reading DT_NEEDED across PySide6 6.12's Linux wheel, it was the
+only plugin a build ships that does.
+**Instead:** the build also leaves out `libqvnc.so`; the app uses xcb or Wayland. That
+wasn't enough either (run 40224120571): Nuitka left the plugin out but still followed its
+dependencies, so `libQt6Network.so.6` stayed, "Used by" the plugin it had skipped. The
+build now leaves out the Qt6Network library by name as well (`--noinclude-dlls=*Qt6Network*`).
+
+## 2026-10-25: Qt's catalogs in a Windows-only folder on Linux and macOS
+**Tried:** the first CI builds of the generic edition on Linux and macOS (the release
+workflow's dry run, run 40220148847).
+**Outcome:** both built, and both failed the smoke test: "Qt couldn't load its own
+catalog from the build". Windows passed.
+**Why:** the build put the `qtbase_*.qm` catalogs in a fixed `PySide6/translations/`,
+which is where PySide6's Windows wheel keeps them. Its Linux and macOS wheels keep them in
+`PySide6/Qt/translations/`, and the frozen app's Qt looked there, so a German user's Qt
+text wouldn't have translated on either.
+**Instead:** `packaging/build.py`'s `qt_catalogs_dir()` puts them where the running
+PySide6 keeps them, relative to the package. A test pins both layouts, so a Windows-only
+unit-test run still checks the Linux and macOS rule, and the smoke report records the
+folder Qt looked in (`qt_translations`).
+
 ## 2026-10-19: Two wrong causes for a settings picker clipped on Windows
 **Tried:** at stop 3, both Windows jobs reported the Sheet Metal settings page's unit
 pickers as clipped at the least window size, which no Linux run reproduced. First,

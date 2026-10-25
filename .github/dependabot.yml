@@ -1,0 +1,11 @@
+# Keeps the workflows' actions current. They're pinned by commit SHA, with the version in
+# a comment (docs/user/code-signing.md, "Who builds"), and Dependabot updates both.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

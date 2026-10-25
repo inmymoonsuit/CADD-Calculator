@@ -77,9 +77,13 @@ uv run pytest                # tests
 ## Documentation
 
 * **Users:** [docs/user/](docs/user/index.md) covers getting started, each calculator, the glossary, and units.
+* **Installing:** [docs/user/installing.md](docs/user/installing.md): the downloads, and how to open
+  them the first time while they're unsigned.
 * **Developers:** [docs/dev/](docs/dev/README.md) covers architecture, the decision records (ADRs), known
   issues, the engineering log, the roadmap, and the legacy-workbook transcription.
 * **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md).
+* **Code signing policy:** [docs/user/code-signing.md](docs/user/code-signing.md): how
+  downloads are built, signed, and checked, and the app's privacy statement.
 * **A wrong reference value?** See
   [Reporting a wrong or rights-encumbered value](CONTRIBUTING.md#reporting-a-wrong-or-rights-encumbered-value).
 

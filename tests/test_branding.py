@@ -333,6 +333,7 @@ def test_build_checks_the_display_face_and_its_license_are_bundled(
 @pytest.mark.gui
 def test_windows_version_resources_get_four_numbers(build_script: ModuleType) -> None:
     assert build_script.numeric_version("0.1.0.dev0") == "0.1.0.0"
+    assert build_script.numeric_version("0.1.0a1") == "0.1.0.0"
     assert build_script.numeric_version("1.2") == "1.2.0.0"
     assert build_script.numeric_version("2.3.4.5.6") == "2.3.4.5"
 
@@ -445,6 +446,7 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
 
     assert report["catalogs"] == list(i18n.shipped_languages())
     assert report["qt_catalog"] is True, "Qt finds its own catalogs"
+    assert report["qt_translations"]["has_qtbase"] is True, report["qt_translations"]
 
 
 @pytest.mark.gui
@@ -595,13 +597,188 @@ def test_build_checks_every_catalog_ours_and_qts_is_bundled(
     assert "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.mo" in missing
     qt = build_script.qt_catalogs()
     assert qt, "this PySide6 has its qtbase catalogs"
-    assert f"PySide6/translations/{qt[0].name}" in missing
+    assert f"{build_script.qt_catalogs_dir()}/{qt[0].name}" in missing
     for name in missing:
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_bytes(b"")
     assert build_script.missing_catalogs(tmp_path) == []
     [include] = [a for a in build_script.nuitka_args(None) if a.startswith("--include-data-files")]
-    assert include.endswith("qtbase_*.qm=PySide6/translations/"), include
+    assert include.endswith(f"qtbase_*.qm={build_script.qt_catalogs_dir()}/"), include
+
+
+@pytest.mark.gui
+def test_qt_catalogs_go_where_each_platforms_pyside6_keeps_them(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    """The build puts Qt's catalogs where each platform's PySide6 keeps them.
+
+    Windows wheels keep Qt's translations in PySide6/translations; Linux and macOS
+    wheels in PySide6/Qt/translations. The rule is checked on any CI host.
+    """
+    package = tmp_path / "PySide6"
+    windows = package / "translations"
+    unix = package / "Qt" / "translations"
+    assert build_script.qt_catalogs_dir(windows, package) == "PySide6/translations"
+    assert build_script.qt_catalogs_dir(unix, package) == "PySide6/Qt/translations"
+    with pytest.raises(ValueError):
+        build_script.qt_catalogs_dir(tmp_path / "elsewhere", package)
+
+
+def test_the_vendored_license_texts_match_their_manifest() -> None:
+    """KI-016: every runtime license text is present and is the reviewed download."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "fetch_notices", ROOT / "packaging" / "fetch_notices.py"
+    )
+    assert spec and spec.loader
+    fetch_notices = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fetch_notices)
+    assert fetch_notices.check() == []
+    assert "LGPL-3.0.txt" in fetch_notices.expected_files()
+    assert "Qt-third-party.txt" in fetch_notices.expected_files()
+
+
+@pytest.mark.gui
+def test_the_build_copies_and_checks_every_notice(build_script: ModuleType, tmp_path: Path) -> None:
+    """KI-016: a build lacking our license, the index, or a runtime text fails."""
+    missing = build_script.missing_notices(tmp_path)
+    assert "LICENSE.md" in missing
+    assert "THIRD_PARTY_NOTICES.md" in missing
+    assert "licenses/LGPL-3.0.txt" in missing
+    build_script.copy_notices(tmp_path)
+    assert build_script.missing_notices(tmp_path) == []
+    (tmp_path / "licenses" / "Qt-third-party.txt").unlink()
+    assert build_script.missing_notices(tmp_path) == ["licenses/Qt-third-party.txt"]
+
+
+def test_the_notices_give_qt_and_pyside6_their_copyright_and_source() -> None:
+    """M1: LGPL-3.0's notice, its source location, and how to replace or rebuild it."""
+    index = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    section = index[index.index("### Qt 6.12.0 and Qt for Python") :]
+    section = section[: section.index("### The rest of the runtime")]
+    assert "The Qt Company Ltd. and other contributors" in section
+    assert "licenses/LGPL-3.0.txt" in section and "licenses/GPL-3.0.txt" in section
+    assert "qtbase-everywhere-src-6.12.0.tar.xz" in section
+    assert "pyside-setup-everywhere-src-6.12.0.zip" in section
+    assert "PySide6.support" in section, "the part compiled into the executable"
+    assert "uv run --no-sync python packaging/build.py" in section, "the rebuild route"
+    assert "OpenSSL 3.5.7" in index
+
+
+@pytest.mark.gui
+def test_about_names_qt_and_pyside6_at_their_running_versions() -> None:
+    """M1, LGPL-3.0 §4(c): About shows the library's notice and where its license is."""
+    pyside6 = pytest.importorskip("PySide6")
+    from PySide6.QtCore import qVersion
+
+    from caddcalc.gui.actions import about_html, qt_credit
+
+    credit = qt_credit()
+    assert f"Qt {qVersion()}" in credit
+    assert f"(PySide6) {pyside6.__version__}" in credit
+    assert "The Qt Company Ltd." in credit
+    assert "GNU LGPL v3" in credit
+    assert "THIRD_PARTY_NOTICES.md" in credit
+    assert credit in about_html(GENERIC)
+
+
+@pytest.mark.gui
+def test_the_build_checks_the_notices_name_the_versions_it_ships(build_script: ModuleType) -> None:
+    """M1 and Low 1, and S&R's d6 M1: the index names what the build ships.
+
+    That's Qt, PySide6, and the interpreter's OpenSSL, zlib, and expat; OpenSSL is a 3.
+    """
+    versions = build_script.runtime_versions()
+    assert set(versions) >= {"OpenSSL", "expat"}, "and zlib, except on macOS: the system's"
+    assert build_script.notice_version_problems() == []
+    assert build_script.notice_version_problems("no versions") != []
+    old_zlib = {**versions, "zlib": "1.3.1"}
+    [problem] = build_script.notice_version_problems(versions=old_zlib)
+    assert "zlib 1.3.1" in problem
+    index = (Path(build_script.ROOT) / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    problems = build_script.notice_version_problems(
+        index + "OpenSSL 1.1.1", {**versions, "OpenSSL": "1.1.1"}
+    )
+    assert problems == ["the build ships OpenSSL 1.1.1, but the notice is OpenSSL 3's license"]
+
+
+@pytest.mark.gui
+def test_every_bundled_binary_needs_a_notice(build_script: ModuleType, tmp_path: Path) -> None:
+    """S&R's d6 M1: each native binary maps to a component whose texts the build carries."""
+    (tmp_path / "PySide6" / "Qt" / "lib").mkdir(parents=True)
+    (tmp_path / "CADDCalculator.bin").write_bytes(b"\x7fELF rest")
+    (tmp_path / "libpython3.12.so.1.0").write_bytes(b"\x7fELF rest")
+    (tmp_path / "PySide6" / "Qt" / "lib" / "libQt6Core.so.6").write_bytes(b"\x7fELF rest")
+    (tmp_path / "PySide6" / "Qt" / "lib" / "libicuuc.so.73").write_bytes(b"\x7fELF rest")
+    (tmp_path / "PySide6" / "helper").write_bytes(b"\x7fELF an unlisted tool")
+    (tmp_path / "notes.txt").write_text("not a binary", encoding="utf-8")
+    libraries = build_script.bundled_libraries(tmp_path)
+    assert libraries["PySide6/Qt/lib/libicuuc.so.73"].startswith("ICU")
+    assert libraries["PySide6/Qt/lib/libQt6Core.so.6"] == "Qt and PySide6, Shiboken6"
+    assert libraries["libpython3.12.so.1.0"].startswith("Python")
+    assert libraries["CADDCalculator.bin"] == "CADD Calculator, compiled by Nuitka"
+    assert libraries["PySide6/helper"] is None, "a binary nothing covers"
+    assert "notes.txt" not in libraries
+    problems = build_script.library_problems(tmp_path, libraries)
+    assert "1 bundled binaries have no notice entry" in problems[0]
+    assert "PySide6/helper" in problems[0]
+    assert "licenses/ICU-LICENSE.txt is missing, and the build's binaries need it" in problems
+    build_script.copy_notices(tmp_path)
+    del libraries["PySide6/helper"]
+    assert build_script.library_problems(tmp_path, libraries) == []
+
+
+@pytest.mark.gui
+def test_the_build_report_says_which_pyside6_it_built_against(build_script: ModuleType) -> None:
+    """S&R's re-check: .build.json records the PySide6 a rebuild compiled against."""
+    source = build_script.pyside6_source()
+    assert set(source) >= {"version", "locked_version", "matches_lock", "location", "installer"}
+    assert source["locked_version"] == build_script.locked_version("pyside6-essentials")
+    assert source["matches_lock"] is (
+        source["version"] == source["locked_version"] and source["direct_url"] is None
+    )
+
+
+@pytest.mark.gui
+def test_the_trim_finds_every_platforms_left_out_files(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    """docs/dev/packaging.md, "What the build leaves out": named per platform."""
+    plugins = Path("PySide6/qt-plugins")
+    left_out = [
+        plugins / "imageformats/qpdf.dll",
+        plugins / "imageformats/libqwebp.so",
+        plugins / "imageformats/libqicns.dylib",
+        plugins / "tls/qopensslbackend.dll",
+        plugins / "platforms/libqvnc.so",
+        Path("PySide6/QtNetwork.pyd"),
+        Path("PySide6/QtNetwork.abi3.so"),
+        Path("qt6network.dll"),
+        Path("libQt6Network.so.6"),
+    ]
+    kept = [
+        plugins / "imageformats/qjpeg.dll",
+        plugins / "imageformats/libqsvg.so",
+        plugins / "imageformats/qgif.dll",
+        plugins / "imageformats/qico.dll",
+        plugins / "platforms/qwindows.dll",
+        plugins / "platforms/libqxcb.so",
+        Path("qt6gui.dll"),
+        Path("libcrypto-3-x64.dll"),
+    ]
+    for path in (*left_out, *kept):
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_bytes(b"")
+    found = sorted(Path(name) for name in build_script.trimmed_files(tmp_path))
+    assert found == sorted(left_out)
+    args = build_script.nuitka_args(None)
+    assert "--noinclude-qt-plugins=tls" in args
+    assert "--noinclude-qt-plugins=egldeviceintegrations" in args
+    assert "--nofollow-import-to=PySide6.QtNetwork" in args
+    assert "--noinclude-dlls=*imageformats*qpdf*" in args
+    assert "--noinclude-dlls=*platforms*qvnc*" in args
+    assert "--noinclude-dlls=*Qt6Network*" in args
 
 
 @pytest.mark.gui

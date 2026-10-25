@@ -111,7 +111,7 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
 | The reference tables | `--include-package-data=caddcalc` | `missing_tables`; the smoke report's `reference_tables` (each loaded and built) |
 | The display face and its OFL license | the same | `missing_fonts`; the report's `display_font` |
 | **Our catalogs**, each language's `.mo` | compiled from the committed `.po` by the build (`scripts/i18n.py compile`), before Nuitka reads the package data; their `.po` and `.pot` sources left out (`--noinclude-data-files`) | `missing_catalogs`, which fails with no `.po` to check against; `catalog_sources`, none bundled; the report's `catalogs`, the languages the built app finds |
-| **Qt's `qtbase_*.qm` catalogs** | `--include-data-files` from the build's PySide6 into `PySide6/translations/`, where its Qt looks; every other Qt translation stays out | `missing_catalogs`; the report's `qt_catalog`, that Qt loads its German catalog from the build |
+| **Qt's `qtbase_*.qm` catalogs** | `--include-data-files` from the build's PySide6 into the same folder in the build (`PySide6/translations/` on Windows, `PySide6/Qt/translations/` on Linux and macOS), where its Qt looks; every other Qt translation stays out | `missing_catalogs`; the report's `qt_catalog`, that Qt loads its German catalog from the build |
 | `LICENSE.md` and `THIRD_PARTY_NOTICES.md` | copied into the folder | (copied; what the notices still lack is KI-016) |
 | The branding pack, or none | `--include-data-dir`, branded builds only | a generic build has no `branding/`, a branded one has its `branding.toml`; the report's name, edition, icon, and welcome art |
 
@@ -126,3 +126,17 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
   with a catalog of ours for the same language (ADR-0020, amendments), so until then
   they cost space: 33 files, 5.8 MB, in PySide6 6.12. In return, a new language needs
   no packaging change.
+
+### 2026-10-25: release integrity and PyPI, as built (ADR-0022's slice d6)
+
+* **Checksums:** `release.yml`'s `release-files` job writes `SHA256SUMS` over every release
+  file, including the wheel and the sdist, and attaches it to the draft release. It runs on
+  dry runs too.
+* **Attestations:** on tags, `actions/attest` (which replaced
+  `actions/attest-build-provenance`) attests each file named in `SHA256SUMS`. Only that job
+  has `id-token: write` and `attestations: write`.
+* **PyPI**, decided above, is built: Trusted Publishing through
+  `pypa/gh-action-pypi-publish`, on tags only, TestPyPI first, each upload behind an
+  environment (`testpypi`, `pypi`) whose required reviewer is the maintainer. No token is
+  stored. The maintainer's one-time setup is in [packaging.md](../packaging.md#pypi).
+* Every action is pinned by commit SHA, and Dependabot proposes updates weekly.

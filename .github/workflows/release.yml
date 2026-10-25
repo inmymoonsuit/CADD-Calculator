@@ -4,14 +4,38 @@ name: Release builds
 # Branded editions are never built here (ADR-0008 item 4, ADR-0011): the first step fails
 # if a branding/ folder exists, and packaging/build.py refuses branded builds in CI.
 # Status and limitations: docs/dev/packaging.md, "CI".
+#
+# Dry runs: a push to the `distribution` branch, or a pull request that touches packaging,
+# builds, smoke-tests, and uploads the artifacts on every platform, but never drafts a
+# release, signs, or publishes. Only a `v*` tag does those.
 
 on:
   push:
     tags: ["v*"]
+    branches: [distribution]
+  pull_request:
+    paths:
+      - "packaging/**"
+      - ".github/workflows/release.yml"
+      - "pyproject.toml"
+      - "uv.lock"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to the same branch or pull request supersedes a dry run; a tag's run is never
+# cancelled.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  # The platforms a release carries: their files go to the draft release, with SHA256SUMS.
+  # Every platform is still built and smoke-tested on every run. Add macOS (the .dmg and its
+  # zip) or Python (the wheel and the sdist) here to put them in the release too
+  # (packaging/release_files.py). The first release, v0.1.0a1, is Windows and Linux only.
+  RELEASE_PLATFORMS: Windows Linux
 
 jobs:
   build:
@@ -24,8 +48,13 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-22.04]
     env:
       NUITKA_CACHE_DIR: ${{ github.workspace }}/../nuitka-cache
+      # The build bundles the interpreter it runs on, so every platform uses the same one:
+      # uv's python-build-standalone 3.12.14 as uv 0.12.5 knows it, never the runner's own
+      # Python. THIRD_PARTY_NOTICES.md names the OpenSSL, zlib, and expat it carries, and
+      # the build checks them.
+      UV_PYTHON_PREFERENCE: only-managed
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Refuse to build with a branding pack in the checkout
         shell: bash
@@ -39,54 +68,612 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # libxcb-cursor0 is bundled into the build for Qt's xcb plugin (build.py,
+          # HOST_LIBRARIES); the rest are for the offscreen smoke test.
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
-            libfontconfig1 libdbus-1-3
+            libfontconfig1 libdbus-1-3 libxcb-cursor0 ccache
           echo "QT_QPA_PLATFORM=offscreen" >> "$GITHUB_ENV"
 
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
         with:
-          python-version: "3.12"
+          version: "0.12.5"
+          python-version: "3.12.14"
 
       - name: Install
         run: uv sync --extra gui --group build --locked
 
       - name: Cache Nuitka's compiler downloads and ccache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: ${{ env.NUITKA_CACHE_DIR }}
           key: nuitka-${{ runner.os }}-${{ hashFiles('uv.lock') }}
           restore-keys: nuitka-${{ runner.os }}-
 
       - name: Build the generic edition, start it, and archive it
-        run: uv run python packaging/build.py --smoke-test --archive
+        shell: bash
+        run: |
+          set -o pipefail
+          # Windows also wraps the folder in its Inno Setup installer; windows-latest has
+          # Inno Setup 6 (slice d3).
+          installer=""
+          if [ "$RUNNER_OS" = "Windows" ]; then installer="--installer"; fi
+          uv run python packaging/build.py --smoke-test --archive $installer 2>&1 \
+            | tee build-output.txt
 
-      - uses: actions/upload-artifact@v7
+      # Job logs need a signed-in reader, but annotations are public: put the end of a
+      # failed build's output, and of pyside6-deploy's log, where anyone can read it.
+      - name: Report a failed build as an annotation
+        if: failure()
+        shell: bash
+        run: |
+          for f in build-output.txt builds/generic/work/deploy.log; do
+            [ -f "$f" ] || continue
+            uv run --no-project python -c "import sys; f = sys.argv[1]; tail = open(f, encoding='utf-8', errors='replace').read().splitlines()[-60:]; print('::error title=' + f + '::' + '%0A'.join(x.replace('%', '%25') for x in tail))" "$f"
+          done
+
+      # What the build bundles, publicly: each native binary's component, and the runtime
+      # releases the notices name (from its .build.json).
+      - name: Report the bundled libraries as an annotation
+        shell: bash
+        run: |
+          uv run --no-project python - builds/generic/*.build.json <<'PY'
+          import collections, json, sys
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          libraries = report["bundled_libraries"]
+          counts = collections.Counter(libraries.values())
+          lines = [f"{report['platform']}: {len(libraries)} binaries; {report['runtime_versions']}"]
+          lines += [f"{n} x {c}" for c, n in counts.most_common()]
+          lines.append(" ".join(sorted(p.rsplit("/", 1)[-1] for p in libraries)))
+          print("::notice title=Bundled libraries::" + "%0A".join(l.replace("%", "%25") for l in lines))
+          PY
+
+      # Install silently for this user, start the installed app with --smoke-test, then
+      # uninstall and check nothing is left; every step's exit code is checked.
+      - name: Install, start, and uninstall the installer (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: uv run python packaging/windows/test_installer.py builds/generic/*-setup.exe
+
+      - name: Validate the winget manifests (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          setup=$(ls builds/generic/*-setup.exe)
+          version=$(uv run python -c "import caddcalc; print(caddcalc.__version__)")
+          sha=$(sha256sum "$setup" | cut -d' ' -f1)
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${version}/$(basename "$setup")"
+          uv run python packaging/windows/winget.py render --version "$version" \
+            --url "$url" --sha256 "$sha" --out builds/winget
+          uv run --no-project --with jsonschema==4.26.0 --with pyyaml==6.0.3 \
+            python packaging/windows/winget.py validate builds/winget
+
+      # Wrap the folder in an AppImage, then start it with --appimage-extract-and-run (no
+      # FUSE on the runner) and check its smoke test (slice d4).
+      - name: Build and start the AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: uv run python packaging/linux/make_appimage.py builds/generic/*-linux-x64 --smoke-test
+
+      # Put the .app in a .dmg with a link to /Applications, then mount the image and start
+      # the app from it with --smoke-test (slice d5). Unsigned for now (ADR-0022).
+      - name: Build the .dmg and start the app from it (macOS)
+        if: runner.os == 'macOS'
+        run: uv run python packaging/macos/make_dmg.py builds/generic/*-macos-*.app --smoke-test
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: CADDCalculator-generic-${{ runner.os }}
           path: |
             builds/generic/*.zip
             builds/generic/*.tar.gz
+            builds/generic/*-setup.exe
+            builds/generic/*.AppImage
+            builds/generic/*.dmg
             builds/generic/*.build.json
           if-no-files-found: error
 
+  # A stub: Developer ID signing and notarization for the macOS .dmg, once the maintainer
+  # joins the Apple Developer Program (ADR-0022, "Later"). Switched off until the variable
+  # MACOS_NOTARIZE is "true" and its secrets are set; switched off, it leaves a notice and
+  # succeeds. Switched on, it fails on purpose until the steps are written and tested
+  # (docs/dev/packaging.md, "macOS notarization").
+  notarize-macos:
+    name: Notarize the macOS app (stub)
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: release-signing
+    steps:
+      - name: Is notarization switched on?
+        shell: bash
+        env:
+          MACOS_NOTARIZE: ${{ vars.MACOS_NOTARIZE }}
+          HAVE_CERT: ${{ secrets.APPLE_DEVELOPER_ID_P12 != '' }}
+          HAVE_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_P12_PASSWORD != '' }}
+          HAVE_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAVE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+          HAVE_APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+        run: |
+          if [ "$MACOS_NOTARIZE" != "true" ]; then
+            echo "::notice title=Notarization is switched off::MACOS_NOTARIZE isn't true, so the .dmg stays unsigned (docs/user/installing.md says how to open it)."
+            exit 0
+          fi
+          for have in "$HAVE_CERT" "$HAVE_CERT_PASSWORD" "$HAVE_APPLE_ID" "$HAVE_TEAM_ID" "$HAVE_APP_PASSWORD"; do
+            if [ "$have" != "true" ]; then
+              echo "::notice title=Notarization is switched off::MACOS_NOTARIZE is true, but a signing secret isn't set."
+              exit 0
+            fi
+          done
+          echo "::error title=Notarization isn't written yet::Write and test the codesign, notarytool, and stapler steps before switching it on (docs/dev/packaging.md)."
+          exit 1
+
+  # The AppImage on a real X11 display, with only a stock Ubuntu 22.04 desktop's libraries:
+  # a clean ubuntu:22.04 container with Xvfb and the packages in
+  # packaging/linux/desktop-baseline.txt, each checked against Ubuntu's own desktop
+  # manifest. The build job's smoke tests run offscreen, which loads neither the xcb nor
+  # the Wayland plugin (S&R's AppImage Medium).
+  appimage-x11:
+    name: AppImage / X11 on Ubuntu 22.04
+    needs: build
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: CADDCalculator-generic-Linux
+          path: dist
+
+      - name: Install Xvfb and a stock desktop's libraries, nothing else
+        run: |
+          apt-get update
+          # The baseline is a list of package names, split on purpose.
+          # shellcheck disable=SC2046
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates python3 xvfb xauth $(grep -v '^#' packaging/linux/desktop-baseline.txt)
+
+      - name: Check the baseline is a stock Ubuntu 22.04 desktop's
+        run: python3 packaging/linux/check_desktop.py manifest
+
+      - name: Check every library the AppImage needs is there
+        run: |
+          cd dist
+          chmod +x ./*.AppImage
+          ./*.AppImage --appimage-extract > /dev/null
+          python3 ../packaging/linux/check_desktop.py ldd squashfs-root
+
+      # Runs even when the check above fails, so one run shows both.
+      - name: Start the AppImage on X11 under Xvfb
+        if: success() || failure()
+        env:
+          QT_QPA_PLATFORM: xcb
+        run: |
+          set -u
+          report="$PWD/x11-smoke-test"
+          if ! out=$(xvfb-run -a -s "-screen 0 1280x800x24" \
+              dist/*.AppImage --appimage-extract-and-run --smoke-test="$report" 2>&1); then
+            echo "$out"
+            echo "::error title=AppImage on X11::$(echo "$out" | tail -n 30 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          python3 -c "import json, sys; r = json.load(open(sys.argv[1])); print(r); assert r['qt_platform'] == 'xcb' and r['packaged'] and r['calculators'] > 0, r" \
+            "$report/smoke-test.json"
+
+  # The .desktop file and the AppStream metainfo, checked with current tools: Ubuntu
+  # 22.04's appstreamcli predates the <developer> tag and the vcs-browser URL that Flathub
+  # asks for, so this runs on 24.04 (appstream 1.0) rather than in the AppImage's job.
+  linux-metadata:
+    name: Linux metadata
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install the validators
+        run: sudo apt-get update && sudo apt-get install -y appstream desktop-file-utils
+
+      - name: Validate the desktop file and the AppStream metainfo
+        shell: bash
+        run: |
+          appstreamcli --version
+          # On failure the tool's own output becomes a public annotation.
+          check() {
+            local title="$1"; shift
+            if ! out=$("$@" 2>&1); then
+              echo "::error title=$title::${out//$'\n'/%0A}"
+              return 1
+            fi
+            echo "$out"
+          }
+          check desktop-file-validate \
+            desktop-file-validate packaging/linux/io.github.inmymoonsuit.CADDCalculator.desktop
+          check appstreamcli appstreamcli validate --no-net --explain \
+            packaging/linux/io.github.inmymoonsuit.CADDCalculator.metainfo.xml
+
+  # Builds the Flathub manifest from source in Flathub's KDE container, then starts the app
+  # inside the sandbox with --smoke-test (slice d4). Submitting to Flathub is the
+  # maintainer's job (docs/dev/packaging.md, "Flathub").
+  flatpak:
+    name: Flatpak / from source
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: .flatpak-builder
+          key: flatpak-builder-${{ hashFiles('packaging/flatpak/**') }}
+          restore-keys: flatpak-builder-
+
+      # flatpak-builder directly, rather than through flatpak-github-actions, so its log can
+      # become a public annotation when it fails.
+      - name: Build the Flatpak
+        shell: bash
+        run: |
+          set -o pipefail
+          flatpak remote-add --user --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
+            --force-clean --repo=repo build-dir \
+            packaging/flatpak/io.github.inmymoonsuit.CADDCalculator.yml 2>&1 \
+            | tee flatpak-build.log
+          flatpak build-bundle repo CADDCalculator.flatpak io.github.inmymoonsuit.CADDCalculator
+
+      - name: Report a failed Flatpak build as an annotation
+        if: failure()
+        shell: bash
+        run: |
+          [ -f flatpak-build.log ] || exit 0
+          # The error lines, then the end of the log, leaving out download progress.
+          python3 - flatpak-build.log <<'PY'
+          import re, sys
+          lines = [l.rstrip() for l in open(sys.argv[1], encoding="utf-8", errors="replace")]
+          lines = [l for l in lines if l and not re.match(r"^\s*(\d|% Total|Dload)", l)]
+          errors = [l for l in lines if re.search(r"error|failed|not found", l, re.I)]
+          shown = errors[-25:] + ["----"] + lines[-35:]
+          print("::error title=flatpak-builder::" + "%0A".join(l.replace("%", "%25") for l in shown))
+          PY
+
+      - name: Start it inside the sandbox
+        shell: bash
+        run: |
+          set -u
+          # On failure a step's own output becomes a public annotation.
+          step() {
+            local title="$1"; shift
+            if ! out=$("$@" 2>&1); then
+              echo "$out"
+              echo "::error title=$title::$(echo "$out" | tail -n 40 | sed 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+              exit 1
+            fi
+            echo "$out"
+          }
+          # The report goes in the app's own data folder, which the sandbox always lets it
+          # write, and which is the same path outside.
+          report="$HOME/.var/app/io.github.inmymoonsuit.CADDCalculator/smoke-test"
+          step "flatpak install" flatpak install --user --noninteractive -y CADDCalculator.flatpak
+          step "flatpak run --smoke-test" flatpak run --env=QT_QPA_PLATFORM=offscreen \
+            io.github.inmymoonsuit.CADDCalculator --smoke-test="$report"
+          step "smoke-test report" python3 -c "import json, sys; r = json.load(open(sys.argv[1])); print(r); assert r['calculators'] > 0 and r['window_title'] == 'CADD Calculator', r" \
+            "$report/smoke-test.json"
+          # The build tools (python3-build-deps) are cleaned up: none ships in /app.
+          step "build tools in the Flatpak" flatpak run --command=python3 \
+            io.github.inmymoonsuit.CADDCalculator -c "import importlib.util as u, sys; found = [m for m in ('hatchling', 'pathspec', 'pluggy', 'trove_classifiers', 'tomlkit', 'babel') if u.find_spec(m)]; print('build tools in /app:', found); sys.exit(1 if found else 0)"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: CADDCalculator-flatpak
+          path: CADDCalculator.flatpak
+          if-no-files-found: error
+
+  # Signs the Windows installer on a tag, through SignPath Foundation or Microsoft
+  # Artifact Signing (ADR-0022). It's switched off until the maintainer sets the variable
+  # SIGNING_PROVIDER (signpath or artifact-signing) and that provider's variables and secret
+  # on the release-signing environment, not the repository, so signing can't run outside
+  # that environment's approval (docs/dev/packaging.md, "Signing"). Switched off, it leaves
+  # a notice and succeeds: it never fails a release over missing settings. Its output
+  # `provider` tells release-files whether a signed installer must replace the unsigned one.
+  sign-windows:
+    name: Sign the Windows installer
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    outputs:
+      provider: ${{ steps.gate.outputs.provider }}
+    # The maintainer approves each signing by hand: the environment's required reviewer.
+    # Artifact Signing's Azure login is bound to this environment, so it works nowhere else.
+    environment: release-signing
+    permissions:
+      contents: read
+      actions: read  # SignPath downloads the unsigned artifact
+      id-token: write  # Artifact Signing signs in to Azure through OIDC
+    steps:
+      - name: Is signing switched on?
+        id: gate
+        shell: bash
+        env:
+          PROVIDER: ${{ vars.SIGNING_PROVIDER }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_POLICY_SLUG: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          SIGNPATH_TOKEN_SET: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+        run: |
+          off() {
+            echo "::notice title=Signing is switched off::$1 The installer stays unsigned (docs/dev/packaging.md, Signing)."
+            echo "provider=" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          case "$PROVIDER" in
+            signpath) needed="SIGNPATH_ORGANIZATION_ID SIGNPATH_PROJECT_SLUG SIGNPATH_POLICY_SLUG" ;;
+            artifact-signing) needed="AZURE_TENANT_ID AZURE_CLIENT_ID ARTIFACT_SIGNING_ENDPOINT ARTIFACT_SIGNING_ACCOUNT ARTIFACT_SIGNING_PROFILE" ;;
+            "") off "SIGNING_PROVIDER isn't set." ;;
+            *) off "SIGNING_PROVIDER is '$PROVIDER', not signpath or artifact-signing." ;;
+          esac
+          missing=""
+          for name in $needed; do
+            [ -n "$(printenv "$name")" ] || missing="$missing $name"
+          done
+          if [ "$PROVIDER" = "signpath" ] && [ "$SIGNPATH_TOKEN_SET" != "true" ]; then
+            missing="$missing SIGNPATH_API_TOKEN"
+          fi
+          [ -z "$missing" ] || off "$PROVIDER is chosen, but these aren't set:$missing."
+          echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        if: steps.gate.outputs.provider != ''
+        with:
+          name: CADDCalculator-generic-Windows
+          path: unsigned
+
+      - name: Keep only the installer
+        if: steps.gate.outputs.provider != ''
+        shell: bash
+        run: |
+          mkdir -p installer signed
+          mv unsigned/*-setup.exe installer/
+
+      - name: Upload the unsigned installer for SignPath
+        id: unsigned
+        if: steps.gate.outputs.provider == 'signpath'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: CADDCalculator-unsigned-installer
+          path: installer/*-setup.exe
+          if-no-files-found: error
+
+      - name: Sign through SignPath Foundation
+        if: steps.gate.outputs.provider == 'signpath'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627  # v2
+        with:
+          connector-url: https://app.signpath.io/Api/v1/GitHubActions
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Sign in to Azure for Artifact Signing
+        if: steps.gate.outputs.provider == 'artifact-signing'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906  # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Sign through Microsoft Artifact Signing
+        if: steps.gate.outputs.provider == 'artifact-signing'
+        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82  # v2.0.0
+        with:
+          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+          files-folder: installer
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Collect the Artifact Signing result
+        if: steps.gate.outputs.provider == 'artifact-signing'
+        shell: bash
+        run: cp installer/*-setup.exe signed/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: steps.gate.outputs.provider != ''
+        with:
+          name: CADDCalculator-signed-installer
+          path: signed/*-setup.exe
+          if-no-files-found: error
+
+  # The wheel and the sdist, built and checked on every run (slice d6). Only a tag
+  # publishes them, through the testpypi and pypi jobs below. On a tag it also checks the
+  # tag is `v` plus the package's version, so every file the release carries has it.
+  python-dist:
+    name: Wheel and sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Build the wheel and the sdist
+        run: uv build
+
+      # The wheel's catalogs are each language's compiled .mo, and nothing else
+      # (ADR-0009's checklist), checked before anything could be uploaded.
+      - name: Check the wheel's catalogs
+        run: |
+          uv sync --locked
+          uv run python scripts/i18n.py check-wheel dist/*.whl
+
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(uv run python -c "import caddcalc; print(caddcalc.__version__)")
+          python3 packaging/release_files.py check-tag "$GITHUB_REF_NAME" "$version"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+
+  # The release's files in one place: the RELEASE_PLATFORMS' files, with the signed
+  # installer in place of the unsigned one when a signing provider ran, then SHA256SUMS over
+  # them (slice d6; packaging/release_files.py). It runs on dry runs too, so it's tested on
+  # every push, and it holds no token beyond reading: the attest job signs, on tags only.
+  release-files:
+    name: Release files and checksums
+    # The Linux metadata and the AppImage's X11 start gate it too: their files ship.
+    needs: [build, python-dist, linux-metadata, appimage-x11, sign-windows]
+    if: >-
+      !cancelled() && needs.build.result == 'success' && needs.python-dist.result == 'success'
+      && needs.linux-metadata.result == 'success' && needs.appimage-x11.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.sign-windows.result)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: CADDCalculator-generic-*
+          path: downloads
+          merge-multiple: true
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: downloads
+
+      # Only when a provider signed: then the signed installer must be there (S&R's d6 M2).
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        if: needs.sign-windows.outputs.provider != ''
+        with:
+          name: CADDCalculator-signed-installer
+          path: signed
+
+      - name: Collect the release files and write SHA256SUMS
+        env:
+          PROVIDER: ${{ needs.sign-windows.outputs.provider }}
+        run: |
+          set -euo pipefail
+          version=$(python3 -c "import ast, sys; tree = ast.parse(open('src/caddcalc/__init__.py').read()); print(next(n.value.value for n in tree.body if isinstance(n, ast.Assign) and n.targets[0].id == '__version__'))")
+          # RELEASE_PLATFORMS is a space-separated list, split on purpose.
+          # shellcheck disable=SC2086
+          python3 packaging/release_files.py collect downloads release --version "$version" \
+            --platforms $RELEASE_PLATFORMS --signed signed --provider "$PROVIDER"
+          cd release
+          cat SHA256SUMS
+          sha256sum --check --strict SHA256SUMS
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: release-files
+          path: release/*
+          if-no-files-found: error
+
+  # A GitHub artifact attestation for each release file, from SHA256SUMS, on tags only: the
+  # only job with id-token and attestations write (S&R's d6 Low 2).
+  attest:
+    name: Attest the release files
+    needs: release-files
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write  # attestations sign with the workflow's OIDC identity
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: release-files
+          path: release
+
+      - name: Attest every release file
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+
   draft-release:
     name: Draft GitHub release
-    needs: build
+    needs: [release-files, attest]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: dist
-          merge-multiple: true
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      # A draft: the maintainer checks the archives and publishes the release by hand.
-      - name: Create a draft release with the generic archives
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: release-files
+          path: release
+
+      # A draft: the maintainer checks the files and publishes the release by hand. A tag
+      # like v0.1.0a1, b1, or rc1 makes a pre-release.
+      - name: Create a draft release with every file and SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
-            --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes \
-            dist/*.zip dist/*.tar.gz
+          prerelease=""
+          if [ "$(python3 packaging/release_files.py prerelease "$GITHUB_REF_NAME")" = true ]; then
+            prerelease="--prerelease"
+          fi
+          # shellcheck disable=SC2086
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft $prerelease \
+            --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes release/*
+
+  # PyPI Trusted Publishing, on tags only, and only once the maintainer sets the repository
+  # variable PUBLISH_PYPI to true, after the one-time setup (docs/dev/packaging.md, "PyPI"):
+  # until then a tag's run skips both jobs. TestPyPI first, then PyPI, each behind its own
+  # environment, whose required reviewer is the maintainer. No token is stored anywhere:
+  # PyPI trusts this workflow's OIDC identity. The action makes PEP 740 attestations.
+  testpypi:
+    name: Publish to TestPyPI
+    needs: [python-dist, release-files]
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-24.04
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/cadd-calculator/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: Publish to PyPI
+    needs: testpypi
+    if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/cadd-calculator/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3

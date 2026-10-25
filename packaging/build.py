@@ -26,12 +26,15 @@ import shlex
 import shutil
 import subprocess
 import sys
+import sysconfig
 import time
 import tomllib
+from importlib.metadata import distribution
 from importlib.metadata import version as dist_version
 from pathlib import Path
 
-from PySide6.QtCore import QLibraryInfo
+import PySide6
+from PySide6.QtCore import QLibraryInfo, qVersion
 from PySide6.QtGui import QImage
 
 from caddcalc import __version__
@@ -47,7 +50,11 @@ from caddcalc.gui.branding import (
     load_branding,
 )
 from caddcalc.gui.welcome_style import STYLE_FILE, style
+from fetch_notices import NOTICES_DIR
+from fetch_notices import check as check_notices
+from fetch_notices import expected_files as notice_files
 from icons import ROOT, ensure_qt_app, save_icns, save_ico
+from library_notices import INTERPRETER_LICENSE, bundled_libraries, texts_needed, uncovered
 
 BUILDS = ROOT / "builds"
 BRANDING_DIR = ROOT / "branding"
@@ -66,8 +73,6 @@ CATALOG_SOURCES = (".po", ".pot")
 QT_CATALOG = "qtbase"
 """Qt's own text, such as standard buttons and a field's context menu, comes from its
 ``qtbase_<language>.qm`` catalogs, which ship beside it (ADR-0020 §1)."""
-QT_CATALOGS_DIR = "PySide6/translations"
-"""Where a build keeps them: where PySide6's Qt looks for its translations."""
 
 
 class BuildError(Exception):
@@ -86,6 +91,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--smoke-test", action="store_true", help="start the built app, check it")
     parser.add_argument("--runs", type=int, default=3, help="smoke-test starts to time (default 3)")
     parser.add_argument("--archive", action="store_true", help="pack the output for distribution")
+    parser.add_argument(
+        "--installer",
+        action="store_true",
+        help="Windows: wrap the folder in an Inno Setup installer",
+    )
     parser.add_argument("--verbose", action="store_true", help="show pyside6-deploy's log")
     args = parser.parse_args(argv)
     try:
@@ -98,6 +108,10 @@ def main(argv: list[str] | None = None) -> int:
             archive = make_archive(output)
             report["archive"] = str(archive)
             report["archive_mb"] = round(archive.stat().st_size / 1e6, 1)
+        if args.installer:
+            installer = make_installer(output, branding)
+            report["installer"] = str(installer)
+            report["installer_mb"] = round(installer.stat().st_size / 1e6, 1)
     except (BuildError, BrandingError) as exc:
         print(f"build.py: error: {exc}", file=sys.stderr)
         return 1
@@ -200,6 +214,249 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     return out
 
 
+TRIMMED_QT_PLUGIN_FAMILIES = ("tls", "egldeviceintegrations")
+"""Qt plugin families the build leaves out: TLS backends, for a network the app never uses;
+and EGLFS's device integrations (Linux), for embedded screens with no display server, one
+of which needs a Qt library PySide6's wheel doesn't have."""
+TRIMMED_IMAGE_FORMATS = ("qpdf", "qtiff", "qwebp", "qtga", "qwbmp", "qicns")
+"""Qt image-format plugins the build leaves out. The app reads PNG and JPEG art, SVG and
+ICO icons, and nothing else; ``.icns`` is made at build time, not read by the app."""
+TRIMMED_PLATFORM_PLUGINS = ("qvnc",)
+"""Qt platform plugins the build leaves out: VNC (Linux), which serves the window over a
+network and would pull QtNetwork back in."""
+TRIMMED_QT_MODULES = ("QtNetwork",)
+"""Qt modules the build leaves out: nothing imports QtNetwork; only the TLS plugins and the
+VNC platform plugin did."""
+
+
+LICENSES_DIR = "licenses"
+"""Where a build keeps the runtime's license texts, from packaging/notices/ (KI-016)."""
+
+
+def interpreter_license() -> Path:
+    """Return the LICENSE.txt of the Python the build runs on, which it bundles.
+
+    python-build-standalone keeps it beside ``python.exe`` on Windows, where it also
+    carries the licenses of what the interpreter bundles, and in the standard library's
+    folder on Linux and macOS (S&R M1).
+    """
+    for folder in (Path(sys.base_prefix), Path(sysconfig.get_path("stdlib"))):
+        if (folder / "LICENSE.txt").is_file():
+            return folder / "LICENSE.txt"
+    raise BuildError(f"no LICENSE.txt found for the interpreter in {sys.base_prefix}")
+
+
+HOST_LIBRARIES = ("libxcb-cursor.so.0",)
+"""Libraries Linux builds take from the build host, beside Qt's xcb support library: Qt's
+xcb platform plugin needs libxcb-cursor, which a stock Ubuntu 22.04 desktop doesn't
+install, so the app brings its own (S&R's AppImage Medium). The build host installs it
+(``apt install libxcb-cursor0``)."""
+
+
+def bundle_host_libraries(output: Path) -> list[str]:
+    """Copy ``HOST_LIBRARIES`` into a Linux build, beside ``libQt6XcbQpa``; return them.
+
+    Qt's libraries find their neighbours through their ``$ORIGIN`` run path, so the copy
+    needs no other setup.
+
+    Raises:
+        BuildError: A library isn't installed on the build host.
+    """
+    if not sys.platform.startswith("linux"):
+        return []
+    xcb = next(iter(sorted(output.rglob("libQt6XcbQpa.so*"))), None)
+    if xcb is None:
+        return []
+    machine = platform.machine()
+    folders = [Path(f"/usr/lib/{machine}-linux-gnu"), Path("/usr/lib64"), Path("/usr/lib")]
+    copied = []
+    for name in HOST_LIBRARIES:
+        source = next((folder / name for folder in folders if (folder / name).exists()), None)
+        if source is None:
+            raise BuildError(
+                f"{name} isn't installed on the build host (apt install libxcb-cursor0)"
+            )
+        target = xcb.parent / name
+        shutil.copy2(source.resolve(), target)
+        copied.append(str(target.relative_to(output).as_posix()))
+    return copied
+
+
+def copy_notices(output: Path) -> None:
+    """Copy the project's license, the index, and the runtime's license texts into a build."""
+    for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
+        shutil.copy2(ROOT / notice, output / notice)
+    folder = output / LICENSES_DIR
+    folder.mkdir(exist_ok=True)
+    for name in notice_files():
+        shutil.copy2(NOTICES_DIR / name, folder / name)
+    shutil.copy2(interpreter_license(), folder / INTERPRETER_LICENSE)
+
+
+def locked_version(package: str) -> str | None:
+    """Return the version ``uv.lock`` pins for ``package``, or ``None`` if it has none."""
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+    for entry in lock.get("package", []):
+        if entry.get("name") == package:
+            return str(entry.get("version"))
+    return None
+
+
+def pyside6_source() -> dict[str, object]:
+    """Return where the PySide6 a build compiles against came from, for its report.
+
+    An LGPL rebuild against a modified PySide6 installs it with ``uv pip install`` and
+    builds with ``uv run --no-sync`` (THIRD_PARTY_NOTICES.md); this says which one it got.
+    """
+    dist = distribution("PySide6-Essentials")
+    direct_url = dist.read_text("direct_url.json")
+    return {
+        "version": dist.version,
+        "locked_version": locked_version("pyside6-essentials"),
+        "matches_lock": dist.version == locked_version("pyside6-essentials") and direct_url is None,
+        "location": str(Path(str(dist.locate_file(""))).resolve()),
+        "installer": (dist.read_text("INSTALLER") or "").strip() or None,
+        "direct_url": json.loads(direct_url) if direct_url else None,
+    }
+
+
+def runtime_versions() -> dict[str, str]:
+    """Return the OpenSSL, zlib, and expat releases the build's interpreter carries.
+
+    The build bundles the interpreter it runs on, and each platform's python-build-standalone
+    brings its own releases (inside ``libpython`` on Linux and macOS), so it asks that
+    interpreter's own modules (S&R's d6 M1). On macOS zlib is the system's
+    ``/usr/lib/libz.1.dylib``, which the build doesn't ship, so it isn't listed.
+    """
+    import pyexpat
+    import ssl
+    import zlib
+
+    versions = {"expat": pyexpat.EXPAT_VERSION.removeprefix("expat_")}
+    if sys.platform != "darwin":
+        versions["zlib"] = zlib.ZLIB_RUNTIME_VERSION
+    match = re.match(r"OpenSSL (\d+\.\d+\.\d+)", ssl.OPENSSL_VERSION)
+    if match:
+        versions["OpenSSL"] = match.group(1)
+    return versions
+
+
+def notice_version_problems(
+    index: str | None = None, versions: dict[str, str] | None = None
+) -> list[str]:
+    """Return what THIRD_PARTY_NOTICES.md gets wrong about the versions a build ships.
+
+    It must name the Qt and PySide6 versions, and the OpenSSL, zlib, and expat releases the
+    interpreter carries; and OpenSSL must be a 3 release, since
+    ``licenses/OpenSSL-LICENSE.txt`` is OpenSSL 3's license (M1, Low 1; S&R's d6 M1).
+    """
+    text = index if index is not None else (ROOT / "THIRD_PARTY_NOTICES.md").read_text("utf-8")
+    problems = []
+    qt, pyside = qVersion(), PySide6.__version__
+    if f"### Qt {qt} and Qt for Python (PySide6, Shiboken6) {pyside}" not in text:
+        problems.append(f"THIRD_PARTY_NOTICES.md doesn't name Qt {qt} and PySide6 {pyside}")
+    versions = runtime_versions() if versions is None else versions
+    for name, release in versions.items():
+        if f"{name} {release}" not in text:
+            problems.append(
+                f"the build ships {name} {release}, which THIRD_PARTY_NOTICES.md doesn't name"
+            )
+    if not versions.get("OpenSSL", "3.").startswith("3."):
+        problems.append(
+            f"the build ships OpenSSL {versions['OpenSSL']}, but the notice is OpenSSL 3's license"
+        )
+    return problems
+
+
+def missing_notices(output: Path) -> list[str]:
+    """Return the notices a build lacks: our license, the index, or a runtime license text."""
+    wanted = ["LICENSE.md", "THIRD_PARTY_NOTICES.md", f"{LICENSES_DIR}/{INTERPRETER_LICENSE}"]
+    wanted += [f"{LICENSES_DIR}/{name}" for name in notice_files()]
+    return [name for name in wanted if not (output / name).is_file()]
+
+
+def library_problems(output: Path, libraries: dict[str, str | None]) -> list[str]:
+    """Return what a build's notices miss about its native binaries (S&R's d6 M1).
+
+    Every bundled library, extension module, and executable must belong to a component in
+    ``library_notices.py``, and each component's texts must be in ``licenses/``.
+    """
+    problems = []
+    unknown = uncovered(libraries)
+    if unknown:
+        problems.append(
+            f"{len(unknown)} bundled binaries have no notice entry in packaging/library_notices.py"
+            f" ({platform_tag()}): {' '.join(unknown)}"
+        )
+    for text in texts_needed(libraries):
+        if not (output / LICENSES_DIR / text).is_file():
+            problems.append(f"licenses/{text} is missing, and the build's binaries need it")
+    return problems
+
+
+def trimmed_files(output: Path) -> list[str]:
+    """Return the files in a build that the trim should have left out (docs/dev/packaging.md).
+
+    Matches each platform's names: ``qpdf.dll``, ``libqpdf.so``, ``libqpdf.dylib``;
+    ``QtNetwork.pyd``, ``Qt6Network.dll``, ``libQt6Network.so.6``, ``QtNetwork.framework``.
+    """
+    found = []
+    for path in output.rglob("*"):
+        name = path.name.lower()
+        parts = [part.lower() for part in path.relative_to(output).parts]
+        stem = name.removeprefix("lib").split(".")[0]
+        if (
+            ("imageformats" in parts and stem in TRIMMED_IMAGE_FORMATS)
+            or ("platforms" in parts and stem in TRIMMED_PLATFORM_PLUGINS)
+            or (any(family in parts for family in TRIMMED_QT_PLUGIN_FAMILIES) and path.is_file())
+            or any(
+                m.lower() in stem or m.lower().replace("qt", "qt6") in stem
+                for m in TRIMMED_QT_MODULES
+            )
+        ):
+            found.append(path)
+    return sorted(str(p.relative_to(output)) for p in found)
+
+
+def inclusion_reasons(report: Path) -> dict[str, str]:
+    """Return why Nuitka included each library, by file name, from its compilation report.
+
+    The reasons read like "Used by 'PySide6/qt-plugins/platforms/libqxcb.so'", so a file the
+    trim should have left out names what pulled it in.
+    """
+    if not report.is_file():
+        return {}
+    import xml.etree.ElementTree as ET
+
+    reasons = {}
+    root = ET.parse(report).getroot()  # noqa: S314 (this build's own Nuitka report)
+    for dll in root.iter("included_dll"):
+        if dll.get("ignored") != "yes":
+            reasons[dll.get("name", "").lower()] = dll.get("reason", "")
+    return reasons
+
+
+def qt_catalogs_dir(translations: Path | None = None, package: Path | None = None) -> str:
+    """Return where a build keeps Qt's catalogs: where the running PySide6 keeps them.
+
+    The folder is the one Qt reports for its translations, relative to the PySide6
+    package, so the frozen app's Qt looks where the build put them. PySide6's wheels lay
+    it out per platform: ``PySide6/translations`` on Windows, and
+    ``PySide6/Qt/translations`` on Linux and macOS. A fixed Windows path broke the
+    catalog check on both (engineering log, 2026-10-25).
+
+    Args:
+        translations: Qt's translations folder; the running PySide6's when ``None``.
+        package: The PySide6 package folder; the running PySide6's when ``None``.
+    """
+    if translations is None:
+        translations = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
+    if package is None:
+        package = Path(PySide6.__file__).parent
+    inside = translations.resolve().relative_to(package.resolve())
+    return (Path("PySide6") / inside).as_posix()
+
+
 def qt_catalogs() -> list[Path]:
     """Return Qt's ``qtbase`` catalogs, from the PySide6 the build runs with."""
     folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
@@ -235,7 +492,7 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
     qt_folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
     args = [
         "--noinclude-qt-translations",
-        f"--include-data-files={qt_folder / f'{QT_CATALOG}_*.qm'}={QT_CATALOGS_DIR}/",
+        f"--include-data-files={qt_folder / f'{QT_CATALOG}_*.qm'}={qt_catalogs_dir()}/",
         *(f"--noinclude-data-files={LOCALE_DIR}/*{suffix}" for suffix in CATALOG_SOURCES),
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
         "--include-package-data=caddcalc",  # the generic icon and the reference tables
@@ -246,6 +503,13 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
         f"--product-version={numeric_version(__version__)}",
         f"--copyright=Copyright {COMPANY}. Apache-2.0.",
         "--report=compilation-report.xml",
+        *(f"--noinclude-qt-plugins={family}" for family in TRIMMED_QT_PLUGIN_FAMILIES),
+        *(f"--nofollow-import-to=PySide6.{module}" for module in TRIMMED_QT_MODULES),
+        # The library too: Nuitka still follows the dependencies of a plugin it leaves out,
+        # so libqvnc.so alone would bring libQt6Network back (engineering log, 2026-10-25).
+        *(f"--noinclude-dlls=*{m.replace('Qt', 'Qt6', 1)}*" for m in TRIMMED_QT_MODULES),
+        *(f"--noinclude-dlls=*imageformats*{plugin}*" for plugin in TRIMMED_IMAGE_FORMATS),
+        *(f"--noinclude-dlls=*platforms*{plugin}*" for plugin in TRIMMED_PLATFORM_PLUGINS),
     ]
     if sys.platform == "win32":
         args.append("--windows-console-mode=disable")
@@ -296,6 +560,8 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
     Raises:
         BuildError: pyside6-deploy failed, or the output is wrong for the edition.
     """
+    for problem in check_notices():
+        raise BuildError(f"packaging/notices: {problem}; run packaging/fetch_notices.py")
     edition_dir = BUILDS / branding.edition
     work = edition_dir / "work"
     name = f"{EXE_STEM}-{__version__}-{branding.edition}-{platform_tag()}"
@@ -340,9 +606,28 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         raise BuildError(f"pyside6-deploy failed (exit {result.returncode}); log: {log}")
 
     output, exe = locate_output(edition_dir, name, mode)
+    libraries: dict[str, str | None] = {}
+    host_libraries: list[str] = []
+    versions = runtime_versions()
     if output.is_dir():
-        for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
-            shutil.copy2(ROOT / notice, output / notice)
+        host_libraries = bundle_host_libraries(output)
+        copy_notices(output)
+        for missing in missing_notices(output):
+            raise BuildError(f"the notice {missing} is missing from the build (KI-016)")
+        libraries = bundled_libraries(output)
+        # Every problem at once: on CI each one costs a run to find.
+        problems = library_problems(output, libraries)
+        problems += notice_version_problems(versions=versions)
+        if problems:
+            raise BuildError("; ".join(problems))
+        extras = trimmed_files(output)
+        if extras:
+            reasons = inclusion_reasons(work / "compilation-report.xml")
+            listed = "; ".join(
+                f"{extra} ({reasons.get(Path(extra).name.lower(), 'no reason recorded')})"
+                for extra in extras
+            )
+            raise BuildError(f"the trim should have left these out: {listed}")
         bundled_pack = exe.parent / PACK_DIR_NAME
         if branding.is_generic and bundled_pack.exists():
             raise BuildError(f"a generic build must not contain {bundled_pack}")
@@ -373,10 +658,16 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         "exe_mb": round(exe.stat().st_size / 1e6, 1),
         "python": platform.python_version(),
         "pyside6": dist_version("PySide6-Essentials"),
+        "pyside6_source": pyside6_source(),
         "nuitka": dist_version("Nuitka"),
         "reference_tables": [f"{s.package}/{s.filename}" for s in REFERENCE_TABLES],
         "catalogs": languages,
         "qt_catalogs": len(qt_catalogs()),
+        "openssl": versions.get("OpenSSL"),
+        "runtime_versions": versions,
+        "interpreter_license": str(interpreter_license()),
+        "bundled_libraries": libraries,
+        "host_libraries": host_libraries,
     }
 
 
@@ -420,7 +711,7 @@ def missing_catalogs(app_dir: Path) -> list[str]:
             f"no catalog to check: no <language>/LC_MESSAGES/caddcalc.po in {CATALOGS}"
         )
     ours = [f"{LOCALE_DIR}/{path.parents[1].name}/LC_MESSAGES/caddcalc.mo" for path in sources]
-    qt = [f"{QT_CATALOGS_DIR}/{path.name}" for path in qt_catalogs()]
+    qt = [f"{qt_catalogs_dir()}/{path.name}" for path in qt_catalogs()]
     return [name for name in (*ours, *qt) if not (app_dir / name).is_file()]
 
 
@@ -499,6 +790,93 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
     if problems:
         raise BuildError(f"smoke test failed: {'; '.join(problems)}")
     return {"start_to_exit_s": times, "report_dir": str(report_dir), **report}
+
+
+INNO_SCRIPT = Path(__file__).resolve().parent / "windows" / "CADDCalculator.iss"
+"""The Inno Setup script that wraps a standalone Windows build (ADR-0022, slice d3)."""
+
+
+def find_iscc() -> Path:
+    """Return Inno Setup 6's command-line compiler.
+
+    Raises:
+        BuildError: It isn't installed.
+    """
+    found = shutil.which("ISCC")
+    candidates = [Path(found)] if found else []
+    for base in ("ProgramFiles(x86)", "ProgramFiles", "LOCALAPPDATA"):
+        root = os.environ.get(base)
+        if root:
+            candidates += [
+                Path(root) / "Inno Setup 6" / "ISCC.exe",
+                Path(root) / "Programs" / "Inno Setup 6" / "ISCC.exe",
+            ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise BuildError("Inno Setup 6's ISCC.exe isn't installed (https://jrsoftware.org/isinfo.php)")
+
+
+INSTALLER_LICENSE_NOTE = """
+
+----------------------------------------------------------------------
+Third-party components
+
+CADD Calculator includes third-party components under their own licenses: Qt and
+Qt for Python under the GNU LGPL v3, and others. Their notices and full license texts are
+in THIRD_PARTY_NOTICES.md and the licenses folder, in the install folder.
+
+On Windows it also includes Microsoft Visual C++ runtime files, which Microsoft lets
+applications redistribute under its terms. By installing, you agree to the conditions
+for those files in licenses\\Microsoft-Visual-C++-runtime.txt.
+"""
+"""What the installer's license page adds after LICENSE.md (Low 5)."""
+
+
+def installer_license(output: Path, work: Path) -> Path:
+    """Write the installer's license page: LICENSE.md, then the third-party note."""
+    page = work / "installer-license.txt"
+    text = (output / "LICENSE.md").read_text(encoding="utf-8").rstrip()
+    page.write_text(text + INSTALLER_LICENSE_NOTE, encoding="utf-8", newline="\r\n")
+    return page
+
+
+def installer_defines(output: Path, icon: Path, license_page: Path) -> dict[str, str]:
+    """Return the ISCC defines for wrapping ``output``: its folder, version, and names."""
+    return {
+        "SourceDir": str(output),
+        "LicenseFile": str(license_page),
+        "AppVersion": __version__,
+        "NumericVersion": numeric_version(__version__),
+        "IconFile": str(icon),
+        "OutputDir": str(output.parent),
+        "OutputBase": f"{output.name}-setup",
+    }
+
+
+def make_installer(output: Path, branding: Branding) -> Path:
+    """Wrap a standalone Windows build in an Inno Setup installer; return its path.
+
+    Raises:
+        BuildError: Not a standalone Windows build, no Inno Setup, or ISCC failed.
+    """
+    if sys.platform != "win32" or not output.is_dir():
+        raise BuildError("--installer needs a standalone Windows build")
+    work = output.parent / "work"
+    defines = installer_defines(output, exe_icon(branding, work), installer_license(output, work))
+    command = [
+        str(find_iscc()),
+        "/Q",
+        *(f"/D{k}={v}" for k, v in defines.items()),
+        str(INNO_SCRIPT),
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    if result.returncode:
+        raise BuildError(f"ISCC failed (exit {result.returncode}): {result.stdout}{result.stderr}")
+    installer = output.parent / f"{defines['OutputBase']}.exe"
+    if not installer.is_file():
+        raise BuildError(f"ISCC made no {installer.name}")
+    return installer
 
 
 def make_archive(output: Path) -> Path:

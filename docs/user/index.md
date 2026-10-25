@@ -5,6 +5,7 @@ angles of a shape, a length in inches and millimeters, how long to cut a part so
 use, and how to lay out a cone.
 Every answer shows its work.
 
+* [Installing](installing.md): the Windows installer, the macOS .dmg, and the Linux AppImage, and opening them the first time
 * [Getting started](getting-started.md): install it and run your first calculation
 * [Geometry calculators](calculators/geometry.md): circles, rectangles, triangles, polygons, arcs
 * [Conversions](calculators/conversions.md): a length, angle, area, or stress in another unit, and a fraction to a decimal and back
@@ -12,6 +13,7 @@ Every answer shows its work.
 * [Results and copying](results.md): the result fields, copying values, the keyboard
 * [Units and precision](units-and-precision.md): typing fractions and mm, rounding
 * [Glossary](glossary.md): bend angle, K-factor, outside setback, and other terms
+* [Code signing policy](code-signing.md): how downloads are built, signed, and checked; privacy
 
 ## How to read a result
 

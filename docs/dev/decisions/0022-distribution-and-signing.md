@@ -54,3 +54,52 @@
 * Windows and Linux users get signed or store-trusted installs for $0. Windows shows a SmartScreen prompt naming "SignPath Foundation" until the app builds reputation.
 * macOS users see Apple's warning until the program fee is paid. The download notes explain how to open the app.
 * The maintainer must apply to SignPath, turn on MFA everywhere, approve each signed release, open the free Store account, and submit to Flathub.
+
+## Amendment (2026-10-25): the sources, and what they correct
+
+The research claims above now have sources, each checked on 2026-10-25, in
+[docs/dev/research/distribution.md](../research/distribution.md). The decision stands. These
+corrections change only the facts behind it:
+
+* **Store re-signing (W4):** Microsoft re-signs **MSIX** packages, not EXE or MSI
+  installers. An Inno Setup installer submitted to the Store must already be signed with a
+  publicly trusted certificate, so the Store plan needs the MSIX.
+* **Keys in hardware (W5):** a cloud HSM or a signing service meets the rule, so CI may call
+  SignPath or Artifact Signing. What CI may never hold is an exportable key file.
+* **Artifact Signing (A1):** that is now its name, formerly Trusted Signing, and it's
+  generally available. Basic is $9.99 a month (about $120 a year, as above). An individual
+  can only validate from the US or Canada, with a government ID.
+* **SignPath Foundation (S1):** besides the conditions listed, every team member needs MFA,
+  and an executable needs "a certain verifiable reputation" before SignPath will sign it.
+  Our first release can't be signed through SignPath: it must already be released, in the
+  form to be signed.
+* **Homebrew (M2):** the rule is that a cask must pass Gatekeeper, which means Developer ID
+  and notarization. Casks that fail have been disabled since September 2026.
+* **Attestations (G1):** `actions/attest` replaces `actions/attest-build-provenance`, which
+  now only wraps it.
+
+The code-signing policy page SignPath asks for is
+[docs/user/code-signing.md](../../user/code-signing.md).
+
+## Amendment (2026-10-25): the first release's scope
+
+The maintainer set the first release's scope on 2026-10-25, in their words:
+
+> I don't need a Mac version yet. I want to create the Windows version with the free
+> self-signing or whatever or now, even though that will create a security pop-up for
+> users. That's okay for now. I just want minimal effort/cost for now.
+
+Self-signing was then advised against, since a self-signed certificate isn't trusted by
+Windows: it would add work with no change to the SmartScreen prompt users see. The plan
+became an **unsigned pre-release, `v0.1.0a1`**, with Windows and Linux files, published by
+hand, which the maintainer approved: "Yes, that's fine."
+
+* **What the release carries:** the Windows zip and installer, the Linux archive and
+  AppImage, and `SHA256SUMS`, each attested. The release workflow's `RELEASE_PLATFORMS`
+  list picks them; macOS is still built and smoke-tested on every run, and comes back by
+  adding it to that list.
+* **What waits:** signing (SignPath asks for a project that's already released), macOS
+  notarization, PyPI (switched off by the `PUBLISH_PYPI` variable), and the Flathub
+  submission.
+* **The pre-release:** `draft-release` marks a tag with an `a`, `b`, `rc`, or `.dev`
+  suffix as a pre-release.

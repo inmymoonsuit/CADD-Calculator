@@ -1,7 +1,7 @@
 # Getting started
 
-> Installers for Windows, macOS, and Linux are planned (roadmap 0.3). Until then, run
-> from source as described below.
+> To install the app, see [Installing](installing.md): a Windows installer, a macOS .dmg,
+> and a Linux AppImage, from each release. To run it from source instead, read on.
 
 ## Run from source
 

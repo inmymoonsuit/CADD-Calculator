@@ -202,19 +202,95 @@ SPDX-License-Identifier: Unicode-3.0
 ## Bundled in packaged builds only
 
 Packaged builds (`packaging/build.py`) also contain the runtime components below. Their
-full license texts will be added here before the first public release (KI-016).
+full license texts ship in the app folder's `licenses/`, vendored by
+`packaging/fetch_notices.py` from each project's repository at a pinned tag, with their
+SHA-256 in `packaging/notices/manifest.toml`. The build fails if any is missing, or if this
+index doesn't name the Qt and PySide6 versions it ships.
 
-| Component | License | Project |
+### Qt 6.12.0 and Qt for Python (PySide6, Shiboken6) 6.12.0
+
+* **Copyright:** The Qt Company Ltd. and other contributors.
+* **License:** GNU Lesser General Public License v3 (`licenses/LGPL-3.0.txt`), which
+  builds on the GNU General Public License v3 (`licenses/GPL-3.0.txt`).
+* **What ships:** Qt Core, Gui, Widgets, and Svg (and DBus on Linux) with their plugins,
+  Qt's `qtbase_*.qm` translations, PySide6's and Shiboken6's libraries, and PySide6's own
+  Python support code (`PySide6.support`), which Nuitka compiles into the executable.
+* **Source code**, at the versions that ship:
+  * Qt 6.12.0: https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/
+    (`qtbase-everywhere-src-6.12.0.tar.xz`, `qtsvg-…`, `qttranslations-…`), or the
+    `v6.12.0` tags of https://github.com/qt/qtbase, https://github.com/qt/qtsvg, and
+    https://github.com/qt/qttranslations
+  * PySide6 and Shiboken6 6.12.0:
+    https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/
+    (`pyside-setup-everywhere-src-6.12.0.zip`), or the `v6.12.0` tag of
+    https://code.qt.io/cgit/pyside/pyside-setup.git
+
+#### Replacing or rebuilding Qt and PySide6
+
+The LGPL-3.0 lets you use the app with a modified Qt or PySide6. Two routes:
+
+* **Replace the shared libraries.** Qt's and PySide6's libraries ship as separate files in
+  the app folder (the `Qt6*` and `pyside6`/`shiboken6` libraries, and the plugins under
+  `PySide6/qt-plugins/`), and Qt's translations as separate files (in
+  `PySide6/translations/`, or `PySide6/Qt/translations/` on Linux and macOS). Swap in other
+  compatible builds of the same version.
+* **Rebuild the whole app.** PySide6's support code is compiled into the executable, so to
+  change it, rebuild the app. Its complete source is public under the Apache License 2.0,
+  and the build is one command. From the release's tag:
+
+  ```bash
+  git clone https://github.com/inmymoonsuit/CADD-Calculator.git
+  cd CADD-Calculator
+  git checkout v<version>
+  uv sync --extra gui --group build
+  uv pip install <your modified PySide6 wheels>     # PySide6, Shiboken6, and their Qt
+  uv run --no-sync python packaging/build.py
+  ```
+
+  `--no-sync` matters: a plain `uv run` puts the locked PySide6 back before it builds. The
+  new app is in `builds/generic/`, and its `.build.json` records which PySide6 it was built
+  against (`docs/dev/packaging.md`, "Building against a modified PySide6").
+
+### The rest of the runtime
+
+| Component | License | Text in `licenses/` |
 |---|---|---|
-| Qt 6 (Core, Gui, Widgets, Svg) | LGPL-3.0 | https://www.qt.io/ |
-| Qt translations (`qtbase_*.qm`, from qttranslations) | LGPL-3.0 | https://www.qt.io/ |
-| PySide6 and Shiboken6 (Qt for Python) | LGPL-3.0 | https://wiki.qt.io/Qt_for_Python |
-| CPython | Python Software Foundation License 2.0 | https://www.python.org/ |
-| OpenSSL (libcrypto) | Apache-2.0 | https://www.openssl.org/ |
-| libffi | MIT | https://sourceware.org/libffi/ |
-| Nuitka runtime | Apache-2.0 | https://nuitka.net/ |
-| Microsoft Visual C++ runtime (Windows builds) | Microsoft redistributable license | https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist |
+| Third-party code inside Qt: FreeType, HarfBuzz, libpng, libjpeg-turbo, PCRE2, zlib, MD4C, double-conversion, TinyCBOR, the Unicode Character Database, the Wayland protocols, and others | each entry's own (BSD, MIT, zlib, FTL, Unicode, and others) | `Qt-third-party.txt`, one entry each with its copyright and full license text, from qtbase 6.12.0's `qt_attribution.json` files |
+| ICU 73 (Linux builds: PySide6's wheel bundles `libicudata`, `libicui18n`, and `libicuuc` for Qt Core) | Unicode License, with ICU's notices for the data it includes | `ICU-LICENSE.txt` (ICU 73.2) |
+| xcb-util-cursor 0.1.1 (Linux builds: `libxcb-cursor.so.0`, from Ubuntu 22.04's `libxcb-cursor0`, which Qt's xcb platform plugin needs and a stock Ubuntu 22.04 desktop doesn't install) | MIT-style (X11) | `libxcb-cursor-COPYING.txt` |
+| The Python interpreter: CPython 3.12.14 as built by [python-build-standalone](https://github.com/astral-sh/python-build-standalone), which uv installs | Python Software Foundation License 2.0 | `Python-interpreter-LICENSE.txt`, the build's own interpreter's `LICENSE.txt`, copied by the build on each platform (on Windows it also carries the licenses of what that build bundles); and `Python-LICENSE.txt` (CPython 3.12.14) |
+| Software CPython includes: libmpdec, expat, zlib, libffi, OpenSSL, and others | each one's own | `Python-incorporated-software.rst` (CPython 3.12.14's `Doc/license.rst`), and below |
+| OpenSSL 3.5.7 (`ssl`, `hashlib`) | Apache-2.0 | `OpenSSL-LICENSE.txt` (OpenSSL 3.5.7) |
+| zlib 1.3.2 (Windows and Linux; macOS builds use the system's zlib) | zlib License | `zlib-LICENSE.txt` (zlib 1.3.2) |
+| expat 2.8.3 (`pyexpat`) | MIT | `expat-COPYING.txt` (expat 2.8.3) |
+| libffi (`_ctypes`) | MIT | `libffi-LICENSE.txt` (libffi 3.4.4; the license is the same across 3.x) |
+| bzip2 (`_bz2`) | bzip2 License | `bzip2-LICENSE.txt` (bzip2 1.0.8) |
+| xz's liblzma (`_lzma`) | public domain before 5.4; 0BSD from 5.4 on | `xz-5.2-COPYING.txt`, `xz-COPYING.0BSD.txt` |
+| util-linux's libuuid (`_uuid`; Linux) | BSD-3-Clause | `libuuid-COPYING.txt` |
+| libedit (`readline`; Linux) | BSD-3-Clause | `libedit-LICENSE.txt` |
+| ncurses 6.5 (`curses`, `readline`; Linux) | MIT-style (X11) | `ncurses-COPYING.txt` (ncurses 6.5.20240427) |
+| SQLite (`sqlite3`; Linux and macOS) | public domain | none needed |
+| Nuitka's runtime, compiled into the executable | Apache-2.0 | `Nuitka-LICENSE.txt` (Nuitka 4.1.1) |
+| Microsoft Visual C++ runtime (Windows builds) | Microsoft's Distributable Code terms | `Microsoft-Visual-C++-runtime.txt`, the app's own notice, with links to Microsoft's terms |
 
-The Qt and PySide6 libraries ship as separate shared libraries in the app folder, and
-Qt's translations as separate files in `PySide6/translations/`, so they can be replaced
-with other compatible builds, as the LGPL-3.0 allows.
+Every build uses uv's python-build-standalone interpreter, not python.org's. On Linux and
+macOS it links OpenSSL, expat, bzip2, liblzma, libffi, libmpdec, SQLite, and on Linux
+zlib, libuuid, libedit, and ncurses, into `libpython`; on macOS those four come from the
+system and don't ship, and on Windows some are separate DLLs. CI pins the interpreter:
+python-build-standalone 3.12.14 as uv 0.12.5 installs it, on every platform.
+The build asks its interpreter which OpenSSL, zlib, and expat releases it carries, and fails
+if this index doesn't name them, or if OpenSSL isn't a 3 release, whose license this text
+is. It also lists every native binary it bundles in its `.build.json`
+(`bundled_libraries`), and fails on one that `packaging/library_notices.py` doesn't assign
+to a component above, or whose texts are missing.
+
+The Flatpak is built differently: Flathub builds it from source on the KDE 6.11 runtime,
+and it runs on that runtime's Qt and on PySide6 6.11 from Flathub's
+`io.qt.PySide.BaseApp`, under the same licenses, with their notices in the runtime and
+the BaseApp. It bundles only the app itself (`docs/dev/packaging.md`, "Flathub").
+
+The builds leave out Qt's network module, its TLS backends, the VNC platform plugin, EGLFS's
+device integrations, and
+the image plugins the app doesn't read (PDF, TIFF, WebP, TGA, WBMP, ICNS), so their notices
+aren't needed (`docs/dev/packaging.md`, "What the build leaves out"). OpenSSL's libcrypto
+stays: Python's `hashlib` uses it.

@@ -1,0 +1,36 @@
+# The libraries the AppImage takes from the host: packages every stock Ubuntu 22.04 desktop
+# has installed. CI's appimage-x11 job installs only these (with Xvfb) in a clean
+# ubuntu:22.04 container, checks each against Ubuntu's own desktop manifest, and starts the
+# AppImage on X11 (packaging/linux/check_desktop.py; docs/dev/packaging.md, "The Linux
+# AppImage"). libxcb-cursor0 isn't on that desktop, so the build bundles it instead.
+fontconfig
+fonts-dejavu-core
+libcups2
+libdbus-1-3
+libegl1
+libfontconfig1
+libfreetype6
+libgl1
+libglib2.0-0
+libgtk-3-0
+libopengl0
+libwayland-client0
+libwayland-cursor0
+libwayland-egl1
+libx11-6
+libx11-xcb1
+libxcb-icccm4
+libxcb-image0
+libxcb-keysyms1
+libxcb-randr0
+libxcb-render-util0
+libxcb-render0
+libxcb-shape0
+libxcb-shm0
+libxcb-sync1
+libxcb-util1
+libxcb-xfixes0
+libxcb-xkb1
+libxcb1
+libxkbcommon-x11-0
+libxkbcommon0

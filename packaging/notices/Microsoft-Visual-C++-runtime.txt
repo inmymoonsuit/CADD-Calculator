@@ -1,0 +1,34 @@
+Microsoft Visual C++ runtime, in CADD Calculator's Windows builds
+
+The Windows builds of CADD Calculator include these files from the Microsoft Visual C++
+Redistributable, next to the program and in its shiboken6 folder:
+
+    vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll, msvcp140_1.dll,
+    msvcp140_2.dll, msvcp140_codecvt_ids.dll
+
+They are Microsoft Corporation's "Distributable Code", copyright Microsoft Corporation.
+They come with Python and with PySide6 (Qt for Python), which are built with Microsoft
+Visual C++. They aren't CADD Calculator's own code, and the Apache License 2.0 that covers
+CADD Calculator doesn't cover them.
+
+Microsoft lets applications redistribute these files under the "Distributable Code"
+terms of the Microsoft Software License Terms for Visual Studio:
+
+    License terms:      https://visualstudio.microsoft.com/license-terms/
+    The REDIST list:    https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+    Redistributing:     https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
+
+By installing or using CADD Calculator on Windows, you agree to these conditions for the
+Microsoft files:
+
+  * Don't change or remove their copyright, trademark, or patent notices.
+  * Don't use Microsoft's trademarks in a way that suggests CADD Calculator comes from or
+    is endorsed by Microsoft.
+  * Use them only on Microsoft Windows, with this program.
+  * Don't include them in malicious, deceptive, or unlawful software.
+
+If you redistribute CADD Calculator's Windows build, pass these conditions on to the
+people you give it to.
+
+This notice is CADD Calculator's own summary. Microsoft's license terms are the
+authoritative text.

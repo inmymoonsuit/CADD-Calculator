@@ -7,6 +7,50 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- The AppImage is started on X11 in CI, in a clean Ubuntu 22.04 container with only the
+  libraries a stock 22.04 desktop installs, and every library it needs is checked with
+  ldd. It bundles libxcb-cursor, which Qt's xcb plugin needs and that desktop lacks, and
+  leaves out EGLFS's embedded-screen plugins.
+- The first release's scope: an unsigned pre-release, v0.1.0a1, with Windows and Linux
+  files. The release workflow's RELEASE_PLATFORMS list picks the platforms a release
+  carries (macOS is still built and tested), it checks the tag matches the version, and
+  it marks a/b/rc tags as pre-releases. PyPI publishing waits behind a PUBLISH_PYPI switch.
+- Packaged builds list every native library they bundle in their .build.json, and the
+  build fails on one without a notice. New notices: ICU (Linux), libuuid, libedit, ncurses,
+  and the build's own interpreter's license; zlib and expat now name the releases that
+  ship.
+- Release integrity: every release attaches `SHA256SUMS` over all its files, and on tags
+  each file gets a GitHub artifact attestation (`gh attestation verify`). The wheel and the
+  sdist are built and checked on every run, and a tag publishes them to TestPyPI, then
+  PyPI, through Trusted Publishing, each upload after the maintainer approves it. No token
+  is stored.
+- macOS: a .dmg holding the app and a link to /Applications; CI mounts it and starts the
+  app from it. A user guide, "Installing", says plainly that the downloads aren't signed
+  yet, and gives Microsoft's and Apple's first-run steps ("Run anyway", "Open Anyway").
+  Notarization is stubbed in the release workflow, switched off.
+- Linux: an AppImage of the packaged build, with a .desktop file and AppStream metainfo,
+  made with pinned, checksummed appimagetool and runtime releases; and a Flathub manifest
+  that builds the app from source on the KDE runtime with the PySide BaseApp. CI validates
+  the metadata and starts both, the Flatpak inside its sandbox.
+- A Windows installer: `packaging/build.py --installer` wraps the app in an Inno Setup
+  installer that installs per user with no admin rights (per-machine optional), with a
+  Start-menu shortcut, an uninstaller, and a stable AppId. CI installs it, starts the
+  installed app, and uninstalls it on every Windows dry run. Signing through SignPath
+  Foundation or Microsoft Artifact Signing is wired in on tags, switched off until the
+  maintainer configures one. winget manifest templates are validated against winget's
+  schema (`docs/dev/packaging.md`).
+- A code signing policy page (`docs/user/code-signing.md`), written to SignPath
+  Foundation's conditions: who builds and signs, the review before a release, how to check
+  a download, and the privacy statement. ADR-0022's research claims now have sources,
+  checked on 2026-10-25 (`docs/dev/research/distribution.md`), with an amendment for the
+  facts that changed.
+- Packaged builds carry the full license texts of the runtime they bundle, in the app
+  folder's `licenses/`: Qt's LGPL-3.0 and GPL-3.0, CPython and the software it
+  includes, OpenSSL, libffi, zlib, bzip2, xz, Nuitka, the Microsoft C++ runtime, and
+  Qt's own third-party notices (KI-016). They're vendored from upstream at pinned tags
+  with checksums (`packaging/fetch_notices.py`), and the build fails if one is missing.
+  THIRD_PARTY_NOTICES.md gives Qt 6.12 and PySide6 6.12 their copyright, source, and how
+  to replace or rebuild them, and Help > About names them and their license.
 - For calculator authors (ADR-0024 E1, E2): a field's text is read in the unit or form
   its picker chooses, by `TypedValue.read(text, choice, dimension)`. It takes numbers,
   fractions, mixed numbers and exact arithmetic (+ − × ÷ and parentheses), with
@@ -583,6 +627,10 @@ All notable changes are recorded here. The format follows
   (FAA-H-8083-31B, p. 4-59).
 
 ### Changed
+- Packaged builds leave out QtNetwork, Qt's TLS backends, and the PDF, TIFF, WebP, TGA,
+  WBMP, and ICNS image plugins, which the app never uses (`docs/dev/packaging.md`).
+- Packaged builds on Linux and macOS put Qt's own catalogs where their Qt looks, so Qt's
+  text (standard buttons, a field's context menu) follows the app's language there too.
 - **The converters are one value in and one out** (ADR-0024 §7, E-6, U3): Length,
   **Fraction to decimal** and **Decimal to fraction**, new, Angle, Area, and Stress and
   pressure. Each takes a value in its input's picked unit and gives it in its result's

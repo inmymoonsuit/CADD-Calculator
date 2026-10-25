@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=CADD Calculator
+GenericName=Drafting Calculator
+Comment=Drafting calculators that show their work
+Exec=caddcalc-gui
+Icon=io.github.inmymoonsuit.CADDCalculator
+Terminal=false
+Categories=Education;Science;Engineering;
+Keywords=CAD;drafting;sheet metal;bend allowance;flat pattern;calculator;
+StartupNotify=true
