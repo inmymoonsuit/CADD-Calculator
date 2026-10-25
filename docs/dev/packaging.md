@@ -156,7 +156,8 @@ texts added (2026-10-25; `.build.json`'s `size_mb` and `archive_mb`):
 | Left out | Why | How |
 |---|---|---|
 | QtNetwork (`QtNetwork` module, `Qt6Network` library) | nothing imports it; the app makes no network calls (ADR-0009) | `--nofollow-import-to=PySide6.QtNetwork` |
-| Qt's TLS backends (`tls/`: OpenSSL, Schannel, cert-only) | they serve QtNetwork, and were what pulled it in | `--noinclude-qt-plugins=tls` |
+| Qt's TLS backends (`tls/`: OpenSSL, Schannel, cert-only) | they serve QtNetwork, and pulled it in | `--noinclude-qt-plugins=tls` |
+| The VNC platform plugin (`platforms/libqvnc.so`, Linux) | it serves the window over a network, and links QtNetwork; the app uses xcb or Wayland | `--noinclude-dlls=*platforms*qvnc*` |
 | Image plugins for PDF, TIFF, WebP, TGA, WBMP, and ICNS | the app reads PNG and JPEG art, SVG and ICO icons; `.icns` is only written at build time | `--noinclude-dlls=*imageformats*<name>*` |
 
 OpenSSL's libcrypto stays, because Python's `hashlib` uses it. The GIF, ICO, JPEG, and

@@ -662,6 +662,7 @@ def test_the_trim_finds_every_platforms_left_out_files(
         plugins / "imageformats/libqwebp.so",
         plugins / "imageformats/libqicns.dylib",
         plugins / "tls/qopensslbackend.dll",
+        plugins / "platforms/libqvnc.so",
         Path("PySide6/QtNetwork.pyd"),
         Path("PySide6/QtNetwork.abi3.so"),
         Path("qt6network.dll"),
@@ -673,6 +674,7 @@ def test_the_trim_finds_every_platforms_left_out_files(
         plugins / "imageformats/qgif.dll",
         plugins / "imageformats/qico.dll",
         plugins / "platforms/qwindows.dll",
+        plugins / "platforms/libqxcb.so",
         Path("qt6gui.dll"),
         Path("libcrypto-3-x64.dll"),
     ]
@@ -685,6 +687,7 @@ def test_the_trim_finds_every_platforms_left_out_files(
     assert "--noinclude-qt-plugins=tls" in args
     assert "--nofollow-import-to=PySide6.QtNetwork" in args
     assert "--noinclude-dlls=*imageformats*qpdf*" in args
+    assert "--noinclude-dlls=*platforms*qvnc*" in args
 
 
 @pytest.mark.gui

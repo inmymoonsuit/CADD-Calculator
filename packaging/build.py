@@ -207,8 +207,12 @@ TRIMMED_QT_PLUGIN_FAMILIES = ("tls",)
 TRIMMED_IMAGE_FORMATS = ("qpdf", "qtiff", "qwebp", "qtga", "qwbmp", "qicns")
 """Qt image-format plugins the build leaves out. The app reads PNG and JPEG art, SVG and
 ICO icons, and nothing else; ``.icns`` is made at build time, not read by the app."""
+TRIMMED_PLATFORM_PLUGINS = ("qvnc",)
+"""Qt platform plugins the build leaves out: VNC (Linux), which serves the window over a
+network and would pull QtNetwork back in."""
 TRIMMED_QT_MODULES = ("QtNetwork",)
-"""Qt modules the build leaves out: nothing imports QtNetwork; only the TLS plugins did."""
+"""Qt modules the build leaves out: nothing imports QtNetwork; only the TLS plugins and the
+VNC platform plugin did."""
 
 
 LICENSES_DIR = "licenses"
@@ -245,6 +249,7 @@ def trimmed_files(output: Path) -> list[str]:
         stem = name.removeprefix("lib").split(".")[0]
         if (
             ("imageformats" in parts and stem in TRIMMED_IMAGE_FORMATS)
+            or ("platforms" in parts and stem in TRIMMED_PLATFORM_PLUGINS)
             or (any(family in parts for family in TRIMMED_QT_PLUGIN_FAMILIES) and path.is_file())
             or any(
                 m.lower() in stem or m.lower().replace("qt", "qt6") in stem
@@ -325,6 +330,7 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
         *(f"--noinclude-qt-plugins={family}" for family in TRIMMED_QT_PLUGIN_FAMILIES),
         *(f"--nofollow-import-to=PySide6.{module}" for module in TRIMMED_QT_MODULES),
         *(f"--noinclude-dlls=*imageformats*{plugin}*" for plugin in TRIMMED_IMAGE_FORMATS),
+        *(f"--noinclude-dlls=*platforms*{plugin}*" for plugin in TRIMMED_PLATFORM_PLUGINS),
     ]
     if sys.platform == "win32":
         args.append("--windows-console-mode=disable")
