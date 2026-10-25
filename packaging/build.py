@@ -347,6 +347,9 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
         "--report=compilation-report.xml",
         *(f"--noinclude-qt-plugins={family}" for family in TRIMMED_QT_PLUGIN_FAMILIES),
         *(f"--nofollow-import-to=PySide6.{module}" for module in TRIMMED_QT_MODULES),
+        # The library too: Nuitka still follows the dependencies of a plugin it leaves out,
+        # so libqvnc.so alone would bring libQt6Network back (engineering log, 2026-10-25).
+        *(f"--noinclude-dlls=*{m.replace('Qt', 'Qt6', 1)}*" for m in TRIMMED_QT_MODULES),
         *(f"--noinclude-dlls=*imageformats*{plugin}*" for plugin in TRIMMED_IMAGE_FORMATS),
         *(f"--noinclude-dlls=*platforms*{plugin}*" for plugin in TRIMMED_PLATFORM_PLUGINS),
     ]

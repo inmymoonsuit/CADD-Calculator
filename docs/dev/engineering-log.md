@@ -24,7 +24,10 @@ plugin family (run 40222824994).
 **Why:** on Linux the `platforms` family includes `libqvnc.so`, the VNC platform plugin,
 which links QtNetwork. Reading DT_NEEDED across PySide6 6.12's Linux wheel, it was the
 only plugin a build ships that does.
-**Instead:** the build also leaves out `libqvnc.so`; the app uses xcb or Wayland.
+**Instead:** the build also leaves out `libqvnc.so`; the app uses xcb or Wayland. That
+wasn't enough either (run 40224120571): Nuitka left the plugin out but still followed its
+dependencies, so `libQt6Network.so.6` stayed, "Used by" the plugin it had skipped. The
+build now leaves out the Qt6Network library by name as well (`--noinclude-dlls=*Qt6Network*`).
 
 ## 2026-10-25: Qt's catalogs in a Windows-only folder on Linux and macOS
 **Tried:** the first CI builds of the generic edition on Linux and macOS (the release

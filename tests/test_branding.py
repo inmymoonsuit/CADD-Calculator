@@ -688,6 +688,7 @@ def test_the_trim_finds_every_platforms_left_out_files(
     assert "--nofollow-import-to=PySide6.QtNetwork" in args
     assert "--noinclude-dlls=*imageformats*qpdf*" in args
     assert "--noinclude-dlls=*platforms*qvnc*" in args
+    assert "--noinclude-dlls=*Qt6Network*" in args
 
 
 @pytest.mark.gui
