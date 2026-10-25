@@ -79,6 +79,8 @@ def test_the_build_dependencies_match_their_pins() -> None:
         assert re.fullmatch(r"[0-9a-f]{64}", source["sha256"])
     assert module["cleanup"] == ["*"], "build tools don't ship"
     assert "babel" in pins and "hatchling" in pins, "pyproject.toml's [build-system]"
+    # hatchling's own requirements (Python 3.11+): a missing one fails the offline build.
+    assert {"packaging", "pathspec", "pluggy", "tomlkit", "trove-classifiers"} <= set(pins)
 
 
 def test_the_appimage_tools_are_pinned_and_checked() -> None:

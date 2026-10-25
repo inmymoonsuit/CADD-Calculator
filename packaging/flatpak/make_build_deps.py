@@ -3,7 +3,8 @@
     uv run python packaging/flatpak/make_build_deps.py
 
 Flathub builds offline, so every download is listed with its SHA-256. The app needs only
-its build backend at build time (hatchling and what it imports, and Babel, which compiles
+its build backend at build time (hatchling and what it imports, tomlkit among them, and
+Babel, which compiles
 the catalogs, per pyproject.toml's ``[build-system]``); PySide6 comes from the
 io.qt.PySide.BaseApp. These are all pure-Python wheels from PyPI, pinned below. The
 module's ``cleanup`` drops them from the finished app.
@@ -23,6 +24,7 @@ PINS = {
     "pathspec": "1.1.1",
     "pluggy": "1.7.0",
     "trove-classifiers": "2026.9.21.13",
+    "tomlkit": "0.15.2",
     "babel": "2.18.0",
 }
 
