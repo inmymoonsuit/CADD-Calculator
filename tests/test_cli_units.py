@@ -125,7 +125,11 @@ def test_show_lists_each_input_s_choices_and_the_output_sets(
     assert "Units (--unit): deg (default), dms, rad" in out
     assert "Output sets (--output-set)" in out and "in_16      in 1/16" in out
     status, out, _err = _run(capsys, "show", "conversions.length")
-    assert "Output sets" not in out and "Always in mm" in out
+    assert "Output sets" not in out
+    assert "Units (--output-unit): in, ft_in, ft, mm, cm, m" in out
+    assert "Until picked, it follows value: in → mm, ft_in → mm, ft → m, mm → in" in out
+    status, out, _err = _run(capsys, "show", "conversions.decimal_to_fraction")
+    assert "Values: 16 (1/16), 32 (1/32), 64 (1/64)" in out and "Always in in_64" in out
 
 
 def _calls() -> list[tuple[str, str]]:
@@ -186,7 +190,8 @@ def test_a_published_example_in_schema_1(capsys: pytest.CaptureFixture[str]) -> 
     assert ba["base"]["unit"] == "mm" and ba["shown"]["unit"] == "in"
     assert ba["shown"]["value"] == pytest.approx(1.338 / 2, abs=0.0005 + 1e-9)
     assert ba["base"]["value"] == pytest.approx(ba["shown"]["value"] * INCH, rel=1e-15)
-    assert ba["shown"]["text"] == f"{ba['shown']['value']:.4f} in"
+    # 0.66875 in is a decimal half, so it's shown to even, not as its double rounds.
+    assert ba["shown"]["text"] == "0.6688 in"
     sixteenths = _json(capsys, *args, "--output-set", "in_16")["outputs"]["bend_allowance"]
     assert sixteenths["base"] == ba["base"], "the set changes only how it's shown"
     assert sixteenths["shown"] == {
@@ -199,10 +204,10 @@ def test_a_published_example_in_schema_1(capsys: pytest.CaptureFixture[str]) -> 
 
 
 def test_a_signed_step_shows_its_plus_in_json() -> None:
-    """A converter's error shows ``+0.002500 in`` in its work, so its JSON does too."""
-    from caddcalc.calculators.conversions import LengthConverter
+    """A fraction's error shows ``+0.0025 in`` in its work, so its JSON does too."""
+    from caddcalc.calculators.conversions import DecimalToFraction
 
-    calc = LengthConverter()
+    calc = DecimalToFraction()
     result = calc.run({"value": 7.9223})
     data = result_json(calc, result, ShownUnits.generated(), DisplayPrefs())
     signed = [s for s, step in zip(data["steps"], result.steps, strict=True) if step.signed]
@@ -343,4 +348,80 @@ def test_the_inputs_are_listed_in_their_own_choice_not_the_set_s(
     status, out, _err = _run(capsys, "run", BEND, "T=0.1", "--output-set", "mm", "--no-work")
     assert status == 0
     (line,) = [line for line in out.splitlines() if "Material thickness" in line]
-    assert "0.1000 in" in line
+    assert "  0.1 in  " in line, "in its own choice, as typed"
+
+
+LENGTH = "conversions.length"
+
+
+@pytest.mark.parametrize(
+    ("argv", "why"),
+    [
+        (["--output-unit", "Y=mm", "--output-unit", "value=in"], "names Y/value twice"),
+        (
+            ["--output-unit", "Y=deg"],
+            "--output-unit Y=deg: 'deg' isn't a unit for Y/value; its units are in, ft_in, ft, "
+            "mm, cm, m",
+        ),
+        (["--output-unit", "Y"], "Expected --output-unit KEY=ID, got 'Y'"),
+        (["--output-unit", "Z=mm"], f"{LENGTH} has no output 'Z'; the outputs with their own"),
+    ],
+)
+def test_an_output_s_own_unit_is_refused_as_the_mistake_it_is(
+    capsys: pytest.CaptureFixture[str], argv: list[str], why: str
+) -> None:
+    """A built-in output with its own picker: a converter's (ADR-0024 E5)."""
+    status, out, err = _run(capsys, "run", LENGTH, "X=1in", *argv)
+    assert status == 2 and out == ""
+    assert why in err
+
+
+@pytest.mark.parametrize("name", ["Y", "y", "value", "VALUE"])
+def test_an_output_s_own_unit_is_named_by_key_or_symbol_in_any_case(
+    capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    data = _json(capsys, "run", LENGTH, "X=1in", "--output-unit", f"{name}=cm")
+    assert data["outputs"]["value"]["shown"]["text"] == "2.54000 cm"
+
+
+def test_an_output_follows_its_input_until_given_its_unit(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """ADR-0024 §6 on the command line: mm gives in, and --output-unit wins."""
+    data = _json(capsys, "run", LENGTH, "X=5mm")
+    assert data["outputs"]["value"]["shown"]["unit"] == "in"
+    assert data["inputs"]["value"]["shown"]["text"] == "5.0000 mm", "the input in its own unit"
+    data = _json(capsys, "run", LENGTH, "--unit", "X=ft_in", "X=1-2")
+    assert data["outputs"]["value"]["shown"]["unit"] == "mm"
+    assert data["inputs"]["value"]["shown"]["text"] == "1'-2\"", "1-2 reads a foot, then inches"
+    status, out, _err = _run(capsys, "run", LENGTH, "X=5mm", "--output-unit", "Y=m", "--no-work")
+    assert status == 0 and "0.00500000 m" in out
+    (line,) = [line for line in out.splitlines() if line.lstrip().startswith("X ")]
+    assert "5.0000 mm" in line, "the Inputs line in the field's own unit"
+
+
+@pytest.mark.parametrize("given", ["F=1/32", "F=32", "fineness=1/32", "F= 1/32 "])
+def test_a_fineness_reads_by_its_label_as_its_message_names_it(
+    capsys: pytest.CaptureFixture[str], given: str
+) -> None:
+    """``F=17`` says "must be one of 1/16, 1/32, 1/64", so those read (S&R's PR #3 Low 2)."""
+    argv = ["run", "conversions.decimal_to_fraction", "X=0.31in", given, "--json"]
+    status, out, _err = _run(capsys, *argv)
+    assert status == 0
+    data = json.loads(out)
+    assert data["inputs"]["fineness"]["base"]["value"] == 32
+    assert data["inputs"]["fineness"]["entered"]["text"] == "32", "entered as its value"
+    status, _out, err = _run(capsys, "run", "conversions.decimal_to_fraction", "F=1/17")
+    assert status == 2 and "must be one of 1/16, 1/32, 1/64" in err
+
+
+@pytest.mark.parametrize("name", ["in²", "in2", "in^2", "sq in", "square inches", "IN2"])
+def test_unit_takes_a_unit_s_spellings(capsys: pytest.CaptureFixture[str], name: str) -> None:
+    """``--unit`` reads ``in2`` and ``sq in`` as ``in²``, as a unit's text does (Low 3)."""
+    argv = ["run", "conversions.area", "X=3", "--unit", f"X={name}", "--json"]
+    status, out, _err = _run(capsys, *argv)
+    assert status == 0, name
+    entered = json.loads(out)["inputs"]["value"]["entered"]
+    assert (entered["unit"], entered["text"]) == ("in²", "3")
+    status, _out, err = _run(capsys, "run", "conversions.area", "X=3", "--unit", "X=deg")
+    assert status == 2 and "'deg' isn't a unit for X/value" in err

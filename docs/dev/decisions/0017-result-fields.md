@@ -654,3 +654,10 @@ From Support & Review's verification and UI/UX & Design's reviews of k3c, k4, an
   review's Low 3): Tab reaches the button, not the label whose tooltip has the help, so
   a screen reader says "E16: plus 0.002500 inches. The nearest fraction less the value
   …". Every output with help gets it, the sheet-metal ones included.
+
+### 2026-10-19: copy and speech in the output picker's set (ADR-0024 U4)
+
+* **§4 and §5:** Copy, Copy all and the spoken text are in the output picker's set, or a
+  result's own pick, not "the display unit" (ADR-0024 §5). The set's picker, **Show in**,
+  sits in the results header, and a result with its own picker has it in its row.
+* A copy menu offers no two items that copy the same text (ADR-0024's stop 3 amendments).

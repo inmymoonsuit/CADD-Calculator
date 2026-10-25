@@ -4,12 +4,12 @@
 "value": "1,00°"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the degree in radians, to its printed digits."
 ],
 "notes": [],
 "outputs": {
-"deg": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1,00000",
@@ -18,42 +18,22 @@
 },
 "shown": "1,00000°",
 "spoken": "1,00000 degrees"
-},
-"dms": {
-"copies": {
-"full": "1",
-"shown": "1°0′0,00″",
-"value": "1d0'0.00\"",
-"with_unit": "1d0'0.00\""
-},
-"shown": "1°0′0,00″",
-"spoken": "1 degree"
-},
-"rad": {
-"copies": {
-"full": "0.01745329252",
-"shown": "0,0174533",
-"value": "0.0174533",
-"with_unit": "0.0174533 rad"
-},
-"shown": "0,0174533 rad",
-"spoken": "0,0174533 radians"
 }
 },
 "steps": [],
-"tsv": "deg\tDegrees\t1,00000\t°\nrad\tRadians\t0,0174533\trad\nDMS\tDegrees, minutes, and seconds\t1°0′0,00″\t\n"
+"tsv": "Y\tConverted angle\t1,00000\t°\n"
 },
 "conversions.angle|exact|in|,|low value": {
 "inputs": {
 "value": "-1000000000,00°"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the degree in radians, to its printed digits."
 ],
 "notes": [],
 "outputs": {
-"deg": {
+"value": {
 "copies": {
 "full": "-1000000000",
 "shown": "-1000000000",
@@ -62,55 +42,35 @@
 },
 "shown": "-1000000000°",
 "spoken": "minus 1000000000 degrees"
-},
-"dms": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000°0′0,00″",
-"value": "-1000000000d0'0.00\"",
-"with_unit": "-1000000000d0'0.00\""
-},
-"shown": "-1000000000°0′0,00″",
-"spoken": "minus 1000000000 degrees"
-},
-"rad": {
-"copies": {
-"full": "-17453292.52",
-"shown": "-17453300",
-"value": "-17453300",
-"with_unit": "-17453300 rad"
-},
-"shown": "-17453300 rad",
-"spoken": "minus 17453300 radians"
 }
 },
 "steps": [],
-"tsv": "deg\tDegrees\t-1000000000\t°\nrad\tRadians\t-17453300\trad\nDMS\tDegrees, minutes, and seconds\t'-1000000000°0′0,00″\t\n"
+"tsv": "Y\tConverted angle\t-1000000000\t°\n"
 },
 "conversions.angle|exact|in|,|x0.01 value": {
-"sha256": "51769074fffdee686a8cbd8338f15617ebac5f2f1e9cfb7b35e6a768c516a08b"
+"sha256": "5ba06a471900ea188cf110db35841e5b4a98aebf49d58e6d0c7ec5365d6e4d1e"
 },
 "conversions.angle|exact|in|,|x0.1 value": {
-"sha256": "37a66d4d1ec16cddb9aecf2ee65176123e529e0cc59f797c264a6899b0c07998"
+"sha256": "49da16568a7b2dbcf6d7ed97f3f9fd6211715c754acdc4dd3dc3d1a6e750158c"
 },
 "conversions.angle|exact|in|,|x10.0 value": {
-"sha256": "b467443f9f764c3467f28167ed18a578dcd3f3cb759ccbe78e01d5f8627ccdf9"
+"sha256": "3f0e73f3b3071db24ab17712eaf6828a08ef1e8802e5b236171b277e6a92bdb7"
 },
 "conversions.angle|exact|in|,|x100.0 value": {
-"sha256": "600c45db98d1abd5343780abd6a6d07d42016a40f1c5777fdf1beb79cbe24538"
+"sha256": "845ecba2bf7a5878f09cbad55aec638817cf847ed15b701aad93d69372c49cf0"
 },
 "conversions.angle|exact|in|.|defaults": {
-"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            1.00°  (default)\n\nWork\n\nResults\n  deg    Degrees                          1.00000°\n  rad    Radians                          0.0174533 rad\n  DMS    Degrees, minutes, and seconds    1°0′0.00″\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            1.00°  (default)\n\nWork\n\nResults\n  Y      Converted angle                  1.00000°\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "1.00°"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the degree in radians, to its printed digits."
 ],
 "notes": [],
 "outputs": {
-"deg": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1.00000",
@@ -119,43 +79,23 @@
 },
 "shown": "1.00000°",
 "spoken": "1.00000 degrees"
-},
-"dms": {
-"copies": {
-"full": "1",
-"shown": "1°0′0.00″",
-"value": "1d0'0.00\"",
-"with_unit": "1d0'0.00\""
-},
-"shown": "1°0′0.00″",
-"spoken": "1 degree"
-},
-"rad": {
-"copies": {
-"full": "0.01745329252",
-"shown": "0.0174533",
-"value": "0.0174533",
-"with_unit": "0.0174533 rad"
-},
-"shown": "0.0174533 rad",
-"spoken": "0.0174533 radians"
 }
 },
 "steps": [],
-"tsv": "deg\tDegrees\t1.00000\t°\nrad\tRadians\t0.0174533\trad\nDMS\tDegrees, minutes, and seconds\t1°0′0.00″\t\n"
+"tsv": "Y\tConverted angle\t1.00000\t°\n"
 },
 "conversions.angle|exact|in|.|low value": {
-"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            -1000000000.00°  (entered)\n\nWork\n\nResults\n  deg    Degrees                          -1000000000°\n  rad    Radians                          -17453300 rad\n  DMS    Degrees, minutes, and seconds    -1000000000°0′0.00″\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            -1000000000.00°  (entered)\n\nWork\n\nResults\n  Y      Converted angle                  -1000000000°\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-1000000000.00°"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the degree in radians, to its printed digits."
 ],
 "notes": [],
 "outputs": {
-"deg": {
+"value": {
 "copies": {
 "full": "-1000000000",
 "shown": "-1000000000",
@@ -164,55 +104,35 @@
 },
 "shown": "-1000000000°",
 "spoken": "minus 1000000000 degrees"
-},
-"dms": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000°0′0.00″",
-"value": "-1000000000d0'0.00\"",
-"with_unit": "-1000000000d0'0.00\""
-},
-"shown": "-1000000000°0′0.00″",
-"spoken": "minus 1000000000 degrees"
-},
-"rad": {
-"copies": {
-"full": "-17453292.52",
-"shown": "-17453300",
-"value": "-17453300",
-"with_unit": "-17453300 rad"
-},
-"shown": "-17453300 rad",
-"spoken": "minus 17453300 radians"
 }
 },
 "steps": [],
-"tsv": "deg\tDegrees\t-1000000000\t°\nrad\tRadians\t-17453300\trad\nDMS\tDegrees, minutes, and seconds\t'-1000000000°0′0.00″\t\n"
+"tsv": "Y\tConverted angle\t-1000000000\t°\n"
 },
 "conversions.angle|exact|in|.|x0.01 value": {
-"sha256": "5f136125bc3c8548933081e821da7e17e776d4c0d5de7008941f94d95dd6d838"
+"sha256": "97815680f2b934607bc99d40d325dc89cd2dd4074d66e1fbfe0fb722893cc811"
 },
 "conversions.angle|exact|in|.|x0.1 value": {
-"sha256": "31e4b764e424a1c65d85094f05d6886c6ec1f69cf55ce63ac9638151d1eaf6ab"
+"sha256": "1b95eb98f8adafca3f9151abf3e4d27bf6dceae0f997198ee36019a20556dd36"
 },
 "conversions.angle|exact|in|.|x10.0 value": {
-"sha256": "3b51d2484dfb4baa1c5f5412683a93e5b790c02eee7f11c6265f72e22f86c1a2"
+"sha256": "2db639a98dd06f60edffdef750412d798a843706370d37cb8f19991f60a4316e"
 },
 "conversions.angle|exact|in|.|x100.0 value": {
-"sha256": "58f3d13a75da2e47bf4b150639b44eea395a1b140472a997c37354a14ccb9531"
+"sha256": "695ad9cc56bbb96801000d97925ac2a0211c9944aaefdf0facfccc930701fa75"
 },
 "conversions.angle|exact|mm|.|defaults": {
-"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            1.00°  (default)\n\nWork\n\nResults\n  deg    Degrees                          1.00000°\n  rad    Radians                          0.0174533 rad\n  DMS    Degrees, minutes, and seconds    1°0′0.00″\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            1.00°  (default)\n\nWork\n\nResults\n  Y      Converted angle                  1.00000°\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "1.00°"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the degree in radians, to its printed digits."
 ],
 "notes": [],
 "outputs": {
-"deg": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1.00000",
@@ -221,43 +141,23 @@
 },
 "shown": "1.00000°",
 "spoken": "1.00000 degrees"
-},
-"dms": {
-"copies": {
-"full": "1",
-"shown": "1°0′0.00″",
-"value": "1d0'0.00\"",
-"with_unit": "1d0'0.00\""
-},
-"shown": "1°0′0.00″",
-"spoken": "1 degree"
-},
-"rad": {
-"copies": {
-"full": "0.01745329252",
-"shown": "0.0174533",
-"value": "0.0174533",
-"with_unit": "0.0174533 rad"
-},
-"shown": "0.0174533 rad",
-"spoken": "0.0174533 radians"
 }
 },
 "steps": [],
-"tsv": "deg\tDegrees\t1.00000\t°\nrad\tRadians\t0.0174533\trad\nDMS\tDegrees, minutes, and seconds\t1°0′0.00″\t\n"
+"tsv": "Y\tConverted angle\t1.00000\t°\n"
 },
 "conversions.angle|exact|mm|.|low value": {
-"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            -1000000000.00°  (entered)\n\nWork\n\nResults\n  deg    Degrees                          -1000000000°\n  rad    Radians                          -17453300 rad\n  DMS    Degrees, minutes, and seconds    -1000000000°0′0.00″\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Angle - Exact definitions\n\nInputs\n  X      Angle                            -1000000000.00°  (entered)\n\nWork\n\nResults\n  Y      Converted angle                  -1000000000°\n\nMethod status: verified for the degree. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-1000000000.00°"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the degree in radians, to its printed digits."
 ],
 "notes": [],
 "outputs": {
-"deg": {
+"value": {
 "copies": {
 "full": "-1000000000",
 "shown": "-1000000000",
@@ -266,74 +166,34 @@
 },
 "shown": "-1000000000°",
 "spoken": "minus 1000000000 degrees"
-},
-"dms": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000°0′0.00″",
-"value": "-1000000000d0'0.00\"",
-"with_unit": "-1000000000d0'0.00\""
-},
-"shown": "-1000000000°0′0.00″",
-"spoken": "minus 1000000000 degrees"
-},
-"rad": {
-"copies": {
-"full": "-17453292.52",
-"shown": "-17453300",
-"value": "-17453300",
-"with_unit": "-17453300 rad"
-},
-"shown": "-17453300 rad",
-"spoken": "minus 17453300 radians"
 }
 },
 "steps": [],
-"tsv": "deg\tDegrees\t-1000000000\t°\nrad\tRadians\t-17453300\trad\nDMS\tDegrees, minutes, and seconds\t'-1000000000°0′0.00″\t\n"
+"tsv": "Y\tConverted angle\t-1000000000\t°\n"
 },
 "conversions.angle|exact|mm|.|x0.01 value": {
-"sha256": "5f136125bc3c8548933081e821da7e17e776d4c0d5de7008941f94d95dd6d838"
+"sha256": "97815680f2b934607bc99d40d325dc89cd2dd4074d66e1fbfe0fb722893cc811"
 },
 "conversions.angle|exact|mm|.|x0.1 value": {
-"sha256": "31e4b764e424a1c65d85094f05d6886c6ec1f69cf55ce63ac9638151d1eaf6ab"
+"sha256": "1b95eb98f8adafca3f9151abf3e4d27bf6dceae0f997198ee36019a20556dd36"
 },
 "conversions.angle|exact|mm|.|x10.0 value": {
-"sha256": "3b51d2484dfb4baa1c5f5412683a93e5b790c02eee7f11c6265f72e22f86c1a2"
+"sha256": "2db639a98dd06f60edffdef750412d798a843706370d37cb8f19991f60a4316e"
 },
 "conversions.angle|exact|mm|.|x100.0 value": {
-"sha256": "58f3d13a75da2e47bf4b150639b44eea395a1b140472a997c37354a14ccb9531"
+"sha256": "695ad9cc56bbb96801000d97925ac2a0211c9944aaefdf0facfccc930701fa75"
 },
 "conversions.area|exact|in|,|defaults": {
 "inputs": {
 "value": "144,000 in²"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the square inch and the square foot in square meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm2": {
-"copies": {
-"full": "929.0304",
-"shown": "929,030",
-"value": "929.030",
-"with_unit": "929.030 cm²"
-},
-"shown": "929,030 cm²",
-"spoken": "929,030 square centimeters"
-},
-"ft2": {
-"copies": {
-"full": "1",
-"shown": "1,00000",
-"value": "1.00000",
-"with_unit": "1.00000 ft²"
-},
-"shown": "1,00000 ft²",
-"spoken": "1,00000 square feet"
-},
-"in2": {
+"value": {
 "copies": {
 "full": "144",
 "shown": "144,000",
@@ -342,62 +202,22 @@
 },
 "shown": "144,000 in²",
 "spoken": "144,000 square inches"
-},
-"m2": {
-"copies": {
-"full": "0.09290304",
-"shown": "0,0929030",
-"value": "0.0929030",
-"with_unit": "0.0929030 m²"
-},
-"shown": "0,0929030 m²",
-"spoken": "0,0929030 square meters"
-},
-"mm2": {
-"copies": {
-"full": "92903.04",
-"shown": "92903,0",
-"value": "92903.0",
-"with_unit": "92903.0 mm²"
-},
-"shown": "92903,0 mm²",
-"spoken": "92903,0 square millimeters"
 }
 },
 "steps": [],
-"tsv": "in²\tSquare inches\t144,000\tin²\nft²\tSquare feet\t1,00000\tft²\nmm²\tSquare millimeters\t92903,0\tmm²\ncm²\tSquare centimeters\t929,030\tcm²\nm²\tSquare meters\t0,0929030\tm²\n"
+"tsv": "Y\tConverted area\t144,000\tin²\n"
 },
 "conversions.area|exact|in|,|low value": {
 "inputs": {
 "value": "-1550000 in²"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the square inch and the square foot in square meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm2": {
-"copies": {
-"full": "-10000000",
-"shown": "-10000000",
-"value": "-10000000",
-"with_unit": "-10000000 cm²"
-},
-"shown": "-10000000 cm²",
-"spoken": "minus 10000000 square centimeters"
-},
-"ft2": {
-"copies": {
-"full": "-10763.91042",
-"shown": "-10763,9",
-"value": "-10763.9",
-"with_unit": "-10763.9 ft²"
-},
-"shown": "-10763,9 ft²",
-"spoken": "minus 10763,9 square feet"
-},
-"in2": {
+"value": {
 "copies": {
 "full": "-1550003.1",
 "shown": "-1550000",
@@ -406,75 +226,35 @@
 },
 "shown": "-1550000 in²",
 "spoken": "minus 1550000 square inches"
-},
-"m2": {
-"copies": {
-"full": "-1000",
-"shown": "-1000,00",
-"value": "-1000.00",
-"with_unit": "-1000.00 m²"
-},
-"shown": "-1000,00 m²",
-"spoken": "minus 1000,00 square meters"
-},
-"mm2": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 mm²"
-},
-"shown": "-1000000000 mm²",
-"spoken": "minus 1000000000 square millimeters"
 }
 },
 "steps": [],
-"tsv": "in²\tSquare inches\t-1550000\tin²\nft²\tSquare feet\t-10763,9\tft²\nmm²\tSquare millimeters\t-1000000000\tmm²\ncm²\tSquare centimeters\t-10000000\tcm²\nm²\tSquare meters\t-1000,00\tm²\n"
+"tsv": "Y\tConverted area\t-1550000\tin²\n"
 },
 "conversions.area|exact|in|,|x0.01 value": {
-"sha256": "9ab4f5a2aec7d2b49d500bec0647498db5466483d0cd728c38c8560d7748f011"
+"sha256": "629394db796430f1895d8ff68108eab90c0ed0a14e12f31a3499e9c8c7e99d6b"
 },
 "conversions.area|exact|in|,|x0.1 value": {
-"sha256": "d2132c71a13c27aeb3812ae7ca1fbfd342d49717609b0aeb2dd9407e86661c2f"
+"sha256": "60f3d8058cf3bfc203975c315278da958cfd10899ec1d83e2fc8a5db0b50d705"
 },
 "conversions.area|exact|in|,|x10.0 value": {
-"sha256": "e58be08fd8df127c40946753c8175c06e78730a7e1c1ec51374140ece2a0c178"
+"sha256": "2ef21b024bacda1f85661a4e3f651791d8870b6c6797a83f251bce4b2545cd12"
 },
 "conversions.area|exact|in|,|x100.0 value": {
-"sha256": "8f66ba11dbc273eb399d104ed5456e5b6be62a161d59a8fb28691572a58cf122"
+"sha256": "e7feb3125805dc3e45f34043b0fa8e48473c1ff390c92e712d3dbabe05ac5cd8"
 },
 "conversions.area|exact|in|.|defaults": {
-"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             144.000 in²  (default)\n\nWork\n\nResults\n  in²    Square inches                    144.000 in²\n  ft²    Square feet                      1.00000 ft²\n  mm²    Square millimeters               92903.0 mm²\n  cm²    Square centimeters               929.030 cm²\n  m²     Square meters                    0.0929030 m²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             144.000 in²  (default)\n\nWork\n\nResults\n  Y      Converted area                   144.000 in²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "144.000 in²"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the square inch and the square foot in square meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm2": {
-"copies": {
-"full": "929.0304",
-"shown": "929.030",
-"value": "929.030",
-"with_unit": "929.030 cm²"
-},
-"shown": "929.030 cm²",
-"spoken": "929.030 square centimeters"
-},
-"ft2": {
-"copies": {
-"full": "1",
-"shown": "1.00000",
-"value": "1.00000",
-"with_unit": "1.00000 ft²"
-},
-"shown": "1.00000 ft²",
-"spoken": "1.00000 square feet"
-},
-"in2": {
+"value": {
 "copies": {
 "full": "144",
 "shown": "144.000",
@@ -483,63 +263,23 @@
 },
 "shown": "144.000 in²",
 "spoken": "144.000 square inches"
-},
-"m2": {
-"copies": {
-"full": "0.09290304",
-"shown": "0.0929030",
-"value": "0.0929030",
-"with_unit": "0.0929030 m²"
-},
-"shown": "0.0929030 m²",
-"spoken": "0.0929030 square meters"
-},
-"mm2": {
-"copies": {
-"full": "92903.04",
-"shown": "92903.0",
-"value": "92903.0",
-"with_unit": "92903.0 mm²"
-},
-"shown": "92903.0 mm²",
-"spoken": "92903.0 square millimeters"
 }
 },
 "steps": [],
-"tsv": "in²\tSquare inches\t144.000\tin²\nft²\tSquare feet\t1.00000\tft²\nmm²\tSquare millimeters\t92903.0\tmm²\ncm²\tSquare centimeters\t929.030\tcm²\nm²\tSquare meters\t0.0929030\tm²\n"
+"tsv": "Y\tConverted area\t144.000\tin²\n"
 },
 "conversions.area|exact|in|.|low value": {
-"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             -1550000 in²  (entered)\n\nWork\n\nResults\n  in²    Square inches                    -1550000 in²\n  ft²    Square feet                      -10763.9 ft²\n  mm²    Square millimeters               -1000000000 mm²\n  cm²    Square centimeters               -10000000 cm²\n  m²     Square meters                    -1000.00 m²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             -1550000 in²  (entered)\n\nWork\n\nResults\n  Y      Converted area                   -1550000 in²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-1550000 in²"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the square inch and the square foot in square meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm2": {
-"copies": {
-"full": "-10000000",
-"shown": "-10000000",
-"value": "-10000000",
-"with_unit": "-10000000 cm²"
-},
-"shown": "-10000000 cm²",
-"spoken": "minus 10000000 square centimeters"
-},
-"ft2": {
-"copies": {
-"full": "-10763.91042",
-"shown": "-10763.9",
-"value": "-10763.9",
-"with_unit": "-10763.9 ft²"
-},
-"shown": "-10763.9 ft²",
-"spoken": "minus 10763.9 square feet"
-},
-"in2": {
+"value": {
 "copies": {
 "full": "-1550003.1",
 "shown": "-1550000",
@@ -548,75 +288,35 @@
 },
 "shown": "-1550000 in²",
 "spoken": "minus 1550000 square inches"
-},
-"m2": {
-"copies": {
-"full": "-1000",
-"shown": "-1000.00",
-"value": "-1000.00",
-"with_unit": "-1000.00 m²"
-},
-"shown": "-1000.00 m²",
-"spoken": "minus 1000.00 square meters"
-},
-"mm2": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 mm²"
-},
-"shown": "-1000000000 mm²",
-"spoken": "minus 1000000000 square millimeters"
 }
 },
 "steps": [],
-"tsv": "in²\tSquare inches\t-1550000\tin²\nft²\tSquare feet\t-10763.9\tft²\nmm²\tSquare millimeters\t-1000000000\tmm²\ncm²\tSquare centimeters\t-10000000\tcm²\nm²\tSquare meters\t-1000.00\tm²\n"
+"tsv": "Y\tConverted area\t-1550000\tin²\n"
 },
 "conversions.area|exact|in|.|x0.01 value": {
-"sha256": "a5dba4dd978a62b5ad6bd1992e3f9d1aea3b877a486837dde8916f00fed29566"
+"sha256": "8d5d326e3c146b7c532b61891c9480fae8540578ef61b49323f85e2f5f21cb62"
 },
 "conversions.area|exact|in|.|x0.1 value": {
-"sha256": "22d24167b24be29e6ded042a55d49d6ce56c34db5b72bfe016cec0a18d93205c"
+"sha256": "84944e06ab1ce6f5c7acea80e2b3ff31e0f7f6070bbe23b476fb45cae061adaf"
 },
 "conversions.area|exact|in|.|x10.0 value": {
-"sha256": "7e245740c0032ebb4ae4639ea99662cbf3bf0d84072979a1732cde9b9b16838a"
+"sha256": "40372ffbc46e075a093e96e27ee5307671c8589787857f6d076d41e33575175e"
 },
 "conversions.area|exact|in|.|x100.0 value": {
-"sha256": "a105cd4cea714f5f96508dd61b6a978cd4391b3df4a16077fc7e1b551982f6e2"
+"sha256": "9c7d4e2e31f5b6e1042bb030c98c9cf6b3e6b14b094d37e8e8e27579bcc9cf61"
 },
 "conversions.area|exact|mm|.|defaults": {
-"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             92903.0 mm²  (default)\n\nWork\n\nResults\n  in²    Square inches                    144.000 in²\n  ft²    Square feet                      1.00000 ft²\n  mm²    Square millimeters               92903.0 mm²\n  cm²    Square centimeters               929.030 cm²\n  m²     Square meters                    0.0929030 m²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             92903.0 mm²  (default)\n\nWork\n\nResults\n  Y      Converted area                   144.000 in²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "92903.0 mm²"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the square inch and the square foot in square meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm2": {
-"copies": {
-"full": "929.0304",
-"shown": "929.030",
-"value": "929.030",
-"with_unit": "929.030 cm²"
-},
-"shown": "929.030 cm²",
-"spoken": "929.030 square centimeters"
-},
-"ft2": {
-"copies": {
-"full": "1",
-"shown": "1.00000",
-"value": "1.00000",
-"with_unit": "1.00000 ft²"
-},
-"shown": "1.00000 ft²",
-"spoken": "1.00000 square feet"
-},
-"in2": {
+"value": {
 "copies": {
 "full": "144",
 "shown": "144.000",
@@ -625,63 +325,23 @@
 },
 "shown": "144.000 in²",
 "spoken": "144.000 square inches"
-},
-"m2": {
-"copies": {
-"full": "0.09290304",
-"shown": "0.0929030",
-"value": "0.0929030",
-"with_unit": "0.0929030 m²"
-},
-"shown": "0.0929030 m²",
-"spoken": "0.0929030 square meters"
-},
-"mm2": {
-"copies": {
-"full": "92903.04",
-"shown": "92903.0",
-"value": "92903.0",
-"with_unit": "92903.0 mm²"
-},
-"shown": "92903.0 mm²",
-"spoken": "92903.0 square millimeters"
 }
 },
 "steps": [],
-"tsv": "in²\tSquare inches\t144.000\tin²\nft²\tSquare feet\t1.00000\tft²\nmm²\tSquare millimeters\t92903.0\tmm²\ncm²\tSquare centimeters\t929.030\tcm²\nm²\tSquare meters\t0.0929030\tm²\n"
+"tsv": "Y\tConverted area\t144.000\tin²\n"
 },
 "conversions.area|exact|mm|.|low value": {
-"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             -1000000000 mm²  (entered)\n\nWork\n\nResults\n  in²    Square inches                    -1550000 in²\n  ft²    Square feet                      -10763.9 ft²\n  mm²    Square millimeters               -1000000000 mm²\n  cm²    Square centimeters               -10000000 cm²\n  m²     Square meters                    -1000.00 m²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Area - Exact definitions\n\nInputs\n  X      Area                             -1000000000 mm²  (entered)\n\nWork\n\nResults\n  Y      Converted area                   -1550000 in²\n\nMethod status: verified for in² and ft². Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-1000000000 mm²"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the square inch and the square foot in square meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm2": {
-"copies": {
-"full": "-10000000",
-"shown": "-10000000",
-"value": "-10000000",
-"with_unit": "-10000000 cm²"
-},
-"shown": "-10000000 cm²",
-"spoken": "minus 10000000 square centimeters"
-},
-"ft2": {
-"copies": {
-"full": "-10763.91042",
-"shown": "-10763.9",
-"value": "-10763.9",
-"with_unit": "-10763.9 ft²"
-},
-"shown": "-10763.9 ft²",
-"spoken": "minus 10763.9 square feet"
-},
-"in2": {
+"value": {
 "copies": {
 "full": "-1550003.1",
 "shown": "-1550000",
@@ -690,114 +350,579 @@
 },
 "shown": "-1550000 in²",
 "spoken": "minus 1550000 square inches"
-},
-"m2": {
-"copies": {
-"full": "-1000",
-"shown": "-1000.00",
-"value": "-1000.00",
-"with_unit": "-1000.00 m²"
-},
-"shown": "-1000.00 m²",
-"spoken": "minus 1000.00 square meters"
-},
-"mm2": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 mm²"
-},
-"shown": "-1000000000 mm²",
-"spoken": "minus 1000000000 square millimeters"
 }
 },
 "steps": [],
-"tsv": "in²\tSquare inches\t-1550000\tin²\nft²\tSquare feet\t-10763.9\tft²\nmm²\tSquare millimeters\t-1000000000\tmm²\ncm²\tSquare centimeters\t-10000000\tcm²\nm²\tSquare meters\t-1000.00\tm²\n"
+"tsv": "Y\tConverted area\t-1550000\tin²\n"
 },
 "conversions.area|exact|mm|.|x0.01 value": {
-"sha256": "a73ad7a9e5992a00d80a684fe39da4480ad007ec03e675b9404049d6bb78ba2f"
+"sha256": "5709914c644423b3f6e01ef3213ce7aa0eea40b997c3452280e0515e069e7e48"
 },
 "conversions.area|exact|mm|.|x0.1 value": {
-"sha256": "b321071496faef27b7480973f612cb07407fb3bd677a011dc6cd47bb26e94624"
+"sha256": "7822e794286d23d7d0c1e2c1cd3d62d57d20bad939e5a828b654e9ba25309496"
 },
 "conversions.area|exact|mm|.|x10.0 value": {
-"sha256": "95ded5e67f488be215502b015fbed6cb714166a7dcae71752e6d5649fe085927"
+"sha256": "5bd28552846fe8dd0b8216a68421278d86ae75acb17d415981db27212b8609d3"
 },
 "conversions.area|exact|mm|.|x100.0 value": {
-"sha256": "ba8e8888162917869553a69a9ff399489b2bf346a207922747a5a2d332cf4c9b"
+"sha256": "e9a8360375499cb67d74b037f6f688c47e8579139196b3070324d3fa517bdda6"
+},
+"conversions.decimal_to_fraction|exact|in|,|defaults": {
+"inputs": {
+"fineness": "16",
+"value": "0,1900 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
+],
+"notes": [],
+"outputs": {
+"error": {
+"copies": {
+"full": "-0.0025",
+"shown": "-0,002500",
+"value": "-0.002500",
+"with_unit": "-0.002500 in"
+},
+"shown": "-0,002500 in",
+"spoken": "minus 0,002500 inches"
+},
+"nearest": {
+"copies": {
+"full": "0.1875",
+"shown": "3/16\"",
+"value": "3/16\"",
+"with_unit": "3/16\""
+},
+"shown": "3/16\"",
+"spoken": "3 sixteenths of an inch"
+}
+},
+"steps": [
+[
+"The length rounded to the nearest 1/16 inch, half to even.",
+null,
+"0,1875 in"
+],
+[
+"N - X",
+"0,1875 - 0,1900",
+"-0,0025 in"
+]
+],
+"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0,002500\tin\n"
+},
+"conversions.decimal_to_fraction|exact|in|,|low fineness": {
+"error": "Fineness (F) must be one of 1/16, 1/32, 1/64"
+},
+"conversions.decimal_to_fraction|exact|in|,|low value": {
+"inputs": {
+"fineness": "16",
+"value": "-39370078,7402 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
+],
+"notes": [],
+"outputs": {
+"error": {
+"copies": {
+"full": "-0.009842519685",
+"shown": "-0,009843",
+"value": "-0.009843",
+"with_unit": "-0.009843 in"
+},
+"shown": "-0,009843 in",
+"spoken": "minus 0,009843 inches"
+},
+"nearest": {
+"copies": {
+"full": "-39370078.75",
+"shown": "-39370078 3/4\"",
+"value": "-39370078-3/4\"",
+"with_unit": "-39370078-3/4\""
+},
+"shown": "-39370078 3/4\"",
+"spoken": "minus 39370078 and 3 quarters inches"
+}
+},
+"steps": [
+[
+"The length rounded to the nearest 1/16 inch, half to even.",
+null,
+"-39370078,7500 in"
+],
+[
+"N - X",
+"(-39370078,7500) - (-39370078,7402)",
+"-0,0098 in"
+]
+],
+"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0,009843\tin\n"
+},
+"conversions.decimal_to_fraction|exact|in|,|x0.01 fineness": {
+"sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
+},
+"conversions.decimal_to_fraction|exact|in|,|x0.01 value": {
+"sha256": "9fa3ed037045e9e76be7363094f8c6573788b685e64ca663117a0d56b2e0f9f3"
+},
+"conversions.decimal_to_fraction|exact|in|,|x0.1 fineness": {
+"sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
+},
+"conversions.decimal_to_fraction|exact|in|,|x0.1 value": {
+"sha256": "82378ecff3807011ec44eedb12451faf4b826fb3286bea27a67775cbf0a75fe7"
+},
+"conversions.decimal_to_fraction|exact|in|,|x10.0 fineness": {
+"sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
+},
+"conversions.decimal_to_fraction|exact|in|,|x10.0 value": {
+"sha256": "749d735db0a8a1e27557f529d6d6f67593f0caf19c2447e815071bc15b82f5c0"
+},
+"conversions.decimal_to_fraction|exact|in|,|x100.0 fineness": {
+"sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
+},
+"conversions.decimal_to_fraction|exact|in|,|x100.0 value": {
+"sha256": "1dc55f2ae8d4a08b3ff62e069c2ad468d40e46664ddbf7f74a38c311e829d30d"
+},
+"conversions.decimal_to_fraction|exact|in|.|defaults": {
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           0.1900 in  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 0.1875 in\n  E = N - X\n    = 0.1875 - 0.1900\n    = -0.0025 in\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.002500 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"fineness": "16",
+"value": "0.1900 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
+],
+"notes": [],
+"outputs": {
+"error": {
+"copies": {
+"full": "-0.0025",
+"shown": "-0.002500",
+"value": "-0.002500",
+"with_unit": "-0.002500 in"
+},
+"shown": "-0.002500 in",
+"spoken": "minus 0.002500 inches"
+},
+"nearest": {
+"copies": {
+"full": "0.1875",
+"shown": "3/16\"",
+"value": "3/16\"",
+"with_unit": "3/16\""
+},
+"shown": "3/16\"",
+"spoken": "3 sixteenths of an inch"
+}
+},
+"steps": [
+[
+"The length rounded to the nearest 1/16 inch, half to even.",
+null,
+"0.1875 in"
+],
+[
+"N - X",
+"0.1875 - 0.1900",
+"-0.0025 in"
+]
+],
+"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0.002500\tin\n"
+},
+"conversions.decimal_to_fraction|exact|in|.|low fineness": {
+"error": "Fineness (F) must be one of 1/16, 1/32, 1/64"
+},
+"conversions.decimal_to_fraction|exact|in|.|low value": {
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           -39370078.7402 in  (entered)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = -39370078.7500 in\n  E = N - X\n    = (-39370078.7500) - (-39370078.7402)\n    = -0.0098 in\n\nResults\n  N      Nearest fraction                 -39370078 3/4\"\n  E      Error                            -0.009843 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"fineness": "16",
+"value": "-39370078.7402 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
+],
+"notes": [],
+"outputs": {
+"error": {
+"copies": {
+"full": "-0.009842519685",
+"shown": "-0.009843",
+"value": "-0.009843",
+"with_unit": "-0.009843 in"
+},
+"shown": "-0.009843 in",
+"spoken": "minus 0.009843 inches"
+},
+"nearest": {
+"copies": {
+"full": "-39370078.75",
+"shown": "-39370078 3/4\"",
+"value": "-39370078-3/4\"",
+"with_unit": "-39370078-3/4\""
+},
+"shown": "-39370078 3/4\"",
+"spoken": "minus 39370078 and 3 quarters inches"
+}
+},
+"steps": [
+[
+"The length rounded to the nearest 1/16 inch, half to even.",
+null,
+"-39370078.7500 in"
+],
+[
+"N - X",
+"(-39370078.7500) - (-39370078.7402)",
+"-0.0098 in"
+]
+],
+"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0.009843\tin\n"
+},
+"conversions.decimal_to_fraction|exact|in|.|x0.01 fineness": {
+"sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
+},
+"conversions.decimal_to_fraction|exact|in|.|x0.01 value": {
+"sha256": "da77ff0d75641b18b7a6d779ac7fc43ad3afedf01e82baccff959b11c99519d1"
+},
+"conversions.decimal_to_fraction|exact|in|.|x0.1 fineness": {
+"sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
+},
+"conversions.decimal_to_fraction|exact|in|.|x0.1 value": {
+"sha256": "a05b2c856efc4d1cb107d35875e3f3412bcdb7e7863dff44b945d6e4567489f9"
+},
+"conversions.decimal_to_fraction|exact|in|.|x10.0 fineness": {
+"sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
+},
+"conversions.decimal_to_fraction|exact|in|.|x10.0 value": {
+"sha256": "5afcfb71a5ca709e8ebcde7098c41348a02ac4703ed46baf493bbae99de326ef"
+},
+"conversions.decimal_to_fraction|exact|in|.|x100.0 fineness": {
+"sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
+},
+"conversions.decimal_to_fraction|exact|in|.|x100.0 value": {
+"sha256": "5796206fe994bc12e56d02b4af3a96919484d560aeba1b97806baa0d752e5ada"
+},
+"conversions.decimal_to_fraction|exact|mm|.|defaults": {
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           4.8260 mm  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 4.7625 mm\n  E = N - X\n    = 4.7625 - 4.8260\n    = -0.0635 mm\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.063500 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"fineness": "16",
+"value": "4.8260 mm"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
+],
+"notes": [],
+"outputs": {
+"error": {
+"copies": {
+"full": "-0.0635",
+"shown": "-0.063500",
+"value": "-0.063500",
+"with_unit": "-0.063500 mm"
+},
+"shown": "-0.063500 mm",
+"spoken": "minus 0.063500 millimeters"
+},
+"nearest": {
+"copies": {
+"full": "0.1875",
+"shown": "3/16\"",
+"value": "3/16\"",
+"with_unit": "3/16\""
+},
+"shown": "3/16\"",
+"spoken": "3 sixteenths of an inch"
+}
+},
+"steps": [
+[
+"The length rounded to the nearest 1/16 inch, half to even.",
+null,
+"4.7625 mm"
+],
+[
+"N - X",
+"4.7625 - 4.8260",
+"-0.0635 mm"
+]
+],
+"tsv": "N\tNearest fraction\t3/16\"\t\nE\tError\t-0.063500\tmm\n"
+},
+"conversions.decimal_to_fraction|exact|mm|.|low fineness": {
+"error": "Fineness (F) must be one of 1/16, 1/32, 1/64"
+},
+"conversions.decimal_to_fraction|exact|mm|.|low value": {
+"cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           -1000000000.0000 mm  (entered)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = -1000000000.2500 mm\n  E = N - X\n    = (-1000000000.2500) - (-1000000000.0000)\n    = -0.2500 mm\n\nResults\n  N      Nearest fraction                 -39370078 3/4\"\n  E      Error                            -0.250000 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"fineness": "16",
+"value": "-1000000000.0000 mm"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
+],
+"notes": [],
+"outputs": {
+"error": {
+"copies": {
+"full": "-0.25",
+"shown": "-0.250000",
+"value": "-0.250000",
+"with_unit": "-0.250000 mm"
+},
+"shown": "-0.250000 mm",
+"spoken": "minus 0.250000 millimeters"
+},
+"nearest": {
+"copies": {
+"full": "-39370078.75",
+"shown": "-39370078 3/4\"",
+"value": "-39370078-3/4\"",
+"with_unit": "-39370078-3/4\""
+},
+"shown": "-39370078 3/4\"",
+"spoken": "minus 39370078 and 3 quarters inches"
+}
+},
+"steps": [
+[
+"The length rounded to the nearest 1/16 inch, half to even.",
+null,
+"-1000000000.2500 mm"
+],
+[
+"N - X",
+"(-1000000000.2500) - (-1000000000.0000)",
+"-0.2500 mm"
+]
+],
+"tsv": "N\tNearest fraction\t'-39370078 3/4\"\t\nE\tError\t-0.250000\tmm\n"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x0.01 fineness": {
+"sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x0.01 value": {
+"sha256": "dfde073239bef4236689760d9083cd3e0ee2cf710400d9a3a9cf601213ae7232"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x0.1 fineness": {
+"sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x0.1 value": {
+"sha256": "eac1c74a91a640c129df67b4b1a7708a31747a0db3e1faa754b89bcc90aaf299"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x10.0 fineness": {
+"sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x10.0 value": {
+"sha256": "3ab61aa83e87b834c0aac2996a21e9301899aaf32bfdbaa37ba2bd351af52446"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x100.0 fineness": {
+"sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
+},
+"conversions.decimal_to_fraction|exact|mm|.|x100.0 value": {
+"sha256": "43fee852616b8500d03336f0fcbf2f041cec2cc55c7e8c0832394e88c6977c8c"
+},
+"conversions.fraction_to_decimal|exact|in|,|defaults": {
+"inputs": {
+"value": "0,1875 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+],
+"notes": [],
+"outputs": {
+"value": {
+"copies": {
+"full": "0.1875",
+"shown": "0,187500",
+"value": "0.187500",
+"with_unit": "0.187500 in"
+},
+"shown": "0,187500 in",
+"spoken": "0,187500 inches"
+}
+},
+"steps": [],
+"tsv": "Y\tDecimal\t0,187500\tin\n"
+},
+"conversions.fraction_to_decimal|exact|in|,|low value": {
+"inputs": {
+"value": "-39370078,7402 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+],
+"notes": [],
+"outputs": {
+"value": {
+"copies": {
+"full": "-39370078.74",
+"shown": "-39370100",
+"value": "-39370100",
+"with_unit": "-39370100 in"
+},
+"shown": "-39370100 in",
+"spoken": "minus 39370100 inches"
+}
+},
+"steps": [],
+"tsv": "Y\tDecimal\t-39370100\tin\n"
+},
+"conversions.fraction_to_decimal|exact|in|,|x0.01 value": {
+"sha256": "95d94a4ed693b428ffd415f1c1a7569fbf98d2d01f46d829e17622de194bb501"
+},
+"conversions.fraction_to_decimal|exact|in|,|x0.1 value": {
+"sha256": "75aa44c48444f2407808df2362e80416bf3d8793bda51c7e405ee12efef56dbf"
+},
+"conversions.fraction_to_decimal|exact|in|,|x10.0 value": {
+"sha256": "09be260bc6e7081bd4d58faa32ba0b39b9d65129ee6ae4af031acb96f45d2ce5"
+},
+"conversions.fraction_to_decimal|exact|in|,|x100.0 value": {
+"sha256": "12f7fd922955e4b555a8d0714ba051bfffbff9b4f3d9209a9f3be64eb5e60aab"
+},
+"conversions.fraction_to_decimal|exact|in|.|defaults": {
+"cli": "Fraction to decimal - Exact definitions\n\nInputs\n  X      Fraction                         0.1875 in  (default)\n\nWork\n\nResults\n  Y      Decimal                          0.187500 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"value": "0.1875 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+],
+"notes": [],
+"outputs": {
+"value": {
+"copies": {
+"full": "0.1875",
+"shown": "0.187500",
+"value": "0.187500",
+"with_unit": "0.187500 in"
+},
+"shown": "0.187500 in",
+"spoken": "0.187500 inches"
+}
+},
+"steps": [],
+"tsv": "Y\tDecimal\t0.187500\tin\n"
+},
+"conversions.fraction_to_decimal|exact|in|.|low value": {
+"cli": "Fraction to decimal - Exact definitions\n\nInputs\n  X      Fraction                         -39370078.7402 in  (entered)\n\nWork\n\nResults\n  Y      Decimal                          -39370100 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"value": "-39370078.7402 in"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+],
+"notes": [],
+"outputs": {
+"value": {
+"copies": {
+"full": "-39370078.74",
+"shown": "-39370100",
+"value": "-39370100",
+"with_unit": "-39370100 in"
+},
+"shown": "-39370100 in",
+"spoken": "minus 39370100 inches"
+}
+},
+"steps": [],
+"tsv": "Y\tDecimal\t-39370100\tin\n"
+},
+"conversions.fraction_to_decimal|exact|in|.|x0.01 value": {
+"sha256": "d881443771091d3f076b91c7a66f75a96417a6a89e3c5b88bbb517efad4e1074"
+},
+"conversions.fraction_to_decimal|exact|in|.|x0.1 value": {
+"sha256": "ddf203781e8a2aa00a963f4b5de2640408135626d33b3c82f0874fce6dbd62e7"
+},
+"conversions.fraction_to_decimal|exact|in|.|x10.0 value": {
+"sha256": "37e6007a958684e517a46b2e51ba868a7b123c6ac4b865129bcf9ac33d2ed256"
+},
+"conversions.fraction_to_decimal|exact|in|.|x100.0 value": {
+"sha256": "56d1f51762adec9bce4c517c8dfdcd742a0fa2b977900e22ee848a001c372c1e"
+},
+"conversions.fraction_to_decimal|exact|mm|.|defaults": {
+"cli": "Fraction to decimal - Exact definitions\n\nInputs\n  X      Fraction                         4.7625 mm  (default)\n\nWork\n\nResults\n  Y      Decimal                          0.187500 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"value": "4.7625 mm"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+],
+"notes": [],
+"outputs": {
+"value": {
+"copies": {
+"full": "0.1875",
+"shown": "0.187500",
+"value": "0.187500",
+"with_unit": "0.187500 in"
+},
+"shown": "0.187500 in",
+"spoken": "0.187500 inches"
+}
+},
+"steps": [],
+"tsv": "Y\tDecimal\t0.187500\tin\n"
+},
+"conversions.fraction_to_decimal|exact|mm|.|low value": {
+"cli": "Fraction to decimal - Exact definitions\n\nInputs\n  X      Fraction                         -1000000000.0000 mm  (entered)\n\nWork\n\nResults\n  Y      Decimal                          -39370100 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"inputs": {
+"value": "-1000000000.0000 mm"
+},
+"method_notes": [
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+],
+"notes": [],
+"outputs": {
+"value": {
+"copies": {
+"full": "-39370078.74",
+"shown": "-39370100",
+"value": "-39370100",
+"with_unit": "-39370100 in"
+},
+"shown": "-39370100 in",
+"spoken": "minus 39370100 inches"
+}
+},
+"steps": [],
+"tsv": "Y\tDecimal\t-39370100\tin\n"
+},
+"conversions.fraction_to_decimal|exact|mm|.|x0.01 value": {
+"sha256": "441d2d4d0e86e138fac59c3d317cfd527088df8c8e09ed683239f744d4a292be"
+},
+"conversions.fraction_to_decimal|exact|mm|.|x0.1 value": {
+"sha256": "cd860d8608084b19372d4bd6697d5e4fa366d6826d3eb03b3763f93860a51825"
+},
+"conversions.fraction_to_decimal|exact|mm|.|x10.0 value": {
+"sha256": "115dcbdf4401a796e52d6cb50e805538de3f7ca1c2c6e75199152c079c7edeab"
+},
+"conversions.fraction_to_decimal|exact|mm|.|x100.0 value": {
+"sha256": "51885ea4b4a967b6ca8877247bdabc0d5f1c5e7c165ebc6fa2ce1a080a283555"
 },
 "conversions.length|exact|in|,|defaults": {
 "inputs": {
 "value": "1,0000 in"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm": {
-"copies": {
-"full": "2.54",
-"shown": "2,54000",
-"value": "2.54000",
-"with_unit": "2.54000 cm"
-},
-"shown": "2,54000 cm",
-"spoken": "2,54000 centimeters"
-},
-"error_16": {
-"copies": {
-"full": "0",
-"shown": "0,000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0,000000 in",
-"spoken": "0,000000 inches"
-},
-"error_32": {
-"copies": {
-"full": "0",
-"shown": "0,000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0,000000 in",
-"spoken": "0,000000 inches"
-},
-"error_64": {
-"copies": {
-"full": "0",
-"shown": "0,000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0,000000 in",
-"spoken": "0,000000 inches"
-},
-"ft": {
-"copies": {
-"full": "0.08333333333",
-"shown": "0,0833333",
-"value": "0.0833333",
-"with_unit": "0.0833333 ft"
-},
-"shown": "0,0833333 ft",
-"spoken": "0,0833333 feet"
-},
-"ft_in": {
-"copies": {
-"full": "1",
-"shown": "0'-1\"",
-"value": "0'1\"",
-"with_unit": "0'1\""
-},
-"shown": "0'-1\"",
-"spoken": "1 inch"
-},
-"in": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1,00000",
@@ -806,163 +931,22 @@
 },
 "shown": "1,00000 in",
 "spoken": "1,00000 inches"
-},
-"m": {
-"copies": {
-"full": "0.0254",
-"shown": "0,0254000",
-"value": "0.0254000",
-"with_unit": "0.0254000 m"
-},
-"shown": "0,0254000 m",
-"spoken": "0,0254000 meters"
-},
-"mm": {
-"copies": {
-"full": "25.4",
-"shown": "25,4000",
-"value": "25.4000",
-"with_unit": "25.4000 mm"
-},
-"shown": "25,4000 mm",
-"spoken": "25,4000 millimeters"
-},
-"nearest_16": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
-},
-"nearest_32": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
-},
-"nearest_64": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
 }
 },
-"steps": [
-[
-"The value rounded to the nearest 1/16 inch, half to even.",
-null,
-"1,0000 in"
-],
-[
-"N16 - X",
-"1,0000 - 1,0000",
-"0,0000 in"
-],
-[
-"The value rounded to the nearest 1/32 inch, half to even.",
-null,
-"1,0000 in"
-],
-[
-"N32 - X",
-"1,0000 - 1,0000",
-"0,0000 in"
-],
-[
-"The value rounded to the nearest 1/64 inch, half to even.",
-null,
-"1,0000 in"
-],
-[
-"N64 - X",
-"1,0000 - 1,0000",
-"0,0000 in"
-]
-],
-"tsv": "in\tInches\t1,00000\tin\nft\tFeet\t0,0833333\tft\nmm\tMillimeters\t25,4000\tmm\ncm\tCentimeters\t2,54000\tcm\nm\tMeters\t0,0254000\tm\nft-in\tFeet and inches\t0'-1\"\t\nN16\tNearest 1/16 inch\t1\"\t\nE16\tError of the nearest 1/16\t0,000000\tin\nN32\tNearest 1/32 inch\t1\"\t\nE32\tError of the nearest 1/32\t0,000000\tin\nN64\tNearest 1/64 inch\t1\"\t\nE64\tError of the nearest 1/64\t0,000000\tin\n"
+"steps": [],
+"tsv": "Y\tConverted length\t1,00000\tin\n"
 },
 "conversions.length|exact|in|,|low value": {
 "inputs": {
 "value": "-39370078,7402 in"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm": {
-"copies": {
-"full": "-100000000",
-"shown": "-100000000",
-"value": "-100000000",
-"with_unit": "-100000000 cm"
-},
-"shown": "-100000000 cm",
-"spoken": "minus 100000000 centimeters"
-},
-"error_16": {
-"copies": {
-"full": "-0.009842519685",
-"shown": "-0,009843",
-"value": "-0.009843",
-"with_unit": "-0.009843 in"
-},
-"shown": "-0,009843 in",
-"spoken": "minus 0,009843 inches"
-},
-"error_32": {
-"copies": {
-"full": "-0.009842519685",
-"shown": "-0,009843",
-"value": "-0.009843",
-"with_unit": "-0.009843 in"
-},
-"shown": "-0,009843 in",
-"spoken": "minus 0,009843 inches"
-},
-"error_64": {
-"copies": {
-"full": "0.005782481254",
-"shown": "+0,005782",
-"value": "+0.005782",
-"with_unit": "+0.005782 in"
-},
-"shown": "+0,005782 in",
-"spoken": "plus 0,005782 inches"
-},
-"ft": {
-"copies": {
-"full": "-3280839.895",
-"shown": "-3280840",
-"value": "-3280840",
-"with_unit": "-3280840 ft"
-},
-"shown": "-3280840 ft",
-"spoken": "minus 3280840 feet"
-},
-"ft_in": {
-"copies": {
-"full": "-39370078.74",
-"shown": "-3280839'-10 3/4\"",
-"value": "-3280839'10-3/4\"",
-"with_unit": "-3280839'10-3/4\""
-},
-"shown": "-3280839'-10 3/4\"",
-"spoken": "minus 3280839 feet 10 and 3 quarters inches"
-},
-"in": {
+"value": {
 "copies": {
 "full": "-39370078.74",
 "shown": "-39370100",
@@ -971,176 +955,35 @@ null,
 },
 "shown": "-39370100 in",
 "spoken": "minus 39370100 inches"
-},
-"m": {
-"copies": {
-"full": "-1000000",
-"shown": "-1000000",
-"value": "-1000000",
-"with_unit": "-1000000 m"
-},
-"shown": "-1000000 m",
-"spoken": "minus 1000000 meters"
-},
-"mm": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 mm"
-},
-"shown": "-1000000000 mm",
-"spoken": "minus 1000000000 millimeters"
-},
-"nearest_16": {
-"copies": {
-"full": "-39370078.75",
-"shown": "-39370078 3/4\"",
-"value": "-39370078-3/4\"",
-"with_unit": "-39370078-3/4\""
-},
-"shown": "-39370078 3/4\"",
-"spoken": "minus 39370078 and 3 quarters inches"
-},
-"nearest_32": {
-"copies": {
-"full": "-39370078.75",
-"shown": "-39370078 3/4\"",
-"value": "-39370078-3/4\"",
-"with_unit": "-39370078-3/4\""
-},
-"shown": "-39370078 3/4\"",
-"spoken": "minus 39370078 and 3 quarters inches"
-},
-"nearest_64": {
-"copies": {
-"full": "-39370078.73",
-"shown": "-39370078 47/64\"",
-"value": "-39370078-47/64\"",
-"with_unit": "-39370078-47/64\""
-},
-"shown": "-39370078 47/64\"",
-"spoken": "minus 39370078 and 47 sixty-fourths inches"
 }
 },
-"steps": [
-[
-"The value rounded to the nearest 1/16 inch, half to even.",
-null,
-"-39370078,7500 in"
-],
-[
-"N16 - X",
-"(-39370078,7500) - (-39370078,7402)",
-"-0,0098 in"
-],
-[
-"The value rounded to the nearest 1/32 inch, half to even.",
-null,
-"-39370078,7500 in"
-],
-[
-"N32 - X",
-"(-39370078,7500) - (-39370078,7402)",
-"-0,0098 in"
-],
-[
-"The value rounded to the nearest 1/64 inch, half to even.",
-null,
-"-39370078,7344 in"
-],
-[
-"N64 - X",
-"(-39370078,7344) - (-39370078,7402)",
-"+0,0058 in"
-]
-],
-"tsv": "in\tInches\t-39370100\tin\nft\tFeet\t-3280840\tft\nmm\tMillimeters\t-1000000000\tmm\ncm\tCentimeters\t-100000000\tcm\nm\tMeters\t-1000000\tm\nft-in\tFeet and inches\t'-3280839'-10 3/4\"\t\nN16\tNearest 1/16 inch\t'-39370078 3/4\"\t\nE16\tError of the nearest 1/16\t-0,009843\tin\nN32\tNearest 1/32 inch\t'-39370078 3/4\"\t\nE32\tError of the nearest 1/32\t-0,009843\tin\nN64\tNearest 1/64 inch\t'-39370078 47/64\"\t\nE64\tError of the nearest 1/64\t+0,005782\tin\n"
+"steps": [],
+"tsv": "Y\tConverted length\t-39370100\tin\n"
 },
 "conversions.length|exact|in|,|x0.01 value": {
-"sha256": "64721de624b8a9755d641d29568e3162db8daba06cf7f6ca1f892cd00d274172"
+"sha256": "f439e888066cdb3c19b7fa116492830e362ba8f044590f335bc4f8187ebcd852"
 },
 "conversions.length|exact|in|,|x0.1 value": {
-"sha256": "3c07c38590f08f16cc0532eff605540a86ee2a87840b774cab18072ea3023ea6"
+"sha256": "08819a3ee8a112b326575d834c48f4c92d0ae14cf3991e47900d7b18ae9970bc"
 },
 "conversions.length|exact|in|,|x10.0 value": {
-"sha256": "950c636b1bbbf95aa88a790e2ef3b8563ddbe70b7a224c0b74037b43e9f45e46"
+"sha256": "bc60c831752d5f59ac9020e43ca72c8c2fdafaafd417c5ed1461ce0e37e5693f"
 },
 "conversions.length|exact|in|,|x100.0 value": {
-"sha256": "a71bdedbdb24fe671ce865316548267d66b3e965b12c158b7d4ba3be6ce44057"
+"sha256": "914b86eaa1e416b389c1f0cae8eaf68122f1c6f88d262c5a501a71b872afbbba"
 },
 "conversions.length|exact|in|.|defaults": {
-"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           1.0000 in  (default)\n\nWork\n  N16 = The value rounded to the nearest 1/16 inch, half to even.\n      = 1.0000 in\n  E16 = N16 - X\n      = 1.0000 - 1.0000\n      = 0.0000 in\n  N32 = The value rounded to the nearest 1/32 inch, half to even.\n      = 1.0000 in\n  E32 = N32 - X\n      = 1.0000 - 1.0000\n      = 0.0000 in\n  N64 = The value rounded to the nearest 1/64 inch, half to even.\n      = 1.0000 in\n  E64 = N64 - X\n      = 1.0000 - 1.0000\n      = 0.0000 in\n\nResults\n  in     Inches                           1.00000 in\n  ft     Feet                             0.0833333 ft\n  mm     Millimeters                      25.4000 mm\n  cm     Centimeters                      2.54000 cm\n  m      Meters                           0.0254000 m\n  ft-in  Feet and inches                  0'-1\"\n  N16    Nearest 1/16 inch                1\"\n  E16    Error of the nearest 1/16        0.000000 in\n  N32    Nearest 1/32 inch                1\"\n  E32    Error of the nearest 1/32        0.000000 in\n  N64    Nearest 1/64 inch                1\"\n  E64    Error of the nearest 1/64        0.000000 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           1.0000 in  (default)\n\nWork\n\nResults\n  Y      Converted length                 1.00000 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "1.0000 in"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm": {
-"copies": {
-"full": "2.54",
-"shown": "2.54000",
-"value": "2.54000",
-"with_unit": "2.54000 cm"
-},
-"shown": "2.54000 cm",
-"spoken": "2.54000 centimeters"
-},
-"error_16": {
-"copies": {
-"full": "0",
-"shown": "0.000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0.000000 in",
-"spoken": "0.000000 inches"
-},
-"error_32": {
-"copies": {
-"full": "0",
-"shown": "0.000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0.000000 in",
-"spoken": "0.000000 inches"
-},
-"error_64": {
-"copies": {
-"full": "0",
-"shown": "0.000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0.000000 in",
-"spoken": "0.000000 inches"
-},
-"ft": {
-"copies": {
-"full": "0.08333333333",
-"shown": "0.0833333",
-"value": "0.0833333",
-"with_unit": "0.0833333 ft"
-},
-"shown": "0.0833333 ft",
-"spoken": "0.0833333 feet"
-},
-"ft_in": {
-"copies": {
-"full": "1",
-"shown": "0'-1\"",
-"value": "0'1\"",
-"with_unit": "0'1\""
-},
-"shown": "0'-1\"",
-"spoken": "1 inch"
-},
-"in": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1.00000",
@@ -1149,164 +992,23 @@ null,
 },
 "shown": "1.00000 in",
 "spoken": "1.00000 inches"
-},
-"m": {
-"copies": {
-"full": "0.0254",
-"shown": "0.0254000",
-"value": "0.0254000",
-"with_unit": "0.0254000 m"
-},
-"shown": "0.0254000 m",
-"spoken": "0.0254000 meters"
-},
-"mm": {
-"copies": {
-"full": "25.4",
-"shown": "25.4000",
-"value": "25.4000",
-"with_unit": "25.4000 mm"
-},
-"shown": "25.4000 mm",
-"spoken": "25.4000 millimeters"
-},
-"nearest_16": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
-},
-"nearest_32": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
-},
-"nearest_64": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
 }
 },
-"steps": [
-[
-"The value rounded to the nearest 1/16 inch, half to even.",
-null,
-"1.0000 in"
-],
-[
-"N16 - X",
-"1.0000 - 1.0000",
-"0.0000 in"
-],
-[
-"The value rounded to the nearest 1/32 inch, half to even.",
-null,
-"1.0000 in"
-],
-[
-"N32 - X",
-"1.0000 - 1.0000",
-"0.0000 in"
-],
-[
-"The value rounded to the nearest 1/64 inch, half to even.",
-null,
-"1.0000 in"
-],
-[
-"N64 - X",
-"1.0000 - 1.0000",
-"0.0000 in"
-]
-],
-"tsv": "in\tInches\t1.00000\tin\nft\tFeet\t0.0833333\tft\nmm\tMillimeters\t25.4000\tmm\ncm\tCentimeters\t2.54000\tcm\nm\tMeters\t0.0254000\tm\nft-in\tFeet and inches\t0'-1\"\t\nN16\tNearest 1/16 inch\t1\"\t\nE16\tError of the nearest 1/16\t0.000000\tin\nN32\tNearest 1/32 inch\t1\"\t\nE32\tError of the nearest 1/32\t0.000000\tin\nN64\tNearest 1/64 inch\t1\"\t\nE64\tError of the nearest 1/64\t0.000000\tin\n"
+"steps": [],
+"tsv": "Y\tConverted length\t1.00000\tin\n"
 },
 "conversions.length|exact|in|.|low value": {
-"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           -39370078.7402 in  (entered)\n\nWork\n  N16 = The value rounded to the nearest 1/16 inch, half to even.\n      = -39370078.7500 in\n  E16 = N16 - X\n      = (-39370078.7500) - (-39370078.7402)\n      = -0.0098 in\n  N32 = The value rounded to the nearest 1/32 inch, half to even.\n      = -39370078.7500 in\n  E32 = N32 - X\n      = (-39370078.7500) - (-39370078.7402)\n      = -0.0098 in\n  N64 = The value rounded to the nearest 1/64 inch, half to even.\n      = -39370078.7344 in\n  E64 = N64 - X\n      = (-39370078.7344) - (-39370078.7402)\n      = +0.0058 in\n\nResults\n  in     Inches                           -39370100 in\n  ft     Feet                             -3280840 ft\n  mm     Millimeters                      -1000000000 mm\n  cm     Centimeters                      -100000000 cm\n  m      Meters                           -1000000 m\n  ft-in  Feet and inches                  -3280839'-10 3/4\"\n  N16    Nearest 1/16 inch                -39370078 3/4\"\n  E16    Error of the nearest 1/16        -0.009843 in\n  N32    Nearest 1/32 inch                -39370078 3/4\"\n  E32    Error of the nearest 1/32        -0.009843 in\n  N64    Nearest 1/64 inch                -39370078 47/64\"\n  E64    Error of the nearest 1/64        +0.005782 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           -39370078.7402 in  (entered)\n\nWork\n\nResults\n  Y      Converted length                 -39370100 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-39370078.7402 in"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm": {
-"copies": {
-"full": "-100000000",
-"shown": "-100000000",
-"value": "-100000000",
-"with_unit": "-100000000 cm"
-},
-"shown": "-100000000 cm",
-"spoken": "minus 100000000 centimeters"
-},
-"error_16": {
-"copies": {
-"full": "-0.009842519685",
-"shown": "-0.009843",
-"value": "-0.009843",
-"with_unit": "-0.009843 in"
-},
-"shown": "-0.009843 in",
-"spoken": "minus 0.009843 inches"
-},
-"error_32": {
-"copies": {
-"full": "-0.009842519685",
-"shown": "-0.009843",
-"value": "-0.009843",
-"with_unit": "-0.009843 in"
-},
-"shown": "-0.009843 in",
-"spoken": "minus 0.009843 inches"
-},
-"error_64": {
-"copies": {
-"full": "0.005782481254",
-"shown": "+0.005782",
-"value": "+0.005782",
-"with_unit": "+0.005782 in"
-},
-"shown": "+0.005782 in",
-"spoken": "plus 0.005782 inches"
-},
-"ft": {
-"copies": {
-"full": "-3280839.895",
-"shown": "-3280840",
-"value": "-3280840",
-"with_unit": "-3280840 ft"
-},
-"shown": "-3280840 ft",
-"spoken": "minus 3280840 feet"
-},
-"ft_in": {
-"copies": {
-"full": "-39370078.74",
-"shown": "-3280839'-10 3/4\"",
-"value": "-3280839'10-3/4\"",
-"with_unit": "-3280839'10-3/4\""
-},
-"shown": "-3280839'-10 3/4\"",
-"spoken": "minus 3280839 feet 10 and 3 quarters inches"
-},
-"in": {
+"value": {
 "copies": {
 "full": "-39370078.74",
 "shown": "-39370100",
@@ -1315,176 +1017,35 @@ null,
 },
 "shown": "-39370100 in",
 "spoken": "minus 39370100 inches"
-},
-"m": {
-"copies": {
-"full": "-1000000",
-"shown": "-1000000",
-"value": "-1000000",
-"with_unit": "-1000000 m"
-},
-"shown": "-1000000 m",
-"spoken": "minus 1000000 meters"
-},
-"mm": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 mm"
-},
-"shown": "-1000000000 mm",
-"spoken": "minus 1000000000 millimeters"
-},
-"nearest_16": {
-"copies": {
-"full": "-39370078.75",
-"shown": "-39370078 3/4\"",
-"value": "-39370078-3/4\"",
-"with_unit": "-39370078-3/4\""
-},
-"shown": "-39370078 3/4\"",
-"spoken": "minus 39370078 and 3 quarters inches"
-},
-"nearest_32": {
-"copies": {
-"full": "-39370078.75",
-"shown": "-39370078 3/4\"",
-"value": "-39370078-3/4\"",
-"with_unit": "-39370078-3/4\""
-},
-"shown": "-39370078 3/4\"",
-"spoken": "minus 39370078 and 3 quarters inches"
-},
-"nearest_64": {
-"copies": {
-"full": "-39370078.73",
-"shown": "-39370078 47/64\"",
-"value": "-39370078-47/64\"",
-"with_unit": "-39370078-47/64\""
-},
-"shown": "-39370078 47/64\"",
-"spoken": "minus 39370078 and 47 sixty-fourths inches"
 }
 },
-"steps": [
-[
-"The value rounded to the nearest 1/16 inch, half to even.",
-null,
-"-39370078.7500 in"
-],
-[
-"N16 - X",
-"(-39370078.7500) - (-39370078.7402)",
-"-0.0098 in"
-],
-[
-"The value rounded to the nearest 1/32 inch, half to even.",
-null,
-"-39370078.7500 in"
-],
-[
-"N32 - X",
-"(-39370078.7500) - (-39370078.7402)",
-"-0.0098 in"
-],
-[
-"The value rounded to the nearest 1/64 inch, half to even.",
-null,
-"-39370078.7344 in"
-],
-[
-"N64 - X",
-"(-39370078.7344) - (-39370078.7402)",
-"+0.0058 in"
-]
-],
-"tsv": "in\tInches\t-39370100\tin\nft\tFeet\t-3280840\tft\nmm\tMillimeters\t-1000000000\tmm\ncm\tCentimeters\t-100000000\tcm\nm\tMeters\t-1000000\tm\nft-in\tFeet and inches\t'-3280839'-10 3/4\"\t\nN16\tNearest 1/16 inch\t'-39370078 3/4\"\t\nE16\tError of the nearest 1/16\t-0.009843\tin\nN32\tNearest 1/32 inch\t'-39370078 3/4\"\t\nE32\tError of the nearest 1/32\t-0.009843\tin\nN64\tNearest 1/64 inch\t'-39370078 47/64\"\t\nE64\tError of the nearest 1/64\t+0.005782\tin\n"
+"steps": [],
+"tsv": "Y\tConverted length\t-39370100\tin\n"
 },
 "conversions.length|exact|in|.|x0.01 value": {
-"sha256": "237b92ba6c697be5cb7740c06c3a46f60ae31518d3d74f7abba81e48fdeb2cea"
+"sha256": "3a54e6619e53a8947d479c3f5308caf7cea74af385b06a280ad8985b5674be3c"
 },
 "conversions.length|exact|in|.|x0.1 value": {
-"sha256": "aac8bb9147d6e1e4d4a7490dac7657763cac561e771304bf199bf4e8e8e1133e"
+"sha256": "29b3d6716119ee312e62a0550d0b8b3aa57855f421f7c96ae8321e5c4616b3eb"
 },
 "conversions.length|exact|in|.|x10.0 value": {
-"sha256": "04bc99140be18047c576168ac45541fe0fd9d29ce25bfa32c14210016c3da66b"
+"sha256": "2866503389879ff956dd522e02a1c745652863f748d796de1ba41f5f9d75d098"
 },
 "conversions.length|exact|in|.|x100.0 value": {
-"sha256": "3353b1dec6bd63742c8f5be51b4e51a80c3bd30467d00cc831f74a3beb14b252"
+"sha256": "2f3959576aa943211fa694af52ac7f78acc13b465d988955b017d03100247e62"
 },
 "conversions.length|exact|mm|.|defaults": {
-"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           25.4000 mm  (default)\n\nWork\n  N16 = The value rounded to the nearest 1/16 inch, half to even.\n      = 25.4000 mm\n  E16 = N16 - X\n      = 25.4000 - 25.4000\n      = 0.0000 mm\n  N32 = The value rounded to the nearest 1/32 inch, half to even.\n      = 25.4000 mm\n  E32 = N32 - X\n      = 25.4000 - 25.4000\n      = 0.0000 mm\n  N64 = The value rounded to the nearest 1/64 inch, half to even.\n      = 25.4000 mm\n  E64 = N64 - X\n      = 25.4000 - 25.4000\n      = 0.0000 mm\n\nResults\n  in     Inches                           1.00000 in\n  ft     Feet                             0.0833333 ft\n  mm     Millimeters                      25.4000 mm\n  cm     Centimeters                      2.54000 cm\n  m      Meters                           0.0254000 m\n  ft-in  Feet and inches                  0'-1\"\n  N16    Nearest 1/16 inch                1\"\n  E16    Error of the nearest 1/16        0.000000 in\n  N32    Nearest 1/32 inch                1\"\n  E32    Error of the nearest 1/32        0.000000 in\n  N64    Nearest 1/64 inch                1\"\n  E64    Error of the nearest 1/64        0.000000 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           25.4000 mm  (default)\n\nWork\n\nResults\n  Y      Converted length                 1.00000 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "25.4000 mm"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm": {
-"copies": {
-"full": "2.54",
-"shown": "2.54000",
-"value": "2.54000",
-"with_unit": "2.54000 cm"
-},
-"shown": "2.54000 cm",
-"spoken": "2.54000 centimeters"
-},
-"error_16": {
-"copies": {
-"full": "0",
-"shown": "0.000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0.000000 in",
-"spoken": "0.000000 inches"
-},
-"error_32": {
-"copies": {
-"full": "0",
-"shown": "0.000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0.000000 in",
-"spoken": "0.000000 inches"
-},
-"error_64": {
-"copies": {
-"full": "0",
-"shown": "0.000000",
-"value": "0.000000",
-"with_unit": "0.000000 in"
-},
-"shown": "0.000000 in",
-"spoken": "0.000000 inches"
-},
-"ft": {
-"copies": {
-"full": "0.08333333333",
-"shown": "0.0833333",
-"value": "0.0833333",
-"with_unit": "0.0833333 ft"
-},
-"shown": "0.0833333 ft",
-"spoken": "0.0833333 feet"
-},
-"ft_in": {
-"copies": {
-"full": "1",
-"shown": "0'-1\"",
-"value": "0'1\"",
-"with_unit": "0'1\""
-},
-"shown": "0'-1\"",
-"spoken": "1 inch"
-},
-"in": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1.00000",
@@ -1493,164 +1054,23 @@ null,
 },
 "shown": "1.00000 in",
 "spoken": "1.00000 inches"
-},
-"m": {
-"copies": {
-"full": "0.0254",
-"shown": "0.0254000",
-"value": "0.0254000",
-"with_unit": "0.0254000 m"
-},
-"shown": "0.0254000 m",
-"spoken": "0.0254000 meters"
-},
-"mm": {
-"copies": {
-"full": "25.4",
-"shown": "25.4000",
-"value": "25.4000",
-"with_unit": "25.4000 mm"
-},
-"shown": "25.4000 mm",
-"spoken": "25.4000 millimeters"
-},
-"nearest_16": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
-},
-"nearest_32": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
-},
-"nearest_64": {
-"copies": {
-"full": "1",
-"shown": "1\"",
-"value": "1\"",
-"with_unit": "1\""
-},
-"shown": "1\"",
-"spoken": "1 inch"
 }
 },
-"steps": [
-[
-"The value rounded to the nearest 1/16 inch, half to even.",
-null,
-"25.4000 mm"
-],
-[
-"N16 - X",
-"25.4000 - 25.4000",
-"0.0000 mm"
-],
-[
-"The value rounded to the nearest 1/32 inch, half to even.",
-null,
-"25.4000 mm"
-],
-[
-"N32 - X",
-"25.4000 - 25.4000",
-"0.0000 mm"
-],
-[
-"The value rounded to the nearest 1/64 inch, half to even.",
-null,
-"25.4000 mm"
-],
-[
-"N64 - X",
-"25.4000 - 25.4000",
-"0.0000 mm"
-]
-],
-"tsv": "in\tInches\t1.00000\tin\nft\tFeet\t0.0833333\tft\nmm\tMillimeters\t25.4000\tmm\ncm\tCentimeters\t2.54000\tcm\nm\tMeters\t0.0254000\tm\nft-in\tFeet and inches\t0'-1\"\t\nN16\tNearest 1/16 inch\t1\"\t\nE16\tError of the nearest 1/16\t0.000000\tin\nN32\tNearest 1/32 inch\t1\"\t\nE32\tError of the nearest 1/32\t0.000000\tin\nN64\tNearest 1/64 inch\t1\"\t\nE64\tError of the nearest 1/64\t0.000000\tin\n"
+"steps": [],
+"tsv": "Y\tConverted length\t1.00000\tin\n"
 },
 "conversions.length|exact|mm|.|low value": {
-"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           -1000000000.0000 mm  (entered)\n\nWork\n  N16 = The value rounded to the nearest 1/16 inch, half to even.\n      = -1000000000.2500 mm\n  E16 = N16 - X\n      = (-1000000000.2500) - (-1000000000.0000)\n      = -0.2500 mm\n  N32 = The value rounded to the nearest 1/32 inch, half to even.\n      = -1000000000.2500 mm\n  E32 = N32 - X\n      = (-1000000000.2500) - (-1000000000.0000)\n      = -0.2500 mm\n  N64 = The value rounded to the nearest 1/64 inch, half to even.\n      = -999999999.8531 mm\n  E64 = N64 - X\n      = (-999999999.8531) - (-1000000000.0000)\n      = +0.1469 mm\n\nResults\n  in     Inches                           -39370100 in\n  ft     Feet                             -3280840 ft\n  mm     Millimeters                      -1000000000 mm\n  cm     Centimeters                      -100000000 cm\n  m      Meters                           -1000000 m\n  ft-in  Feet and inches                  -3280839'-10 3/4\"\n  N16    Nearest 1/16 inch                -39370078 3/4\"\n  E16    Error of the nearest 1/16        -0.009843 in\n  N32    Nearest 1/32 inch                -39370078 3/4\"\n  E32    Error of the nearest 1/32        -0.009843 in\n  N64    Nearest 1/64 inch                -39370078 47/64\"\n  E64    Error of the nearest 1/64        +0.005782 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Length - Exact definitions\n\nInputs\n  X      Length                           -1000000000.0000 mm  (entered)\n\nWork\n\nResults\n  Y      Converted length                 -39370100 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-1000000000.0000 mm"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
 ],
 "notes": [],
 "outputs": {
-"cm": {
-"copies": {
-"full": "-100000000",
-"shown": "-100000000",
-"value": "-100000000",
-"with_unit": "-100000000 cm"
-},
-"shown": "-100000000 cm",
-"spoken": "minus 100000000 centimeters"
-},
-"error_16": {
-"copies": {
-"full": "-0.009842519685",
-"shown": "-0.009843",
-"value": "-0.009843",
-"with_unit": "-0.009843 in"
-},
-"shown": "-0.009843 in",
-"spoken": "minus 0.009843 inches"
-},
-"error_32": {
-"copies": {
-"full": "-0.009842519685",
-"shown": "-0.009843",
-"value": "-0.009843",
-"with_unit": "-0.009843 in"
-},
-"shown": "-0.009843 in",
-"spoken": "minus 0.009843 inches"
-},
-"error_64": {
-"copies": {
-"full": "0.005782481254",
-"shown": "+0.005782",
-"value": "+0.005782",
-"with_unit": "+0.005782 in"
-},
-"shown": "+0.005782 in",
-"spoken": "plus 0.005782 inches"
-},
-"ft": {
-"copies": {
-"full": "-3280839.895",
-"shown": "-3280840",
-"value": "-3280840",
-"with_unit": "-3280840 ft"
-},
-"shown": "-3280840 ft",
-"spoken": "minus 3280840 feet"
-},
-"ft_in": {
-"copies": {
-"full": "-39370078.74",
-"shown": "-3280839'-10 3/4\"",
-"value": "-3280839'10-3/4\"",
-"with_unit": "-3280839'10-3/4\""
-},
-"shown": "-3280839'-10 3/4\"",
-"spoken": "minus 3280839 feet 10 and 3 quarters inches"
-},
-"in": {
+"value": {
 "copies": {
 "full": "-39370078.74",
 "shown": "-39370100",
@@ -1659,145 +1079,34 @@ null,
 },
 "shown": "-39370100 in",
 "spoken": "minus 39370100 inches"
-},
-"m": {
-"copies": {
-"full": "-1000000",
-"shown": "-1000000",
-"value": "-1000000",
-"with_unit": "-1000000 m"
-},
-"shown": "-1000000 m",
-"spoken": "minus 1000000 meters"
-},
-"mm": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 mm"
-},
-"shown": "-1000000000 mm",
-"spoken": "minus 1000000000 millimeters"
-},
-"nearest_16": {
-"copies": {
-"full": "-39370078.75",
-"shown": "-39370078 3/4\"",
-"value": "-39370078-3/4\"",
-"with_unit": "-39370078-3/4\""
-},
-"shown": "-39370078 3/4\"",
-"spoken": "minus 39370078 and 3 quarters inches"
-},
-"nearest_32": {
-"copies": {
-"full": "-39370078.75",
-"shown": "-39370078 3/4\"",
-"value": "-39370078-3/4\"",
-"with_unit": "-39370078-3/4\""
-},
-"shown": "-39370078 3/4\"",
-"spoken": "minus 39370078 and 3 quarters inches"
-},
-"nearest_64": {
-"copies": {
-"full": "-39370078.73",
-"shown": "-39370078 47/64\"",
-"value": "-39370078-47/64\"",
-"with_unit": "-39370078-47/64\""
-},
-"shown": "-39370078 47/64\"",
-"spoken": "minus 39370078 and 47 sixty-fourths inches"
 }
 },
-"steps": [
-[
-"The value rounded to the nearest 1/16 inch, half to even.",
-null,
-"-1000000000.2500 mm"
-],
-[
-"N16 - X",
-"(-1000000000.2500) - (-1000000000.0000)",
-"-0.2500 mm"
-],
-[
-"The value rounded to the nearest 1/32 inch, half to even.",
-null,
-"-1000000000.2500 mm"
-],
-[
-"N32 - X",
-"(-1000000000.2500) - (-1000000000.0000)",
-"-0.2500 mm"
-],
-[
-"The value rounded to the nearest 1/64 inch, half to even.",
-null,
-"-999999999.8531 mm"
-],
-[
-"N64 - X",
-"(-999999999.8531) - (-1000000000.0000)",
-"+0.1469 mm"
-]
-],
-"tsv": "in\tInches\t-39370100\tin\nft\tFeet\t-3280840\tft\nmm\tMillimeters\t-1000000000\tmm\ncm\tCentimeters\t-100000000\tcm\nm\tMeters\t-1000000\tm\nft-in\tFeet and inches\t'-3280839'-10 3/4\"\t\nN16\tNearest 1/16 inch\t'-39370078 3/4\"\t\nE16\tError of the nearest 1/16\t-0.009843\tin\nN32\tNearest 1/32 inch\t'-39370078 3/4\"\t\nE32\tError of the nearest 1/32\t-0.009843\tin\nN64\tNearest 1/64 inch\t'-39370078 47/64\"\t\nE64\tError of the nearest 1/64\t+0.005782\tin\n"
+"steps": [],
+"tsv": "Y\tConverted length\t-39370100\tin\n"
 },
 "conversions.length|exact|mm|.|x0.01 value": {
-"sha256": "d3960a74e495ec0da6cba49b5c7530443ac84294eaa8b687a9b206af96e3413b"
+"sha256": "06ffe620d4ad2c54f34d129b34cdea382f3e9dd231f1489f73f0fae4a5116ba9"
 },
 "conversions.length|exact|mm|.|x0.1 value": {
-"sha256": "5006226f94dc60c62bae48261b2fb72a5b418b3398a218feb02f1b6b4d81a56f"
+"sha256": "34d100053151033bb4b4a6f66973f9e0ae0f6e9b686a01aadeaa47ac5365ba16"
 },
 "conversions.length|exact|mm|.|x10.0 value": {
-"sha256": "8f8147c2951f7a90ec39c9a4cddbf3c84fa5b52775c689038c2f3aa26a03943a"
+"sha256": "8fced6a239f5371291fdd618e8207056b4b7d60df3d27163e60b85c161e3dc35"
 },
 "conversions.length|exact|mm|.|x100.0 value": {
-"sha256": "94a129582d07747f65b85a31d773b2aa4cc280283a81fcd0197173ae4dd24939"
+"sha256": "1332f76cb764b076036b6a8158aa624d854307d419388bfc7a0f0c58d5a2ff45"
 },
 "conversions.stress|exact|in|,|defaults": {
 "inputs": {
 "value": "0,0 ksi"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the pound-force per square inch and the kip per square inch in pascals, to its printed digits. The factors here come from the exact pound, inch, and standard free fall, since B.8 rounds them."
 ],
 "notes": [],
 "outputs": {
-"kpa": {
-"copies": {
-"full": "6.894757293",
-"shown": "6,89476",
-"value": "6.89476",
-"with_unit": "6.89476 kPa"
-},
-"shown": "6,89476 kPa",
-"spoken": "6,89476 kilopascals"
-},
-"ksi": {
-"copies": {
-"full": "0.001",
-"shown": "0,00100000",
-"value": "0.00100000",
-"with_unit": "0.00100000 ksi"
-},
-"shown": "0,00100000 ksi",
-"spoken": "0,00100000 kips per square inch"
-},
-"mpa": {
-"copies": {
-"full": "0.006894757293",
-"shown": "0,00689476",
-"value": "0.00689476",
-"with_unit": "0.00689476 MPa"
-},
-"shown": "0,00689476 MPa",
-"spoken": "0,00689476 megapascals"
-},
-"psi": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1,00000",
@@ -1809,49 +1118,19 @@ null,
 }
 },
 "steps": [],
-"tsv": "psi\tPounds per square inch\t1,00000\tpsi\nksi\tKips per square inch\t0,00100000\tksi\nkPa\tKilopascals\t6,89476\tkPa\nMPa\tMegapascals\t0,00689476\tMPa\n"
+"tsv": "Y\tConverted stress or pressure\t1,00000\tpsi\n"
 },
 "conversions.stress|exact|in|,|low value": {
 "inputs": {
 "value": "-145037737,7 ksi"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the pound-force per square inch and the kip per square inch in pascals, to its printed digits. The factors here come from the exact pound, inch, and standard free fall, since B.8 rounds them."
 ],
 "notes": [],
 "outputs": {
-"kpa": {
-"copies": {
-"full": "-1000000000000",
-"shown": "-1000000000000",
-"value": "-1000000000000",
-"with_unit": "-1000000000000 kPa"
-},
-"shown": "-1000000000000 kPa",
-"spoken": "minus 1000000000000 kilopascals"
-},
-"ksi": {
-"copies": {
-"full": "-145037737.7",
-"shown": "-145038000",
-"value": "-145038000",
-"with_unit": "-145038000 ksi"
-},
-"shown": "-145038000 ksi",
-"spoken": "minus 145038000 kips per square inch"
-},
-"mpa": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 MPa"
-},
-"shown": "-1000000000 MPa",
-"spoken": "minus 1000000000 megapascals"
-},
-"psi": {
+"value": {
 "copies": {
 "full": "-145037737700",
 "shown": "-145038000000",
@@ -1863,62 +1142,32 @@ null,
 }
 },
 "steps": [],
-"tsv": "psi\tPounds per square inch\t-145038000000\tpsi\nksi\tKips per square inch\t-145038000\tksi\nkPa\tKilopascals\t-1000000000000\tkPa\nMPa\tMegapascals\t-1000000000\tMPa\n"
+"tsv": "Y\tConverted stress or pressure\t-145038000000\tpsi\n"
 },
 "conversions.stress|exact|in|,|x0.01 value": {
-"sha256": "9cb5ac955e572f3e47951cbfb10ebce62abe3a281247b57d422d1a164995c469"
+"sha256": "bbbe0f3756cfffa6f62c3c2b056dea268dca2ec916ecf5cc902df512e8388b3b"
 },
 "conversions.stress|exact|in|,|x0.1 value": {
-"sha256": "aaf5e1fea3591ffe4dfe59ca34b9504c9cd8951c68a9a58b8a7e110670e324f1"
+"sha256": "8a504290e80a35c026cbb14c5437c9d4ace5c04b151bfbde2de339108659da24"
 },
 "conversions.stress|exact|in|,|x10.0 value": {
-"sha256": "b678a3e624690fd4edc6f9718b52f79f67cfe2867eef26aa18c3fc6fef261d5e"
+"sha256": "50a88f34df0253f5407efe2d8e8b155bbe5928fdb9a8aebbf9322ed1c570fbf6"
 },
 "conversions.stress|exact|in|,|x100.0 value": {
-"sha256": "ef15e0913dc82608a92e92d59b97da07d4f8814adbf8a206a0665db4ad19e368"
+"sha256": "482313cf734a3d527a27721e5f54631c72548bebf1966c3db51938088c76ca83"
 },
 "conversions.stress|exact|in|.|defaults": {
-"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               0.0 ksi  (default)\n\nWork\n\nResults\n  psi    Pounds per square inch           1.00000 psi\n  ksi    Kips per square inch             0.00100000 ksi\n  kPa    Kilopascals                      6.89476 kPa\n  MPa    Megapascals                      0.00689476 MPa\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               0.0 ksi  (default)\n\nWork\n\nResults\n  Y      Converted stress or pressure     1.00000 psi\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "0.0 ksi"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the pound-force per square inch and the kip per square inch in pascals, to its printed digits. The factors here come from the exact pound, inch, and standard free fall, since B.8 rounds them."
 ],
 "notes": [],
 "outputs": {
-"kpa": {
-"copies": {
-"full": "6.894757293",
-"shown": "6.89476",
-"value": "6.89476",
-"with_unit": "6.89476 kPa"
-},
-"shown": "6.89476 kPa",
-"spoken": "6.89476 kilopascals"
-},
-"ksi": {
-"copies": {
-"full": "0.001",
-"shown": "0.00100000",
-"value": "0.00100000",
-"with_unit": "0.00100000 ksi"
-},
-"shown": "0.00100000 ksi",
-"spoken": "0.00100000 kips per square inch"
-},
-"mpa": {
-"copies": {
-"full": "0.006894757293",
-"shown": "0.00689476",
-"value": "0.00689476",
-"with_unit": "0.00689476 MPa"
-},
-"shown": "0.00689476 MPa",
-"spoken": "0.00689476 megapascals"
-},
-"psi": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1.00000",
@@ -1930,50 +1179,20 @@ null,
 }
 },
 "steps": [],
-"tsv": "psi\tPounds per square inch\t1.00000\tpsi\nksi\tKips per square inch\t0.00100000\tksi\nkPa\tKilopascals\t6.89476\tkPa\nMPa\tMegapascals\t0.00689476\tMPa\n"
+"tsv": "Y\tConverted stress or pressure\t1.00000\tpsi\n"
 },
 "conversions.stress|exact|in|.|low value": {
-"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               -145037737.7 ksi  (entered)\n\nWork\n\nResults\n  psi    Pounds per square inch           -145038000000 psi\n  ksi    Kips per square inch             -145038000 ksi\n  kPa    Kilopascals                      -1000000000000 kPa\n  MPa    Megapascals                      -1000000000 MPa\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               -145037737.7 ksi  (entered)\n\nWork\n\nResults\n  Y      Converted stress or pressure     -145038000000 psi\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-145037737.7 ksi"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the pound-force per square inch and the kip per square inch in pascals, to its printed digits. The factors here come from the exact pound, inch, and standard free fall, since B.8 rounds them."
 ],
 "notes": [],
 "outputs": {
-"kpa": {
-"copies": {
-"full": "-1000000000000",
-"shown": "-1000000000000",
-"value": "-1000000000000",
-"with_unit": "-1000000000000 kPa"
-},
-"shown": "-1000000000000 kPa",
-"spoken": "minus 1000000000000 kilopascals"
-},
-"ksi": {
-"copies": {
-"full": "-145037737.7",
-"shown": "-145038000",
-"value": "-145038000",
-"with_unit": "-145038000 ksi"
-},
-"shown": "-145038000 ksi",
-"spoken": "minus 145038000 kips per square inch"
-},
-"mpa": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 MPa"
-},
-"shown": "-1000000000 MPa",
-"spoken": "minus 1000000000 megapascals"
-},
-"psi": {
+"value": {
 "copies": {
 "full": "-145037737700",
 "shown": "-145038000000",
@@ -1985,62 +1204,32 @@ null,
 }
 },
 "steps": [],
-"tsv": "psi\tPounds per square inch\t-145038000000\tpsi\nksi\tKips per square inch\t-145038000\tksi\nkPa\tKilopascals\t-1000000000000\tkPa\nMPa\tMegapascals\t-1000000000\tMPa\n"
+"tsv": "Y\tConverted stress or pressure\t-145038000000\tpsi\n"
 },
 "conversions.stress|exact|in|.|x0.01 value": {
-"sha256": "5f292a115bcb3362d6d424268ba18254cdb3bae5b3a61fa755853401695538d1"
+"sha256": "7f24b913eb1732adcccf114ce15d51647319db0f8abc2caadff0f5224c3d508d"
 },
 "conversions.stress|exact|in|.|x0.1 value": {
-"sha256": "e420da4d2b1c36beea789a75335b296dc14241154844c6304ed797a207942fad"
+"sha256": "639034950f71cb1746ebbec70b9832edc77e2a9910bcdd6792aa4ed4075a6a88"
 },
 "conversions.stress|exact|in|.|x10.0 value": {
-"sha256": "96748e369f9f5e18038705ccc35cae1603319f4754816bf8aa44ed5cabc56785"
+"sha256": "7e7492daf04e6d8f4afa2375547ef76608e34c1a1d3c1762dfa0e6b97a05c7b9"
 },
 "conversions.stress|exact|in|.|x100.0 value": {
-"sha256": "e15c08ec2264b43a8c692c6e1a594e9ab2852d772cbac804855e942b99d7a254"
+"sha256": "084137622149b099291180073ee8ee62c83cdcd5add74742bb7cece72aca5339"
 },
 "conversions.stress|exact|mm|.|defaults": {
-"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               0.0 MPa  (default)\n\nWork\n\nResults\n  psi    Pounds per square inch           1.00000 psi\n  ksi    Kips per square inch             0.00100000 ksi\n  kPa    Kilopascals                      6.89476 kPa\n  MPa    Megapascals                      0.00689476 MPa\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               0.0 MPa  (default)\n\nWork\n\nResults\n  Y      Converted stress or pressure     1.00000 psi\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "0.0 MPa"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the pound-force per square inch and the kip per square inch in pascals, to its printed digits. The factors here come from the exact pound, inch, and standard free fall, since B.8 rounds them."
 ],
 "notes": [],
 "outputs": {
-"kpa": {
-"copies": {
-"full": "6.894757293",
-"shown": "6.89476",
-"value": "6.89476",
-"with_unit": "6.89476 kPa"
-},
-"shown": "6.89476 kPa",
-"spoken": "6.89476 kilopascals"
-},
-"ksi": {
-"copies": {
-"full": "0.001",
-"shown": "0.00100000",
-"value": "0.00100000",
-"with_unit": "0.00100000 ksi"
-},
-"shown": "0.00100000 ksi",
-"spoken": "0.00100000 kips per square inch"
-},
-"mpa": {
-"copies": {
-"full": "0.006894757293",
-"shown": "0.00689476",
-"value": "0.00689476",
-"with_unit": "0.00689476 MPa"
-},
-"shown": "0.00689476 MPa",
-"spoken": "0.00689476 megapascals"
-},
-"psi": {
+"value": {
 "copies": {
 "full": "1",
 "shown": "1.00000",
@@ -2052,50 +1241,20 @@ null,
 }
 },
 "steps": [],
-"tsv": "psi\tPounds per square inch\t1.00000\tpsi\nksi\tKips per square inch\t0.00100000\tksi\nkPa\tKilopascals\t6.89476\tkPa\nMPa\tMegapascals\t0.00689476\tMPa\n"
+"tsv": "Y\tConverted stress or pressure\t1.00000\tpsi\n"
 },
 "conversions.stress|exact|mm|.|low value": {
-"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               -1000000000.0 MPa  (entered)\n\nWork\n\nResults\n  psi    Pounds per square inch           -145038000000 psi\n  ksi    Kips per square inch             -145038000 ksi\n  kPa    Kilopascals                      -1000000000000 kPa\n  MPa    Megapascals                      -1000000000 MPa\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
+"cli": "Stress and pressure - Exact definitions\n\nInputs\n  X      Stress or pressure               -1000000000.0 MPa  (entered)\n\nWork\n\nResults\n  Y      Converted stress or pressure     -145038000000 psi\n\nMethod status: verified for psi and ksi. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
 "inputs": {
 "value": "-1000000000.0 MPa"
 },
 "method_notes": [
-"Each row is the value in its unit: the value as typed, read through its unit's factor, converted to the row's unit, each factor its unit's exact definition rounded once. Rows show six significant figures; Copy gives what's shown, and full precision ten digits.",
+"The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
 "Verified against NIST SP 811, Appendix B.8, which gives the pound-force per square inch and the kip per square inch in pascals, to its printed digits. The factors here come from the exact pound, inch, and standard free fall, since B.8 rounds them."
 ],
 "notes": [],
 "outputs": {
-"kpa": {
-"copies": {
-"full": "-1000000000000",
-"shown": "-1000000000000",
-"value": "-1000000000000",
-"with_unit": "-1000000000000 kPa"
-},
-"shown": "-1000000000000 kPa",
-"spoken": "minus 1000000000000 kilopascals"
-},
-"ksi": {
-"copies": {
-"full": "-145037737.7",
-"shown": "-145038000",
-"value": "-145038000",
-"with_unit": "-145038000 ksi"
-},
-"shown": "-145038000 ksi",
-"spoken": "minus 145038000 kips per square inch"
-},
-"mpa": {
-"copies": {
-"full": "-1000000000",
-"shown": "-1000000000",
-"value": "-1000000000",
-"with_unit": "-1000000000 MPa"
-},
-"shown": "-1000000000 MPa",
-"spoken": "minus 1000000000 megapascals"
-},
-"psi": {
+"value": {
 "copies": {
 "full": "-145037737700",
 "shown": "-145038000000",
@@ -2107,19 +1266,19 @@ null,
 }
 },
 "steps": [],
-"tsv": "psi\tPounds per square inch\t-145038000000\tpsi\nksi\tKips per square inch\t-145038000\tksi\nkPa\tKilopascals\t-1000000000000\tkPa\nMPa\tMegapascals\t-1000000000\tMPa\n"
+"tsv": "Y\tConverted stress or pressure\t-145038000000\tpsi\n"
 },
 "conversions.stress|exact|mm|.|x0.01 value": {
-"sha256": "2c75d5873c5aff5066d6e73dec796c36d807b6bf95fc85a8c897f4ce0aa80761"
+"sha256": "483ff283b59cc6fefe5544cb8f832650ddbd8f257131fe37a1216d7d9af1e2c9"
 },
 "conversions.stress|exact|mm|.|x0.1 value": {
-"sha256": "e5fc21e497189704cb34d7e2907d87fa5589c248505f9a6224ebce195c56a0ad"
+"sha256": "d4d248c0563d8421a358e3e21142114db50f8c3b83353d94661c4484ee83cc0b"
 },
 "conversions.stress|exact|mm|.|x10.0 value": {
-"sha256": "46d75ca6dad320d270d295bd789fc4d19256b6a6f33847d52bf828c1db3ed20b"
+"sha256": "450512339dee71b76492f32eea10b51f46914fa736c79d96cc12abe6fef8a458"
 },
 "conversions.stress|exact|mm|.|x100.0 value": {
-"sha256": "ff979035596f4f8700ebe5c46c026f80aa83a1e8656c721ef6751d51d26c0857"
+"sha256": "88d8fa54cd9a9b2cad59bae51e15335008722dd859e519acac29e9cccc1e2f0f"
 },
 "geometry.arc_sector|standard|in|,|defaults": {
 "inputs": {

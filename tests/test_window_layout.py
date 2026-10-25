@@ -540,7 +540,7 @@ def test_the_window_opens_on_a_builtin_even_below_a_plugins_calculator() -> None
     window.close()
 
 
-LONG_PAGES = {"conversions.length", "geometry.right_triangle"}
+LONG_PAGES = {"geometry.right_triangle"}
 """Pages taller than the launch height at 9 pt, which scroll as a whole (rule C; KI-024)
 until ADR-0023's layout contract replaces this list with a flag each page declares."""
 

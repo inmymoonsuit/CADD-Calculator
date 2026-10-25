@@ -37,6 +37,7 @@ THICKNESS_SETTING = Param(
     "T",
     "Material thickness",
     Dimension.LENGTH,
+    unit="in",
     minimum=0.0,
     min_inclusive=False,
     help=(
@@ -50,6 +51,7 @@ INSIDE_RADIUS_SETTING = Param(
     "R",
     "Inside bend radius",
     Dimension.LENGTH,
+    unit="in",
     minimum=0.0,
     help="Radius on the inside surface of the bend, for every calculator that uses it.",
 )

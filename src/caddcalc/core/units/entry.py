@@ -210,14 +210,17 @@ def _named(
     return None
 
 
-_NUMBER_CHARS = re.compile(r"^[\d\s.,+\-*/×÷−()]+")
-"""What a number or arithmetic begins a word with, before a unit run on to it."""
+_NUMBER_CHARS = re.compile(r"^(?:[\d\s.,+\-*/×÷−()]|[eE](?=[+\-−]?\d)|[d°′'](?=\d))+")
+"""What a number or arithmetic begins a word with, before a unit run on to it: digits,
+marks and operators, an exponent's ``e``, and a degree or minute mark between numbers,
+as in ``40d30``."""
 
 
 def _last_word(text: str) -> str:
     """Return the unit a text ends with, as written: its last word, from where a number ends.
 
-    So "3μm", "3)mm" and ``1-"`` name "μm", "mm" and ``"`` (review L4 at stop 1), while
+    So "3μm", "3)mm" and ``1-"`` name "μm", "mm" and ``"`` (review L4 at stop 1), and
+    "1e3)mm" and "40d30m" name "mm" and "m" (the stop-2 cloud review's Note), while
     "ft-in", which begins with no number, is named whole.
     """
     word = text.split()[-1]

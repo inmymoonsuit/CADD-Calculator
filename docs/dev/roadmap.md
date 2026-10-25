@@ -123,7 +123,7 @@ has been checked. The suite starts with sheet metal and grows by domain.
 |---|---|---|
 | Code license | ADR-0008 | **Decided: Apache-2.0** |
 | Code signing budget | ADR-0009 | Start unsigned. Apply to SignPath's free OSS program. |
-| Default unit system (in vs mm) | ADR-0005 | `in` (the course and US shops). Remember the user's choice. |
+| Default unit system (in vs mm) | ADR-0005, ADR-0024 §6 | **Decided by ADR-0024:** there's no unit system. Each calculator declares its fields' units and its output sets, inches for the course and US shops, and each picker is the user's for the session. Remembering the choices across sessions waits for saved preferences. |
 | Default method when legacy and general both exist | ADR-0010 | Legacy first until a general method is `verified`. **Now due:** the K-factor is verified at 90° in both bend calculators (ADR-0010, amendments); the fixed K-factor, the course formula, is still first. |
 | Python package and app name | pyproject.toml | Keep `cadd-calculator` / `caddcalc`. Renaming is cheap now and expensive later. |
 | A converter's JSON rows in their own units | ADR-0018, the m2 amendment (the command line gives each row in base units) | Done in ADR-0024 E-4: JSON's schema 1 gives each row in `base` and as `shown`, in its own unit or form, with a form's `copied` text. (The cloud review of m2, Minor 4.) |

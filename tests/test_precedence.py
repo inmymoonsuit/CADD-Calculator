@@ -37,7 +37,9 @@ SHOP = Domain(
     "shop",
     "Shop",
     "A domain for precedence tests.",
-    settings=(Param("thickness", "T", "Thickness", L, minimum=0.0, min_inclusive=False),),
+    settings=(
+        Param("thickness", "T", "Thickness", L, unit="mm", minimum=0.0, min_inclusive=False),
+    ),
 )
 SET_T = DomainValues("shop", "Shop settings", {"thickness": 3.0})
 

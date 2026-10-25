@@ -21,6 +21,8 @@ from caddcalc.calculators import default_registry
 from caddcalc.calculators.conversions import (
     AngleConverter,
     AreaConverter,
+    DecimalToFraction,
+    FractionToDecimal,
     LengthConverter,
     StressConverter,
 )
@@ -32,8 +34,17 @@ from caddcalc.calculators.sheet_metal import (
 )
 from caddcalc.calculators.sheet_metal.common import EDD5_BEND_ALLOWANCE, MH31_FIG13
 from caddcalc.core import Calculator, Dimension, Reference, Verification, parse_quantity
-from caddcalc.core.formatting import CopyForm, DisplayPrefs, ShownUnits, copy_output
+from caddcalc.core.formatting import (
+    CopyForm,
+    DisplayPrefs,
+    ShownUnits,
+    copy_output,
+    format_output,
+)
 from tests.helpers import run_inches
+
+UNITS = ShownUnits.generated()
+"""The default set, for an output shown in its own fixed form."""
 
 
 def printed(value: float, decimals: int = 3) -> object:
@@ -111,11 +122,12 @@ def test_edd5_cone_sector_rule_on_one_surface() -> None:
     assert out["outside_radius"] == printed(13.362344, 6)
 
 
-def _full(calc: Calculator, typed: str, dimension: Dimension, row: str) -> str:
-    """A converter's row for ``typed``, copied at full precision (ten digits)."""
+def _full(calc: Calculator, typed: str, dimension: Dimension, pick: str) -> str:
+    """A converter's value for ``typed``, picked in ``pick``, copied at full precision."""
     result = calc.run({"value": parse_quantity(typed, dimension)})
+    units = ShownUnits(ShownUnits.generated().choices, {"value": pick}, {}, key="")
     return copy_output(
-        calc.output(row), result.outputs[row], ShownUnits.generated(), DisplayPrefs(), CopyForm.FULL
+        calc.output("value"), result.outputs["value"], units, DisplayPrefs(), CopyForm.FULL
     )
 
 
@@ -127,6 +139,15 @@ def test_sp811_b8_inch_and_foot() -> None:
     assert _full(LengthConverter(), "1 in", Dimension.LENGTH, "m") == "0.0254"
     assert _full(LengthConverter(), "1 ft", Dimension.LENGTH, "m") == "0.3048"
     assert _full(LengthConverter(), "0.0254 m", Dimension.LENGTH, "in") == "1"
+    # Each converter its status names "for in and ft" runs both (S&R's PR #3 M2).
+    assert _full(FractionToDecimal(), "1 in", Dimension.LENGTH, "m") == "0.0254"
+    assert _full(FractionToDecimal(), "1 ft", Dimension.LENGTH, "m") == "0.3048"
+    calc = DecimalToFraction()
+    for typed, mm, shown in (("0.0254 m", 25.4, '1"'), ("0.3048 m", 304.8, '12"')):
+        nearest = calc.run({"value": parse_quantity(typed, Dimension.LENGTH)})
+        assert nearest.outputs["nearest"] == mm and nearest.outputs["error"] == 0.0
+        value = nearest.outputs["nearest"]
+        assert format_output(calc.output("nearest"), value, UNITS, DisplayPrefs()) == shown
 
 
 def test_sp811_b8_square_inch_and_foot() -> None:
@@ -134,8 +155,8 @@ def test_sp811_b8_square_inch_and_foot() -> None:
 
     They're 6.4516 E-04 m² and 9.290 304 E-02 m², both printed as exact.
     """
-    assert _full(AreaConverter(), "1 in²", Dimension.AREA, "m2") == "0.00064516"
-    assert _full(AreaConverter(), "1 ft²", Dimension.AREA, "m2") == "0.09290304"
+    assert _full(AreaConverter(), "1 in²", Dimension.AREA, "m²") == "0.00064516"
+    assert _full(AreaConverter(), "1 ft²", Dimension.AREA, "m²") == "0.09290304"
 
 
 def test_sp811_b8_psi_and_ksi() -> None:
@@ -144,8 +165,8 @@ def test_sp811_b8_psi_and_ksi() -> None:
     They're 6.894 757 E+03 Pa and 6.894 757 E+06 Pa, printed rounded to seven digits.
     """
     calc = StressConverter()
-    assert float(_full(calc, "1 psi", Dimension.STRESS, "kpa")) == printed(6.894757, 6)
-    assert float(_full(calc, "1 ksi", Dimension.STRESS, "mpa")) == printed(6.894757, 6)
+    assert float(_full(calc, "1 psi", Dimension.STRESS, "kPa")) == printed(6.894757, 6)
+    assert float(_full(calc, "1 ksi", Dimension.STRESS, "MPa")) == printed(6.894757, 6)
 
 
 def test_sp811_b8_degree() -> None:
@@ -170,6 +191,16 @@ VERIFIED: dict[tuple[str, str], tuple[str, Reference, str]] = {
         "at 90°",
     ),
     ("conversions.length", "exact"): ("test_sp811_b8_inch_and_foot", SP811_B8, "for in and ft"),
+    ("conversions.fraction_to_decimal", "exact"): (
+        "test_sp811_b8_inch_and_foot",
+        SP811_B8,
+        "for in and ft",
+    ),
+    ("conversions.decimal_to_fraction", "exact"): (
+        "test_sp811_b8_inch_and_foot",
+        SP811_B8,
+        "for in and ft",
+    ),
     ("conversions.area", "exact"): (
         "test_sp811_b8_square_inch_and_foot",
         SP811_B8,

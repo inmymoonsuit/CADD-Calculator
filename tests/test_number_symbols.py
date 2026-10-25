@@ -18,9 +18,9 @@ from caddcalc.core.formatting import (
     ShownUnits,
     copy_output,
     describe_error,
-    entry_text,
     field_text,
     format_value,
+    picked_text,
     render_step,
     results_tsv,
     typeset,
@@ -160,18 +160,17 @@ def test_a_typed_value_keeps_the_mark_it_was_read_with() -> None:
 
 def test_a_field_shows_the_users_text_as_typed_and_the_apps_in_the_locales_mark() -> None:
     """Text the app writes, such as a default, follows the locale (ADR-0020 §4)."""
-    inch = get_unit("in")
     default = TypedValue.parse("0.0625", LENGTH, "in")
-    assert entry_text(default, inch, IN_COMMA) == "0,0625"
-    assert entry_text(default, inch, DisplayPrefs()) == "0.0625"
+    assert picked_text(default, "in", IN_COMMA) == "0,0625"
+    assert picked_text(default, "in", DisplayPrefs()) == "0.0625"
     stated = TypedValue.parse("1.5875 mm", LENGTH)
-    assert entry_text(stated, inch, IN_COMMA) == "0,0625", "the field's unit, in the locale's mark"
+    assert picked_text(stated, "in", IN_COMMA) == "0,0625", "the field's unit, in the locale's mark"
     for typed in ("0.0625", "0,0625"):
-        entry = TypedValue.parse(typed, LENGTH, "in", decimal=",")
-        assert entry_text(entry, inch, IN_COMMA) == typed
+        entry = TypedValue.read(typed, "in", LENGTH, decimal=",")
+        assert picked_text(entry, "in", IN_COMMA) == typed
 
 
 def test_a_family_setting_reads_the_locales_mark() -> None:
-    settings = DomainSettings().set_text(DOMAIN, "thickness", "0,0625", "in", decimal=",")
+    settings = DomainSettings().set_text(DOMAIN, "thickness", "0,0625", decimal=",")
     entry = settings.get(DOMAIN, "thickness")
     assert entry is not None and entry.value == pytest.approx(0.0625 * INCH)

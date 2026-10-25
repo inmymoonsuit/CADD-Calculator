@@ -16,7 +16,15 @@ from caddcalc.core.errors import CaddCalcError, InputError, SpecError, UsageErro
 from caddcalc.core.notes import Note, NoteKind, Quantity
 from caddcalc.core.provenance import DEFAULT, EXPLICIT, InputSource, SourceKind
 from caddcalc.core.reference import Reference
-from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, UnitSet
+from caddcalc.core.spec import (
+    Method,
+    OutOfRangeError,
+    Output,
+    Param,
+    UnitSet,
+    check_param_choices,
+    check_picks,
+)
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
     Dimension,
@@ -281,6 +289,10 @@ class Calculator(ABC):
     output_sets: ClassVar[tuple[UnitSet, ...]] = ()
     """The sets of units its results can be shown in, the first the default (ADR-0024
     E1); empty for the generated ones, one per length choice (``unit_sets``)."""
+    forms_in_sets: ClassVar[bool] = True
+    """Whether its generated sets include those whose length is a form, feet and inches
+    or an inch fraction; ``False`` where a result in the set must stay a decimal, as
+    Decimal to fraction's error does, which a fraction would round to nothing."""
 
     @abstractmethod
     def compute(self, ctx: Context) -> None:
@@ -309,7 +321,8 @@ class Calculator(ABC):
 
         A generated set is labelled by its choices for the dimensions its outputs show
         in a set, in their order: ``in · ° · in²`` on the right triangle, ``in`` on a
-        sheet-metal page (ADR-0024 §5).
+        sheet-metal page (ADR-0024 §5). Without ``forms_in_sets``, the sets whose length
+        is a form are left out.
         """
         if cls.output_sets:
             return cls.output_sets
@@ -319,6 +332,8 @@ class Calculator(ABC):
             return ()  # every output has its own unit, form or picks: there's nothing to set
         sets = []
         for key, choices in units.generated_sets():
+            if not cls.forms_in_sets and _is_form(choices[Dimension.LENGTH], Dimension.LENGTH):
+                continue
             written = [_written(choices[d], d) for d in shown]
             sets.append(UnitSet(key, " · ".join(w for w in written if w), choices))
         return tuple(sets)
@@ -514,12 +529,15 @@ class Calculator(ABC):
         _unique(cls.id, "output key", [o.key for o in cls.outputs])
         for o in cls.outputs:
             _check_output_unit(cls.id, o)
-            _check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
+            check_picks(cls.id, o.dimension, o.picks, f"output {o.key!r}'s picks", output=True)
+            _check_follows(cls, o)
             if o.picks and (o.unit or o.form):
                 raise SpecError(
                     f"{cls.id}: output {o.key!r} gives picks and a fixed unit or form; give one"
                 )
         _check_sets(cls)
+        for o in cls.outputs:
+            _check_signed(cls, o)
         for p in cls.params:
             if not expr.is_usable_symbol(p.symbol):
                 raise SpecError(
@@ -542,7 +560,12 @@ class Calculator(ABC):
                     raise SpecError(
                         f"{cls.id}: parameter {p.key!r} has a bad default {p.default!r}: {exc}"
                     ) from exc
-            _check_param_choices(cls.id, p)
+            check_param_choices(cls.id, p)
+            values = [v for v, _label in p.allowed]
+            if len(set(values)) != len(values) or any(not lb.strip() for _v, lb in p.allowed):
+                raise SpecError(
+                    f"{cls.id}: parameter {p.key!r}'s allowed values must differ, each with a label"
+                )
 
 
 def _written(choice: str, dimension: Dimension) -> str:
@@ -551,41 +574,65 @@ def _written(choice: str, dimension: Dimension) -> str:
     return picked.written if isinstance(picked, Unit) else picked.symbol
 
 
-def _check_picks(
-    owner: str, dimension: Dimension, picks: tuple[str, ...], what: str, *, output: bool
-) -> None:
-    """Check that each id is a choice of ``dimension``, a field's or an output's."""
-    units = registry()
-    allowed = units.output_choices(dimension) if output else units.entry_choices(dimension)
-    _unique(owner, f"choice in {what}", list(picks))
-    for pick in picks:
-        if pick not in allowed:
-            known = ", ".join(c or "''" for c in allowed)
+def _is_form(choice: str, dimension: Dimension) -> bool:
+    """Whether a choice is a compound form, such as feet and inches, rather than a unit."""
+    return not isinstance(registry().choice(choice, dimension), Unit)
+
+
+def _check_signed(cls: type[Calculator], output: Output) -> None:
+    """Check that a signed output can only be shown in a unit, never in a form.
+
+    A signed output is a difference whose size and sign matter, such as an error. A form
+    rounds to its own fineness and writes its own sign, so an error of 1/32 inch would
+    show as ``0"`` to the nearest 1/16 (UI/UX's review of PR #3, M1). A fixed form is
+    refused in ``_check_output_unit``; this checks its picks and its sets.
+
+    Raises:
+        SpecError: A signed output's picks, or a set it's shown in, give a form.
+    """
+    if not output.signed:
+        return
+    forms = [pick for pick in output.picks if _is_form(pick, output.dimension)]
+    if forms:
+        raise SpecError(
+            f"{cls.id}: output {output.key!r} is signed, so it can't be picked in a form "
+            f"such as {forms[0]!r}; a form writes its own sign and rounds to its fineness"
+        )
+    if not output.follows_set:
+        return
+    for unit_set in cls.unit_sets():
+        choice = unit_set.choices.get(output.dimension, "")
+        if choice and _is_form(choice, output.dimension):
             raise SpecError(
-                f"{owner}: {what} names {pick!r}, which isn't a choice for "
-                f"{dimension.with_article}; there's {known}"
+                f"{cls.id}: output {output.key!r} is signed, but output set {unit_set.key!r} "
+                f"shows it in the form {choice!r}; give sets in units only "
+                "(forms_in_sets = False)"
             )
 
 
-def _check_param_choices(owner: str, p: Param) -> None:
-    """Check a parameter's picker: its choices exist, and its default choice resolves.
+def _check_follows(cls: type[Calculator], output: Output) -> None:
+    """Check an output that follows an input: it has picks, and its counterparts are real.
 
-    A parameter with more than one choice needs a default choice: ``Param.unit``, or a
-    default that names its unit, as ``"0.1046 in"`` does (ADR-0024 E1).
+    Raises:
+        SpecError: It follows no input of its dimension, or has no picks, or a counterpart
+            names a choice the input doesn't offer or a pick the output doesn't have.
     """
-    _check_picks(owner, p.dimension, p.units, f"parameter {p.key!r}'s units", output=False)
-    choice = p.default_choice
-    if choice is None:
+    if not output.follows:
+        if output.counterparts:
+            raise SpecError(f"{cls.id}: output {output.key!r} has counterparts but follows nothing")
+        return
+    param = next((p for p in cls.params if p.key == output.follows), None)
+    if param is None or param.dimension is not output.dimension or not output.picks:
         raise SpecError(
-            f"{owner}: parameter {p.key!r} has no default unit for its picker: give "
-            "Param.unit, or a default that names its unit"
+            f"{cls.id}: output {output.key!r} follows {output.follows!r}, which must be an "
+            f"input of {output.dimension.with_article}, and needs picks to follow it in"
         )
-    if choice not in p.choices:
-        known = ", ".join(c or "''" for c in p.choices)
-        raise SpecError(
-            f"{owner}: parameter {p.key!r} starts its picker in {choice!r}, which it "
-            f"doesn't offer; it offers {known}"
-        )
+    for choice, pick in output.counterparts.items():
+        if choice not in param.choices or pick not in output.picks:
+            raise SpecError(
+                f"{cls.id}: output {output.key!r}'s counterpart {choice!r} → {pick!r} needs "
+                f"a choice {param.key!r} offers and one of the output's picks"
+            )
 
 
 def _check_sets(cls: type[Calculator]) -> None:
@@ -602,7 +649,7 @@ def _check_sets(cls: type[Calculator]) -> None:
                 f"{cls.id}: output set {unit_set.key!r} has no choice for {', '.join(missing)}"
             )
         for dimension, choice in unit_set.choices.items():
-            _check_picks(cls.id, dimension, (choice,), f"output set {unit_set.key!r}", output=True)
+            check_picks(cls.id, dimension, (choice,), f"output set {unit_set.key!r}", output=True)
 
 
 def _check_output_unit(owner: str, output: Output) -> None:
@@ -631,9 +678,7 @@ def _check_output_unit(owner: str, output: Output) -> None:
             )
         return
     if not output.unit:
-        if output.precision is not None:
-            raise SpecError(f"{owner}: output {output.key!r} gives a precision but no unit")
-        return
+        return  # a precision applies in whatever unit it's picked or set in, never a form
     try:
         unit = get_unit(output.unit, output.dimension)
     except (InputError, UsageError) as exc:

@@ -67,25 +67,26 @@ no picker.
 
 ## Typing with the unit in the text
 
-Family settings fields (until they get pickers, KI-027) and the command line read a
-value with its unit in the text. On a settings page, a number with no unit is inches,
-degrees or ksi:
+The command line reads a value with its unit in the text, as `T=3mm`; every field in
+the app, on a calculator page or a family settings page, has a picker for its unit
+instead. On the command line, a number with no unit is in the input's default unit,
+which `caddcalc show` lists:
 
 | You type | Means |
 |---|---|
-| `0.1046` | 0.1046 inches, on a settings page and on the command line (its default unit) |
-| `3mm`, `3 mm` | 3 millimetres, whatever the unit system |
-| `1/8`, `1/8in` | 0.125 (inches if no unit is typed and the system is `in`) |
+| `0.1046` | 0.1046 inches, for an input whose default unit is inches |
+| `3mm`, `3 mm` | 3 millimetres, whatever the input's default unit |
+| `1/8`, `1/8in` | 0.125 (inches, for an input in inches, if no unit is typed) |
 | `1-1/2"`, `1 1/2 in` | 1.5 inches |
 | `2'` | 2 feet |
 | `90`, `90°`, `90 deg` | 90 degrees (angles are always degrees unless you type `rad`) |
 | `44%`, `0.44` | the ratio 0.44 (e.g. a K-factor) |
 | `6` | a count, such as a polygon's number of sides: a whole number, with no unit or `%` |
-| `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is ksi when the system is `in`, MPa when it's `mm` |
-| `3 in²`, `3 in^2`, `3 in2`, `3 sq in`, `3 square inches` | an area; `ft²`, `mm²`, `cm²` and `m²` are typed the same ways, and a bare number is in the square of your unit system's length |
+| `36 ksi`, `36000 psi`, `248 MPa` | a stress, such as a strength; a bare number is in the input's default unit |
+| `3 in²`, `3 in^2`, `3 in2`, `3 sq in`, `3 square inches` | an area; `ft²`, `mm²`, `cm²` and `m²` are typed the same ways, and a bare number is in the input's default unit |
 
-Units can be typed by name, in US or British spelling: `3 millimeters` or
-`3 millimetres`, `1 meter` or `1 metre`, `44 percent` or `44 per cent`.
+On the command line, units can be given by name, in US or British spelling:
+`3 millimeters` or `3 millimetres`, `1 meter` or `1 metre`, `44 percent` or `44 per cent`.
 
 Type your regional format's decimal mark, or "." in any format: in German, `0,125` and
 `0.125` are the same. Digits are never grouped, so `1.234` is always 1.234, and a comma
@@ -95,12 +96,13 @@ your format; what you typed stays as you typed it.
 
 ### Feet and inches, and degrees, minutes and seconds
 
-A length can be typed in feet and inches, in any of the usual forms: `1'-4 3/16"`,
+On the command line, a length can be given in feet and inches, in any of the usual forms
+(a field picked in ft-in reads them too, with its marks optional): `1'-4 3/16"`,
 `1'-4-3/16"`, `1'4-3/16"`, `1' 4 3/16"`, `1′ 4 3/16″`, or `1 ft 4 3/16 in`. Give whole
 feet, then inches under 12 with their mark, and at most one sign, at the front:
 `-1'-4"`.
 
-An angle can be typed in degrees, minutes and seconds: `40°30′15″`, `40°30'15"`,
+An angle can be given in degrees, minutes and seconds: `40°30′15″`, `40°30'15"`,
 `40d30'15.5"` (as AutoCAD takes it), or `40 degrees 30 minutes`. Give whole degrees and
 minutes, minutes and seconds under 60, and at most one sign, at the front: `-0°30′`. In
 an angle, `′` and `″` (or `'` and `"`) are minutes and seconds, so `30′` is half a
@@ -116,7 +118,8 @@ typed in inches, millimeters, meters or a fraction of a foot, such as `3/32 in`,
 `2.38125 mm`, `0.12779375 m` or `317/384 ft`, lands a hair off the half; a value within
 two units in its last digit, as written in inches, of the half counts as the half. One
 three units off, as `11.976562500000005 in` is, is a value of its own, and rounds as it
-is. A value so large that a
+is. Decimals round the same way, to even at a half: 49.92751 mm, exactly 1.96565 in, shows
+as `1.9656 in`, and 1/32 in as `0.7938 mm`. A value so large that a
 sixteenth of an inch is lost in its last digits is rounded as it is. Seconds of an angle
 round the same way. Every inch fraction rounds by this one rule: feet and inches, and
 the nearest 1/16, 1/32 and 1/64 inch, so they never disagree.

@@ -20,10 +20,15 @@ default. Settings last until you close the app; nothing is saved.
 A value applies when you press Enter or leave the field. As you type, text that can't be
 used is outlined in red and explained. It isn't applied, so the setting keeps the value
 it had, and the text stays, with its explanation, until you fix it or clear the field.
-A settings field still reads a unit typed with its number, as `3 mm`, and a bare number
-in the **Units** box's unit, until settings get pickers of their own (KI-027). If you
-switch units meanwhile, a number typed without a unit gains the unit you typed it in, so
-"5" becomes "5 in" and keeps its meaning.
+Each setting with a unit has a picker after its field, as a calculator's inputs do: the
+thickness and the inside radius start in inches. The number is read in the unit the
+picker shows, and a unit typed into the field, as `3 mm`, is refused with where it goes.
+Switching a picker re-reads the number you typed in the new unit, and shows a value you
+didn't type, such as a gauge's thickness, converted. A calculator that uses a setting shows it in
+its own field's unit, converted, so a thickness set as 2.54 mm reads 0.1 on a field in
+inches. A gauge's thickness shows in the thickness picker's unit, and a material's facts,
+such as its strengths, in the unit their source gives, ksi for the aluminum
+specifications.
 
 In the table, a calculator named alone uses the setting in every method; otherwise the
 methods that use it follow the colon.

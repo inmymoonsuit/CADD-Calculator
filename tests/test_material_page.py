@@ -186,7 +186,7 @@ def test_the_facts_show_the_materials_rule_strengths_and_notes() -> None:
 
 
 def test_strengths_are_in_ksi_whatever_the_results_show() -> None:
-    """The settings page shows inch-pound units until its fields get pickers (KI-027)."""
+    """A fact is in its source's unit, ksi for these specifications (ADR-0024 Q13)."""
     from tests.qt_helpers import show_in
 
     window = open_window()
@@ -328,3 +328,15 @@ def test_a_bend_below_the_materials_minimum_says_so_on_its_page() -> None:
     ) in shown
     assert "This is a rule of thumb" not in shown, "a cited check replaces the rule of thumb"
     window.close()
+
+
+def test_a_fact_shows_each_value_in_the_unit_its_source_states() -> None:
+    """Facts are cited, not results: no picker or output set moves them (ADR-0024 Q13)."""
+    from caddcalc.core import Dimension, Fact, TypedValue
+    from caddcalc.core.formatting import DisplayPrefs
+    from caddcalc.gui.window import _facts_html
+
+    stress = Dimension.STRESS
+    stated = (TypedValue.parse("250 MPa", stress), TypedValue.parse("42 ksi", stress))
+    html = _facts_html([Fact("Strength", "F_ty {}; F_tu {}", stated)], DisplayPrefs())
+    assert "F_ty 250.0 MPa; F_tu 42.0 ksi" in html

@@ -30,7 +30,7 @@ class DomainSettings:
 
     ``DomainSettings()`` is empty, and the methods that set values or choose options are
     the only way to add one, so everything in it has been checked against its domain.
-    Models compare equal when they hold the same values, origins, and choices.
+    Models compare equal when they hold the same values, origins, choices, and pickers.
     """
 
     _values: Mapping[str, Mapping[str, TypedValue]] = field(default_factory=dict, init=False)
@@ -38,6 +38,8 @@ class DomainSettings:
     """The option key chosen for each choice, by domain id and choice key."""
     _origins: Mapping[str, Mapping[str, ValueOrigin]] = field(default_factory=dict, init=False)
     """The citation of each set value the user applied, by domain id and setting key."""
+    _field_choices: Mapping[str, Mapping[str, str]] = field(default_factory=dict, init=False)
+    """The unit or form each setting's picker is set to, by domain id and setting key."""
     __hash__ = None  # type: ignore[assignment]  # equal by value, and the values are dicts
 
     def get(self, domain: Domain, key: str) -> TypedValue | None:
@@ -62,33 +64,62 @@ class DomainSettings:
         domain.setting(key)
         return self._origins.get(domain.id, {}).get(key)
 
-    def set_text(
-        self,
-        domain: Domain,
-        key: str,
-        text: str,
-        default_unit: str | None = None,
-        *,
-        decimal: str = ".",
-    ) -> DomainSettings:
-        """Return a copy with ``key`` set from the user's text.
+    def field_choice(self, domain: Domain, key: str) -> str:
+        """Return the unit or form ``key``'s picker is set to: the user's, else its first.
 
-        A typed value has no origin, so typing over an applied value drops its citation.
+        A setting's picker starts as a calculator field's does (``Param.default_choice``,
+        ADR-0024 E-5).
+
+        Raises:
+            UsageError: ``domain`` has no setting with that key.
+        """
+        setting = domain.setting(key)
+        return self._field_choices.get(domain.id, {}).get(key) or setting.default_choice or ""
+
+    def set_field_choice(self, domain: Domain, key: str, choice: str) -> DomainSettings:
+        """Return a copy with ``key``'s picker set to ``choice``; its value is unchanged.
+
+        A front end re-reads the text the user typed in the new choice, with
+        ``set_text``, and shows any other value converted (ADR-0024 §2).
+
+        Raises:
+            UsageError: ``domain`` has no setting with that key, or the setting doesn't
+                offer ``choice``.
+        """
+        setting = domain.setting(key)
+        if choice not in setting.choices:
+            offered = ", ".join(c or "''" for c in setting.choices)
+            raise UsageError(
+                f"Setting {key!r} of domain {domain.id!r} offers {offered}, not {choice!r}"
+            )
+        picked = {**self._field_choices.get(domain.id, {}), key: choice}
+        return self._with(domain.id, field_choices=picked)
+
+    def set_text(
+        self, domain: Domain, key: str, text: str, *, decimal: str = "."
+    ) -> DomainSettings:
+        """Return a copy with ``key`` set from the user's text, read in its picker's choice.
+
+        The text is read as a calculator field's is (``TypedValue.read``): its number,
+        fraction or arithmetic in the picked unit, or in the picked form's grammar, and
+        never with a unit of its own. A typed value has no origin, so typing over an
+        applied value drops its citation.
 
         Args:
             domain: The domain the setting belongs to.
             key: The setting key, e.g. ``"thickness"``.
-            text: What the user typed, e.g. ``"1/8"`` or ``"3 mm"``.
-            default_unit: The unit for text typed without one.
+            text: What the user typed, e.g. ``"1/8"``.
             decimal: The locale's decimal mark, read besides ``"."``.
 
         Raises:
             UsageError: ``domain`` has no setting with that key.
-            InputError: The text isn't a valid value of the setting's dimension.
+            UnitInTextError: The text names a unit, which belongs in the picker.
+            InputError: The text isn't a value in the picked choice.
             OutOfRangeError: The value is outside the setting's range.
         """
         setting = domain.setting(key)
-        entry = TypedValue.parse(text, setting.dimension, default_unit, decimal=decimal)
+        choice = self.field_choice(domain, key)
+        entry = TypedValue.read(text, choice, setting.dimension, decimal=decimal)
         return self.set(domain, key, entry)
 
     def set(
@@ -211,7 +242,8 @@ class DomainSettings:
     def clear_domain(self, domain: Domain) -> DomainSettings:
         """Return a copy with ``domain``'s settings unset and its choices at their defaults.
 
-        This is Clear all: each choice goes back to its default, not to no selection.
+        This is Clear all: each choice goes back to its default, not to no selection. The
+        pickers keep their units, as a calculator's do.
         """
         return self._with(domain.id, values={}, choices={}, origins={})
 
@@ -239,6 +271,7 @@ class DomainSettings:
         values: Mapping[str, TypedValue] | None = None,
         choices: Mapping[str, str] | None = None,
         origins: Mapping[str, ValueOrigin] | None = None,
+        field_choices: Mapping[str, str] | None = None,
     ) -> DomainSettings:
         """Return a copy with some of ``domain_id``'s entries replaced, already checked."""
         settings = DomainSettings()
@@ -246,6 +279,8 @@ class DomainSettings:
         object.__setattr__(settings, "_values", _replaced(self._values, domain_id, values))
         object.__setattr__(settings, "_choices", _replaced(self._choices, domain_id, choices))
         object.__setattr__(settings, "_origins", _replaced(self._origins, domain_id, origins))
+        picked = _replaced(self._field_choices, domain_id, field_choices)
+        object.__setattr__(settings, "_field_choices", picked)
         return settings
 
 

@@ -1,20 +1,24 @@
-"""The Length, Angle, Area, and Stress converters (ADR-0018 §3).
+"""The unit converters, one value in and one out (ADR-0018 §3, split by ADR-0024 §7).
 
-Each takes one value typed in any unit of its kind, and shows it in every unit of that
-kind at once, each row an output fixed in its unit (``Output.unit``) or written in a
-compound form (``Output.form``). A row is the value itself, so it adds no work
+They're Length, Fraction to decimal, Decimal to fraction, Angle, Area, and Stress and
+pressure. Each unit-to-unit converter takes one value, in its input's picked unit, and gives it as
+one output, ``value``, in its own picker's unit (``Output.picks``). Until that's picked,
+it's the counterpart of the input's unit in the other system, in → mm and mm → in
+(``Output.follows``, ADR-0024 §6). The output is the value itself, so it adds no work
 (``Context.given``). The typed value was read through its unit's factor, as every value
-is, and each row converts it on to the row's unit, from the units' factors, each its
+is, and is shown converted on to the picked unit, from the units' factors, each its
 exact definition in NIST SP 811 rounded once (ADR-0019 §2). Only a value that isn't
-finite, or whose smallest unit's row would overflow, is refused: zero passes, and so
-does a sign, which is an offset, a compression, or a direction.
+finite, or that would overflow in the smallest unit it can be shown in, is refused:
+zero passes, and so does a sign, which is an offset, a compression, or a direction.
+Decimal to fraction gives a length's nearest inch fraction, to a fineness picked as an
+input, and the fraction's error.
 """
 
 from __future__ import annotations
 
 import math
 import sys
-from typing import ClassVar, override
+from typing import override
 
 from caddcalc.calculators.conversions.domain import DOMAIN
 from caddcalc.core import (
@@ -62,12 +66,13 @@ FR_1959 = Reference(
     url="https://www.govinfo.gov/app/details/FR-1959-07-01",
 )
 
-ROWS_NOTE = (
-    "Each row is the value in its unit: the value as typed, read through its unit's "
-    "factor, converted to the row's unit, each factor its unit's exact definition rounded "
-    "once. Rows show six significant figures; Copy gives what's shown, and full precision "
-    "ten digits."
+VALUE_NOTE = (
+    "The value as typed, read through its unit's factor, converted to the picked unit, each "
+    "factor its unit's exact definition rounded once. It shows six significant figures; "
+    "Copy gives what's shown, and full precision ten digits."
 )
+FIGURES = Precision(6, significant=True)
+"""A converted value's figures, whatever its size: as the converters' rows had them."""
 
 
 def _method(scope: str, note: str, *references: Reference) -> Method:
@@ -75,116 +80,179 @@ def _method(scope: str, note: str, *references: Reference) -> Method:
     return Method(
         "exact",
         "Exact definitions",
-        "Each row is the value in its unit, from the units' exact definitions",
+        "The value in the picked unit, from the units' exact definitions",
         Verification.VERIFIED,
         references=references,
-        notes=(ROWS_NOTE,),
+        notes=(VALUE_NOTE,),
         scope=scope,
         verification_note=note,
     )
 
 
-def _value(dimension: Dimension, label: str, default: str, examples: str) -> Param:
-    """The converter's one input: any finite value, of any sign, in any unit."""
+def _value(
+    dimension: Dimension, label: str, default: str, what: str, examples: str, *, unit: str = ""
+) -> Param:
+    """The converter's input: any finite value, of any sign, in its picked unit.
+
+    Its help says to pick the unit, then type ``what``, such as ``examples``: numbers
+    with no unit, since a field refuses a typed one (ADR-0024 Q5). A form's example
+    may give the form's own marks, which are its grammar. No example has a decimal
+    mark, which prose would show as "." in a "," locale (ADR-0020 M4).
+    """
+    such = f", such as {examples}" if examples else ""
     return Param(
         "value",
         "X",
         label,
         dimension,
         default=default,
-        help=f"Type it in any unit, such as {examples}. Zero and negative values convert too.",
+        unit=unit,
+        help=f"Pick its unit, then type {what}{such}. Zero and negative values convert too.",
     )
 
 
-def _rows(dimension: Dimension, *rows: tuple[str, str, str]) -> tuple[Output, ...]:
-    """Outputs fixed in a unit each, from (key, unit symbol, label)."""
-    return tuple(Output(key, unit, label, dimension, unit=unit) for key, unit, label in rows)
+def _converted(
+    dimension: Dimension, label: str, picks: tuple[str, ...], counterparts: dict[str, str]
+) -> Output:
+    """The converter's output: the value, in its own picker's unit (ADR-0024 §7)."""
+    return Output(
+        "value",
+        "Y",
+        label,
+        dimension,
+        picks=picks,
+        precision=FIGURES,
+        follows="value" if counterparts else "",
+        counterparts=counterparts,
+    )
 
 
 class _Converter(Calculator):
-    """A converter: every row but the computed ones is the value, shown in its unit."""
-
-    computed: ClassVar[tuple[str, ...]] = ()
-    """The outputs ``compute`` works out itself rather than give the value."""
+    """A unit-to-unit converter: its one output is its one input, shown in another unit."""
 
     @override
     def compute(self, ctx: Context) -> None:
-        for output in self.outputs:
-            # A row in a unit smaller than the base, as psi is beside MPa, can overflow
-            # where the value doesn't; it's refused, never shown as inf (ADR-0018,
-            # amendments).
-            if output.unit and not math.isfinite(from_base(ctx["value"], output.unit)):
-                smallest = _smallest_unit(self.outputs)
-                raise InputError(
-                    f"This value is too large to show in {smallest}: its size must be under "
-                    f"{sys.float_info.max:.6g} {smallest}."
-                )
-        for output in self.outputs:
-            if output.key not in self.computed:
-                ctx.given("X", output=output.key)
+        _refuse_overflow(ctx["value"], self.outputs[0].picks)
+        ctx.given("X", output="value")
 
 
-def _smallest_unit(outputs: tuple[Output, ...]) -> str:
-    """The smallest unit any row is shown in, whose row overflows first."""
-    return min((o.unit for o in outputs if o.unit), key=lambda unit: to_base(1, unit))
+def _refuse_overflow(value: float, units: tuple[str, ...]) -> None:
+    """Refuse a value that would overflow in one of ``units``, as psi does beside MPa.
+
+    It's refused, never shown as inf (ADR-0018, amendments). A form is shown in its full
+    unit, which is checked with the units.
+
+    Raises:
+        InputError: The value is too large to show in the smallest unit.
+    """
+    shown = [u for u in units if not u.startswith(("in_", "ft_in", "dms"))]
+    if any(not math.isfinite(from_base(value, unit)) for unit in shown):
+        smallest = min(shown, key=lambda unit: to_base(1, unit))
+        raise InputError(
+            f"This value is too large to show in {smallest}: its size must be under "
+            f"{sys.float_info.max:.6g} {smallest}."
+        )
 
 
-FRACTIONS = (16, 32, 64)
-"""The inch fractions a length is shown to the nearest of, each with its error."""
+LENGTHS = ("in", "ft_in", "ft", "mm", "cm", "m")
+"""The units and forms a converted length is shown in, decimal and feet and inches."""
+LENGTH_COUNTERPARTS = {"in": "mm", "ft_in": "mm", "ft": "m", "mm": "in", "cm": "in", "m": "ft"}
+"""Each length's counterpart in the other system (ADR-0024 §6)."""
+LENGTH_METHOD = _method(
+    "for in and ft",
+    "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot "
+    "in meters exactly.",
+    SP811_B8,
+    SP811_SI,
+    FR_1959,
+)
 
 
 class LengthConverter(_Converter):
-    """A length in inches, feet, millimeters, centimeters, meters, and feet and inches."""
+    """A length, in any length unit or in feet and inches."""
 
     id = "conversions.length"
     name = N_("Length")
     domain = DOMAIN.id
     summary = N_(
-        "A length in inches, feet, millimeters, centimeters, meters, and feet and inches, "
-        "and to the nearest 1/16, 1/32, and 1/64 inch, each with its error."
+        "A length in another unit: inches, feet, millimeters, centimeters, meters, or feet "
+        "and inches."
     )
-    params = (_value(LENGTH, "Length", "1 in", "3/16 in, 5 mm, or 1'-4 3/16\""),)
+    params = (
+        _value(
+            LENGTH, "Length", "1 in", "the number", "3/16, 1 3/16, or 25; in ft-in, 1'-4 3/16\""
+        ),
+    )
+    outputs = (_converted(LENGTH, "Converted length", LENGTHS, LENGTH_COUNTERPARTS),)
+    methods = (LENGTH_METHOD,)
+
+
+class FractionToDecimal(_Converter):
+    """A fraction of an inch, or of any length unit, as a decimal (ADR-0024 D6)."""
+
+    id = "conversions.fraction_to_decimal"
+    name = N_("Fraction to decimal")
+    domain = DOMAIN.id
+    summary = N_("A fraction, such as 3/16 or 1 3/16 inches, as a decimal, in any length unit.")
+    params = (
+        _value(LENGTH, "Fraction", "3/16 in", "the fraction", "3/16, 1 3/16, or 1-3/16", unit="in"),
+    )
+    outputs = (_converted(LENGTH, "Decimal", ("in", "ft", "mm", "cm", "m"), {}),)
+    methods = (LENGTH_METHOD,)
+
+
+FINENESS = ((16.0, "1/16"), (32.0, "1/32"), (64.0, "1/64"))
+"""The inch fractions a length is shown to the nearest of."""
+
+
+class DecimalToFraction(Calculator):
+    """A length as its nearest fraction of an inch, to a fineness, with its error."""
+
+    id = "conversions.decimal_to_fraction"
+    name = N_("Decimal to fraction")
+    domain = DOMAIN.id
+    summary = N_("A length as its nearest 1/16, 1/32, or 1/64 inch, with the fraction's error.")
+    params = (
+        _value(LENGTH, "Length", "0.19 in", "the length as a decimal", ""),
+        Param(
+            "fineness",
+            "F",
+            "Fineness",
+            Dimension.COUNT,
+            default="16",
+            allowed=FINENESS,
+            help="The fraction of an inch to round to: 1/16, 1/32, or 1/64.",
+        ),
+    )
     outputs = (
-        *_rows(
+        Output(
+            "nearest",
+            "N",
+            "Nearest fraction",
             LENGTH,
-            ("in", "in", "Inches"),
-            ("ft", "ft", "Feet"),
-            ("mm", "mm", "Millimeters"),
-            ("cm", "cm", "Centimeters"),
-            ("m", "m", "Meters"),
+            "The length rounded to the nearest fraction of an inch at the fineness, half to even.",
+            form="in_64",
         ),
-        Output("ft_in", "ft-in", "Feet and inches", LENGTH, form="ft_in"),
-        *(
-            row
-            for denominator in FRACTIONS
-            for row in (
-                Output(
-                    f"nearest_{denominator}",
-                    f"N{denominator}",
-                    f"Nearest 1/{denominator} inch",
-                    LENGTH,
-                    form=f"in_{denominator}",
-                ),
-                Output(
-                    f"error_{denominator}",
-                    f"E{denominator}",
-                    f"Error of the nearest 1/{denominator}",
-                    LENGTH,
-                    "The nearest fraction less the value: positive where the fraction is "
-                    "longer than the value.",
-                    unit="in",
-                    precision=Precision(6),
-                    signed=True,
-                ),
-            )
+        Output(
+            "error",
+            "E",
+            "Error",
+            LENGTH,
+            "The nearest fraction less the length: positive where the fraction is longer.",
+            signed=True,
+            # To the millionth, as PR #1's error rows were, so a 1/128 inch residual shows.
+            precision=Precision(6),
         ),
     )
-    computed = tuple(f"{kind}_{d}" for d in FRACTIONS for kind in ("nearest", "error"))
+    # The error is a decimal in every set: a fraction would round it to the very fineness
+    # it measures, and show 1/32 in out as 0" (UI/UX's review of PR #3, M1).
+    forms_in_sets = False
     methods = (
         _method(
             "for in and ft",
             "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot "
-            "in meters exactly.",
+            "in meters exactly. The rounding to the nearest fraction, half to even, is this "
+            "calculator's own rule; no published example covers it.",
             SP811_B8,
             SP811_SI,
             FR_1959,
@@ -193,43 +261,41 @@ class LengthConverter(_Converter):
 
     @override
     def compute(self, ctx: Context) -> None:
-        super().compute(ctx)
-        for denominator in FRACTIONS:
-            # As the parser builds a length typed in inches, so a value typed in inches as
-            # this very fraction has an error of exactly 0, not a rounding's worth.
-            nearest = to_base(float(nearest_inches(ctx["value"], denominator)), "in")
-            if abs(nearest - ctx["value"]) <= math.ulp(ctx["value"]):
-                # Within the value's own last place, as 411.1625 mm is of 16 3/16 in, the
-                # fraction is the value, so its error is 0 (ADR-0018, amendments).
-                nearest = ctx["value"]
-            ctx.record(
-                f"N{denominator}",
-                nearest,
-                label=f"Nearest 1/{denominator} inch",
-                dimension=LENGTH,
-                note=f"The value rounded to the nearest 1/{denominator} inch, half to even.",
-                output=f"nearest_{denominator}",
-            )
-            ctx.calc(
-                f"E{denominator}",
-                f"N{denominator} - X",
-                label=f"Error of the nearest 1/{denominator}",
-                dimension=LENGTH,
-                output=f"error_{denominator}",
-            )
+        _refuse_overflow(ctx["value"], ("in",))
+        denominator = round(ctx["fineness"])
+        # As the parser builds a length typed in inches, so a value typed in inches as
+        # this very fraction has an error of exactly 0, not a rounding's worth.
+        nearest = to_base(float(nearest_inches(ctx["value"], denominator)), "in")
+        if abs(nearest - ctx["value"]) <= math.ulp(ctx["value"]):
+            # Within the value's own last place, as 411.1625 mm is of 16 3/16 in, the
+            # fraction is the value, so its error is 0 (ADR-0018, amendments).
+            nearest = ctx["value"]
+        ctx.record(
+            "N",
+            nearest,
+            label="Nearest fraction",
+            dimension=LENGTH,
+            note=f"The length rounded to the nearest 1/{denominator} inch, half to even.",
+            output="nearest",
+        )
+        ctx.calc("E", "N - X", label="Error", dimension=LENGTH, output="error")
 
 
 class AngleConverter(_Converter):
-    """An angle in degrees, radians, and degrees, minutes and seconds."""
+    """An angle, in degrees, minutes and seconds, or radians."""
 
     id = "conversions.angle"
     name = N_("Angle")
     domain = DOMAIN.id
-    summary = N_("An angle in degrees, radians, and degrees, minutes, and seconds.")
-    params = (_value(ANGLE, "Angle", "1 deg", "30°, 1 rad, or 40°30′15″"),)
+    summary = N_("An angle in another unit: degrees, radians, or degrees, minutes, and seconds.")
+    params = (_value(ANGLE, "Angle", "1 deg", "the number", "30 or 90; in DMS, 40 30 15"),)
     outputs = (
-        *_rows(ANGLE, ("deg", "deg", "Degrees"), ("rad", "rad", "Radians")),
-        Output("dms", "DMS", "Degrees, minutes, and seconds", ANGLE, form="dms"),
+        _converted(
+            ANGLE,
+            "Converted angle",
+            ("deg", "dms", "arcmin", "arcsec", "rad"),
+            {"deg": "rad", "dms": "rad", "arcmin": "rad", "arcsec": "rad", "rad": "deg"},
+        ),
     )
     methods = (
         _method(
@@ -244,23 +310,23 @@ class AngleConverter(_Converter):
 
 
 class AreaConverter(_Converter):
-    """An area in square inches, feet, millimeters, centimeters, and meters."""
+    """An area, in square inches, feet, millimeters, centimeters, or meters."""
 
     id = "conversions.area"
     name = N_("Area")
     domain = DOMAIN.id
     summary = N_(
-        "An area in square inches, square feet, square millimeters, square centimeters, "
-        "and square meters."
+        "An area in another unit: square inches, square feet, square millimeters, square "
+        "centimeters, or square meters."
     )
-    params = (_value(AREA, "Area", "1 ft²", "3 sq in, 2 ft², or 500 mm²"),)
-    outputs = _rows(
-        AREA,
-        ("in2", "in²", "Square inches"),
-        ("ft2", "ft²", "Square feet"),
-        ("mm2", "mm²", "Square millimeters"),
-        ("cm2", "cm²", "Square centimeters"),
-        ("m2", "m²", "Square meters"),
+    params = (_value(AREA, "Area", "1 ft²", "the number", "3, 25, or 500"),)
+    outputs = (
+        _converted(
+            AREA,
+            "Converted area",
+            ("in²", "ft²", "mm²", "cm²", "m²"),
+            {"in²": "mm²", "ft²": "m²", "mm²": "in²", "cm²": "in²", "m²": "ft²"},
+        ),
     )
     methods = (
         _method(
@@ -275,19 +341,20 @@ class AreaConverter(_Converter):
 
 
 class StressConverter(_Converter):
-    """A stress or pressure in psi, ksi, kPa, and MPa."""
+    """A stress or pressure, in psi, ksi, kPa, MPa, or GPa."""
 
     id = "conversions.stress"
     name = N_("Stress and pressure")
     domain = DOMAIN.id
-    summary = N_("A stress or pressure in psi, ksi, kPa, and MPa.")
-    params = (_value(STRESS, "Stress or pressure", "1 psi", "36 ksi, 250 MPa, or 14 psi"),)
-    outputs = _rows(
-        STRESS,
-        ("psi", "psi", "Pounds per square inch"),
-        ("ksi", "ksi", "Kips per square inch"),
-        ("kpa", "kPa", "Kilopascals"),
-        ("mpa", "MPa", "Megapascals"),
+    summary = N_("A stress or pressure in another unit: psi, ksi, kPa, MPa, or GPa.")
+    params = (_value(STRESS, "Stress or pressure", "1 psi", "the number", "36, 250, or 14"),)
+    outputs = (
+        _converted(
+            STRESS,
+            "Converted stress or pressure",
+            ("psi", "ksi", "kPa", "MPa", "GPa"),
+            {"psi": "kPa", "ksi": "MPa", "kPa": "psi", "MPa": "ksi", "GPa": "ksi"},
+        ),
     )
     methods = (
         _method(

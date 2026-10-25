@@ -28,6 +28,7 @@ from caddcalc.core import (
     Param,
     Result,
     TypedValue,
+    UsageError,
     i18n,
 )
 from caddcalc.core.formatting import (
@@ -39,9 +40,9 @@ from caddcalc.core.formatting import (
     describe_note,
     describe_source,
     entered_form,
-    format_input,
     format_output,
     method_notes,
+    param_parts,
     render_step,
     result_json,
 )
@@ -156,7 +157,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="NAME=ID",
         help="read input NAME in the unit or form ID, as a field picked in it reads it, "
-        "e.g. --unit L=ft_in L=10-2; repeatable",
+        "e.g. --unit L=ft_in L=10-2; a unit may be any of its spellings, as in2 or "
+        "'sq in' for in²; repeatable",
     )
     p_run.add_argument(
         "--output-set",
@@ -222,14 +224,22 @@ def _cmd_show(args: argparse.Namespace) -> int:
         scope = f"  (methods: {', '.join(p.methods)})" if p.methods else ""
         default = f"  default {p.default}" if p.default else ""
         print(f"  {p.symbol:<6} {p.key:<20} {p.label}{default}{scope}")
-        if any(p.choices):
+        if p.allowed:
+            values = ", ".join(f"{v:g} ({label})" for v, label in p.allowed)
+            print(f"         Values: {values}")
+        elif any(p.choices):
             print(f"         Units (--unit): {_choices_text(p.choices, p.default_choice)}")
         if p.help:
             print(f"         {p.help}")
     print("\nOutputs")
     for o in calc.outputs:
         print(f"  {o.symbol:<6} {o.key:<20} {o.label}")
-        if o.picks:
+        if o.picks and o.follows:
+            # Until it's picked, it's the counterpart of its input's unit (ADR-0024 §6).
+            pairs = ", ".join(f"{c} → {p}" for c, p in o.counterparts.items())
+            print(f"         Units (--output-unit): {', '.join(o.picks)}")
+            print(f"         Until picked, it follows {o.follows}: {pairs}")
+        elif o.picks:
             print(f"         Units (--output-unit): {_choices_text(o.picks, o.picks[0])}")
         elif o.unit or o.form:
             print(f"         Always in {o.form or o.unit}")
@@ -238,7 +248,7 @@ def _cmd_show(args: argparse.Namespace) -> int:
         print("\nOutput sets (--output-set)")
         for i, unit_set in enumerate(sets):
             first = "  (default)" if i == 0 else ""
-            print(f"  {unit_set.key:<10} {unit_set.label}{first}")
+            print(f"  {unit_set.key:<10} {_(unit_set.label)}{first}")
     print("\nMethods")
     for m in calc.methods:
         print(f"  {m.key:<14} {m.label}  [{m.status}]")
@@ -384,6 +394,7 @@ def _picked_choices(
                 f"--unit names {p.symbol}/{p.key} twice, as {picked[p.key][1]!r} and "
                 f"{item!r}; give it once"
             )
+        choice = _choice_named(p, choice)
         if choice not in p.choices:
             offered = ", ".join(c for c in p.choices if c) or "none: it takes a plain number"
             raise InputError(
@@ -394,11 +405,43 @@ def _picked_choices(
     return picked
 
 
+def _choice_named(p: Param, name: str) -> str:
+    """Return the choice ``name`` names for ``p``: its id, or one of its unit's aliases.
+
+    So ``--unit A=in2`` and ``--unit A="sq in"`` are ``in²``, typed on any keyboard, as a
+    unit's text reads (S&R's PR #3 Low 3), and ``--unit T=IN`` is ``in``. A form is named
+    by its id only, ``ft_in``. A name that isn't one is returned as it is, to be refused.
+    """
+    if name in p.choices:
+        return name
+    try:
+        unit = registry().find(name, p.dimension)
+    except (InputError, UsageError):
+        return name
+    return unit.symbol if unit.dimension is p.dimension else name
+
+
 def _read(p: Param, text: str, picked: tuple[str, str] | None) -> TypedValue:
-    """Read one input's text: in its ``--unit`` choice, or with its unit in its text."""
+    """Read one input's text: in its ``--unit`` choice, or with its unit in its text.
+
+    An input with allowed values also reads each by its label, as its message names
+    them: ``F=1/16`` is a fineness of 16 (S&R's PR #3 Low 2). It's entered as its value,
+    ``16``, since a typed value's text must read as that value.
+    """
     if picked is None:
+        label = text.strip().casefold()
+        allowed = next((v for v, lb in p.allowed if lb.casefold() == label), None)
+        if allowed is not None:
+            text = f"{allowed:g}"
         default = choice_unit(p.default_choice or "", p.dimension)
-        return TypedValue.parse(text, p.dimension, default.symbol)
+        try:
+            return TypedValue.parse(text, p.dimension, default.symbol)
+        except InputError:
+            if not p.allowed:
+                raise
+            # Neither a label nor a value, such as 1/17: say what is, as the check does.
+            labels = ", ".join(lb for _v, lb in p.allowed)
+            raise InputError(f"{p.named} must be one of {labels}") from None
     choice, item = picked
     try:
         return TypedValue.read(text, choice, p.dimension)
@@ -523,7 +566,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
         data = result_json(calc, result, units, prefs, entries)
         print(json.dumps(data, indent=2, ensure_ascii=False))
         return 0
-    print(format_result(calc, result, units, prefs, show_work=not args.no_work))
+    print(format_result(calc, result, units, prefs, show_work=not args.no_work, entered=entries))
     return 0
 
 
@@ -538,8 +581,14 @@ def format_result(
     prefs: DisplayPrefs,
     *,
     show_work: bool = True,
+    entered: Mapping[str, TypedValue] | None = None,
 ) -> str:
-    """Render a result as plain text, in ``units``: inputs, work, results, notes, status."""
+    """Render a result as plain text, in ``units``: inputs, work, results, notes, status.
+
+    ``entered`` holds the text of each input the run was given, by parameter key, so a
+    plain decimal is listed as typed (``param_parts``).
+    """
+    entered = entered or {}
     method = calc.get_method(result.method)
     params = calc.params_for(result.method)
     # The label column is as wide as its longest label, and at least LABEL_WIDTH.
@@ -547,7 +596,7 @@ def format_result(
     width = max(LABEL_WIDTH, *(len(label) for label in labels))
     lines = [f"{calc.name} - {method.label}", "", "Inputs"]
     for p in params:
-        value = format_input(p.key, result.inputs[p.key], p.dimension, units, prefs)
+        value = param_parts(p, result.inputs[p.key], units, prefs, entered.get(p.key)).with_unit
         source = describe_source(result.source_of(p.key))
         lines.append(f"  {p.symbol:<6} {p.label:<{width}} {value}  ({source})")
     if show_work:

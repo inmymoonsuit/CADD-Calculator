@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import math
 import re
+import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_EVEN, Decimal, localcontext
 from enum import Enum
 from fractions import Fraction
 from types import MappingProxyType
@@ -22,7 +23,7 @@ from caddcalc.core.errors import CaddCalcError, UsageError
 from caddcalc.core.i18n import N_, _
 from caddcalc.core.notes import Note, NoteKind
 from caddcalc.core.provenance import InputSource, SourceKind
-from caddcalc.core.spec import Method, OutOfRangeError, Output, UnitSet
+from caddcalc.core.spec import Method, OutOfRangeError, Output, Param, UnitSet
 from caddcalc.core.steps import Step
 from caddcalc.core.units import (
     BASE_UNITS,
@@ -41,6 +42,8 @@ from caddcalc.core.units.compound import (
     NEGATIVE_SPOKEN,
     PARTS,
     POSITIVE_SPOKEN,
+    TIE_CAP,
+    TIE_ULPS,
     NearestInches,
 )
 from caddcalc.core.units.entry import evaluate, lone_fraction
@@ -207,7 +210,8 @@ class ShownUnits:
         """Return the id an output is shown in: its fixed unit or form, its pick, or the set's.
 
         An output with its own picker never follows the set: until it's picked, it shows
-        in its first pick (``Output.picks``).
+        in its first pick (``Output.picks``), or in the counterpart of the choice of the
+        input it follows, as a converter's output does (``Output.follows``, §6).
 
         Raises:
             UsageError: The output is picked in a choice it doesn't offer.
@@ -216,7 +220,8 @@ class ShownUnits:
             return output.form or output.unit
         if not output.picks:
             return self.choice(output.dimension)
-        picked = self.picks.get(output.key, output.picks[0])
+        followed = output.counterparts.get(self.inputs.get(output.follows, ""), output.picks[0])
+        picked = self.picks.get(output.key, followed)
         if picked not in output.picks:
             raise UsageError(
                 f"Output {output.key!r} offers {', '.join(output.picks)}, not {picked!r}"
@@ -263,15 +268,44 @@ def decimal_separator(prefs: DisplayPrefs) -> str:
     return prefs.symbols.decimal
 
 
+def round_tie(value: float, places: int) -> Decimal:
+    """Return ``value`` rounded once to ``places`` decimal places, half to even.
+
+    A value typed as a decimal half in one unit, as 49.92751 mm is 1.96565 in exactly, is a
+    double already, rounded once as typed and again into the shown unit, so it lands a
+    little off the half, one way or the other. A value within ``TIE_ULPS`` of its own last
+    places of a half at ``places``, and never more than ``TIE_CAP`` of a step, is taken as
+    that half, and rounds to even whichever way it landed, as a form counts a tie
+    (``compound.round_half_even``; KI-028, resolved). Any other value is its exact binary
+    value rounded, as Python's own formatting rounds it.
+    """
+    exact = Decimal(value)
+    with localcontext() as context:
+        context.prec = 2 * len(exact.as_tuple().digits) + abs(places) + 20  # exact, always
+        parts = exact.scaleb(places)
+        half = parts.to_integral_value(rounding=ROUND_FLOOR) + Decimal("0.5")
+        window = min(
+            Decimal(TIE_ULPS) * Decimal(math.ulp(value)).scaleb(places),
+            Decimal(TIE_CAP.numerator) / TIE_CAP.denominator,
+        )
+        if abs(parts - half) <= window:
+            parts = half
+        return parts.quantize(Decimal(1), rounding=ROUND_HALF_EVEN).scaleb(-places)
+
+
 def format_number(value: float, decimals: int, decimal: str = ".") -> str:
     """Return ``value`` rounded to ``decimals`` places, never as negative zero.
+
+    A near-half rounds to even as a half does (``round_tie``).
 
     Args:
         value: The number.
         decimals: Its decimal places.
         decimal: The decimal mark to write it with.
     """
-    text = f"{value:.{decimals}f}"
+    if not math.isfinite(value):
+        return f"{value:.{decimals}f}"
+    text = format(round_tie(value, decimals), f".{decimals}f")
     text = "0" + text[2:] if text.startswith("-0") and float(text) == 0 else text
     return text.replace(".", decimal)
 
@@ -284,13 +318,15 @@ but not including 10¹⁶; outside them it writes an exponent."""
 def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     """Return ``value`` to ``digits`` significant figures, as plain decimals.
 
-    It rounds the value's exact binary value, half to even, as ``format_number`` does,
-    so 123.4575, a little under that in binary, is ``123.457`` to six. It keeps trailing
+    It rounds once, half to even, as ``format_number`` does, a near-half as the half
+    (``round_tie``): 123.4575, a little under that in binary, is ``123.458`` to six, and
+    123.4574 is ``123.457``. It keeps trailing
     zeros, which say how many figures are shown (``25.4000`` to six), and is never a
     negative zero. A rounding that carries into a new place keeps the count, so 9.999997
     to six is ``10.0000``. Zero is ``0.00000`` to six. A value of at least 10⁻⁶ and under
     10¹⁶ is written in plain decimals; one outside that range (``PLAIN_EXPONENTS``) is
-    written with an exponent, as ``1.00000e+300``, not 301 digits.
+    written with an exponent, as ``1.00000e+300``, not 301 digits. A subnormal number is
+    written to no more figures than its bits hold.
 
     Args:
         value: The number.
@@ -302,10 +338,14 @@ def format_significant(value: float, digits: int, decimal: str = ".") -> str:
     exact = Decimal(value)
     if not exact:
         return format_number(0.0, digits - 1, decimal)
+    if abs(value) < sys.float_info.min:
+        # A subnormal holds fewer bits than 53, so fewer figures: 5e-324 holds one bit,
+        # and one figure (PR #1's final review, Low 7).
+        bits = math.floor(math.log2(abs(value) / math.ulp(0.0))) + 1
+        digits = min(digits, max(1, math.floor((bits - 1) * math.log10(2))))
 
     def rounded(adjusted: int) -> Decimal:
-        step = Decimal(1).scaleb(adjusted - digits + 1)
-        return exact.quantize(step, rounding=ROUND_HALF_EVEN)
+        return round_tie(value, digits - 1 - adjusted)
 
     text = rounded(exact.adjusted())
     if text.adjusted() > exact.adjusted():  # the rounding carried, as 9.99 to 10.0
@@ -392,13 +432,24 @@ def choice_parts(
 ) -> ValueParts:
     """Return a base-unit value as shown in a unit or form, by its id, in parts.
 
-    A unit shows the value to its dimension's precision; a form, as the form writes it.
+    A unit shows the value to its dimension's precision; a form, as the form writes it,
+    while its finest step is held, and past ``FORM_LIMIT`` steps in its full unit's
+    significant figures.
     """
     picked = registry().choice(choice, dimension)
     if isinstance(picked, CompoundForm):
+        full = choice_unit(choice, dimension)
+        if abs(from_base(value, full)) * picked.steps >= FORM_LIMIT:
+            # Its parts would be hundreds of digits a double doesn't hold, as feet and
+            # inches of 1e308 mm are, so it's the full unit's figures (PR #1's Low 7).
+            return _parts(value, full, registry().precision_for(full), prefs)
         written = picked.text(value, prefs.symbols.decimal)
         return ValueParts(written.shown, "", written)
     return unit_parts(value, picked, prefs)
+
+
+FORM_LIMIT = 2.0**53
+"""The finest steps a form's parts can count before a double holds no fraction of one."""
 
 
 def unit_parts(value: float, unit: Unit, prefs: DisplayPrefs) -> ValueParts:
@@ -492,6 +543,60 @@ def format_value(
     return parts.with_unit if unit else parts.number
 
 
+def param_parts(
+    param: Param,
+    value: float,
+    units: ShownUnits,
+    prefs: DisplayPrefs,
+    typed: TypedValue | None = None,
+) -> ValueParts:
+    """Return an input's value as listed, by its label where it's an allowed value.
+
+    A fineness is ``1/16`` (``Param.allowed``, ADR-0024 E7). A plain decimal the user
+    typed is listed as typed, ``0.09375 in``, not rounded to ``0.0938 in``: the Inputs
+    list gives each input as typed (ADR-0024 §5, ADR-0013 §9 rule 3). Any other value is
+    as ``input_parts`` shows it, a fraction or an expression included, which the field's
+    echo reads out.
+
+    Args:
+        param: The input.
+        value: The value the run used, in base units.
+        units: The units it's shown in, with each input's choice.
+        prefs: How numbers are shown.
+        typed: What the user typed in the input's field, if they typed it.
+    """
+    label = next((lb for v, lb in param.allowed if v == value), None)
+    if label is not None:
+        return ValueParts(label, "")
+    if typed is not None and (as_typed := _as_typed(param.key, typed, value, units, prefs)):
+        return as_typed
+    return input_parts(param.key, value, param.dimension, units, prefs)
+
+
+def _as_typed(
+    key: str, typed: TypedValue, value: float, units: ShownUnits, prefs: DisplayPrefs
+) -> ValueParts | None:
+    """Return a typed plain decimal as listed, in its own unit, or ``None`` if it isn't one.
+
+    It's the user's own digits only where they're what the run used, read in the unit the
+    input is listed in, and in the screen's decimal mark: text read otherwise, such as a
+    default written with ".", is the app's, and is listed converted (``picked_text``).
+    """
+    if typed.value != value or not _PLAIN.fullmatch(typed.text):
+        return None
+    # A plain decimal names no unit, so it was read in its picked choice, or, on the
+    # command line, as a bare number in the input's default unit.
+    choice = typed.unit.symbol if typed.choice is None else typed.choice
+    if choice != units.input_choice(key, typed.dimension):
+        return None
+    picked = registry().choice(choice, typed.dimension)
+    own_mark = typed.decimal == prefs.symbols.decimal or "." not in typed.text
+    if not isinstance(picked, Unit) or not own_mark:
+        return None
+    number = typed.text.replace(MINUS_SIGN, "-").removeprefix("+")
+    return ValueParts(number, picked.written)
+
+
 def format_input(
     key: str, value: float, dimension: Dimension, units: ShownUnits, prefs: DisplayPrefs
 ) -> str:
@@ -547,7 +652,12 @@ def output_parts(
         precision = output.precision or registry().precision_for(unit)
         parts = _parts(value, unit, precision, prefs)
     else:
-        parts = choice_parts(value, units.output_choice(output), output.dimension, prefs)
+        choice = units.output_choice(output)
+        picked = registry().choice(choice, output.dimension)
+        if output.precision is not None and isinstance(picked, Unit):
+            parts = _parts(value, picked, output.precision, prefs)
+        else:
+            parts = choice_parts(value, choice, output.dimension, prefs)
     if output.signed and parts.compound is None:
         return replace(parts, number=_plus(parts.number))
     return parts
@@ -630,8 +740,7 @@ def _significant(value: float, digits: int) -> str:
     exact = Decimal(value)
     if not exact:
         return "0"
-    step = Decimal(1).scaleb(exact.adjusted() - digits + 1)
-    text = format(exact.quantize(step, rounding=ROUND_HALF_EVEN), "f")
+    text = format(round_tie(value, digits - 1 - exact.adjusted()), "f")
     if "." in text:
         text = text.rstrip("0").rstrip(".")
     return "0" if text in ("-0", "") else text
@@ -798,24 +907,6 @@ def _mixed_spoken(fraction: Fraction, unit: Unit) -> str:
     decimal = format_number(float(fraction), FIELD_DECIMALS)
     number = _mixed_text(fraction)
     return _(MEASURE_SPOKEN).format(number=number, unit=unit.spoken(decimal)).strip()
-
-
-def entry_text(entry: TypedValue, unit: Unit, prefs: DisplayPrefs) -> str:
-    """Return the text a field labelled ``unit`` shows for a value typed with its unit.
-
-    The user's own text is shown when it named its unit, or when its unit is still the
-    field's. Otherwise the value is shown converted, so a field never shows a bare number
-    in a unit other than the one it labels. The value itself never changes (ADR-0013 §9).
-
-    Text read in another decimal mark than the screen's is the app's, such as a default
-    written with ".", so it's shown converted too, in the locale's mark; the user's own
-    text is read in the locale's mark, so it stays as typed (ADR-0020 §4).
-    """
-    own_mark = entry.decimal == prefs.symbols.decimal or "." not in entry.text
-    as_typed = entry.explicit_unit or entry.unit == unit
-    if own_mark and as_typed:
-        return entry.text
-    return field_text(entry.value, unit, prefs)
 
 
 def render_step(
@@ -1081,10 +1172,11 @@ def result_json(
     """
     entered = entered or {}
     inputs: dict[str, Any] = {}
+    params = {p.key: p for p in calc.params}
     for key, value in result.inputs.items():
         dimension = result.dimensions[key]
         choice = units.input_choice(key, dimension)
-        parts = input_parts(key, value, dimension, units, prefs)
+        parts = param_parts(params[key], value, units, prefs, entered.get(key))
         shown = _shown_json(value, choice_unit(choice, dimension), parts, choice)
         typed = _typed_amount(entered[key], shown["unit"]) if key in entered else None
         if typed is not None:

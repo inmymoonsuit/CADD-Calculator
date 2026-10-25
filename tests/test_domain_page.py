@@ -18,8 +18,8 @@ PLATE = Domain(
     "Plate Tools",
     "A plugin-style family whose length setting has a maximum.",
     settings=(
-        Param("width", "W", "Width", Dimension.LENGTH, minimum=0.0, maximum=10.0),
-        Param("gap", "G", "Gap", Dimension.LENGTH),
+        Param("width", "W", "Width", Dimension.LENGTH, unit="in", minimum=0.0, maximum=10.0),
+        Param("gap", "G", "Gap", Dimension.LENGTH, unit="in"),
     ),
 )
 
@@ -27,8 +27,18 @@ ACME = Domain(
     "acme",
     "Acme Tools",
     "A plugin family whose calculators failed to load.",
-    settings=(Param("gap", "G", "Gap", Dimension.LENGTH, help="Clearance between parts."),),
+    settings=(
+        Param("gap", "G", "Gap", Dimension.LENGTH, unit="in", help="Clearance between parts."),
+    ),
 )
+
+
+def pick_setting(window: Any, key: str, choice: str) -> None:
+    """Pick a setting's unit in its picker, as a person does."""
+    picker = window.setting_pickers[key]
+    index = picker.choices.index(choice)
+    picker.setCurrentIndex(index)
+    picker.activated.emit(index)
 
 
 def leave(edit: Any) -> None:
@@ -82,13 +92,13 @@ def test_a_setting_applies_on_enter_or_when_the_field_is_left() -> None:
     from PySide6.QtTest import QTest
 
     QTest.keyClick(field, Qt.Key.Key_Return)
-    assert k_factor(window) == TypedValue.parse("0.44", Dimension.RATIO)
+    assert k_factor(window) == TypedValue.read("0.44", "", Dimension.RATIO)
 
     _setting, thickness = window.setting_fields["thickness"]
     type_into(thickness, "0.1046", enter=False)
     leave(thickness)
-    assert window.domain_settings.get(SHEET_METAL, "thickness") == TypedValue.parse(
-        "0.1046", Dimension.LENGTH, "in"
+    assert window.domain_settings.get(SHEET_METAL, "thickness") == TypedValue.read(
+        "0.1046", "in", Dimension.LENGTH
     )
     window.close()
 
@@ -98,7 +108,7 @@ def test_a_typo_never_applies_a_passing_prefix_and_stays_visible() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
     type_into(window.setting_fields["k_factor"][1], "0.4")
-    before = TypedValue.parse("0.4", Dimension.RATIO)
+    before = TypedValue.read("0.4", "", Dimension.RATIO)
 
     _setting, field = window.setting_fields["k_factor"]
     type_into(field, "15", enter=False)
@@ -129,7 +139,7 @@ def test_a_typo_never_applies_a_passing_prefix_and_stays_visible() -> None:
         assert k_factor(window) == before
 
     type_into(field, "0.15")
-    assert k_factor(window) == TypedValue.parse("0.15", Dimension.RATIO)
+    assert k_factor(window) == TypedValue.read("0.15", "", Dimension.RATIO)
     assert window.domain_note.text() == ""
     assert field.styleSheet() == ""
     window.close()
@@ -139,7 +149,7 @@ def test_unreadable_text_is_explained_with_the_setting_name() -> None:
     window = open_window()
     window.select_domain("sheet_metal")
     type_into(window.setting_fields["k_factor"][1], "abc")
-    assert "K-factor (K): Cannot read a value from 'abc'" in plain(window.domain_note.text())
+    assert "K-factor (K): 'abc' isn't a number or arithmetic" in plain(window.domain_note.text())
     assert k_factor(window) is None
     window.close()
 
@@ -152,23 +162,101 @@ def _length_labels(window: Any) -> set[str]:
     return {label.text() for label in labels if label.text() in ("in", "mm", "ft", "cm", "m")}
 
 
-def test_a_setting_shows_and_reads_in_inches_whatever_the_results_show() -> None:
-    """Until its fields get pickers, a bare number on the page is inches (KI-027)."""
+def test_a_setting_reads_in_its_picker_whatever_the_results_show() -> None:
+    """Each setting has its own picker, as a calculator field has (ADR-0024 U2b)."""
     window = open_window()
     window.select_domain("sheet_metal")
+    assert set(window.setting_pickers) == {"thickness", "inside_radius"}, "K has no unit"
+    assert window.setting_pickers["thickness"].accessibleName() == "Material thickness unit"
     type_into(window.setting_fields["thickness"][1], "0.1046")
-    typed = TypedValue.parse("0.1046", Dimension.LENGTH, "in")
+    typed = TypedValue.read("0.1046", "in", Dimension.LENGTH)
     assert window.domain_settings.get(SHEET_METAL, "thickness") == typed
-    type_into(window.setting_fields["inside_radius"][1], "3 mm")
-    assert _length_labels(window) == {"in"}
+    pick_setting(window, "inside_radius", "mm")
+    type_into(window.setting_fields["inside_radius"][1], "3")
+    assert window.domain_settings.for_domain(SHEET_METAL).values["inside_radius"] == 3.0
 
     window.select_calculator("sheet_metal.bend_allowance")
-    show_in(window, "mm")
+    show_in(window, "ft")
     window.select_domain("sheet_metal")
     assert window.setting_fields["thickness"][1].text() == "0.1046"
-    assert window.setting_fields["inside_radius"][1].text() == "3 mm"
-    assert _length_labels(window) == {"in"}
+    assert window.setting_fields["inside_radius"][1].text() == "3"
+    assert window.setting_pickers["inside_radius"].choice == "mm", "kept through a rebuild"
     assert window.domain_settings.get(SHEET_METAL, "thickness") == typed, "display never re-read"
+    window.close()
+
+
+def test_a_unit_typed_in_a_setting_is_refused_and_offered_as_a_pick() -> None:
+    """As a calculator field offers it: "Use 3 mm?" (Q5; UI/UX's PR #3 L3)."""
+    window = open_window()
+    window.show()
+    window.select_domain("sheet_metal")
+    edit = window.setting_fields["inside_radius"][1]
+    type_into(edit, "3 mm")
+    assert window.domain_settings.get(SHEET_METAL, "inside_radius") is None
+    note = plain(window.domain_note.text())
+    assert "Inside bend radius (R): '3 mm' names a unit" in note
+    assert "Use " not in note, "the fix's sentence shows once, by the field"
+    fix, fix_note, button = window.setting_fixes["inside_radius"]
+    assert fix.isVisible()
+    assert (fix_note.text(), button.text()) == ("Units go in the picker. Use 3 mm?", "Use 3 mm")
+    button.click()
+    assert window.setting_pickers["inside_radius"].choice == "mm"
+    assert edit.text() == "3" and not fix.isVisible()
+    assert window.domain_settings.for_domain(SHEET_METAL).values["inside_radius"] == 3.0
+    assert "names a unit" not in plain(window.domain_note.text())
+    assert window.statusBar().currentMessage() == "Inside bend radius: 3 now read as millimeters"
+    window.close()
+
+
+def test_a_pick_re_reads_a_typed_setting_and_keeps_text_it_refuses() -> None:
+    """As on a calculator field: 3 stays 3, now in mm (ADR-0024 §2)."""
+    window = open_window()
+    window.select_domain("sheet_metal")
+    type_into(window.setting_fields["thickness"][1], "3")
+    pick_setting(window, "thickness", "mm")
+    assert window.setting_fields["thickness"][1].text() == "3"
+    assert window.domain_settings.for_domain(SHEET_METAL).values["thickness"] == 3.0
+    assert window.statusBar().currentMessage() == "Material thickness: 3 now read as millimeters"
+    pick_setting(window, "thickness", "ft_in")
+    assert window.domain_settings.for_domain(SHEET_METAL).values["thickness"] == 3 * 25.4
+    type_into(window.setting_fields["thickness"][1], "1'-4\"")
+    pick_setting(window, "thickness", "mm")
+    assert window.domain_settings.get(SHEET_METAL, "thickness") is None, "refused in mm"
+    assert window.setting_fields["thickness"][1].text() == "1'-4\"", "kept to be fixed"
+    message = window.statusBar().currentMessage()
+    assert message == "Material thickness: 1'-4\" can't be read in millimeters"
+    window.close()
+
+
+def test_a_setting_s_pick_says_what_happened_to_its_number() -> None:
+    """A calculator field's words: re-read, can't be read, shown converted, or only the unit."""
+    window = open_window()
+    window.select_domain("sheet_metal")
+    thickness = SHEET_METAL.setting("thickness")
+    said = window._setting_said
+    assert said(thickness, "mm", "", read=True) == "Material thickness: in millimeters"
+    assert said(thickness, "mm", "3", read=True) == "Material thickness: 3 now read as millimeters"
+    assert said(thickness, "mm", "2.65684", read=False) == (
+        "Material thickness: shown in millimeters, 2.65684"
+    ), "a value applied rather than typed keeps its size"
+    assert said(thickness, "mm", "abc", read=True) == (
+        "Material thickness: abc can't be read in millimeters"
+    )
+    pick_setting(window, "thickness", "mm")
+    assert window.statusBar().currentMessage() == "Material thickness: in millimeters", "empty"
+    window.close()
+
+
+def test_a_setting_inherited_by_a_field_picked_in_another_unit_shows_converted() -> None:
+    """ADR-0024 U2b: typed in mm on the page, shown in inches on the calculator, same value."""
+    window = open_window()
+    window.select_domain("sheet_metal")
+    pick_setting(window, "thickness", "mm")
+    type_into(window.setting_fields["thickness"][1], "2.54")
+    window.select_calculator("sheet_metal.bend_allowance")
+    assert window.pickers["thickness"].choice == "in"
+    assert window.fields["thickness"][1].text() == "0.1"
+    assert window.result.inputs["thickness"] == 2.54
     window.close()
 
 
@@ -195,7 +283,7 @@ def test_leaving_the_page_applies_text_typed_without_enter() -> None:
     window.select_domain("sheet_metal")
     type_into(window.setting_fields["k_factor"][1], "0.44", enter=False)
     window.select_calculator("sheet_metal.v_die_opening")
-    assert k_factor(window) == TypedValue.parse("0.44", Dimension.RATIO)
+    assert k_factor(window) == TypedValue.read("0.44", "", Dimension.RATIO)
     window.select_domain("sheet_metal")
     assert window.setting_fields["k_factor"][1].text() == "0.44"
     window.close()
@@ -249,4 +337,31 @@ def test_a_family_with_no_calculators_is_listed_and_marked() -> None:
     assert window.domain is ACME
     assert "No calculators loaded." in plain(window.domain_note.text())
     assert "Used by: no loaded calculator" in page_text(window.settings_box)
+    window.close()
+
+
+@pytest.mark.parametrize("language", ["", "en_XA"])
+def test_the_settings_pickers_are_whole_at_the_least_window(tmp_path: Any, language: str) -> None:
+    """ADR-0024 U2b: each picker shows its widest unit, in English and in en_XA.
+
+    Group boxes are left out, as the launch-size test leaves the page out: the check
+    measures a group box's least height at its least width (ADR-0024's U1 amendment).
+    """
+    from PySide6.QtWidgets import QGroupBox
+
+    from tests.qt_helpers import settle
+    from tests.test_translated_gui import _clipped, _in
+
+    _in(language, tmp_path)
+    window = open_window()
+    window.select_domain("sheet_metal")
+    window.show()
+    window.resize(1, 1)
+    settle(window)
+    pickers = list(window.setting_pickers.values())
+    assert pickers and all(p.isVisible() for p in pickers)
+    clipped = [w for w in _clipped(window) if not isinstance(w, QGroupBox)]
+    assert clipped == []
+    widths = {p.width() for p in pickers}
+    assert len(widths) == 1, "one column of pickers"
     window.close()

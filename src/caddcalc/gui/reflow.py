@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import override
 
 from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtWidgets import QLayout, QLayoutItem, QWidget, QWidgetItem
+from PySide6.QtWidgets import QFormLayout, QLayout, QLayoutItem, QWidget, QWidgetItem
 
 
 class ReflowLayout(QLayout):
@@ -148,3 +148,60 @@ class Reflow(QWidget):
     def stacked(self) -> bool:
         """Whether its widgets are one above another at its width."""
         return self._layout.stacked_at(self.width())
+
+
+class WrappingForm(QFormLayout):
+    """A form that puts each label above its field when the row doesn't fit beside it.
+
+    Qt decides that a row fits side by side without counting the gap between its label and
+    its field, then lays it out with the gap, so a row within the gap of fitting gets its
+    field squeezed (KI-031). The gap goes in each label's right margin instead, which Qt
+    counts, and the form's own horizontal spacing is none.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.gap = max(self.horizontalSpacing(), 0)
+        """The style's space between a label and its field, kept in the label."""
+        self.setHorizontalSpacing(0)
+        self._repaired_at: QRect | None = None
+        """The geometry this form was last laid out again at, so it's done once there."""
+
+    @override
+    def setGeometry(self, rect: QRect) -> None:
+        """Lay the rows out, and again from scratch if one's short of its wrapped height.
+
+        At exactly the form's preferred width, Qt finds a height cached for that width and
+        lays the rows out with heights it worked out for another width, so a wrapped label
+        gets too few lines (KI-032). ``invalidate`` clears the cache and the form is laid
+        out again at once. That's done once per geometry: ``invalidate`` asks the page to
+        lay itself out again too, and that pass, at the same geometry, comes back here.
+        """
+        if rect != self._repaired_at:
+            self._repaired_at = None
+        super().setGeometry(rect)
+        if self._repaired_at is not None or not self._short_rows():
+            return
+        self._repaired_at = rect
+        self.invalidate()
+        super().setGeometry(rect)
+
+    def _short_rows(self) -> bool:
+        """Whether a shown item that wraps is given less height than it needs at its width."""
+        for index in range(self.count()):
+            item = self.itemAt(index)
+            if item is None or item.isEmpty() or not item.hasHeightForWidth():
+                continue
+            box = item.geometry()
+            if box.height() < item.heightForWidth(box.width()):
+                return True
+        return False
+
+    def add_row(self, text: str, field: QWidget | QLayout) -> None:
+        """Add a row of ``field`` after a label of ``text``."""
+        self.addRow(text, field)
+        item = self.itemAt(self.rowCount() - 1, QFormLayout.ItemRole.LabelRole)
+        label = item.widget() if item is not None else None
+        if label is not None:
+            label.setContentsMargins(0, 0, self.gap, 0)

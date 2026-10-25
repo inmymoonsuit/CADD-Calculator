@@ -128,7 +128,7 @@ def test_a_derived_thickness_shows_its_work_ahead_of_the_calculators() -> None:
 
 def test_no_work_is_shown_for_a_derived_value_not_used() -> None:
     settings = DomainSettings().set_choice(DOMAIN, "gauge", "msg:12")
-    typed = settings.set_text(DOMAIN, "thickness", "0.125", "in").for_domain(DOMAIN)
+    typed = settings.set_text(DOMAIN, "thickness", "0.125").for_domain(DOMAIN)
     steps = BendAllowance().run(settings=typed).steps
     assert [s.symbol for s in steps] == [s.symbol for s in BendAllowance().run().steps]
     assert all(s.substitution is None for s in steps)
@@ -210,7 +210,7 @@ def test_the_us_standard_label_keeps_its_scope() -> None:
 
 def test_a_typed_thickness_beats_the_gauge_and_drops_the_caution() -> None:
     settings = DomainSettings().set_choice(DOMAIN, "gauge", "uss:12")
-    typed = settings.set_text(DOMAIN, "thickness", "0.125", "in")
+    typed = settings.set_text(DOMAIN, "thickness", "0.125")
     result = BendAllowance().run(settings=typed.for_domain(DOMAIN))
     assert result.source_of("thickness").kind is SourceKind.DOMAIN
     assert result.notes == ()
