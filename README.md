@@ -80,6 +80,8 @@ uv run pytest                # tests
 * **Developers:** [docs/dev/](docs/dev/README.md) covers architecture, the decision records (ADRs), known
   issues, the engineering log, the roadmap, and the legacy-workbook transcription.
 * **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md).
+* **Code signing policy:** [docs/user/code-signing.md](docs/user/code-signing.md): how
+  downloads are built, signed, and checked, and the app's privacy statement.
 * **A wrong reference value?** See
   [Reporting a wrong or rights-encumbered value](CONTRIBUTING.md#reporting-a-wrong-or-rights-encumbered-value).
 

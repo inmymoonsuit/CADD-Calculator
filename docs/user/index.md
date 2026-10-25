@@ -12,6 +12,7 @@ Every answer shows its work.
 * [Results and copying](results.md): the result fields, copying values, the keyboard
 * [Units and precision](units-and-precision.md): typing fractions and mm, rounding
 * [Glossary](glossary.md): bend angle, K-factor, outside setback, and other terms
+* [Code signing policy](code-signing.md): how downloads are built, signed, and checked; privacy
 
 ## How to read a result
 

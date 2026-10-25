@@ -7,6 +7,11 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- A code signing policy page (`docs/user/code-signing.md`), written to SignPath
+  Foundation's conditions: who builds and signs, the review before a release, how to check
+  a download, and the privacy statement. ADR-0022's research claims now have sources,
+  checked on 2026-10-25 (`docs/dev/research/distribution.md`), with an amendment for the
+  facts that changed.
 - Packaged builds carry the full license texts of the runtime they bundle, in the app
   folder's `licenses/`: Qt's LGPL-3.0 and GPL-3.0, CPython and the software it
   includes, OpenSSL, libffi, zlib, bzip2, xz, Nuitka, the Microsoft C++ runtime, and
