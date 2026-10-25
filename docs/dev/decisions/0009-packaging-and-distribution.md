@@ -111,7 +111,7 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
 | The reference tables | `--include-package-data=caddcalc` | `missing_tables`; the smoke report's `reference_tables` (each loaded and built) |
 | The display face and its OFL license | the same | `missing_fonts`; the report's `display_font` |
 | **Our catalogs**, each language's `.mo` | compiled from the committed `.po` by the build (`scripts/i18n.py compile`), before Nuitka reads the package data; their `.po` and `.pot` sources left out (`--noinclude-data-files`) | `missing_catalogs`, which fails with no `.po` to check against; `catalog_sources`, none bundled; the report's `catalogs`, the languages the built app finds |
-| **Qt's `qtbase_*.qm` catalogs** | `--include-data-files` from the build's PySide6 into `PySide6/translations/`, where its Qt looks; every other Qt translation stays out | `missing_catalogs`; the report's `qt_catalog`, that Qt loads its German catalog from the build |
+| **Qt's `qtbase_*.qm` catalogs** | `--include-data-files` from the build's PySide6 into the same folder in the build (`PySide6/translations/` on Windows, `PySide6/Qt/translations/` on Linux and macOS), where its Qt looks; every other Qt translation stays out | `missing_catalogs`; the report's `qt_catalog`, that Qt loads its German catalog from the build |
 | `LICENSE.md` and `THIRD_PARTY_NOTICES.md` | copied into the folder | (copied; what the notices still lack is KI-016) |
 | The branding pack, or none | `--include-data-dir`, branded builds only | a generic build has no `branding/`, a branded one has its `branding.toml`; the report's name, edition, icon, and welcome art |
 

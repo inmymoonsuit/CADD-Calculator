@@ -136,8 +136,9 @@ KI-016 for what the notices still lack.
 3. Writes `work/pysidedeploy.spec`: the Qt modules (`Core,Gui,Widgets`), the icon, and
    the Nuitka options. Those include Windows version info, `--include-package-data=caddcalc`
    for the generic icon and the catalogs (the `.mo`, not their `.po` and `.pot`
-   sources), Qt's `qtbase_*.qm` catalogs into `PySide6/translations/` (and no other Qt
-   translation), and, for a branded build,
+   sources), Qt's `qtbase_*.qm` catalogs into the folder where the build's PySide6 keeps
+   them, `PySide6/translations/` on Windows and `PySide6/Qt/translations/` on Linux and
+   macOS (`qt_catalogs_dir()`; no other Qt translation), and, for a branded build,
    `--include-data-dir=<staged pack>=branding`.
 4. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
    mode. Nuitka must already be installed by uv (the `build` dependency group).

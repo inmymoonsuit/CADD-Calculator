@@ -382,7 +382,8 @@ together.
 
 * **The frozen build** compiles our catalogs before Nuitka reads the package data, and
   includes PySide6's `qtbase_*.qm`, and nothing else of Qt's translations, in
-  `PySide6/translations/`, where its Qt looks. It fails for a missing one, and its smoke
+  the folder where the build's PySide6 keeps them (`PySide6/translations/` on Windows,
+  `PySide6/Qt/translations/` on Linux and macOS), where its Qt looks. It fails for a missing one, and its smoke
   test checks the built app finds our catalogs and that Qt loads its own from the build
   (ADR-0009's checklist).
 * **The wheel** compiles them in hatchling's build hook (`hatch_build.py`), so a wheel

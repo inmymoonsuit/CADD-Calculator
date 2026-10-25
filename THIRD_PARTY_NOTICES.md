@@ -216,5 +216,6 @@ full license texts will be added here before the first public release (KI-016).
 | Microsoft Visual C++ runtime (Windows builds) | Microsoft redistributable license | https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist |
 
 The Qt and PySide6 libraries ship as separate shared libraries in the app folder, and
-Qt's translations as separate files in `PySide6/translations/`, so they can be replaced
+Qt's translations as separate files (in `PySide6/translations/`, or `PySide6/Qt/translations/`
+on Linux and macOS), so they can be replaced
 with other compatible builds, as the LGPL-3.0 allows.

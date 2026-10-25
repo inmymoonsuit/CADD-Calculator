@@ -31,6 +31,7 @@ import tomllib
 from importlib.metadata import version as dist_version
 from pathlib import Path
 
+import PySide6
 from PySide6.QtCore import QLibraryInfo
 from PySide6.QtGui import QImage
 
@@ -66,8 +67,6 @@ CATALOG_SOURCES = (".po", ".pot")
 QT_CATALOG = "qtbase"
 """Qt's own text, such as standard buttons and a field's context menu, comes from its
 ``qtbase_<language>.qm`` catalogs, which ship beside it (ADR-0020 §1)."""
-QT_CATALOGS_DIR = "PySide6/translations"
-"""Where a build keeps them: where PySide6's Qt looks for its translations."""
 
 
 class BuildError(Exception):
@@ -200,6 +199,27 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     return out
 
 
+def qt_catalogs_dir(translations: Path | None = None, package: Path | None = None) -> str:
+    """Return where a build keeps Qt's catalogs: where the running PySide6 keeps them.
+
+    The folder is the one Qt reports for its translations, relative to the PySide6
+    package, so the frozen app's Qt looks where the build put them. PySide6's wheels lay
+    it out per platform: ``PySide6/translations`` on Windows, and
+    ``PySide6/Qt/translations`` on Linux and macOS. A fixed Windows path broke the
+    catalog check on both (engineering log, 2026-10-25).
+
+    Args:
+        translations: Qt's translations folder; the running PySide6's when ``None``.
+        package: The PySide6 package folder; the running PySide6's when ``None``.
+    """
+    if translations is None:
+        translations = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
+    if package is None:
+        package = Path(PySide6.__file__).parent
+    inside = translations.resolve().relative_to(package.resolve())
+    return (Path("PySide6") / inside).as_posix()
+
+
 def qt_catalogs() -> list[Path]:
     """Return Qt's ``qtbase`` catalogs, from the PySide6 the build runs with."""
     folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
@@ -235,7 +255,7 @@ def nuitka_args(staged_pack: Path | None) -> list[str]:
     qt_folder = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath))
     args = [
         "--noinclude-qt-translations",
-        f"--include-data-files={qt_folder / f'{QT_CATALOG}_*.qm'}={QT_CATALOGS_DIR}/",
+        f"--include-data-files={qt_folder / f'{QT_CATALOG}_*.qm'}={qt_catalogs_dir()}/",
         *(f"--noinclude-data-files={LOCALE_DIR}/*{suffix}" for suffix in CATALOG_SOURCES),
         "--assume-yes-for-downloads",  # Nuitka fetches its C compiler on first use
         "--include-package-data=caddcalc",  # the generic icon and the reference tables
@@ -420,7 +440,7 @@ def missing_catalogs(app_dir: Path) -> list[str]:
             f"no catalog to check: no <language>/LC_MESSAGES/caddcalc.po in {CATALOGS}"
         )
     ours = [f"{LOCALE_DIR}/{path.parents[1].name}/LC_MESSAGES/caddcalc.mo" for path in sources]
-    qt = [f"{QT_CATALOGS_DIR}/{path.name}" for path in qt_catalogs()]
+    qt = [f"{qt_catalogs_dir()}/{path.name}" for path in qt_catalogs()]
     return [name for name in (*ours, *qt) if not (app_dir / name).is_file()]
 
 

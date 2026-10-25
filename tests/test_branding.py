@@ -445,6 +445,7 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
 
     assert report["catalogs"] == list(i18n.shipped_languages())
     assert report["qt_catalog"] is True, "Qt finds its own catalogs"
+    assert report["qt_translations"]["has_qtbase"] is True, report["qt_translations"]
 
 
 @pytest.mark.gui
@@ -595,13 +596,31 @@ def test_build_checks_every_catalog_ours_and_qts_is_bundled(
     assert "caddcalc/locale/en_CA/LC_MESSAGES/caddcalc.mo" in missing
     qt = build_script.qt_catalogs()
     assert qt, "this PySide6 has its qtbase catalogs"
-    assert f"PySide6/translations/{qt[0].name}" in missing
+    assert f"{build_script.qt_catalogs_dir()}/{qt[0].name}" in missing
     for name in missing:
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / name).write_bytes(b"")
     assert build_script.missing_catalogs(tmp_path) == []
     [include] = [a for a in build_script.nuitka_args(None) if a.startswith("--include-data-files")]
-    assert include.endswith("qtbase_*.qm=PySide6/translations/"), include
+    assert include.endswith(f"qtbase_*.qm={build_script.qt_catalogs_dir()}/"), include
+
+
+@pytest.mark.gui
+def test_qt_catalogs_go_where_each_platforms_pyside6_keeps_them(
+    build_script: ModuleType, tmp_path: Path
+) -> None:
+    """The build puts Qt's catalogs where each platform's PySide6 keeps them.
+
+    Windows wheels keep Qt's translations in PySide6/translations; Linux and macOS
+    wheels in PySide6/Qt/translations. The rule is checked on any CI host.
+    """
+    package = tmp_path / "PySide6"
+    windows = package / "translations"
+    unix = package / "Qt" / "translations"
+    assert build_script.qt_catalogs_dir(windows, package) == "PySide6/translations"
+    assert build_script.qt_catalogs_dir(unix, package) == "PySide6/Qt/translations"
+    with pytest.raises(ValueError):
+        build_script.qt_catalogs_dir(tmp_path / "elsewhere", package)
 
 
 @pytest.mark.gui
