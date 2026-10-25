@@ -57,7 +57,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
-            libfontconfig1 libdbus-1-3 ccache
+            libfontconfig1 libdbus-1-3 ccache appstream desktop-file-utils
           echo "QT_QPA_PLATFORM=offscreen" >> "$GITHUB_ENV"
 
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884  # v10.3.0
@@ -117,6 +117,19 @@ jobs:
           uv run --no-project --with jsonschema==4.26.0 --with pyyaml==6.0.3 \
             python packaging/windows/winget.py validate builds/winget
 
+      - name: Validate the desktop file and the AppStream metainfo (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          desktop-file-validate packaging/linux/io.github.inmymoonsuit.CADDCalculator.desktop
+          appstreamcli validate --no-net \
+            packaging/linux/io.github.inmymoonsuit.CADDCalculator.metainfo.xml
+
+      # Wrap the folder in an AppImage, then start it with --appimage-extract-and-run (no
+      # FUSE on the runner) and check its smoke test (slice d4).
+      - name: Build and start the AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: uv run python packaging/linux/make_appimage.py builds/generic/*-linux-x64 --smoke-test
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: CADDCalculator-generic-${{ runner.os }}
@@ -124,7 +137,44 @@ jobs:
             builds/generic/*.zip
             builds/generic/*.tar.gz
             builds/generic/*-setup.exe
+            builds/generic/*.AppImage
             builds/generic/*.build.json
+          if-no-files-found: error
+
+  # Builds the Flathub manifest from source in Flathub's KDE container, then starts the app
+  # inside the sandbox with --smoke-test (slice d4). Submitting to Flathub is the
+  # maintainer's job (docs/dev/packaging.md, "Flathub").
+  flatpak:
+    name: Flatpak / from source
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Build the Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3  # v6.8
+        with:
+          bundle: CADDCalculator.flatpak
+          manifest-path: packaging/flatpak/io.github.inmymoonsuit.CADDCalculator.yml
+          cache-key: flatpak-builder-${{ hashFiles('packaging/flatpak/**', 'uv.lock') }}
+          upload-artifact: false
+
+      - name: Start it inside the sandbox
+        run: |
+          set -eu
+          flatpak install --user --noninteractive -y CADDCalculator.flatpak
+          report="$GITHUB_WORKSPACE/flatpak-smoke-test"
+          flatpak run --env=QT_QPA_PLATFORM=offscreen --filesystem="$GITHUB_WORKSPACE" \
+            io.github.inmymoonsuit.CADDCalculator --smoke-test="$report"
+          python3 -c "import json, sys; r = json.load(open(sys.argv[1])); print(r); assert r['calculators'] > 0 and r['window_title'] == 'CADD Calculator', r" \
+            "$report/smoke-test.json"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: CADDCalculator-flatpak
+          path: CADDCalculator.flatpak
           if-no-files-found: error
 
   # Signs the Windows installer on a tag, through SignPath Foundation or Microsoft
@@ -281,4 +331,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "CADD Calculator $GITHUB_REF_NAME" --generate-notes \
-            dist/*.zip dist/*.tar.gz dist/*-setup.exe
+            dist/*.zip dist/*.tar.gz dist/*-setup.exe dist/*.AppImage

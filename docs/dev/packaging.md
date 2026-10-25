@@ -343,6 +343,51 @@ winget's validation:
 3. Fork winget-pkgs, add the folder as `manifests/i/inmymoonsuit/CADDCalculator/<version>/`,
    and open a pull request. Its bots check the manifest and the installer.
 
+## The Linux AppImage
+
+`packaging/linux/make_appimage.py <app folder> --smoke-test` wraps the standalone Linux
+build in an AppImage, `…-linux-x64.AppImage` (ADR-0022, slice d4):
+
+* The AppDir holds the app folder in `usr/lib/caddcalc`, a `caddcalc-gui` launcher, the
+  `.desktop` file, the 256 px icon, and the AppStream metainfo
+  (`packaging/linux/io.github.inmymoonsuit.CADDCalculator.{desktop,metainfo.xml}`).
+* appimagetool 1.9.1 and the AppImage runtime (release 20251108) are pinned tagged
+  releases, checked against their published SHA-256s. They're downloaded once into
+  `builds/tools/`, and run extracted, so no FUSE is needed.
+* `--smoke-test` starts the AppImage with `--appimage-extract-and-run` and checks the app's
+  report.
+
+Build it on the oldest Linux you support (CI uses ubuntu-22.04), since an AppImage runs
+only on systems with at least its build's glibc. CI also checks the `.desktop` file with
+`desktop-file-validate`, and the metainfo with `appstreamcli validate`.
+
+## Flathub
+
+`packaging/flatpak/io.github.inmymoonsuit.CADDCalculator.yml` builds the app **from
+source** on the KDE runtime, with PySide6 from `io.qt.PySide.BaseApp` (runtime and base at
+the same version, 6.11). It pip-installs the app offline. Its only build-time downloads are
+the wheel-build tools in `python3-build-deps.json` (hatchling and what it uses, and Babel),
+pure-Python wheels pinned with their SHA-256s, which `packaging/flatpak/make_build_deps.py`
+writes. Their module's cleanup drops them from the finished app. The manifest asks for no
+network access.
+
+The release workflow's `flatpak` job builds it in Flathub's KDE container and starts it
+inside the sandbox with `--smoke-test`.
+
+Submitting to Flathub is the maintainer's job, after the first release:
+
+1. Fork [flathub/flathub](https://github.com/flathub/flathub) and branch from
+   `new-pr`, as Flathub's [submission guide](https://docs.flathub.org/docs/for-app-authors/submission)
+   says.
+2. Copy the manifest and `python3-build-deps.json` in. Replace the `dir` source with a
+   `git` source: this repository's URL, the release's `tag`, and its `commit`.
+3. Add screenshots to the metainfo (Flathub requires them), with URLs to images at the
+   release tag, and run `flatpak run --command=flatpak-builder-lint org.flatpak.Builder
+   manifest <manifest>`.
+4. Open the pull request against `new-pr`. After it's merged, Flathub builds and publishes
+   the app. Claim it as verified with the `io.github.inmymoonsuit` ID, which Flathub checks
+   against this GitHub account.
+
 ## CI
 
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml) builds the generic
@@ -350,11 +395,14 @@ edition on Windows, macOS, and Linux. Branded editions are never built there.
 
 * **On a push to the `distribution` branch, or a pull request** that touches packaging,
   the workflow, `pyproject.toml`, or `uv.lock`, it's a **dry run**: it builds, smoke-tests,
-  and uploads each platform's artifacts, and on Windows also builds the installer, installs
-  and uninstalls it, and validates the winget manifests. It never signs, drafts a release,
-  or publishes. A newer push cancels a superseded dry run.
+  and uploads each platform's artifacts. On Windows it also builds the installer, installs
+  and uninstalls it, and validates the winget manifests. On Linux it validates the
+  `.desktop` file and the metainfo, builds the AppImage and starts it, and a separate job
+  builds the Flatpak from source and starts it in the sandbox. It never signs, drafts a
+  release, or publishes. A newer push cancels a superseded dry run.
 * **On a `v*` tag** it also signs the installer, once signing is switched on, and attaches
-  the archives and the installer to a **draft** GitHub release for the maintainer to publish.
+  the archives, the installer, and the AppImage to a **draft** GitHub release for the
+  maintainer to publish.
 * A failed build's last lines become a public annotation, since job logs need a signed-in
   reader.
-* The macOS .dmg and the Linux AppImage come later (slices d4 and d5).
+* The macOS .dmg comes later (slice d5).

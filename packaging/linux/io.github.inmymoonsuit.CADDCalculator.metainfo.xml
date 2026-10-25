@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata for the AppImage and the Flathub build (distribution slice d4). -->
+<component type="desktop-application">
+  <id>io.github.inmymoonsuit.CADDCalculator</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>CADD Calculator</name>
+  <summary>Drafting calculators that show their work</summary>
+  <description>
+    <p>
+      Open-source calculators for drafting and design. Every result shows its work: the
+      formula in symbols, then with your numbers, then the value. It names its method and
+      source, and says how far that method has been checked.
+    </p>
+    <ul>
+      <li>Geometry: arcs and sectors, circles, rectangles, regular polygons, and triangles</li>
+      <li>Conversions: length, angle, area, stress and pressure, and fractions and decimals</li>
+      <li>Sheet metal: bend allowance and deduction, flat lengths, cone layouts, and V-die openings</li>
+    </ul>
+    <p>
+      Type values in inches or millimeters, as decimals, fractions, or mixed numbers. The app
+      makes no network calls.
+    </p>
+  </description>
+  <developer id="io.github.inmymoonsuit">
+    <name>CADD Calculator contributors</name>
+  </developer>
+  <launchable type="desktop-id">io.github.inmymoonsuit.CADDCalculator.desktop</launchable>
+  <url type="homepage">https://github.com/inmymoonsuit/CADD-Calculator</url>
+  <url type="bugtracker">https://github.com/inmymoonsuit/CADD-Calculator/issues</url>
+  <url type="vcs-browser">https://github.com/inmymoonsuit/CADD-Calculator</url>
+  <provides>
+    <binary>caddcalc-gui</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-10-25" type="development">
+      <description>
+        <p>The first packaged builds, for testing.</p>
+      </description>
+    </release>
+  </releases>
+</component>

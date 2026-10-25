@@ -7,6 +7,10 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- Linux: an AppImage of the packaged build, with a .desktop file and AppStream metainfo,
+  made with pinned, checksummed appimagetool and runtime releases; and a Flathub manifest
+  that builds the app from source on the KDE runtime with the PySide BaseApp. CI validates
+  the metadata and starts both, the Flatpak inside its sandbox.
 - A Windows installer: `packaging/build.py --installer` wraps the app in an Inno Setup
   installer that installs per user with no admin rights (per-machine optional), with a
   Start-menu shortcut, an uninstaller, and a stable AppId. CI installs it, starts the
