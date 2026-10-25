@@ -22,6 +22,28 @@ and ADR-0022's amendment of the same date corrects it.
 | P1 | The wheel and sdist through PyPI Trusted Publishing, with attestations. | Holds | [Producing attestations](https://docs.pypi.org/attestations/producing-attestations/); [pypa/gh-action-pypi-publish](https://github.com/pypa/gh-action-pypi-publish); [Creating a project through OIDC](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) | The action makes PEP 740 attestations by default. A pending publisher can be set up before the project exists, but doesn't reserve the name. TestPyPI needs its own publisher. |
 | X1 | Google Play: $25 once, and a 14-day closed test with 12 testers for a new personal account. | Holds | [Testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465); [Registration](https://support.google.com/googleplay/android-developer/answer/6112435) | Personal accounts made after 13 November 2023 need 12 testers opted in for 14 days in a row (it was 20 at first). Registration is US$25 once. |
 
+## SignPath's license condition and the Microsoft C++ runtime
+
+SignPath's condition 3 ([conditions](https://signpath.org/terms), checked 2026-10-25) asks
+that every component be under an OSI-approved license, with no proprietary components,
+except "System Libraries" as the GPL v3 defines them in section 1. The Windows build's
+Microsoft Visual C++ runtime DLLs (`vcruntime140*.dll`, `msvcp140*.dll`) are proprietary.
+They fall under that exception, by the GPL v3's own definition
+([GPL-3.0, §1](https://www.gnu.org/licenses/gpl-3.0.html#section1), and
+`licenses/GPL-3.0.txt`):
+
+* A System Library is something included with a "Major Component" but not part of it,
+  that serves only to let the work be used with that component. A Major Component
+  includes "a compiler used to produce the work".
+* The runtime ships with the Microsoft Visual C++ compiler, which built Python and
+  PySide6, and serves only to let code that compiler produced run. It's part of neither
+  CADD Calculator nor Python.
+
+Every other bundled component's license is OSI-approved (Apache-2.0, MIT, BSD, LGPL-3.0,
+PSF-2.0, zlib, bzip2, 0BSD), or is a font or data license SignPath's condition doesn't
+exclude (VT323's OFL-1.1, which is also OSI-approved; CLDR's Unicode-3.0). This is a
+reading of the conditions, not a ruling: SignPath decides on the application.
+
 ## What wasn't verified
 
 * SignPath's application form loads from a third-party script, so its fields weren't read.

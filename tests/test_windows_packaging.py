@@ -46,6 +46,14 @@ def test_the_installer_keeps_its_app_id_and_installs_per_user() -> None:
     assert "[Icons]" in script and "{autoprograms}" in script, "a Start-menu shortcut"
 
 
+def test_the_installer_test_checks_the_same_app_id() -> None:
+    """Low 3: the uninstall entry it looks for is named by the script's AppId."""
+    tester = _load("test_installer", ROOT / "packaging" / "windows" / "test_installer.py")
+    assert f"AppId={{{tester.APP_ID}" in ISS.read_text(encoding="utf-8")
+    assert tester.UNINSTALL_KEY.endswith(f"{tester.APP_ID}_is1")
+    assert "Administrative install mode: No" in tester.NON_ADMIN_LOG_LINES
+
+
 def test_the_installer_script_refuses_to_compile_without_the_builds_defines() -> None:
     script = ISS.read_text(encoding="utf-8")
     for name in (
