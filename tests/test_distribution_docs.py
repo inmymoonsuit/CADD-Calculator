@@ -45,7 +45,7 @@ def test_the_policy_page_states_each_thing_signpath_asks_for() -> None:
     for role in ("Authors", "Reviewers", "Approvers"):
         assert f"| {role} |" in text, role
     assert "GitHub-hosted runners" in text
-    assert "multi-factor authentication" in text
+    assert "multi-factor" in text
     assert "gh attestation verify" in text
     assert "makes no network calls" in text
 
@@ -73,3 +73,22 @@ def test_the_research_says_when_it_was_checked_and_the_adr_points_to_it() -> Non
     adr = ADR.read_text(encoding="utf-8")
     assert "(../research/distribution.md)" in adr
     assert "## Amendment (2026-10-25)" in adr
+
+
+def test_every_workflow_action_is_pinned_to_a_commit() -> None:
+    """M3: the policy page says every action is pinned to an exact commit."""
+    for workflow in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        for line in workflow.read_text(encoding="utf-8").splitlines():
+            if "uses:" in line and not line.strip().startswith("#"):
+                assert re.search(r"@[0-9a-f]{40}\s+# v\d", line), f"{workflow.name}: {line.strip()}"
+    assert (ROOT / ".github" / "dependabot.yml").is_file()
+
+
+def test_the_policy_page_claims_only_what_is_true_today() -> None:
+    """M3 and Low 4: MFA is a requirement before signing, not a fact yet; US English."""
+    text = POLICY.read_text(encoding="utf-8")
+    assert "Before signing is switched on, the maintainer and every committer must use" in text
+    assert "The maintainer and every committer use multi-factor" not in text
+    assert "Every change reaches `main` through review" not in text
+    assert "the Trash" in text and "the Bin" not in text
+    assert "AppImage" not in text and "Flatpak" not in text, "they don't exist yet (d4)"

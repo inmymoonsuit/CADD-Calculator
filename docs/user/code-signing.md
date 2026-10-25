@@ -23,7 +23,9 @@ to allow the app in System Settings > Privacy & Security.
   (`.github/workflows/release.yml`), on GitHub-hosted runners, from a version tag. Nothing
   is built or signed on anyone's own computer.
 * The build's settings come from the repository: the workflow, `packaging/build.py`, and
-  the locked dependencies in `uv.lock`. Third-party actions are pinned to exact versions.
+  the locked dependencies in `uv.lock`. Every action the workflows use, GitHub's own
+  included, is pinned to an exact commit, with its version beside it, and Dependabot
+  proposes updates.
 * Only the unbranded edition is built and signed there. Branded editions are built
   elsewhere and never signed under this policy
   ([ADR-0008](../dev/decisions/0008-licensing-and-third-party-assets.md), item 4).
@@ -41,19 +43,26 @@ maintainer alone.
 
 ## The review before a release
 
-1. Every change reaches `main` through review. The review pays as much attention to build
-   scripts and workflows as to the app, since they decide what gets built.
-2. CI passes on Windows, macOS, and Linux: lint, types, the import-layer check, the tests,
+1. Code reaches `main` through a pull request, which is reviewed before it's merged. The
+   review pays as much attention to build scripts and workflows as to the app, since they
+   decide what gets built.
+2. The maintainer approves every merge and every push to `main`. A documentation-only
+   change is sometimes pushed straight to `main`, with that approval.
+3. CI passes on Windows, macOS, and Linux: lint, types, the import-layer check, the tests,
    and a build of each platform's app that starts it and checks it (a smoke test).
-3. The release workflow builds a **draft** release from the version tag. The maintainer
-   checks its files, then publishes it by hand.
-4. Signing (once set up) is a separate request for that release's files, and the maintainer
-   approves it by hand. A release is never signed automatically.
+4. A release is built from a version tag on reviewed code. The maintainer, the only
+   committer, creates version tags; before signing is switched on, a tag ruleset will make
+   sure no one else can. The release workflow builds a **draft** release from the tag, and the
+   maintainer checks its files, then publishes it by hand.
+5. Signing, once it's switched on, waits for the maintainer to approve it by hand, for one
+   release at a time, in the workflow's `release-signing` environment (and, with SignPath,
+   again in SignPath). A release is never signed automatically.
 
 ## Accounts
 
-The maintainer and every committer use multi-factor authentication on GitHub, and on the
-signing service.
+Before signing is switched on, the maintainer and every committer must use multi-factor
+authentication on GitHub, and on the signing service, as SignPath's conditions require.
+This page will say so once that's confirmed.
 
 ## Checking a download
 
@@ -79,6 +88,9 @@ anywhere ([third-party notices](../../THIRD_PARTY_NOTICES.md)).
 
 ## Removing the app
 
-The Windows installer adds an uninstaller: use Settings > Apps, or the Start menu. On
-macOS, move the app to the Bin. On Linux, delete the AppImage, or remove the Flatpak with
-`flatpak uninstall`.
+* **Windows (installer):** Settings > Apps > Installed apps, then CADD Calculator >
+  Uninstall. In the Start menu you can also right-click CADD Calculator and choose
+  Uninstall, which opens the same list. The installer adds no separate uninstall shortcut.
+* **Windows (zip):** delete the folder.
+* **macOS:** move the app to the Trash.
+* **Linux:** delete the folder.
