@@ -260,6 +260,24 @@ def trimmed_files(output: Path) -> list[str]:
     return sorted(str(p.relative_to(output)) for p in found)
 
 
+def inclusion_reasons(report: Path) -> dict[str, str]:
+    """Return why Nuitka included each library, by file name, from its compilation report.
+
+    The reasons read like "Used by 'PySide6/qt-plugins/platforms/libqxcb.so'", so a file the
+    trim should have left out names what pulled it in.
+    """
+    if not report.is_file():
+        return {}
+    import xml.etree.ElementTree as ET
+
+    reasons = {}
+    root = ET.parse(report).getroot()  # noqa: S314 (this build's own Nuitka report)
+    for dll in root.iter("included_dll"):
+        if dll.get("ignored") != "yes":
+            reasons[dll.get("name", "").lower()] = dll.get("reason", "")
+    return reasons
+
+
 def qt_catalogs_dir(translations: Path | None = None, package: Path | None = None) -> str:
     """Return where a build keeps Qt's catalogs: where the running PySide6 keeps them.
 
@@ -431,8 +449,14 @@ def build(branding: Branding, mode: str, *, verbose: bool = False) -> dict[str, 
         copy_notices(output)
         for missing in missing_notices(output):
             raise BuildError(f"the notice {missing} is missing from the build (KI-016)")
-        for extra in trimmed_files(output):
-            raise BuildError(f"{extra} is in the build; the trim leaves it out")
+        extras = trimmed_files(output)
+        if extras:
+            reasons = inclusion_reasons(work / "compilation-report.xml")
+            listed = "; ".join(
+                f"{extra} ({reasons.get(Path(extra).name.lower(), 'no reason recorded')})"
+                for extra in extras
+            )
+            raise BuildError(f"the trim should have left these out: {listed}")
         bundled_pack = exe.parent / PACK_DIR_NAME
         if branding.is_generic and bundled_pack.exists():
             raise BuildError(f"a generic build must not contain {bundled_pack}")
