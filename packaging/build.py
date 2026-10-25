@@ -214,8 +214,10 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     return out
 
 
-TRIMMED_QT_PLUGIN_FAMILIES = ("tls",)
-"""Qt plugin families the build leaves out: TLS backends, for a network the app never uses."""
+TRIMMED_QT_PLUGIN_FAMILIES = ("tls", "egldeviceintegrations")
+"""Qt plugin families the build leaves out: TLS backends, for a network the app never uses;
+and EGLFS's device integrations (Linux), for embedded screens with no display server, one
+of which needs a Qt library PySide6's wheel doesn't have."""
 TRIMMED_IMAGE_FORMATS = ("qpdf", "qtiff", "qwebp", "qtga", "qwbmp", "qicns")
 """Qt image-format plugins the build leaves out. The app reads PNG and JPEG art, SVG and
 ICO icons, and nothing else; ``.icns`` is made at build time, not read by the app."""

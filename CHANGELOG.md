@@ -7,6 +7,10 @@ All notable changes are recorded here. The format follows
 ## [Unreleased]
 
 ### Added
+- The AppImage is started on X11 in CI, in a clean Ubuntu 22.04 container with only the
+  libraries a stock 22.04 desktop installs, and every library it needs is checked with
+  ldd. It bundles libxcb-cursor, which Qt's xcb plugin needs and that desktop lacks, and
+  leaves out EGLFS's embedded-screen plugins.
 - The first release's scope: an unsigned pre-release, v0.1.0a1, with Windows and Linux
   files. The release workflow's RELEASE_PLATFORMS list picks the platforms a release
   carries (macOS is still built and tested), it checks the tag matches the version, and

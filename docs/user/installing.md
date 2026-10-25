@@ -51,8 +51,13 @@ You do this once; after that the app opens normally.
 ## Linux
 
 * **AppImage:** download `…-linux-x64.AppImage`, make it executable
-  (`chmod +x CADDCalculator-*.AppImage`), and run it. It needs no installation, and runs on
-  distributions at least as new as Ubuntu 22.04.
+  (`chmod +x CADDCalculator-*.AppImage`), and run it. It needs no installation and no extra
+  packages on Ubuntu 22.04's standard desktop: every release is started on X11 with only
+  the libraries that desktop installs. It's built for 64-bit PCs with that release's
+  system libraries or newer, so it should run on later Ubuntu releases and similar
+  distributions too, though only Ubuntu 22.04 is tested. In a Wayland session it uses
+  Qt's Wayland support, whose libraries are checked but which isn't started in testing
+  yet.
 * **Flathub:** a Flathub listing is planned. It will be built from source by Flathub.
 
 ## As a Python package

@@ -774,6 +774,7 @@ def test_the_trim_finds_every_platforms_left_out_files(
     assert found == sorted(left_out)
     args = build_script.nuitka_args(None)
     assert "--noinclude-qt-plugins=tls" in args
+    assert "--noinclude-qt-plugins=egldeviceintegrations" in args
     assert "--nofollow-import-to=PySide6.QtNetwork" in args
     assert "--noinclude-dlls=*imageformats*qpdf*" in args
     assert "--noinclude-dlls=*platforms*qvnc*" in args

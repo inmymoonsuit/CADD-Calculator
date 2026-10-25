@@ -5,12 +5,14 @@
 # AppImage"). libxcb-cursor0 isn't on that desktop, so the build bundles it instead.
 fontconfig
 fonts-dejavu-core
+libcups2
 libdbus-1-3
 libegl1
 libfontconfig1
 libfreetype6
 libgl1
 libglib2.0-0
+libgtk-3-0
 libopengl0
 libwayland-client0
 libwayland-cursor0

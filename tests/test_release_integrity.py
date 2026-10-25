@@ -216,12 +216,25 @@ def test_collect_requires_the_signed_installer_when_a_provider_signed(
     assert (tmp_path / "r3" / installer).read_bytes() == installer.encode()
 
 
+def test_a_signed_installer_of_another_name_is_refused(
+    release_files: ModuleType, tmp_path: Path
+) -> None:
+    """S&R's mutant R4: the signed file must be the unsigned one's, by name."""
+    downloads = _downloads(tmp_path / "downloads")
+    signed = tmp_path / "signed"
+    signed.mkdir()
+    (signed / "CADDCalculator-0.0.9-generic-windows-x64-setup.exe").write_bytes(b"old")
+    with pytest.raises(release_files.ReleaseError, match="signed the installer"):
+        release_files.collect(downloads, tmp_path / "r", VERSION, ["Windows"], signed, "signpath")
+
+
 def test_the_tag_must_match_the_version_and_pre_releases_are_marked(
     release_files: ModuleType,
 ) -> None:
     release_files.check_tag("v0.1.0a1", "0.1.0a1")
-    with pytest.raises(release_files.ReleaseError, match="doesn't match"):
-        release_files.check_tag("v0.1.0", "0.1.0a1")
+    for tag in ("v0.1.0", "v10.1.0a1", "0.1.0a1", "v0.1.0a1.post1", "xv0.1.0a1"):
+        with pytest.raises(release_files.ReleaseError, match="doesn't match"):
+            release_files.check_tag(tag, "0.1.0a1")  # S&R's mutant R6: exact, not endswith
     for tag in ("v0.1.0a1", "v1.0b2", "v2.0.0rc1", "v0.2.dev3"):
         assert release_files.is_prerelease(tag), tag
     for tag in ("v0.1.0", "v1.2", "v1.0.post1", "latest"):

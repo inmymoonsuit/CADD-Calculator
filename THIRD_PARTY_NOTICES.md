@@ -289,7 +289,8 @@ and it runs on that runtime's Qt and on PySide6 6.11 from Flathub's
 `io.qt.PySide.BaseApp`, under the same licenses, with their notices in the runtime and
 the BaseApp. It bundles only the app itself (`docs/dev/packaging.md`, "Flathub").
 
-The builds leave out Qt's network module, its TLS backends, the VNC platform plugin, and
+The builds leave out Qt's network module, its TLS backends, the VNC platform plugin, EGLFS's
+device integrations, and
 the image plugins the app doesn't read (PDF, TIFF, WebP, TGA, WBMP, ICNS), so their notices
 aren't needed (`docs/dev/packaging.md`, "What the build leaves out"). OpenSSL's libcrypto
 stays: Python's `hashlib` uses it.

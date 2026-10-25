@@ -83,11 +83,16 @@ The code-signing policy page SignPath asks for is
 
 ## Amendment (2026-10-25): the first release's scope
 
-The maintainer set the first release's scope on 2026-10-25, relayed by the project
-manager: an **unsigned pre-release, `v0.1.0a1`**, at the least effort and cost, with Windows
-and Linux files and no macOS download yet. Self-signing was considered and dropped: a
-self-signed certificate isn't trusted by Windows, so it would add work with no change to
-the SmartScreen prompt users see.
+The maintainer set the first release's scope on 2026-10-25, in their words:
+
+> I don't need a Mac version yet. I want to create the Windows version with the free
+> self-signing or whatever or now, even though that will create a security pop-up for
+> users. That's okay for now. I just want minimal effort/cost for now.
+
+Self-signing was then advised against, since a self-signed certificate isn't trusted by
+Windows: it would add work with no change to the SmartScreen prompt users see. The plan
+became an **unsigned pre-release, `v0.1.0a1`**, with Windows and Linux files, published by
+hand, which the maintainer approved: "Yes, that's fine."
 
 * **What the release carries:** the Windows zip and installer, the Linux archive and
   AppImage, and `SHA256SUMS`, each attested. The release workflow's `RELEASE_PLATFORMS`

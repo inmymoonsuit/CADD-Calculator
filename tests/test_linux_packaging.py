@@ -12,6 +12,7 @@ import configparser
 import importlib.util
 import json
 import re
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import ModuleType
@@ -26,6 +27,7 @@ def _load(name: str, path: Path) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module  # a dataclass resolves its annotations through it
     spec.loader.exec_module(module)
     return module
 
@@ -93,3 +95,59 @@ def test_the_appimage_tools_are_pinned_and_checked() -> None:
         assert url.startswith("https://github.com/AppImage/")
         assert re.fullmatch(r"[0-9a-f]{64}", digest)
     assert maker.DESKTOP.is_file() and maker.METAINFO.is_file() and maker.ICON.is_file()
+
+
+def test_only_listed_binaries_pass_the_notice_check() -> None:
+    """S&R's mutant L2 and Low 2: only listed binaries pass the notice check.
+
+    An unknown library, or a third-party C extension, has no component, so the build fails
+    on it; the interpreter's own extension modules pass.
+    """
+    notices = _load("library_notices", ROOT / "packaging" / "library_notices.py")
+    for unknown in (
+        "libfoo.so",
+        "libfoo.so.1",
+        "foo.dll",
+        "foo.pyd",
+        "_cffi_backend.cpython-312-x86_64-linux-gnu.so",
+        "numpy/_core/_multiarray_umath.cpython-312-x86_64-linux-gnu.so",
+        "numpy/_core/_multiarray_umath.pyd",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+    ):
+        assert notices.component_of(unknown) is None, unknown
+    own = sorted(notices.stdlib_extensions())
+    assert own, "the interpreter has extension modules of its own"
+    for name in (f"{own[0]}.pyd", f"{own[0]}.cpython-312-x86_64-linux-gnu.so"):
+        assert notices.component_of(name).name.startswith("Python"), name
+    assert notices.component_of("PySide6/Qt/lib/libxcb-cursor.so.0").name.startswith("xcb")
+
+
+def test_the_appimage_brings_what_a_stock_desktop_lacks() -> None:
+    """S&R's AppImage Medium: the AppImage brings what a stock desktop lacks.
+
+    libxcb-cursor is bundled, since Ubuntu 22.04's desktop doesn't install it; everything
+    else comes from that desktop's own packages.
+    """
+    desktop = _load("check_desktop", LINUX / "check_desktop.py")
+    baseline = desktop.baseline()
+    assert "libxcb-cursor0" not in baseline
+    assert {"libxkbcommon-x11-0", "libxcb-icccm4", "libgl1", "libfontconfig1"} <= set(baseline)
+    assert re.fullmatch(r"[0-9a-f]{64}", desktop.MANIFEST_SHA256)
+    assert desktop.MANIFEST_URL.startswith("https://releases.ubuntu.com/22.04/")
+    manifest = desktop.manifest_packages("libxcb1:amd64\t1.14-3ubuntu3\nlibgl1\t1.4.0-1\n")
+    assert manifest == {"libxcb1", "libgl1"}
+    assert desktop.not_on_desktop(["libgl1", "libxcb-cursor0"], manifest) == ["libxcb-cursor0"]
+    ldd = (
+        "\tlibxcb-cursor.so.0 => not found\n"
+        "\tlibxcb.so.1 => /lib/x86_64-linux-gnu/libxcb.so.1 (0x00007f)\n"
+    )
+    assert desktop.missing_libraries(ldd) == ["libxcb-cursor.so.0"]
+    build = (ROOT / "packaging" / "build.py").read_text(encoding="utf-8")
+    assert 'HOST_LIBRARIES = ("libxcb-cursor.so.0",)' in build
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    job = workflow[workflow.index("  appimage-x11:") : workflow.index("  linux-metadata:")]
+    assert "container: ubuntu:22.04" in job
+    assert "QT_QPA_PLATFORM: xcb" in job and "xvfb-run" in job
+    assert "r['qt_platform'] == 'xcb'" in job
+    assert "check_desktop.py manifest" in job and "check_desktop.py ldd squashfs-root" in job

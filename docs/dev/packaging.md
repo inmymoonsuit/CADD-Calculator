@@ -26,6 +26,14 @@ The first build downloads Nuitka's C compiler (MinGW-w64 gcc, about 270 MB) and 
 Walker into Nuitka's cache. Later builds take 20 to 45 seconds because ccache keeps the
 compiled C.
 
+**On Windows, inside the Claude desktop app, set a short Nuitka cache first**, or the
+build falls back to a MinGW whose include paths pass Windows' 260-character limit, and
+fails on a missing header such as `structuredquerycondition.h` ([Troubleshooting](#troubleshooting)):
+
+```bash
+NUITKA_CACHE_DIR="C:\Users\<you>\.cache\nuitka" uv run python packaging/build.py --smoke-test
+```
+
 ## The version
 
 The version has one source, `__version__` in `src/caddcalc/__init__.py`, which hatchling
@@ -170,6 +178,7 @@ texts added (2026-10-25; `.build.json`'s `size_mb` and `archive_mb`):
 |---|---|---|
 | QtNetwork (`QtNetwork` module, `Qt6Network` library) | nothing imports it; the app makes no network calls (ADR-0009) | `--nofollow-import-to=PySide6.QtNetwork`, and `--noinclude-dlls=*Qt6Network*`, since Nuitka still follows a left-out plugin's dependencies |
 | Qt's TLS backends (`tls/`: OpenSSL, Schannel, cert-only) | they serve QtNetwork, and pulled it in | `--noinclude-qt-plugins=tls` |
+| EGLFS's device integrations (`egldeviceintegrations/`, Linux) | they drive embedded screens with no display server; the app runs on X11 or Wayland, and the KMS one needs `libQt6EglFsKmsGbmSupport`, which PySide6's wheel doesn't have (found by the AppImage's `ldd` check) | `--noinclude-qt-plugins=egldeviceintegrations` |
 | The VNC platform plugin (`platforms/libqvnc.so`, Linux) | it serves the window over a network, and links QtNetwork; the app uses xcb or Wayland | `--noinclude-dlls=*platforms*qvnc*` |
 | Image plugins for PDF, TIFF, WebP, TGA, WBMP, and ICNS | the app reads PNG and JPEG art, SVG and ICO icons; `.icns` is only written at build time | `--noinclude-dlls=*imageformats*<name>*` |
 
@@ -466,7 +475,15 @@ build in an AppImage, `…-linux-x64.AppImage` (ADR-0022, slice d4):
   releases, checked against their published SHA-256s. They're downloaded once into
   `builds/tools/`, and run extracted, so no FUSE is needed.
 * `--smoke-test` starts the AppImage with `--appimage-extract-and-run` and checks the app's
-  report.
+  report. The build job runs it offscreen, which loads no display plugin.
+* **On a real display:** Qt's xcb plugin needs `libxcb-cursor`, which a stock Ubuntu 22.04
+  desktop doesn't install, so the Linux build bundles it from the build host
+  (`build.py`'s `HOST_LIBRARIES`). Everything else the AppImage takes from the host is a
+  package that desktop has, listed in `packaging/linux/desktop-baseline.txt`. CI's
+  `appimage-x11` job installs only those, with Xvfb, in a clean `ubuntu:22.04` container;
+  checks each is in Ubuntu's own 22.04.5 desktop manifest; runs `ldd` on every binary in
+  the extracted AppImage; and starts it with `QT_QPA_PLATFORM=xcb`, checking the app
+  reports the xcb platform (`packaging/linux/check_desktop.py`).
 
 Build it on the oldest Linux you support (CI uses ubuntu-22.04), since an AppImage runs
 only on systems with at least its build's glibc. CI also checks the `.desktop` file with
@@ -519,12 +536,19 @@ edition on Windows, macOS, and Linux. Branded editions are never built there.
   a pre-release suffix (`a`, `b`, `rc`, or `.dev`) makes a pre-release. Once `PUBLISH_PYPI`
   is on, it publishes the wheel and the sdist to TestPyPI, then PyPI, each after the
   maintainer approves it ([PyPI](#pypi)).
-* **An unsigned tag run**, as for `v0.1.0a1`: every build, the Linux metadata, the Flatpak,
-  and the wheel and sdist run as on a dry run. `sign-windows` and the `notarize-macos`
-  stub each start in the `release-signing` environment, leave a "switched off" notice, and
-  succeed. `release-files` takes the unsigned installer, `attest` attests each file, and
-  `draft-release` drafts a pre-release with the Windows and Linux files and `SHA256SUMS`.
-  `testpypi` and `pypi` are skipped.
+* **An unsigned tag run**, as for `v0.1.0a1`: every build, the Linux metadata, the
+  AppImage's X11 start, the Flatpak, and the wheel and sdist run as on a dry run.
+  `sign-windows` and the `notarize-macos` stub each start in the `release-signing`
+  environment, leave a "switched off" notice, and succeed. `release-files` takes the
+  unsigned installer, `attest` attests each file, and `draft-release` drafts a pre-release
+  with the Windows and Linux files and `SHA256SUMS`. `testpypi` and `pypi` are skipped.
+* **The approval wait.** `sign-windows` and the notarize stub run in the `release-signing`
+  environment on every tag, even with signing off. Once that environment has a required
+  reviewer ([Signing](#signing)), every tag run waits for you to approve both, and if you
+  reject either, `sign-windows` or the stub fails, `release-files` is skipped, and nothing
+  is drafted. For `v0.1.0a1` the environment isn't created beforehand: GitHub creates it,
+  unprotected, the first time a job names it, so nothing waits. Add the reviewer before
+  switching signing on.
 * **Every action is pinned** to a full commit SHA, with its version in a comment, and
   Dependabot (`.github/dependabot.yml`) proposes updates weekly, grouped in one pull
   request.
