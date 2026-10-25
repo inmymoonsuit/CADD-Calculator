@@ -225,11 +225,12 @@ jobs:
             fi
             echo "$out"
           }
-          report="$GITHUB_WORKSPACE/flatpak-smoke-test"
+          # The report goes in the app's own data folder, which the sandbox always lets it
+          # write, and which is the same path outside.
+          report="$HOME/.var/app/io.github.inmymoonsuit.CADDCalculator/smoke-test"
           step "flatpak install" flatpak install --user --noninteractive -y CADDCalculator.flatpak
           step "flatpak run --smoke-test" flatpak run --env=QT_QPA_PLATFORM=offscreen \
-            --filesystem="$GITHUB_WORKSPACE" io.github.inmymoonsuit.CADDCalculator \
-            --smoke-test="$report"
+            io.github.inmymoonsuit.CADDCalculator --smoke-test="$report"
           step "smoke-test report" python3 -c "import json, sys; r = json.load(open(sys.argv[1])); print(r); assert r['calculators'] > 0 and r['window_title'] == 'CADD Calculator', r" \
             "$report/smoke-test.json"
 
