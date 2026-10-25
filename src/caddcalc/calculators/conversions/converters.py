@@ -230,7 +230,17 @@ class DecimalToFraction(Calculator):
             signed=True,
         ),
     )
-    methods = (LENGTH_METHOD,)
+    methods = (
+        _method(
+            "for in and ft",
+            "Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot "
+            "in meters exactly. The rounding to the nearest fraction, half to even, is this "
+            "calculator's own rule; no published example covers it.",
+            SP811_B8,
+            SP811_SI,
+            FR_1959,
+        ),
+    )
 
     @override
     def compute(self, ctx: Context) -> None:

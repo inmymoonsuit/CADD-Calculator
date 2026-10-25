@@ -34,8 +34,17 @@ from caddcalc.calculators.sheet_metal import (
 )
 from caddcalc.calculators.sheet_metal.common import EDD5_BEND_ALLOWANCE, MH31_FIG13
 from caddcalc.core import Calculator, Dimension, Reference, Verification, parse_quantity
-from caddcalc.core.formatting import CopyForm, DisplayPrefs, ShownUnits, copy_output
+from caddcalc.core.formatting import (
+    CopyForm,
+    DisplayPrefs,
+    ShownUnits,
+    copy_output,
+    format_output,
+)
 from tests.helpers import run_inches
+
+UNITS = ShownUnits.generated()
+"""The default set, for an output shown in its own fixed form."""
 
 
 def printed(value: float, decimals: int = 3) -> object:
@@ -130,9 +139,15 @@ def test_sp811_b8_inch_and_foot() -> None:
     assert _full(LengthConverter(), "1 in", Dimension.LENGTH, "m") == "0.0254"
     assert _full(LengthConverter(), "1 ft", Dimension.LENGTH, "m") == "0.3048"
     assert _full(LengthConverter(), "0.0254 m", Dimension.LENGTH, "in") == "1"
+    # Each converter its status names "for in and ft" runs both (S&R's PR #3 M2).
     assert _full(FractionToDecimal(), "1 in", Dimension.LENGTH, "m") == "0.0254"
-    nearest = DecimalToFraction().run({"value": parse_quantity("0.0254 m", Dimension.LENGTH)})
-    assert nearest.outputs["nearest"] == 25.4 and nearest.outputs["error"] == 0.0
+    assert _full(FractionToDecimal(), "1 ft", Dimension.LENGTH, "m") == "0.3048"
+    calc = DecimalToFraction()
+    for typed, mm, shown in (("0.0254 m", 25.4, '1"'), ("0.3048 m", 304.8, '12"')):
+        nearest = calc.run({"value": parse_quantity(typed, Dimension.LENGTH)})
+        assert nearest.outputs["nearest"] == mm and nearest.outputs["error"] == 0.0
+        value = nearest.outputs["nearest"]
+        assert format_output(calc.output("nearest"), value, UNITS, DisplayPrefs()) == shown
 
 
 def test_sp811_b8_square_inch_and_foot() -> None:

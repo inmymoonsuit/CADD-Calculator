@@ -1518,3 +1518,20 @@ The review's Mediums 3–5 and Low 2 were fixed by the commits above. The rest:
   resolves, anchors included, and that none uses a retired word: the Units box,
   `--units`, `--fraction`, "display unit" or "unit system". Its own probe: with the old
   getting-started text, it fails.
+
+### 2026-10-25: the native reviews of stop 3 (fix round)
+
+Support & Review's and UI/UX & Design's native reviews of 5b8978c, fixed as new commits on
+the branch.
+
+* **A picker test, natively (S&R's M1).** Windows animates a combo box's list open, so the
+  list isn't visible yet right after F4, and the test of a list closed without a choice
+  failed natively in all three cases. It now turns `UI_AnimateCombo` off while it runs, as
+  the tooltips' test does `UI_AnimateTooltip`, and passes natively 3 of 3. The picker's
+  logic was right: offscreen has no animation, which is why CI was green.
+* **"Verified for in and ft" now runs the foot too (S&R's M2, ADR-0010).** The SP 811 test
+  sent only the inch through Fraction to decimal and Decimal to fraction. It now sends the
+  foot through each: 1 ft is 0.3048 m, and 0.3048 m is `12"` with an error of exactly 0.
+  Decimal to fraction's verification note says what B.8 covers, the inch and the foot,
+  and that its rounding to the nearest fraction is its own rule, which no published
+  example covers.

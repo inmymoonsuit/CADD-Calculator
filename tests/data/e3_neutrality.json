@@ -374,7 +374,7 @@
 },
 "method_notes": [
 "The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
-"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
 ],
 "notes": [],
 "outputs": {
@@ -423,7 +423,7 @@ null,
 },
 "method_notes": [
 "The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
-"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
 ],
 "notes": [],
 "outputs": {
@@ -466,25 +466,25 @@ null,
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.01 value": {
-"sha256": "6ecdb2e1273ad80077c5030b75fde747775f98cc1605e87b648f95488b681fa5"
+"sha256": "2932e7eda0a37ee52756318d92a5c85beff9f451fe7c6a3e07e0a0e75e34e7bc"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.1 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|,|x0.1 value": {
-"sha256": "f8fca88caa611ba965feb732b81e0f690bcb29085245574744dcb80bc68d45ea"
+"sha256": "59cb8f7d52c7c7b32b19fad9616a07aec020cbe62753b56eab86b515342d46a8"
 },
 "conversions.decimal_to_fraction|exact|in|,|x10.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|,|x10.0 value": {
-"sha256": "1a94321558f63306835482ba88f63d9506ab6d7f1a2011247169b9dcd1670499"
+"sha256": "fd6d24762d7b581eb42bc22e4e46669a0619101e43b419e64a87b6356ed9c930"
 },
 "conversions.decimal_to_fraction|exact|in|,|x100.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|,|x100.0 value": {
-"sha256": "7bb13e15f6a4fe9c1a094f747883e7ebb9bbdad6e5a12aea0d29ab11d89b4ab6"
+"sha256": "d94798004c88b7416aad7833ee4081d707736a108e4cf97f7a82d87f890e6190"
 },
 "conversions.decimal_to_fraction|exact|in|.|defaults": {
 "cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           0.1900 in  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 0.1875 in\n  E = N - X\n    = 0.1875 - 0.1900\n    = -0.0025 in\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.0025 in\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
@@ -494,7 +494,7 @@ null,
 },
 "method_notes": [
 "The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
-"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
 ],
 "notes": [],
 "outputs": {
@@ -544,7 +544,7 @@ null,
 },
 "method_notes": [
 "The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
-"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
 ],
 "notes": [],
 "outputs": {
@@ -587,25 +587,25 @@ null,
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.01 value": {
-"sha256": "4371b7e7d9357b14f562511c41af00426225710dfabab6f9b4414bafc964ceec"
+"sha256": "969849bcd9ae4ab24d5bad4007baed837a4964b76e9494eb97f17930d66b1d1d"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.1 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|in|.|x0.1 value": {
-"sha256": "4262a52edfca647f913e2ea2243b6166493b5bf703620e4f2f20c85b7d60c054"
+"sha256": "0dd1b9efa5ef0369000719cf5781b5e844a6eca5018d1473361f53984c1eefdd"
 },
 "conversions.decimal_to_fraction|exact|in|.|x10.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|.|x10.0 value": {
-"sha256": "1273fa7d3807ef12b0a46a3c57117c1b80dd70ab028ba8bb36c6d52197d63566"
+"sha256": "bee069808aacf74c479fb51f7eb749ec4b46fe3de1934cd8bd33bf8a2c4b97d3"
 },
 "conversions.decimal_to_fraction|exact|in|.|x100.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|in|.|x100.0 value": {
-"sha256": "bb1adbd57e0ff91a68412e8633aa357412d5fc139467d1f6ce92bec607241cb6"
+"sha256": "c74a5f1440af733eabd0e82ac7de660d5a5d1dd97a9e00096a878a807fb4588c"
 },
 "conversions.decimal_to_fraction|exact|mm|.|defaults": {
 "cli": "Decimal to fraction - Exact definitions\n\nInputs\n  X      Length                           4.8260 mm  (default)\n  F      Fineness                         1/16  (default)\n\nWork\n  N = The length rounded to the nearest 1/16 inch, half to even.\n    = 4.7625 mm\n  E = N - X\n    = 4.7625 - 4.8260\n    = -0.0635 mm\n\nResults\n  N      Nearest fraction                 3/16\"\n  E      Error                            -0.0635 mm\n\nMethod status: verified for in and ft. Verify results and test according to your organization's policies or industry best practice before manufacturing.",
@@ -615,7 +615,7 @@ null,
 },
 "method_notes": [
 "The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
-"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
 ],
 "notes": [],
 "outputs": {
@@ -665,7 +665,7 @@ null,
 },
 "method_notes": [
 "The value as typed, read through its unit's factor, converted to the picked unit, each factor its unit's exact definition rounded once. It shows six significant figures; Copy gives what's shown, and full precision ten digits.",
-"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly."
+"Verified against NIST SP 811, Appendix B.8, which gives the inch and the foot in meters exactly. The rounding to the nearest fraction, half to even, is this calculator's own rule; no published example covers it."
 ],
 "notes": [],
 "outputs": {
@@ -708,25 +708,25 @@ null,
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.01 value": {
-"sha256": "014e13bd37793a23100e06497f3ddb9141f962b7ab05dfad613b6800fe3ec3ac"
+"sha256": "1d09a5e26e567bd7d520ef6606214ec8b37848cbf97d4aa62b641de216440d45"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.1 fineness": {
 "sha256": "7bdaae9f78a1ab35c65e1542097548072744119a1b5c6049da339885d3c99a68"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x0.1 value": {
-"sha256": "9c58b6dd77ccc9c90d43593f701553ae7f75497845478d30c22a682d186d0cbb"
+"sha256": "b400476f08bdb601f4b2330e22348a7e16ed64468216709d18e9f7293f8e48cc"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x10.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x10.0 value": {
-"sha256": "58386b9ca002e1e31b41f9b937b9c8dd3e6e62317265e967254c5c2b2c148382"
+"sha256": "fa7f3170f6fe03e4f9968a16ee0dbd9fd58b05e29ab593981b170f69294c045d"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x100.0 fineness": {
 "sha256": "f5d32466e0538441697c3ac5fc1a5ccea537de3e2c2608c44a44986894c49bf2"
 },
 "conversions.decimal_to_fraction|exact|mm|.|x100.0 value": {
-"sha256": "d2064363b39d215f79c3ec2eaefac7a84b50e9bdc0725880ee855ec956617b8d"
+"sha256": "c7b7230a0e43b34bb9456b573fe88ed42f34bbdaa5f9ebcb5d629f4b2e1c7697"
 },
 "conversions.fraction_to_decimal|exact|in|,|defaults": {
 "inputs": {
