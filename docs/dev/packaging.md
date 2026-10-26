@@ -82,7 +82,8 @@ uv run python packaging/build.py --branding builds/placeholder-pack --smoke-test
 ```
 
 The placeholder pack is a magenta test pattern that says "not for distribution", with
-the edition `placeholder`, and generated welcome art and a vertical logo. To try any pack from a source checkout without building, set
+the edition `placeholder`, and generated welcome art and a vertical organization logo.
+To try any pack from a source checkout without building, set
 `CADDCALC_BRANDING`:
 
 ```bash
@@ -102,7 +103,8 @@ about = "about.html"                          # optional; .html fragment or .txt
 [welcome]                                     # optional welcome screen parts (ADR-0015)
 art = "welcome-art.png"                       # 16:9, supplied at 1920 x 1080; .png or .jpg
 art_focus = [0.35, 0.5]                       # the point kept in view when cropping
-logo = "logo-vertical.svg"                    # the logo, in its box; .svg or .png
+organization_logo = "logo-vertical.svg"       # optional; the strip's logo, .svg or .png
+product_logo = "my-fork.svg"                  # a modified build's own title logo only
 
 [welcome.style.logo]                          # optional overrides (ADR-0016, S5)
 fill_role = "welcome_paper"                   # also margin_left, margin_top,
@@ -112,21 +114,31 @@ fill_opacity_min = 0.25                       # also fill_roles
 ```
 
 * Every edition is called "CADD Calculator": in its window title, on its welcome
-  screen, and in About. An edition is told apart by its icon, art, logo, and About text
-  (ADR-0016, S4). A pack that still names the old `name` key is refused, with a message
-  saying to delete it.
+  screen, and in About. An edition is told apart by its icon, art, organization logo,
+  and About text (ADR-0016, S4). A pack that still names the old `name` key is refused,
+  with a message saying to delete it.
+* **A modified build (a fork, or changed code or formulas) must look like itself,**
+  not like CADD Calculator ([TRADEMARKS.md](../../TRADEMARKS.md)):
+  * Its pack supplies its own `icon` and `[welcome]` `product_logo`, which replaces the
+    welcome screen's title. The generic build has no neutral fallback: without them, it
+    shows the CADD Calculator icon and logo. Official builds and branded editions don't
+    set `product_logo`.
+  * Its name is changed in the code (`PRODUCT_NAME` in `gui/branding.py`), since a pack
+    can't rename the app.
 * Paths are relative to the pack folder and must stay inside it.
 * `icon` sets the window icon, and also the `.exe` icon. A PNG is converted to a
   multi-size `.ico` (Windows) or `.icns` (macOS) at build time.
 * `about` replaces the one-line description in Help > About. The version, the
   disclaimer, and the link to the source code are always shown.
 * `[welcome]` supplies the welcome screen's parts: 16:9 art, supplied at 1920 × 1080,
-  its focal point, and a vertical logo. The sizes, safe areas, budgets, and the art's
-  notice are in the [art specification](design/welcome-screen.md), and
+  its focal point, and an organization's logo for the strip at the art's left edge,
+  such as a school's. Without one, there's no strip. The sizes, safe areas, budgets, and
+  the art's notice are in the [art specification](design/welcome-screen.md), and
   `packaging/make_welcome_template.py` writes a guide for the art. A pack that still
-  names the old `splash` key is refused, with a message naming `[welcome]`.
+  names the old `splash` key is refused, with a message naming `[welcome]`, and so is
+  the old `[welcome]` `logo`, with one naming `organization_logo`.
 * `[welcome.style.logo]` and `[welcome.style.panes]` may override a short whitelist of
-  the welcome screen's design tokens: the logo box's fill role, margins, and padding,
+  the welcome screen's design tokens: the logo boxes' fill role, margins, and padding,
   and the panes' fill roles and least opacity. Anything else is refused. The art
   specification lists them and the checks.
 * The build copies only `branding.toml`, the files it names, and any file at the top of
@@ -142,9 +154,9 @@ The loader is `caddcalc.gui.branding`. It doesn't import Qt.
 
 ## Notices
 
-The build copies `LICENSE.md` and `THIRD_PARTY_NOTICES.md` into the app folder, and the
-runtime's license texts into its `licenses/` folder. Third-party assets inside the
-package ride along with the package data: the Tabler icons and their `LICENSE.txt`, and
+The build copies `LICENSE.md`, `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md` into the app
+folder, and the runtime's license texts into its `licenses/` folder. Third-party assets
+inside the package ride along with the package data: the Tabler icons and their `LICENSE.txt`, and
 the welcome screen's display face, VT323, with its `OFL.txt` (`gui/assets/fonts/vt323/`,
 vendored by `packaging/fetch_fonts.py`; ADR-0016 §2).
 
@@ -202,7 +214,8 @@ and art.
    `--include-data-dir=<staged pack>=branding`.
 4. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
    mode. Nuitka must already be installed by uv (the `build` dependency group).
-5. Renames the `.dist` folder, copies `LICENSE.md` into it, and checks that a generic build
+5. Renames the `.dist` folder, copies the project's notices into it (`LICENSE.md`,
+   `TRADEMARKS.md`, `THIRD_PARTY_NOTICES.md`), and checks that a generic build
    has no `branding/` folder and a branded build has one, and that every reference table
    in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
    bundled (`--include-package-data=caddcalc` carries them), as is every file the display
@@ -212,7 +225,8 @@ and art.
 6. With `--smoke-test`, starts the app with `--smoke-test=DIR` a few times (`--runs`). Each
    run opens the welcome screen and the window, loads every reference table, writes the
    report, and exits. The script checks the reported name, edition, icon, that the
-   welcome screen showed with the pack's art and logo (or the generic ones), that it
+   welcome screen showed with the pack's art (or the built-in art), the project's title
+   or the pack's `product_logo`, and the pack's organization logo or none, that it
    loaded the display face (the report's `display_font` is `VT323`, or `fallback` if it
    couldn't), the number of reference tables loaded, the catalogs the app finds
    (`catalogs`), that Qt loads its own catalog from the build (`qt_catalog`), and that
@@ -265,9 +279,20 @@ installer, and any `direct_url.json` (a wheel installed from a file or URL).
 ## The Windows installer
 
 `build.py --installer` wraps the standalone Windows folder in an Inno Setup 6 installer,
-`…-windows-x64-setup.exe`, from `packaging/windows/CADDCalculator.iss` (ADR-0022, slice d3).
-It needs Inno Setup 6's `ISCC.exe` ([jrsoftware.org](https://jrsoftware.org/isinfo.php));
-GitHub's windows-latest runner has it.
+`…-windows-x64-setup.exe`, from `packaging/windows/CADDCalculator.iss` (ADR-0022, slice
+d3). It needs Inno Setup 6's `ISCC.exe`, 6.6 or later, whose wizard image sizes
+`packaging/icons.py` draws to; the script refuses to compile with an earlier one.
+GitHub's windows-latest runner has 6.7.1. On a PC, get the latest 6.x from
+[jrsoftware.org's download page](https://jrsoftware.org/isdl.php), which links the
+project's GitHub release (6.7.3, `innosetup-6.7.3.exe`, on 2026-10-26). Check it before
+running it: its SHA-256 matches the `digest` GitHub's API lists for the release asset,
+and `Get-AuthenticodeSignature` reports a valid signature from Pyrsys B.V. It installs
+for your user only, with no admin rights, where `build.py` finds it
+(`%LOCALAPPDATA%\Programs\Inno Setup 6`):
+
+```bash
+innosetup-6.7.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER /NOICONS
+```
 
 * It installs for the current user by default, into `%LOCALAPPDATA%\Programs\CADD
   Calculator`, with no admin rights. The installer offers a per-machine install instead,

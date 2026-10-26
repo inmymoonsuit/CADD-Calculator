@@ -94,7 +94,8 @@ def test_the_appimage_tools_are_pinned_and_checked() -> None:
         assert "/continuous/" not in url, "a tagged release, not a moving one"
         assert url.startswith("https://github.com/AppImage/")
         assert re.fullmatch(r"[0-9a-f]{64}", digest)
-    assert maker.DESKTOP.is_file() and maker.METAINFO.is_file() and maker.ICON.is_file()
+    assert maker.DESKTOP.is_file() and maker.METAINFO.is_file()
+    assert all(icon.is_file() for icon in maker.ICONS.values())
 
 
 def test_only_listed_binaries_pass_the_notice_check() -> None:

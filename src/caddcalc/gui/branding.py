@@ -11,7 +11,8 @@ with a ``branding.toml`` file and the files it names::
     [welcome]                                    # optional welcome-screen parts (ADR-0015)
     art = "welcome-art.png"                      # 16:9, supplied at 1920 x 1080
     art_focus = [0.35, 0.5]                      # the point kept in view when cropping
-    logo = "logo-vertical.svg"                   # the logo, in its box (.svg or .png)
+    organization_logo = "logo-vertical.svg"      # the strip's logo, in its box (.svg, .png)
+    product_logo = "my-fork.svg"                 # a modified build's own title logo
 
     [welcome.style.logo]                         # optional overrides (ADR-0016, S5)
     fill_role = "welcome_paper"                  # also margin_left, margin_top,
@@ -19,8 +20,10 @@ with a ``branding.toml`` file and the files it names::
     [welcome.style.panes]
     fill_opacity_min = 0.25                      # also fill_roles
 
-Every edition is called ``PRODUCT_NAME``, and is told apart by its icon, art, logo, and
-About text (ADR-0016, S4).
+Every edition is called ``PRODUCT_NAME``, and is told apart by its icon, art,
+organization logo, and About text (ADR-0016, S4). The title shows the project's logo; a
+modified build's pack replaces it with ``product_logo`` (TRADEMARKS.md). Official builds
+and branded editions don't set it.
 
 Where the app looks for a pack (first match wins):
 
@@ -60,12 +63,22 @@ PACK_DIR_NAME = "branding"
 SCHEMA = 1
 
 ASSETS = Path(__file__).parent / "assets"
-GENERIC_ICON = ASSETS / "app-icon.png"
+BRAND = ASSETS / "brand"
+"""The brand artwork's sources (docs/dev/design/brand.md)."""
+GENERIC_ICON = BRAND / "app-icon.svg"
+"""The app icon's master; ``app_icon`` draws every size from it and its small drawings."""
+GENERIC_ART = ASSETS / "welcome" / "welcome-art.jpg"
+"""The official build's welcome art, by the maintainer, under Apache-2.0 with the project
+(docs/dev/design/brand.md). It's art, not a mark, so it isn't in ``BRAND``."""
+TITLE_LOGO = BRAND / "logo-outlined.svg"
+"""The welcome screen's title: the symbol and the wordmark, for a light fill (ADR-0015)."""
+TITLE_LOGO_REVERSED = BRAND / "logo-outlined-reversed.svg"
+"""The same, with the C and "Calculator" in white, for a dark fill."""
 
 ICON_SUFFIXES = frozenset({".png", ".ico"})
 ABOUT_SUFFIXES = frozenset({".html", ".htm", ".txt"})
 _KEYS = frozenset({"schema", "edition", "icon", "about", "welcome"})
-_WELCOME_KEYS = frozenset({"art", "art_focus", "logo", "style"})
+_WELCOME_KEYS = frozenset({"art", "art_focus", "organization_logo", "product_logo", "style"})
 _EDITION_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 
 
@@ -83,11 +96,13 @@ class Branding:
     edition: str = "generic"
     icon: Path | None = GENERIC_ICON
     welcome_art: Path | None = None
-    """The welcome screen's art; ``None`` means the generic art (ADR-0015)."""
+    """The welcome screen's art; ``None`` means the built-in art, ``GENERIC_ART``."""
     welcome_focus: tuple[float, float] = (0.5, 0.5)
     """The point of the art kept in view when it is cropped, as fractions of its size."""
-    welcome_logo: Path | None = None
-    """The welcome screen's logo; ``None`` means the app icon and name."""
+    organization_logo: Path | None = None
+    """The welcome screen's strip logo, an organization's; ``None`` leaves no strip."""
+    product_logo: Path | None = None
+    """A modified build's own title logo; ``None`` means the project's (TRADEMARKS.md)."""
     welcome_style: WelcomeStyle | None = None
     """The welcome screen's tokens with the pack's overrides; ``None`` for the shipped ones."""
     about_html: str | None = None
@@ -129,7 +144,7 @@ def load_branding(pack_dir: Path | str) -> Branding:
     if "splash" in data:
         raise BrandingError(
             f"{toml_path}: 'splash' was replaced by the [welcome] table (art, art_focus, "
-            "logo); see ADR-0015"
+            "organization_logo); see ADR-0015"
         )
     if "name" in data:
         raise BrandingError(
@@ -157,17 +172,21 @@ def load_branding(pack_dir: Path | str) -> Branding:
     icon = _pack_file(data, "icon", root, ICON_SUFFIXES)
     about = _pack_file(data, "about", root, ABOUT_SUFFIXES)
     about_html = _read_about(about) if about is not None else None
-    art, focus, logo, tokens = _welcome(data.get("welcome", {}), root)
+    art, focus, organization, product, tokens = _welcome(data.get("welcome", {}), root)
     return Branding(
         edition=edition,
         icon=icon if icon is not None else GENERIC_ICON,
         welcome_art=art,
         welcome_focus=focus,
-        welcome_logo=logo,
+        organization_logo=organization,
+        product_logo=product,
         welcome_style=tokens,
         about_html=about_html,
         source=root,
-        files=(toml_path, *(f for f in (icon, about, art, logo) if f is not None)),
+        files=(
+            toml_path,
+            *(f for f in (icon, about, art, organization, product) if f is not None),
+        ),
     )
 
 
@@ -219,8 +238,8 @@ def _required_text(data: Mapping[str, Any], key: str, toml_path: Path) -> str:
 
 def _welcome(
     table: Any, root: Path
-) -> tuple[Path | None, tuple[float, float], Path | None, WelcomeStyle | None]:
-    """Read the ``[welcome]`` table: the art, its focal point, the logo, and the style.
+) -> tuple[Path | None, tuple[float, float], Path | None, Path | None, WelcomeStyle | None]:
+    """Read the ``[welcome]`` table: the art, its focal point, the logos, and the style.
 
     Only the suffix, the path, and the size in bytes are checked here, without Qt. The
     welcome screen checks the art's pixel size before decoding it (ADR-0015, amendments).
@@ -229,6 +248,12 @@ def _welcome(
     toml_path = root / PACK_FILE
     if not isinstance(table, Mapping):
         raise BrandingError(f"{toml_path}: 'welcome' must be a table, [welcome]")
+    if "logo" in table:
+        raise BrandingError(
+            f"{toml_path}: welcome.logo was renamed welcome.organization_logo: the strip "
+            "now holds an organization's logo, and the title the project's (ADR-0015, "
+            "amendments)"
+        )
     unknown = sorted(set(table) - _WELCOME_KEYS)
     if unknown:
         raise BrandingError(
@@ -237,15 +262,23 @@ def _welcome(
         )
     tokens = style()
     art = _pack_file(table, "art", root, frozenset(tokens.art.formats), label="welcome.art")
-    logo = _pack_file(table, "logo", root, frozenset(tokens.logo.formats), label="welcome.logo")
+    logos = frozenset(tokens.logo.formats)
+    organization, product = (
+        _pack_file(table, key, root, logos, label=f"welcome.{key}")
+        for key in ("organization_logo", "product_logo")
+    )
     budget = tokens.art.max_bytes
-    for path, label in ((art, "welcome.art"), (logo, "welcome.logo")):
+    for path, label in (
+        (art, "welcome.art"),
+        (organization, "welcome.organization_logo"),
+        (product, "welcome.product_logo"),
+    ):
         if path is not None and path.stat().st_size > budget:
             raise BrandingError(
                 f"{toml_path}: {label} {path.name!r} is larger than {budget // 1_000_000} MB"
             )
-    if logo is not None and logo.suffix.lower() == ".svg":
-        _check_self_contained(logo, toml_path)
+        if path is not None and path is not art and path.suffix.lower() == ".svg":
+            _check_self_contained(path, toml_path, label)
     focus = table.get("art_focus", [0.5, 0.5])
     if (
         not isinstance(focus, list)
@@ -262,13 +295,13 @@ def _welcome(
             overridden = with_overrides(tokens, table["style"], f"{toml_path}: welcome.style")
         except StyleError as exc:
             raise BrandingError(str(exc)) from exc
-    return art, (float(focus[0]), float(focus[1])), logo, overridden
+    return art, (float(focus[0]), float(focus[1])), organization, product, overridden
 
 
 _XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
 
-def _check_self_contained(svg: Path, toml_path: Path) -> None:
+def _check_self_contained(svg: Path, toml_path: Path, label: str) -> None:
     """Refuse an SVG that refers to other files: they would escape the pack folder.
 
     An ``<image>`` or ``<use>`` may embed its data (``data:``) or point within the file
@@ -278,9 +311,7 @@ def _check_self_contained(svg: Path, toml_path: Path) -> None:
     try:
         root = ElementTree.parse(svg).getroot()  # noqa: S314  # see the docstring
     except ElementTree.ParseError as exc:
-        raise BrandingError(
-            f"{toml_path}: welcome.logo {svg.name!r} isn't valid SVG: {exc}"
-        ) from exc
+        raise BrandingError(f"{toml_path}: {label} {svg.name!r} isn't valid SVG: {exc}") from exc
     for element in root.iter():
         if element.tag.rsplit("}", 1)[-1] not in ("image", "use"):
             continue
@@ -288,7 +319,7 @@ def _check_self_contained(svg: Path, toml_path: Path) -> None:
             href = (element.get(key) or "").strip()
             if href and not href.startswith(("data:", "#")):
                 raise BrandingError(
-                    f"{toml_path}: welcome.logo {svg.name!r} refers to {href!r}; a logo must be "
+                    f"{toml_path}: {label} {svg.name!r} refers to {href!r}; a logo must be "
                     "self-contained (embed images as data: URIs)"
                 )
 

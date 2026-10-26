@@ -10,6 +10,9 @@
   name is fixed as "CADD Calculator" in every edition, so the pack's `name` key is
   removed, and a pack that still has one is refused with a message saying so, as
   `splash` was. A branded build is identified by its art, its logo, and its About text.
+* **Amended:** 2026-10-26 by [ADR-0015](0015-welcome-screen.md), amendments: the
+  `[welcome]` `logo` key is renamed `organization_logo`, and an optional `product_logo`
+  is added for a modified build's own title logo. See "Amendments" below.
 * **Deciders:** the maintainer set the branding policy (ADR-0008 item 4); this ADR
   proposes the mechanism
 
@@ -76,3 +79,23 @@ The hook has to:
 * An edition needs something the pack can't express, such as a mandatory notice screen.
 * Installers need the pack outside the app folder, such as a per-machine pack in
   `ProgramData` for lab images.
+
+## Amendments
+
+### 2026-10-26: the welcome screen's logo keys (UI/UX)
+
+The welcome screen's title became the project's logo, and its left strip a slot for an
+organization's logo (ADR-0015, amendments). The maintainer proposed the layout, and
+approved PM's plan for it (relayed by PM).
+
+* **`[welcome]` `logo` is renamed `organization_logo`.** It's the strip's logo, an
+  organization's, such as a school's. A pack that still sets `logo` is refused, with a
+  message naming the new key, as `splash` and `name` were.
+* **`[welcome]` `product_logo` is added,** optional: a modified build's own title logo,
+  so it can comply with TRADEMARKS.md. It's checked as `organization_logo` is: SVG or
+  PNG, inside the pack, within the 8 MB budget, and, as SVG, self-contained. Official
+  builds and branded editions don't set it.
+* **`schema` stays 1.** The Consequences ask for `schema = 2` and a loader that reads
+  both when a key is renamed. Before the first release, the project makes no
+  compatibility promise (pre-alpha), so the rename is outright, as `splash` and `name`
+  were removed under schema 1. The one pack outside the repository is updated by PM.

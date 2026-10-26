@@ -290,6 +290,8 @@ four Lows; the rest of its checklist passed. The project decided the fixes.
   white on the white box. The generic mark is now the app icon alone, 64 px in an 80 px
   square, centred by the box's rule; the name lives in the title pane. The drawn
   generic logo is removed from `welcome_art`.
+  *Superseded 2026-10-26:* the generic mark is now the brand's vertical lockup, in fixed
+  colours for the white box (ADR-0015, amendments).
 * **No pillars (M1).** A new token, `logo.max_long_side` (320 px), caps the box's long
   side, so no logo, a pack's included, becomes a full-height pillar. The loader requires
   it to be at least `logo.min_short_side`.
@@ -502,3 +504,24 @@ white on ink to ink on white, on the generic art. The maintainer left the rule t
     pair.
   * Where the pane's own pixels need more than its area, the opacity rises to the
     least that reads there.
+
+### 2026-10-26: the title is the project's logo; VT323 retired from it (UI/UX)
+
+The name pane's VT323 text, "CADD Calculator" (§2, S1), is replaced by the project's
+logo, upright (ADR-0015, amendments; the maintainer's proposal, relayed by PM).
+
+* **Tokens:** `[name_pane]` becomes `[title_pane]`: `anchor`, `inset` and `safe_area` as
+  before, a `height` of 72 px in place of the font and its padding, and `min_contrast`
+  3, now for graphics (WCAG 2, SC 1.4.11), which the loader requires. The loader also
+  requires the title's height to fit its safe area. At 72 px the logo is 312 px wide,
+  inside the safe area's 376. The maintainer chose 72 px (relayed by PM); 64 was the
+  first proposal.
+* **The pane** is §5's, unchanged: the same pairs, floor, percentile and calm, measured
+  over every pixel. Its "text" is the logo's white or black parts.
+* **The version pane is unchanged:** the system's UI font, 11 px, 4.5:1.
+* **VT323** is no longer shown on the screen. It stays vendored, and a pane token may
+  still name the display face, whose drawing rules and tests stay. Removing it, with its
+  notice, About credit and build check, is a follow-up, so the build inputs don't change
+  under Packaging's native installer check.
+* **What a pack may change (§7)** is unchanged. `[welcome.style.logo]` styles the logo
+  boxes: the organization's, and a fork's title logo.

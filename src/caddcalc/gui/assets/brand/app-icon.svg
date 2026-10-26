@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <rect id="icon-background" width="320" height="320" rx="64" ry="64" fill="#A31D31"/>
+  <path id="symbol-C-upper" d="M263,60.32c0-2.22-1.11-3.32-3.32-3.32h-127.09c-32.4,0-59.81,18.27-72.27,44.85l41.53,41.53v-2.49c0-21.6,18.27-39.04,39.04-39.04h118.78c2.22,0,3.32-1.11,3.32-3.32v-38.21Z" fill="#FFFFFF"/>
+  <path id="symbol-C-lower" d="M176.61,218.15h83.06c2.22,0,3.32,1.11,3.32,3.32v38.21c0,2.22-1.11,3.32-3.32,3.32h-38.21l-44.85-44.85Z" fill="#FFFFFF"/>
+  <path id="symbol-drafting-square" d="M57,115.15l147.85,147.85H60.32c-2.22,0-3.32-1.11-3.32-3.32V115.15ZM88.56,190.73v40.7h40.7l-40.7-40.7Z" fill="#FFFFFF" fill-rule="evenodd"/>
+</svg>

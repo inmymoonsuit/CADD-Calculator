@@ -58,6 +58,7 @@ __all__ = [
     "FONTS",
     "LARGE_TEXT_CONTRAST",
     "LARGE_TEXT_PX",
+    "NON_TEXT_CONTRAST",
     "NORMAL_TEXT_CONTRAST",
     "PACK_OVERRIDES",
     "PALETTE_FILE",
@@ -76,6 +77,7 @@ __all__ = [
     "Rect",
     "Size",
     "StyleError",
+    "TitleTokens",
     "TopBarTokens",
     "TypographyTokens",
     "WelcomeStyle",
@@ -106,6 +108,9 @@ LARGE_TEXT_CONTRAST = 3.0
 """WCAG 2's least contrast for large text (success criterion 1.4.3, AA)."""
 NORMAL_TEXT_CONTRAST = 4.5
 """WCAG 2's least contrast for other text (success criterion 1.4.3, AA)."""
+NON_TEXT_CONTRAST = 3.0
+"""WCAG 2's least contrast for graphics (success criterion 1.4.11, AA). A logo is exempt;
+the title's is held to it anyway, so it reads over any art."""
 ANCHORS = frozenset({"top_left", "top_right", "bottom_left", "bottom_right"})
 FONTS = frozenset({"display", "body"})
 
@@ -157,7 +162,11 @@ class TopBarTokens:
 
 @dataclass(frozen=True)
 class LogoTokens:
-    """The logo's region, its bordered box, and what a pack's logo may be."""
+    """The logo boxes, and what a pack's logos may be.
+
+    The organization logo's box sits in the strip at the art's left edge; a pack's title
+    logo takes the same box, at the title's place.
+    """
 
     formats: tuple[str, ...]
     region_width: float
@@ -177,7 +186,7 @@ class LogoTokens:
 
 @dataclass(frozen=True)
 class PaneStyle:
-    """The style the name and version panes share: quiet, and readable (ADR-0016 §5)."""
+    """The style the title and version panes share: quiet, and readable (ADR-0016 §5)."""
 
     text_roles: tuple[str, str]
     """The two text roles to choose between: dark, then light."""
@@ -219,6 +228,25 @@ class PaneTokens:
 
 
 @dataclass(frozen=True)
+class TitleTokens:
+    """Where the title sits: the project's logo, in a quiet pane (ADR-0015, amendments)."""
+
+    anchor: str
+    """The corner of the art the title hugs, e.g. ``"top_right"``."""
+    inset: float
+    """Its distance from that corner's two edges."""
+    height: float
+    """The title's height. The project's logo holds its own clear space, so its pane is
+    the logo; a pack's title logo is boxed, as the organization's is."""
+    min_contrast: float
+    """The least contrast of the logo's white or black parts against the pane's fill over
+    the art: 3:1, as for graphics (WCAG 2, SC 1.4.11)."""
+    safe_area: Size
+    """The area at its corner that art keeps clear of detail; a pack's title logo is at
+    most its width."""
+
+
+@dataclass(frozen=True)
 class TypographyTokens:
     """The display face and its fallbacks; the body text uses the system's UI font."""
 
@@ -256,7 +284,7 @@ class WelcomeStyle:
     top_bar: TopBarTokens
     logo: LogoTokens
     panes: PaneStyle
-    name_pane: PaneTokens
+    title_pane: TitleTokens
     version_pane: PaneTokens
     typography: TypographyTokens
     startup: StartupTokens
@@ -288,7 +316,7 @@ class WelcomeStyle:
             height - logo.margin_top - logo.margin_bottom,
         )
 
-    def safe_area(self, pane: PaneTokens) -> Rect:
+    def safe_area(self, pane: PaneTokens | TitleTokens) -> Rect:
         """Where ``pane`` may cover the art, in the art slot's coordinates."""
         slot, area, inset = self.art.slot, pane.safe_area, pane.inset
         x = inset if pane.anchor.endswith("left") else slot.width - inset - area.width
@@ -362,7 +390,16 @@ _TABLES: dict[str, tuple[type, dict[str, Check]]] = {
             "max_background_spread": check_number(1, 21),
         },
     ),
-    "name_pane": (PaneTokens, _PANE),
+    "title_pane": (
+        TitleTokens,
+        {
+            "anchor": check_choice(ANCHORS),
+            "inset": check_spacing,
+            "height": check_number(1, 256),
+            "min_contrast": check_number(1, 21),
+            "safe_area": check_size(0, 4096),
+        },
+    ),
     "version_pane": (PaneTokens, _PANE),
     "typography": (
         TypographyTokens,
@@ -440,8 +477,9 @@ def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
 
     The logo area must hold the logo box's least short side, with room for the logo
     inside its padding. A pane anchored at a corner must clear the card's rounded corner
-    and its border. And some pane text must reach each pane's contrast on its opaque
-    fill in both themes, so the contrast guarantee can always be met (ADR-0016 §5).
+    and its border. The title must fit its safe area. And some pane text must reach each
+    pane's contrast on its opaque fill in both themes, so the contrast guarantee can
+    always be met (ADR-0016 §5).
     """
     area, logo = tokens.logo_area, tokens.logo
     if min(area.width, area.height) < logo.min_short_side:
@@ -459,17 +497,26 @@ def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
             f"{origin}: logo.padding {logo.padding:g} leaves no room for the logo in a box "
             f"{logo.min_short_side:g} px across"
         )
-    for name in ("name_pane", "version_pane"):
-        pane = getattr(tokens, name)
-        large = pane.font_size >= LARGE_TEXT_PX
-        floor = LARGE_TEXT_CONTRAST if large else NORMAL_TEXT_CONTRAST
-        if pane.min_contrast < floor:
-            raise StyleError(
-                f"{origin}: {name}.min_contrast {pane.min_contrast:g} is below WCAG 2's "
-                f"{floor:g}:1 for {'large' if large else 'normal'} text"
-            )
+    version, title = tokens.version_pane, tokens.title_pane
+    large = version.font_size >= LARGE_TEXT_PX
+    floor = LARGE_TEXT_CONTRAST if large else NORMAL_TEXT_CONTRAST
+    if version.min_contrast < floor:
+        raise StyleError(
+            f"{origin}: version_pane.min_contrast {version.min_contrast:g} is below WCAG "
+            f"2's {floor:g}:1 for {'large' if large else 'normal'} text"
+        )
+    if title.min_contrast < NON_TEXT_CONTRAST:
+        raise StyleError(
+            f"{origin}: title_pane.min_contrast {title.min_contrast:g} is below WCAG 2's "
+            f"{NON_TEXT_CONTRAST:g}:1 for graphics"
+        )
+    if title.height > title.safe_area.height:
+        raise StyleError(
+            f"{origin}: title_pane.height {title.height:g} is taller than its safe area, "
+            f"{title.safe_area.height:g}"
+        )
     corner = tokens.card.corner_radius + tokens.card.border_width
-    for name in ("name_pane", "version_pane"):
+    for name in ("title_pane", "version_pane"):
         inset = getattr(tokens, name).inset
         if inset < corner:
             raise StyleError(
@@ -477,7 +524,7 @@ def _checked(tokens: WelcomeStyle, origin: str) -> WelcomeStyle:
                 f"plus its border, {corner:g}"
             )
     panes = tokens.panes
-    needed = max(tokens.name_pane.min_contrast, tokens.version_pane.min_contrast)
+    needed = max(title.min_contrast, version.min_contrast)
     for scheme in SCHEMES:
         pairs = pane_pairs(panes, scheme)
         index, _alpha = opaque_fill(pairs)

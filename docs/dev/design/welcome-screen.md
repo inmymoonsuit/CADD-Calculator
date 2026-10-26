@@ -1,6 +1,6 @@
 # Welcome screen: art specification and design tokens
 
-How to make art and a logo for the welcome screen of an edition (ADR-0015), and the
+How to make art and logos for the welcome screen of an edition (ADR-0015), and the
 design tokens that lay the screen out (ADR-0016). Every number here is a token in
 `src/caddcalc/gui/assets/welcome_style.toml`, read and checked by
 `caddcalc.gui.welcome_style`; a test checks that this page still quotes each one, so the
@@ -12,20 +12,23 @@ specification can't drift from the code.
 ╭───────────────────────────────────────────────────────────╮
 │                                                    ⓘ  ✕  │  top bar, 32 px
 ├───────────────────────────────────────────────────────────┤
-│  ┌────┐                                 ┌──────────────┐  │
-│  │    │                                 │  name pane   │  │
-│  │logo│          art slot               └──────────────┘  │
-│  │box │          960 × 540                                │
+│  ┌────┐                               ┌────────────────┐  │
+│  │    │                               │ ◣ CADD Calc... │  │  title: the logo
+│  │org.│          art slot             └────────────────┘  │
+│  │logo│          960 × 540                                │
 │  │    │                                                   │
 │  └────┘                                      ┌ version ┐ │
 ╰───────────────────────────────────────────────────────────╯
-  96 px logo region, over the art
+  96 px organization logo region, over the art: empty, and
+  the art shows, unless the pack names an organization's logo
 ```
 
 All sizes are logical pixels (a 100% display scale). The art slot is **960 × 540**, exactly
 16:9, and spans the card's full width under a 32 px top bar, with the About button (ⓘ)
-and the X. The logo's box floats over the art's left edge (ADR-0016, S2). A 1 px line
-borders the card, runs under the top bar, and borders the logo box and each pane; the
+and the X. The title, the project's logo, sits at the top right. A pack's organization
+logo floats in a box over the art's left edge (ADR-0016, S2); without one there's no box.
+A 1 px line borders the card, runs under the top bar, and borders the logo boxes and each
+pane; the
 card's outer corners are rounded by 5 px, and everything inside is square. Every
 inset, margin, and padding comes from one spacing scale: **2, 4, 6, 8, 12, 16, 24,
 32** px.
@@ -39,23 +42,25 @@ inset, margin, and padding comes from one spacing scale: **2, 4, 6, 8, 12, 16, 2
   and PNG for flat art.
 * **Budget:** at most **8 MB** on disk, and at most **4096 px** in width or height. The
   pack loader refuses a larger file; the screen checks the pixel size before it decodes the
-  art, and shows the generic art with a warning if the art is too large, unreadable, or
+  art, and shows the built-in art with a warning if the art is too large, unreadable, or
   missing.
-* **No text in the art.** The app's name and the version are live text over the art, in
-  panes, so they're always current, follow the light and dark themes, and can be read by
-  a screen reader. Leave the safe areas below free of detail: the logo box floats over
-  the art's left edge, and the panes over its corners.
+* **No text in the art.** The title and the version sit over the art, in panes: the
+  version is live text, so it's always current, and the title is named "CADD Calculator"
+  for a screen reader. Both follow the light and dark themes. Leave the safe areas below
+  free of detail: an organization's logo box floats over the art's left edge, and the
+  panes over its corners. Without an organization logo the left edge shows the art, so
+  art for an edition without one may use it.
 * **Safe areas,** in the slot's logical pixels, from its upper-left corner (double them on
   1920 × 1080 art):
 
   | Area | x | y | width | height |
   |---|---|---|---|---|
-  | Logo box | 0 | 0 | 96 | 540 |
-  | Name pane | 560 | 24 | 376 | 88 |
+  | Organization logo | 0 | 0 | 96 | 540 |
+  | Title | 560 | 24 | 376 | 88 |
   | Version pane | 754 | 510 | 200 | 24 |
 
-  The logo box sits inside its area, and each pane hugs its text at its corner of its
-  area.
+  The organization logo's box sits inside its area. The title and the version pane hug
+  their content at their corners of their areas.
 * **Focal point:** if the art isn't 16:9, it's scaled to cover the slot, and the overflow
   is cropped around `art_focus`, the point kept in view, as fractions of the art's width
   and height (`[0.5, 0.5]`, the centre, by default). A focal point near an edge is kept
@@ -69,9 +74,29 @@ the guide.
 uv run python packaging/make_welcome_template.py builds/welcome-template.png
 ```
 
-## The logo
+## The title
 
-The logo sits in a box that floats over the art's left edge, inside a 96 px logo region.
+The title is the project's logo, the symbol and the wordmark, upright, 72 px tall and
+312 px wide, 24 px from the art's top and right edges. The logo's file holds its own
+clear space, so the title's pane is the logo itself (`brand/logo-outlined.svg`,
+docs/dev/design/brand.md). Like the version, it sits in a quiet pane whose fill rises
+only as far as the art needs (see "On screen"): over dark art, the dark fill and the
+reversed logo, its C and "Calculator" in white; over light art, the light fill and the
+logo in black. Whichever reads with less fill is shown. The crimson parts stay crimson
+on both, by the maintainer's decision (brand.md). A screen reader reads it as "CADD
+Calculator".
+
+**A modified build** must show its own logo, not the project's (TRADEMARKS.md). Its
+pack's `product_logo` replaces the title: a logo box like the organization's, white,
+with a 1 px border and 8 px of padding, 72 px tall and at most 376 px wide. It's
+checked as the organization's logo is, below. Official builds and branded editions
+don't set it. If the file can't be read, the screen leaves the title out rather than
+show the project's logo.
+
+## The organization logo
+
+An edition's organization, such as the school or company it's made for, may show its
+logo. It sits in a box that floats over the art's left edge, inside a 96 px region.
 The box keeps at least 16 px from the card's left edge and from the art's top and
 bottom. It takes the logo's shape, plus 8 px of padding, as large as the region allows,
 and centred, but its long side is at most 320 px, so no logo becomes a full-height
@@ -82,16 +107,18 @@ box 320 px tall, a square mark an 80 px square, and a wide wordmark a box 48 px
 tall. The box has a white fill and a 1 px border. An **SVG** is preferred, since it scales
 to any display; a PNG works too. An SVG must be **self-contained**: an `<image>` or `<use>` may
 embed its data (`data:`) or point within the file (`#…`), never to another file, which a
-build wouldn't bundle. The same 8 MB budget applies. Without a logo, the box holds the
-app icon alone, 64 px in an 80 px square; the name is in the title pane.
+build wouldn't bundle. The same 8 MB budget applies. Without a logo, or with one that
+can't be read, there's no box: the strip collapses, and the art shows there. The official
+build has none.
 
 ## The pack
 
 ```toml
 [welcome]
-art = "welcome-art.png"      # optional; the generic art when absent
+art = "welcome-art.png"      # optional; the built-in art when absent
 art_focus = [0.35, 0.5]      # optional; the point kept in view when cropping
-logo = "logo-vertical.svg"   # optional; the app icon and name when absent
+organization_logo = "logo-vertical.svg"  # optional; no strip when absent
+product_logo = "my-fork.svg"  # a modified build's own title; never in official builds
 
 [welcome.style.logo]         # optional; see "Restyling a pack's screen" below
 fill_role = "welcome_paper"
@@ -101,6 +128,8 @@ fill_opacity_min = 0.25
 ```
 
 * The files go in the branding pack folder, as `icon` and `about` do (docs/dev/packaging.md).
+* `logo` was renamed `organization_logo`. A pack that still sets `logo` is refused, with
+  a message naming the new key.
 * **Ship a notice for the art.** A pack that includes art must include a notice or
   license file for it, such as `ART-NOTICE.md`, saying who made it and on what terms. The
   build copies files whose names contain NOTICE, LICENSE, LICENCE, or COPYING. Third-party
@@ -112,7 +141,7 @@ fill_opacity_min = 0.25
 A pack may override a few of the design tokens below, in `[welcome.style.logo]` and
 `[welcome.style.panes]` tables that mirror `welcome_style.toml` (ADR-0016, S5):
 
-* `logo.fill_role`: the logo box's fill, a palette role. The default is `welcome_paper`,
+* `logo.fill_role`: the logo boxes' fill, a palette role. The default is `welcome_paper`,
   white in both themes, since logos are almost always drawn for white; a logo drawn
   for a dark ground may want `welcome_ink`.
 * `logo.margin_left`, `logo.margin_top`, `logo.margin_bottom`, and `logo.padding`.
@@ -127,22 +156,26 @@ no text reaching its pane's contrast on its own fill, in either theme.
 
 ## Typography
 
-The name is set in **VT323**, a pixel face by Peter Hull (ADR-0016, S1). It ships
+The version uses the system's UI font at 11 px, drawn as its outline, antialiased in grey,
+so no platform adds a colour fringe; the text stays live, accessible text.
+
+The name was set in **VT323**, a pixel face by Peter Hull (ADR-0016, S1), until the
+project's logo replaced it as the title (ADR-0016, amendments). No shipped pane uses it
+now; a pane token may still name the display face, and the rules below hold for it. It
+ships
 unmodified under the SIL Open Font License 1.1, in `gui/assets/fonts/vt323/` beside
 its `OFL.txt`, pinned to one google/fonts commit and hashed in `manifest.toml`. The
 app loads it into Qt when the welcome screen opens (`gui/fonts.py`). If the face
-can't be loaded, the name falls back to the fallback families, with a warning, and
-the screen still starts. The version uses the system's UI font at 11 px. Both panes'
-text is drawn as its outline, antialiased in grey, so the two match and no platform
-adds a colour fringe; the text stays live, accessible text.
+can't be loaded, its text falls back to the fallback families, with a warning, and
+the screen still starts.
 
 * **On its grid.** VT323 has 1000 units to the em and 40 to a design pixel, so 25
-  design pixels to the em. The name's size snaps to a whole number of device pixels
+  design pixels to the em. Its size snaps to a whole number of device pixels
   per design pixel: `n`, the nearest whole number to `50 × scale × ratio ÷ 25`, at
   least 1, where `scale` is the card's on a small screen and `ratio` is the display's
   device pixel ratio, for an em of `25n` device pixels. Ties round down, to keep the
-  title inside its safe area. So it's 50 device pixels at 100% and 125%, 75 at 150%
-  and 175%, and 100 at 200%. At 125% the name is 40 px, not 50, in logical pixels:
+  text inside its safe area. So a 50 px size is 50 device pixels at 100% and 125%, 75 at
+  150% and 175%, and 100 at 200%. At 125% it's 40 px, not 50, in logical pixels:
   the grid rule prefers a crisp face to a blurry one. It's drawn unhinted, so every
   platform draws it alike.
 * **Centred on its capitals.** The pane's vertical padding is the space above and
@@ -176,22 +209,23 @@ uv run python packaging/fetch_fonts.py --commit SHA
   never gets thinner than one device pixel.
 * **Crisp lines.** Every line is a whole number of device pixels,
   `max(1, round(width × ratio))`, drawn on device-pixel centres, so the card's
-  border, the separator, the logo box's border, and the panes' borders stay sharp at
+  border, the separator, the logo boxes' borders, and the panes' borders stay sharp at
   125% and 150%. Only the card's rounded outline is antialiased. The card clips its
   top bar and its art to that one outline, then strokes its border along it last.
 * **High-DPI.** The art is drawn at the display's device pixel ratio: 2× art is
-  downsampled at 100% and 150% scale, and upsampled slightly at 300%. The generic art is
-  drawn at the display's ratio.
-* **The generic art** is drawn in code from the palette (`gui/welcome_art.py`), until the
-  roadmap's commissioned generic art replaces it.
+  downsampled at 100% and 150% scale, and upsampled slightly at 300%.
+* **The built-in art,** the official build's and any pack's without art of its own, is
+  the maintainer's, 1920 × 1080 (`gui/assets/welcome/welcome-art.jpg`, brand.md). If
+  even that can't be read, the card's background shows, and a build's smoke test fails.
 * **The panes stay quiet, and readable** (ADR-0016, S3). Each text has its own fill:
   ink text on a white fill, white text on an ink fill. The fill starts at 15% opacity.
   When the screen opens, it measures every pixel under the pane, at the display's
   resolution: the art as it's drawn, one device pixel at a time, none sampled and
   none averaged. For each pair it raises the fill's opacity only as far as the text
   needs to read over 95% of those pixels, each blended under the fill as the
-  screen blends it: 3:1 for the name, which is large text, and 4.5:1 for the version
-  (WCAG 2; the loader refuses less). The blended background must also be calm: its
+  screen blends it: 3:1 for the title's white or black parts, as for graphics, and 4.5:1
+  for the version (WCAG 2; the loader refuses less). A logo is exempt from WCAG's
+  contrast criteria; the title is held to 3:1 anyway, so it reads over any art. The blended background must also be calm: its
   luminance at the 95th percentile, plus 0.05, over that at the 5th, plus 0.05, is at
   most 1.5. Contrast alone doesn't measure texture: over a black-and-white check, the
   letters could reach 3:1 on a background still alternating strongly, which breaks
@@ -230,30 +264,28 @@ hex values, so both themes and the palette's contrast tests apply.
 | `top_bar.button_size` | 24 | The About button's and the X's width and height |
 | `top_bar.separator_width` | 1 | The line under the top bar |
 | `top_bar.separator_role` | welcome_line | Its colour role |
-| `logo.formats` | .svg, .png | The logo's file formats |
-| `logo.region_width` | 96 | The logo region's width, over the art's left edge |
+| `logo.formats` | .svg, .png | A pack's logos' file formats: the organization's, and a modified build's title |
+| `logo.region_width` | 96 | The organization logo's region, over the art's left edge |
 | `logo.margin_left` | 16 | The box's least distance from the card's left edge (spacing scale) |
 | `logo.margin_top` | 16 | ... from the art's top |
 | `logo.margin_bottom` | 16 | ... from the art's bottom |
-| `logo.padding` | 8 | The space inside the box, around the logo (spacing scale) |
+| `logo.padding` | 8 | The space inside a logo box, around the logo (spacing scale) |
 | `logo.min_short_side` | 48 | The box's least short side; the box keeps the logo's shape up to it |
 | `logo.max_long_side` | 320 | The box's greatest long side, so no logo becomes a full-height pillar |
-| `logo.border_width` | 1 | The box's border |
+| `logo.border_width` | 1 | A logo box's border |
 | `logo.border_role` | welcome_line | Its colour role |
-| `logo.fill_role` | welcome_paper | The box's fill: white in both themes, as logos are drawn for white |
+| `logo.fill_role` | welcome_paper | A logo box's fill: white in both themes, as logos are drawn for white |
 | `panes.text_roles` | welcome_ink, welcome_paper | The text roles to choose between: dark, then light |
 | `panes.fill_roles` | welcome_paper, welcome_ink | Each text role's own fill: light under the dark text, dark under the light |
 | `panes.fill_opacity_min` | 0.15 | The fill's least opacity |
 | `panes.border_width` | 1 | The panes' border, in the text's role |
 | `panes.percentile` | 5 | The share of the art under a pane, in percent, that may fall short of the contrast |
 | `panes.max_background_spread` | 1.5 | The most the blended background may vary, as a luminance ratio; at least 1 |
-| `name_pane.anchor` | top_right | The corner the name pane hugs |
-| `name_pane.inset` | 24 | Its distance from that corner's edges (spacing scale) |
-| `name_pane.padding` | 8 × 16 | Around its capitals: vertical × horizontal (spacing scale) |
-| `name_pane.font` | display | The display face |
-| `name_pane.font_size` | 50 | Its text's size, snapped to the face's pixel grid |
-| `name_pane.min_contrast` | 3 | The least contrast of its text over the art: large text (WCAG 2) |
-| `name_pane.safe_area` | 376 × 88 | The area art keeps clear of detail |
+| `title_pane.anchor` | top_right | The corner the title hugs |
+| `title_pane.inset` | 24 | Its distance from that corner's edges (spacing scale) |
+| `title_pane.height` | 72 | The title's height; the project's logo holds its own clear space |
+| `title_pane.min_contrast` | 3 | The least contrast of the logo's white or black parts over the art: graphics (WCAG 2) |
+| `title_pane.safe_area` | 376 × 88 | The area art keeps clear of detail; a pack's title logo is at most its width |
 | `version_pane.anchor` | bottom_right | The corner the version pane hugs |
 | `version_pane.inset` | 6 | Its distance from that corner's edges: at least the corner's radius plus the border |
 | `version_pane.padding` | 2 × 4 | Around its text: vertical × horizontal (spacing scale) |

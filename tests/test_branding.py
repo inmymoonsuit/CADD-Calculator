@@ -42,7 +42,7 @@ about = "about.html"
 [welcome]
 art = "welcome-art.png"
 art_focus = [0.35, 0.5]
-logo = "logo-vertical.svg"
+organization_logo = "logo-vertical.svg"
 """
 
 
@@ -65,7 +65,11 @@ def test_generic_branding_is_the_unbranded_public_build() -> None:
     assert GENERIC.is_generic
     assert PRODUCT_NAME == "CADD Calculator"
     assert GENERIC.edition == "generic"
-    assert (GENERIC.welcome_art, GENERIC.welcome_logo) == (None, None)
+    assert (GENERIC.welcome_art, GENERIC.organization_logo, GENERIC.product_logo) == (
+        None,
+        None,
+        None,
+    ), "the official build: generated art, the project's title, and no strip"
     assert GENERIC.welcome_focus == (0.5, 0.5)
     assert GENERIC.about_html is None
     assert GENERIC.icon == GENERIC_ICON
@@ -100,8 +104,9 @@ def test_load_branding_reads_a_complete_pack(tmp_path: Path) -> None:
     assert b.icon == pack / "icon.png"
     assert b.welcome_art == pack / "welcome-art.png"
     assert b.welcome_focus == (0.35, 0.5)
-    assert b.welcome_logo == pack / "logo-vertical.svg"
-    assert set(b.files) >= {b.welcome_art, b.welcome_logo}, "the build stages them"
+    assert b.organization_logo == pack / "logo-vertical.svg"
+    assert b.product_logo is None, "a branded edition keeps the project's title"
+    assert set(b.files) >= {b.welcome_art, b.organization_logo}, "the build stages them"
     assert b.about_html == "<p>Made for <b>testing</b>.</p>"
 
 
@@ -126,7 +131,8 @@ def test_optional_files_fall_back_to_generic(tmp_path: Path) -> None:
     pack = make_pack(tmp_path / "pack", 'edition = "minimal"\n')
     b = load_branding(pack)
     assert b.icon == GENERIC_ICON
-    assert (b.welcome_art, b.welcome_focus, b.welcome_logo) == (None, (0.5, 0.5), None)
+    assert (b.welcome_art, b.welcome_focus, b.organization_logo) == (None, (0.5, 0.5), None)
+    assert b.product_logo is None
     assert b.about_html is None
 
 
@@ -163,7 +169,22 @@ def test_plain_text_about_is_escaped_into_paragraphs(tmp_path: Path) -> None:
             'edition = "x"\n[welcome]\nart = "welcome-art.gif"\n',
             "must be one of .jpeg, .jpg, .png",
         ),
-        ('edition = "x"\n[welcome]\nlogo = "logo.jpg"\n', "must be one of .png, .svg"),
+        (
+            'edition = "x"\n[welcome]\norganization_logo = "logo.jpg"\n',
+            "welcome.organization_logo 'logo.jpg' must be one of .png, .svg",
+        ),
+        (
+            'edition = "x"\n[welcome]\nproduct_logo = "fork.jpg"\n',
+            "welcome.product_logo 'fork.jpg' must be one of .png, .svg",
+        ),
+        (
+            'edition = "x"\n[welcome]\nlogo = "logo-vertical.svg"\n',
+            "welcome.logo was renamed welcome.organization_logo",
+        ),
+        (
+            'edition = "x"\n[welcome]\nproduct_logo = "missing.svg"\n',
+            "welcome.product_logo file 'missing.svg' does not exist",
+        ),
         ('edition = "x"\n[welcome]\nart = "missing.png"\n', "does not exist"),
         (
             'edition = "x"\n[welcome]\nart = "../outside.png"\n',
@@ -340,19 +361,6 @@ def test_windows_version_resources_get_four_numbers(build_script: ModuleType) ->
 
 @pytest.mark.gui
 @pytest.mark.usefixtures("build_script")
-def test_icon_helpers_write_a_multi_size_ico(tmp_path: Path) -> None:
-    gui = pytest.importorskip("PySide6.QtGui")
-    icons = importlib.import_module("icons")
-    icons.ensure_qt_app()
-    icon = tmp_path / "app.ico"
-    icons.save_ico(icons.draw_generic_icon(256), icon)
-    reader = gui.QImageReader(str(icon))
-    assert reader.imageCount() == len(icons.ICO_SIZES)
-    assert icons.png_bytes(icons.draw_generic_icon(16)).startswith(b"\x89PNG")
-
-
-@pytest.mark.gui
-@pytest.mark.usefixtures("build_script")
 def test_placeholder_pack_is_a_valid_pack(tmp_path: Path) -> None:
     gui = pytest.importorskip("PySide6.QtGui")
     pack = importlib.import_module("make_placeholder_pack").write_pack(tmp_path / "pack")
@@ -361,7 +369,8 @@ def test_placeholder_pack_is_a_valid_pack(tmp_path: Path) -> None:
     art = gui.QImage(str(b.welcome_art))
     assert (art.width(), art.height()) == (1920, 1080), "supplied at 2x, per the art spec"
     svg = pytest.importorskip("PySide6.QtSvg")
-    assert svg.QSvgRenderer(str(b.welcome_logo)).isValid()
+    assert svg.QSvgRenderer(str(b.organization_logo)).isValid()
+    assert b.product_logo is None, "it stands for a branded edition, not a fork"
     assert b.welcome_focus == (0.4, 0.5)
     assert b.icon is not None and not gui.QImage(str(b.icon)).isNull()
     assert "not for distribution" in (b.about_html or "")
@@ -402,6 +411,7 @@ def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path
     assert GENERIC_ABOUT not in html
     assert GENERIC_ABOUT in about_html(GENERIC)
     assert "Licensed under the Apache License, Version 2.0" in html, "always shown"
+    assert "The name and logo are trademarks: see TRADEMARKS.md." in html, "always shown"
     window.close()
     app.processEvents()
 
@@ -433,12 +443,10 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert report["edition"] == "test-edition"
     assert report["window_title"] == report["name"]
     assert report["icon_loaded"] and report["about_custom"]
+    assert report["icon_sizes"] == [32], "the pack's own icon, as it is"
     assert "splash_shown" not in report, "the welcome screen replaced it (ADR-0015)"
-    assert (report["welcome_shown"], report["welcome_art"], report["welcome_logo"]) == (
-        True,
-        "pack",
-        "pack",
-    )
+    welcome = ("welcome_shown", "welcome_art", "welcome_title", "welcome_organization_logo")
+    assert [report[key] for key in welcome] == [True, "pack", "brand", "pack"]
     assert not report["packaged"]
     assert report["reference_tables"] == len(REFERENCE_TABLES) == 2, "gauges and materials"
     assert (report_dir / "window.png").stat().st_size > 0
@@ -447,6 +455,31 @@ def test_app_smoke_test_applies_a_pack_from_the_environment(
     assert report["catalogs"] == list(i18n.shipped_languages())
     assert report["qt_catalog"] is True, "Qt finds its own catalogs"
     assert report["qt_translations"]["has_qtbase"] is True, report["qt_translations"]
+
+
+@pytest.mark.gui
+def test_a_forks_smoke_report_shows_its_own_title_and_no_strip(
+    qt: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The app reports the pack's title, not ours, where the build's check reads it (L2)."""
+    from caddcalc.gui.app import main
+
+    pack = make_pack(
+        tmp_path / "pack", 'edition = "test-fork"\n[welcome]\nproduct_logo = "fork.svg"\n'
+    )
+    (pack / "fork.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100" viewBox="0 0 300 100">'
+        '<rect width="300" height="100" fill="#2E7D32"/></svg>',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(ENV_VAR, str(pack))
+    try:
+        assert main([f"--smoke-test={tmp_path / 'report'}"]) == 0
+    finally:
+        qt.QApplication.instance().setApplicationDisplayName("")
+    report = json.loads((tmp_path / "report" / "smoke-test.json").read_text(encoding="utf-8"))
+    welcome = ("welcome_shown", "welcome_title", "welcome_organization_logo")
+    assert [report[key] for key in welcome] == [True, "pack", "none"]
 
 
 @pytest.mark.gui
@@ -482,11 +515,8 @@ def test_startup_shows_the_generic_welcome_screen_and_leaves_no_window(
     finally:
         app.setApplicationDisplayName("")
     report = json.loads((tmp_path / "smoke-test.json").read_text(encoding="utf-8"))
-    assert (report["welcome_shown"], report["welcome_art"], report["welcome_logo"]) == (
-        True,
-        "generic",
-        "generic",
-    )
+    welcome = ("welcome_shown", "welcome_art", "welcome_title", "welcome_organization_logo")
+    assert [report[key] for key in welcome] == [True, "generic", "brand", "none"]
     assert report["display_font"] == "VT323", "the vendored face loaded (ADR-0016 §2)"
     app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     left = [w for w in app.topLevelWidgets() if isinstance(w, MainWindow | WelcomeScreen)]
@@ -518,7 +548,24 @@ def test_an_svg_logo_may_embed_data_and_refer_within_itself(tmp_path: Path) -> N
         '<use xlink:href="#bar"/></svg>',
         encoding="utf-8",
     )
-    assert load_branding(pack).welcome_logo == pack / "logo-vertical.svg"
+    assert load_branding(pack).organization_logo == pack / "logo-vertical.svg"
+
+
+def test_a_product_logo_is_checked_as_the_organization_logo_is(tmp_path: Path) -> None:
+    """A modified build's title logo: SVG or PNG, inside the pack, and self-contained."""
+    pack = make_pack(tmp_path / "pack", PACK_TOML + 'product_logo = "fork.svg"\n')
+    (pack / "fork.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100"/>', encoding="utf-8"
+    )
+    b = load_branding(pack)
+    assert b.product_logo == pack / "fork.svg" and b.product_logo in b.files
+    (pack / "fork.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        '<image xlink:href="../outside.png" width="72" height="72"/></svg>',
+        encoding="utf-8",
+    )
+    with pytest.raises(BrandingError, match=r"welcome.product_logo 'fork.svg' refers to"):
+        load_branding(pack)
 
 
 def test_a_logo_that_isnt_xml_is_refused(tmp_path: Path) -> None:
@@ -641,15 +688,34 @@ def test_the_vendored_license_texts_match_their_manifest() -> None:
 
 @pytest.mark.gui
 def test_the_build_copies_and_checks_every_notice(build_script: ModuleType, tmp_path: Path) -> None:
-    """KI-016: a build lacking our license, the index, or a runtime text fails."""
+    """KI-016: a build lacking our license, the index, or a runtime text fails.
+
+    So does one lacking the trademark policy, which governs the name and logo it shows.
+    """
     missing = build_script.missing_notices(tmp_path)
     assert "LICENSE.md" in missing
+    assert "TRADEMARKS.md" in missing
     assert "THIRD_PARTY_NOTICES.md" in missing
     assert "licenses/LGPL-3.0.txt" in missing
     build_script.copy_notices(tmp_path)
     assert build_script.missing_notices(tmp_path) == []
+    assert (tmp_path / "TRADEMARKS.md").read_bytes() == (ROOT / "TRADEMARKS.md").read_bytes()
     (tmp_path / "licenses" / "Qt-third-party.txt").unlink()
-    assert build_script.missing_notices(tmp_path) == ["licenses/Qt-third-party.txt"]
+    (tmp_path / "TRADEMARKS.md").unlink()
+    assert build_script.missing_notices(tmp_path) == [
+        "TRADEMARKS.md",
+        "licenses/Qt-third-party.txt",
+    ]
+
+
+def test_the_wheel_and_sdist_carry_the_trademark_policy() -> None:
+    """PEP 639's license files go in the wheel's metadata and the sdist, beside LICENSE.md."""
+    import tomllib
+
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert {"LICENSE.md", "TRADEMARKS.md", "THIRD_PARTY_NOTICES.md"} <= set(
+        project["license-files"]
+    )
 
 
 def test_the_notices_give_qt_and_pyside6_their_copyright_and_source() -> None:

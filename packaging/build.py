@@ -29,13 +29,13 @@ import sys
 import sysconfig
 import time
 import tomllib
+from collections.abc import Mapping
 from importlib.metadata import distribution
 from importlib.metadata import version as dist_version
 from pathlib import Path
 
 import PySide6
 from PySide6.QtCore import QLibraryInfo, qVersion
-from PySide6.QtGui import QImage
 
 from caddcalc import __version__
 from caddcalc.calculators import REFERENCE_TABLES
@@ -53,7 +53,16 @@ from caddcalc.gui.welcome_style import STYLE_FILE, style
 from fetch_notices import NOTICES_DIR
 from fetch_notices import check as check_notices
 from fetch_notices import expected_files as notice_files
-from icons import ROOT, ensure_qt_app, save_icns, save_ico
+from icons import (
+    ICNS_TYPES,
+    ICO_SIZES,
+    ROOT,
+    ensure_qt_app,
+    images,
+    save_icns,
+    save_ico,
+    wizard_images,
+)
 from library_notices import INTERPRETER_LICENSE, bundled_libraries, texts_needed, uncovered
 
 BUILDS = ROOT / "builds"
@@ -193,7 +202,12 @@ def stage_pack(branding: Branding, dest: Path) -> None:
 
 
 def exe_icon(branding: Branding, work: Path) -> Path:
-    """The icon file each platform's executable needs, converted from PNG if necessary."""
+    """The icon file each platform's executable needs, with every size it shows.
+
+    The app's own icon is drawn at each size from the brand's sources, the small ones from
+    their own drawings; a pack's PNG is scaled (``icons.images``). A pack's ``.ico`` is
+    used as it is on Windows.
+    """
     source = branding.icon or GENERIC.icon
     if source is None:
         raise BuildError("no icon to convert for the executable")
@@ -201,16 +215,17 @@ def exe_icon(branding: Branding, work: Path) -> Path:
     if source.suffix.lower() == wanted:
         return source
     ensure_qt_app()
-    image = QImage(str(source))
-    if image.isNull():
-        raise BuildError(f"cannot read icon {source}")
     out = work / f"app{wanted}"
-    if wanted == ".ico":
-        save_ico(image, out)
-    elif wanted == ".icns":
-        save_icns(image, out)
-    else:
-        image.save(str(out))
+    try:
+        if wanted == ".ico":
+            save_ico(images(source, ICO_SIZES), out)
+        elif wanted == ".icns":
+            save_icns(images(source, tuple(sorted(set(ICNS_TYPES.values())))), out)
+        else:
+            largest = max(ICO_SIZES)
+            images(source, (largest,))[largest].save(str(out))
+    except RuntimeError as exc:
+        raise BuildError(str(exc)) from exc
     return out
 
 
@@ -282,9 +297,14 @@ def bundle_host_libraries(output: Path) -> list[str]:
     return copied
 
 
+PROJECT_NOTICES = ("LICENSE.md", "TRADEMARKS.md", "THIRD_PARTY_NOTICES.md")
+"""The project's own notices, beside the executable: its license, its trademark policy,
+and the third-party index."""
+
+
 def copy_notices(output: Path) -> None:
-    """Copy the project's license, the index, and the runtime's license texts into a build."""
-    for notice in ("LICENSE.md", "THIRD_PARTY_NOTICES.md"):
+    """Copy the project's own notices and the runtime's license texts into a build."""
+    for notice in PROJECT_NOTICES:
         shutil.copy2(ROOT / notice, output / notice)
     folder = output / LICENSES_DIR
     folder.mkdir(exist_ok=True)
@@ -369,8 +389,8 @@ def notice_version_problems(
 
 
 def missing_notices(output: Path) -> list[str]:
-    """Return the notices a build lacks: our license, the index, or a runtime license text."""
-    wanted = ["LICENSE.md", "THIRD_PARTY_NOTICES.md", f"{LICENSES_DIR}/{INTERPRETER_LICENSE}"]
+    """Return the notices a build lacks: one of ours, or a runtime license text."""
+    wanted = [*PROJECT_NOTICES, f"{LICENSES_DIR}/{INTERPRETER_LICENSE}"]
     wanted += [f"{LICENSES_DIR}/{name}" for name in notice_files()]
     return [name for name in wanted if not (output / name).is_file()]
 
@@ -765,14 +785,22 @@ def smoke_test(exe: Path, output: Path, branding: Branding, runs: int) -> dict[s
         problems.append("did not detect that it is packaged")
     if not report["icon_loaded"]:
         problems.append("window icon did not load")
+    elif branding.icon in (None, GENERIC.icon):
+        missing = set(ICO_SIZES) - set(report.get("icon_sizes", ()))
+        if missing:
+            problems.append(f"the app icon has no {sorted(missing)} px drawings")
     if not report.get("welcome_shown"):
         problems.append("the welcome screen did not show")
-    for part, path in (("art", branding.welcome_art), ("logo", branding.welcome_logo)):
-        expected = "generic" if path is None else "pack"
+    for part, path, otherwise in (
+        ("art", branding.welcome_art, "generic"),
+        ("title", branding.product_logo, "brand"),
+        ("organization_logo", branding.organization_logo, "none"),
+    ):
+        expected = otherwise if path is None else "pack"
         if report.get(f"welcome_{part}") != expected:
             problems.append(
-                f"the welcome {part} came from {report.get(f'welcome_{part}')!r}, "
-                f"expected {expected!r}"
+                f"the welcome {part.replace('_', ' ')} came from "
+                f"{report.get(f'welcome_{part}')!r}, expected {expected!r}"
             )
     family = style().typography.display_family
     if report.get("display_font") != family:
@@ -820,6 +848,12 @@ def find_iscc() -> Path:
 INSTALLER_LICENSE_NOTE = """
 
 ----------------------------------------------------------------------
+Trademarks
+
+The "CADD Calculator" name and logo are trademarks of the project's maintainer. Their use
+is governed by TRADEMARKS.md, in the install folder.
+
+----------------------------------------------------------------------
 Third-party components
 
 CADD Calculator includes third-party components under their own licenses: Qt and
@@ -841,9 +875,15 @@ def installer_license(output: Path, work: Path) -> Path:
     return page
 
 
-def installer_defines(output: Path, icon: Path, license_page: Path) -> dict[str, str]:
-    """Return the ISCC defines for wrapping ``output``: its folder, version, and names."""
+def installer_defines(
+    output: Path, icon: Path, license_page: Path, wizard: Mapping[str, str]
+) -> dict[str, str]:
+    """Return the ISCC defines for wrapping ``output``: its folder, version, and names.
+
+    ``wizard`` holds the wizard images' defines (``icons.wizard_images``).
+    """
     return {
+        **wizard,
         "SourceDir": str(output),
         "LicenseFile": str(license_page),
         "AppVersion": __version__,
@@ -863,7 +903,13 @@ def make_installer(output: Path, branding: Branding) -> Path:
     if sys.platform != "win32" or not output.is_dir():
         raise BuildError("--installer needs a standalone Windows build")
     work = output.parent / "work"
-    defines = installer_defines(output, exe_icon(branding, work), installer_license(output, work))
+    try:
+        wizard = wizard_images(work)
+    except RuntimeError as exc:
+        raise BuildError(str(exc)) from exc
+    defines = installer_defines(
+        output, exe_icon(branding, work), installer_license(output, work), wizard
+    )
     command = [
         str(find_iscc()),
         "/Q",

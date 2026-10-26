@@ -62,10 +62,19 @@ def test_the_installer_script_refuses_to_compile_without_the_builds_defines() ->
         "NumericVersion",
         "LicenseFile",
         "IconFile",
+        "WizardImage",
+        "WizardSmallImage",
         "OutputDir",
         "OutputBase",
     ):
         assert re.search(rf"#ifndef {name}\s+#error", script), name
+
+
+def test_the_installer_script_refuses_inno_setup_before_6_6() -> None:
+    """Earlier versions take other wizard image sizes, and stretch the brand's."""
+    script = ISS.read_text(encoding="utf-8")
+    assert re.search(r"#if Ver < EncodeVer\(6, 6, 0\)\s+#error", script)
+    assert script.index("EncodeVer(6, 6, 0)") < script.index("WizardImageFile="), "first"
 
 
 @pytest.mark.gui
@@ -88,7 +97,11 @@ def test_the_build_passes_the_version_and_folder_to_the_installer(tmp_path: Path
     assert text.startswith("Apache License")
     assert "Microsoft-Visual-C++-runtime.txt" in text, "Low 5: the runtime's terms"
     assert "GNU LGPL v3" in text
-    defines = build.installer_defines(output, tmp_path / "app.ico", page)
+    assert 'The "CADD Calculator" name and logo are trademarks' in text
+    assert "governed by TRADEMARKS.md, in the install folder" in " ".join(text.split())
+    wizard = {"WizardImage": "a.bmp,b.bmp", "WizardSmallImage": "c.bmp,d.bmp"}
+    defines = build.installer_defines(output, tmp_path / "app.ico", page, wizard)
+    assert defines["WizardImage"] == "a.bmp,b.bmp"
     assert defines["LicenseFile"] == str(page)
     assert defines["SourceDir"] == str(output)
     assert defines["AppVersion"] == __version__

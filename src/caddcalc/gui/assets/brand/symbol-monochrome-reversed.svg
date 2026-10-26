@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280">
+  <path id="symbol-C-upper" d="M264,20c0-2.67-1.33-4-4-4H107c-39,0-72,22-87,54l50,50v-3c0-26,22-47,47-47h143c2.67,0,4-1.33,4-4V20Z" fill="#FFFFFF"/>
+  <path id="symbol-C-lower" d="M160,210h100c2.67,0,4,1.33,4,4v46c0,2.67-1.33,4-4,4h-46l-54-54Z" fill="#FFFFFF"/>
+  <path id="symbol-drafting-square" d="M16,86l178,178H20c-2.67,0-4-1.33-4-4V86ZM54,177v49h49l-49-49Z" fill="#FFFFFF" fill-rule="evenodd"/>
+</svg>

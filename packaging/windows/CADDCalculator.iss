@@ -6,6 +6,9 @@
 ; A per-user install by default: no admin rights, into %LOCALAPPDATA%\Programs. Users
 ; may choose a per-machine install instead (the installer asks, or /ALLUSERS).
 
+#if Ver < EncodeVer(6, 6, 0)
+  #error Inno Setup 6.6 or later is needed: earlier versions stretch the wizard images
+#endif
 #ifndef SourceDir
   #error SourceDir must name the built app folder (packaging/build.py --installer)
 #endif
@@ -20,6 +23,12 @@
 #endif
 #ifndef IconFile
   #error IconFile must name the executable's .ico
+#endif
+#ifndef WizardImage
+  #error WizardImage must list the welcome page's image at each scale (icons.wizard_images)
+#endif
+#ifndef WizardSmallImage
+  #error WizardSmallImage must list the inner pages' image at each scale
 #endif
 #ifndef OutputDir
   #error OutputDir must name where the installer is written
@@ -60,6 +69,9 @@ OutputBaseFilename={#OutputBase}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+; The brand's images in place of Inno's own (docs/dev/design/brand.md), at 100% and 200%.
+WizardImageFile={#WizardImage}
+WizardSmallImageFile={#WizardSmallImage}
 CloseApplications=yes
 
 [Files]

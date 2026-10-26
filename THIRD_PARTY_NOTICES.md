@@ -1,8 +1,10 @@
 # Third-party notices
 
-CADD Calculator is licensed under the Apache License 2.0 ([LICENSE.md](LICENSE.md)). It
-includes, or its packaged builds bundle, the third-party components below, each under its
-own license.
+CADD Calculator is licensed under the Apache License 2.0 ([LICENSE.md](LICENSE.md)), its
+brand files included. Its name and logo are also trademarks, and using them to identify a
+product is governed by [TRADEMARKS.md](TRADEMARKS.md). Welcome art © inmymoonsuit (the
+maintainer), licensed under Apache-2.0 with the project. It includes, or its packaged
+builds bundle, the third-party components below, each under its own license.
 
 ## Included in the source and in every build
 

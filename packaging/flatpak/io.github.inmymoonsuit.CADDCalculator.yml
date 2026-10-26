@@ -32,7 +32,10 @@ modules:
       - pip3 install --verbose --no-deps --no-index --no-build-isolation --prefix=${FLATPAK_DEST} .
       - install -Dm644 packaging/linux/${FLATPAK_ID}.desktop -t ${FLATPAK_DEST}/share/applications/
       - install -Dm644 packaging/linux/${FLATPAK_ID}.metainfo.xml -t ${FLATPAK_DEST}/share/metainfo/
-      - install -Dm644 src/caddcalc/gui/assets/app-icon.png ${FLATPAK_DEST}/share/icons/hicolor/256x256/apps/${FLATPAK_ID}.png
+      - install -Dm644 src/caddcalc/gui/assets/brand/app-icon.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+      - install -Dm644 src/caddcalc/gui/assets/brand/app-icon-16.svg ${FLATPAK_DEST}/share/icons/hicolor/16x16/apps/${FLATPAK_ID}.svg
+      - install -Dm644 src/caddcalc/gui/assets/brand/app-icon-24.svg ${FLATPAK_DEST}/share/icons/hicolor/24x24/apps/${FLATPAK_ID}.svg
+      - install -Dm644 src/caddcalc/gui/assets/brand/app-icon-32.svg ${FLATPAK_DEST}/share/icons/hicolor/32x32/apps/${FLATPAK_ID}.svg
     sources:
       - type: dir
         path: ../..

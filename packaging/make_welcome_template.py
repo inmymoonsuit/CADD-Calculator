@@ -51,8 +51,8 @@ def safe_areas() -> tuple[tuple[Rect, str], ...]:
     """Return each area the art keeps clear of detail, with its label."""
     tokens = style()
     return (
-        (tokens.logo_region, "logo box"),
-        (tokens.safe_area(tokens.name_pane), "name pane"),
+        (tokens.logo_region, "organization logo"),
+        (tokens.safe_area(tokens.title_pane), "title logo"),
         (tokens.safe_area(tokens.version_pane), "version pane"),
     )
 

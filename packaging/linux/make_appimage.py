@@ -28,7 +28,15 @@ ROOT = HERE.parent.parent
 APP_ID = "io.github.inmymoonsuit.CADDCalculator"
 DESKTOP = HERE / f"{APP_ID}.desktop"
 METAINFO = HERE / f"{APP_ID}.metainfo.xml"
-ICON = ROOT / "src" / "caddcalc" / "gui" / "assets" / "app-icon.png"
+BRAND = ROOT / "src" / "caddcalc" / "gui" / "assets" / "brand"
+ICONS = {
+    "scalable": BRAND / "app-icon.svg",
+    "16x16": BRAND / "app-icon-16.svg",
+    "24x24": BRAND / "app-icon-24.svg",
+    "32x32": BRAND / "app-icon-32.svg",
+}
+"""The app icon by hicolor folder: the master, and the drawings made for the small sizes
+(docs/dev/design/brand.md)."""
 APPIMAGETOOL_URL = (
     "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage"
 )
@@ -72,10 +80,11 @@ def make_appdir(app: Path, appdir: Path) -> Path:
     for target in (appdir, appdir / "usr" / "share" / "applications"):
         target.mkdir(parents=True, exist_ok=True)
         shutil.copy2(DESKTOP, target / DESKTOP.name)
-    icons = appdir / "usr" / "share" / "icons" / "hicolor" / "256x256" / "apps"
-    icons.mkdir(parents=True)
-    shutil.copy2(ICON, icons / f"{APP_ID}.png")
-    shutil.copy2(ICON, appdir / f"{APP_ID}.png")
+    for folder, icon in ICONS.items():
+        apps = appdir / "usr" / "share" / "icons" / "hicolor" / folder / "apps"
+        apps.mkdir(parents=True)
+        shutil.copy2(icon, apps / f"{APP_ID}.svg")
+    shutil.copy2(ICONS["scalable"], appdir / f"{APP_ID}.svg")
     metainfo = appdir / "usr" / "share" / "metainfo"
     metainfo.mkdir(parents=True)
     shutil.copy2(METAINFO, metainfo / METAINFO.name)

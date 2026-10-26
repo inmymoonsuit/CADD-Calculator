@@ -1,12 +1,10 @@
-"""Icon helpers for packaging (ADR-0009), and the generator for the generic app icon.
+"""Icon helpers for packaging (ADR-0009): the app icon as each platform's icon file.
 
-Run ``uv run python packaging/icons.py`` to redraw ``src/caddcalc/gui/assets/app-icon.png``.
-The generic icon is original line art drawn here in code, so it is covered by the project's
-Apache-2.0 license and needs no third-party notice. Its planned replacement is the roadmap
-item "Generic art for the public build" (ADR-0008, item 4).
-
-The build script uses ``save_ico`` and ``save_icns`` to turn a PNG into the
-executable icon each platform needs, so a branding pack only has to supply one PNG.
+The generic edition's icon is the brand's tile (docs/dev/design/brand.md), drawn at each
+size by ``caddcalc.gui.app_icon``: from the drawings made for 16, 24 and 32 px, and the
+master above them. A branding pack's icon is one PNG, scaled to each size. The Windows
+``.ico`` and the macOS ``.icns`` hold every size, each entry a PNG; Linux takes the SVG
+sources themselves (``packaging/linux/make_appimage.py``, the Flatpak manifest).
 """
 
 from __future__ import annotations
@@ -14,23 +12,63 @@ from __future__ import annotations
 import os
 import struct
 import sys
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 
-from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPointF, QRectF, Qt
-from PySide6.QtGui import (
-    QColor,
-    QGuiApplication,
-    QImage,
-    QImageWriter,
-    QPainter,
-    QPainterPath,
-    QPen,
-)
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QRectF, Qt
+from PySide6.QtGui import QColor, QGuiApplication, QImage, QImageWriter, QPainter
+from PySide6.QtSvg import QSvgRenderer
+
+from caddcalc.gui import app_icon
+from caddcalc.gui.branding import BRAND, GENERIC_ICON
 
 ROOT = Path(__file__).resolve().parent.parent
-GENERIC_ICON = ROOT / "src" / "caddcalc" / "gui" / "assets" / "app-icon.png"
-ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
+ICO_SIZES = app_icon.SIZES
+"""Every size in the Windows ``.ico``: Windows' icon sizes from 100% to 200% scaling."""
+ICNS_TYPES = {
+    "icp4": 16,
+    "icp5": 32,
+    "ic11": 32,
+    "icp6": 64,
+    "ic12": 64,
+    "ic07": 128,
+    "ic08": 256,
+    "ic13": 256,
+    "ic09": 512,
+    "ic14": 512,
+    "ic10": 1024,
+}
+"""The ``.icns`` entries, each a PNG, by type and size: the 1x and 2x sizes macOS asks for
+(ic11 to ic14 are the 2x ones of the size before them)."""
+WIZARD_SIZES = {
+    "WizardImage": (
+        (202, 386),
+        (269, 515),
+        (336, 643),
+        (403, 772),
+        (430, 824),
+        (498, 953),
+        (534, 1022),
+    ),
+    "WizardSmallImage": (
+        (58, 58),
+        (77, 77),
+        (97, 97),
+        (116, 116),
+        (124, 124),
+        (143, 143),
+        (159, 159),
+    ),
+}
+"""Inno Setup's wizard images: the welcome and finish pages' left panel, and the inner
+pages' header, each at the exact size of its image area at 100%, 125%, 150%, 175%, 200%,
+225% and 250% display scale, from Inno Setup 6.6's help for WizardImageFile and
+WizardSmallImageFile (the modern style's defaults; CI's windows-latest has 6.7). Inno picks
+the one that fits, so none is stretched. The older 164x314 and 55x55 sizes were stretched
+to 202x386 and 58x58 at 100%, measured in the wizard on 2026-10-26."""
+CRIMSON, WHITE = "#A31D31", "#FFFFFF"
+"""The brand's crimson, and the white its marks take on it (docs/dev/design/brand.md)."""
 
 
 def ensure_qt_app() -> QGuiApplication:
@@ -63,38 +101,6 @@ def _create_qt_app() -> QGuiApplication:
         del os.environ["QT_QPA_PLATFORM"]
 
 
-def draw_generic_icon(size: int = 256) -> QImage:
-    """A blue tile with a white formed sheet-metal profile: a flange, a bend, a flange."""
-    image = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
-    image.fill(Qt.GlobalColor.transparent)
-    s = size / 256
-    p = QPainter(image)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-    tile = QPainterPath()
-    tile.addRoundedRect(QRectF(8 * s, 8 * s, 240 * s, 240 * s), 44 * s, 44 * s)
-    p.fillPath(tile, QColor("#1f5f99"))
-
-    # The part: a vertical flange, a 90° bend with an inside radius, a horizontal flange.
-    part = QPainterPath(QPointF(72 * s, 48 * s))
-    part.lineTo(72 * s, 148 * s)
-    part.arcTo(QRectF(72 * s, 108 * s, 80 * s, 80 * s), 180, 90)
-    part.lineTo(212 * s, 188 * s)
-    pen = QPen(QColor("white"), 26 * s)
-    pen.setCapStyle(Qt.PenCapStyle.FlatCap)
-    pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
-    p.strokePath(part, pen)
-
-    # A dimension line across the bend, in a lighter blue, for "calculated".
-    dim = QPen(QColor("#9cc8f0"), max(1.0, 8 * s))
-    dim.setCapStyle(Qt.PenCapStyle.RoundCap)
-    p.setPen(dim)
-    p.drawLine(QPointF(118 * s, 64 * s), QPointF(204 * s, 64 * s))
-    p.drawLine(QPointF(204 * s, 64 * s), QPointF(204 * s, 150 * s))
-    p.end()
-    return image
-
-
 def png_bytes(image: QImage) -> bytes:
     """Return ``image`` encoded as PNG."""
     data = QByteArray()
@@ -119,40 +125,92 @@ def scaled(image: QImage, size: int) -> QImage:
     )
 
 
-def save_ico(image: QImage, path: Path, sizes: tuple[int, ...] = ICO_SIZES) -> None:
-    """Write a multi-size Windows .ico with PNG-compressed entries (Windows Vista and later).
+def images(icon: Path, sizes: tuple[int, ...]) -> dict[int, QImage]:
+    """Return the icon at each of ``sizes``: drawn for the app's own, scaled for a pack's PNG.
+
+    Raises:
+        RuntimeError: A pack's icon can't be read.
+    """
+    if icon == GENERIC_ICON:
+        return {size: app_icon.image(size) for size in sizes}
+    source = QImage(str(icon))
+    if source.isNull():
+        raise RuntimeError(f"Cannot read the icon {icon}")
+    return {size: scaled(source, size) for size in sizes}
+
+
+def save_ico(entries: Mapping[int, QImage], path: Path) -> None:
+    """Write a multi-size Windows .ico, one PNG-compressed entry per size (Vista and later).
 
     Qt's own ICO writer stores a single size, so the container is written here.
     """
-    entries = [png_bytes(scaled(image, n)) for n in sizes]
-    header = struct.pack("<HHH", 0, 1, len(entries))
-    offset = 6 + 16 * len(entries)
+    sizes = sorted(entries)
+    data = [png_bytes(entries[n]) for n in sizes]
+    header = struct.pack("<HHH", 0, 1, len(data))
+    offset = 6 + 16 * len(data)
     directory = b""
-    for n, data in zip(sizes, entries, strict=True):
+    for n, png in zip(sizes, data, strict=True):
         side = 0 if n >= 256 else n  # 0 means 256 in the ICO format
-        directory += struct.pack("<BBBBHHII", side, side, 0, 0, 1, 32, len(data), offset)
-        offset += len(data)
+        directory += struct.pack("<BBBBHHII", side, side, 0, 0, 1, 32, len(png), offset)
+        offset += len(png)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(header + directory + b"".join(entries))
+    path.write_bytes(header + directory + b"".join(data))
 
 
-def save_icns(image: QImage, path: Path) -> None:
-    """Write a macOS .icns with Qt's icns image plugin."""
+def save_icns(entries: Mapping[int, QImage], path: Path) -> None:
+    """Write a macOS .icns with a PNG for every type in ``ICNS_TYPES``.
+
+    ``entries`` holds the icon at each size ``ICNS_TYPES`` names. Qt's icns writer stores
+    one size, so the container is written here: the "icns" magic and its length, then each
+    entry's type, its length with its 8-byte header, and its PNG.
+    """
+    body = b""
+    for kind, size in ICNS_TYPES.items():
+        png = png_bytes(entries[size])
+        body += kind.encode("ascii") + struct.pack(">I", 8 + len(png)) + png
     path.parent.mkdir(parents=True, exist_ok=True)
-    writer = QImageWriter(str(path), QByteArray(b"icns"))
-    if not writer.write(scaled(image, 512)):
-        raise RuntimeError(f"Could not write {path}: {writer.errorString()}")
+    path.write_bytes(b"icns" + struct.pack(">I", 8 + len(body)) + body)
 
 
-def main() -> int:
-    """Redraw the generic app icon and return the exit status."""
-    ensure_qt_app()
-    GENERIC_ICON.parent.mkdir(parents=True, exist_ok=True)
-    if not draw_generic_icon(256).save(str(GENERIC_ICON)):
-        raise RuntimeError(f"Could not write {GENERIC_ICON}")
-    print(f"Wrote {GENERIC_ICON.relative_to(ROOT)}")
-    return 0
+def wizard_image(kind: str, width: int, height: int) -> QImage:
+    """Draw one of Inno Setup's wizard images, with no alpha, as a BMP needs.
+
+    The left panel is the brand's crimson with the symbol in white, a little above the
+    middle; the header's is the app icon on the page's white.
+    """
+    image = QImage(width, height, QImage.Format.Format_RGB32)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    if kind == "WizardImage":
+        image.fill(QColor(CRIMSON))
+        side = width * 0.6
+        target = QRectF((width - side) / 2, height * 0.4 - side / 2, side, side)
+        QSvgRenderer(str(BRAND / "symbol-monochrome-reversed.svg")).render(painter, target)
+    else:
+        image.fill(QColor(WHITE))
+        icon = app_icon.image(round(min(width, height) * 0.9))
+        painter.drawImage((width - icon.width()) // 2, (height - icon.height()) // 2, icon)
+    painter.end()
+    return image
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def wizard_images(work: Path) -> dict[str, str]:
+    """Write Inno Setup's wizard images to ``work`` as BMPs; return the script's defines.
+
+    Each define lists the image's sizes, comma-separated, as Inno takes them.
+
+    Raises:
+        RuntimeError: Qt can't write a BMP.
+    """
+    defines = {}
+    for kind, sizes in WIZARD_SIZES.items():
+        paths = []
+        for width, height in sizes:
+            path = work / f"{kind}-{width}x{height}.bmp"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            writer = QImageWriter(str(path), QByteArray(b"bmp"))
+            if not writer.write(wizard_image(kind, width, height)):
+                raise RuntimeError(f"Could not write {path}: {writer.errorString()}")
+            paths.append(str(path))
+        defines[kind] = ",".join(paths)
+    return defines

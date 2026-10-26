@@ -38,8 +38,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     started = time.perf_counter()
     try:
-        from PySide6.QtGui import QIcon
         from PySide6.QtWidgets import QApplication
+
+        from caddcalc.gui.app_icon import window_icon
     except ImportError:
         print(
             "The desktop app needs PySide6. Install it with:\n"
@@ -71,8 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     app.setApplicationDisplayName(PRODUCT_NAME)
     app.setApplicationVersion(__version__)
     app.setOrganizationName("CADD Calculator")
-    if branding.icon is not None:
-        app.setWindowIcon(QIcon(str(branding.icon)))
+    app.setWindowIcon(window_icon(branding.icon))
     # Before any widget: our words and Qt's, in the user's language (ADR-0020 §3).
     translator = install_translations(app)
     # And the user's text size, so every text-unit size follows it (ADR-0021 §2). It's
@@ -406,9 +406,11 @@ def _write_smoke_report(
         "version": __version__,
         "window_title": window.windowTitle(),
         "icon_loaded": not app.windowIcon().isNull(),
+        "icon_sizes": sorted({size.width() for size in app.windowIcon().availableSizes()}),
         "welcome_shown": welcome.isVisible(),
         "welcome_art": welcome.art_source,
-        "welcome_logo": welcome.logo_source,
+        "welcome_title": welcome.title_source,
+        "welcome_organization_logo": welcome.organization_source,
         "display_font": welcome.display_face,
         "about_custom": branding.about_html is not None,
         "calculators": len(window.registry),

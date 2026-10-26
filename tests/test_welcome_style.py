@@ -55,10 +55,10 @@ def test_the_shipped_tokens_load_and_add_up() -> None:
     ), "the art spans the card; the logo box floats over it (S2)"
     assert tokens.panes.text_roles == ("welcome_ink", "welcome_paper")
     assert tokens.panes.fill_roles == ("welcome_paper", "welcome_ink"), "dark on light"
-    assert (tokens.name_pane.min_contrast, tokens.version_pane.min_contrast) == (3, 4.5)
+    assert (tokens.title_pane.min_contrast, tokens.version_pane.min_contrast) == (3, 4.5)
 
 
-@pytest.mark.parametrize("pane", ["name_pane", "version_pane"])
+@pytest.mark.parametrize("pane", ["title_pane", "version_pane"])
 def test_each_panes_safe_area_lies_inside_the_art_slot(pane: str) -> None:
     tokens = style()
     area = tokens.safe_area(getattr(tokens, pane))
@@ -72,7 +72,7 @@ def test_the_logo_box_fits_its_region_beside_the_panes() -> None:
     region, area = tokens.logo_region, tokens.logo_area
     assert (region.x, region.y, region.height) == (0, 0, tokens.art.slot.height)
     assert min(area.width, area.height) >= tokens.logo.min_short_side
-    for pane in (tokens.name_pane, tokens.version_pane):
+    for pane in (tokens.title_pane, tokens.version_pane):
         assert tokens.safe_area(pane).x >= region.x + region.width, "no overlap"
 
 
@@ -90,7 +90,7 @@ def edited(table: str, key: str, value: Any) -> dict[str, Any]:
         ({**shipped(), "schema": 2}, "schema must be 1"),
         (edited("card", "corner_radius", 40), "card.corner_radius must be a number from 0"),
         (edited("logo", "padding", 5), r"logo\.padding must be on the spacing scale, 2, 4"),
-        (edited("name_pane", "inset", 20), r"name_pane\.inset must be on the spacing scale"),
+        (edited("title_pane", "inset", 20), r"title_pane\.inset must be on the spacing scale"),
         (edited("version_pane", "padding", [2, 3]), "on the spacing scale.*not 3"),
         (edited("typography", "display_weight", "heavy"), "must be one of bold, regular"),
         (edited("typography", "display_weight", 700), "must be one of bold, regular"),
@@ -101,10 +101,12 @@ def edited(table: str, key: str, value: Any) -> dict[str, Any]:
         (edited("art", "max_px", 4096.5), "art.max_px must be a whole number"),
         (edited("panes", "fill_opacity_min", True), "fill_opacity_min must be a number"),
         (edited("logo", "border_role", "ink"), "'ink' isn't a palette role in both themes"),
-        (edited("name_pane", "anchor", "middle"), "name_pane.anchor must be one of"),
+        (edited("title_pane", "anchor", "middle"), "title_pane.anchor must be one of"),
         (edited("panes", "percentile", 60), "panes.percentile must be a number from 0 to 50"),
         (edited("panes", "max_background_spread", 0.9), "must be a number from 1 to 21"),
-        (edited("name_pane", "min_contrast", 2.9), "below WCAG 2's 3:1 for large text"),
+        (edited("title_pane", "min_contrast", 2.9), "below WCAG 2's 3:1 for graphics"),
+        (edited("title_pane", "height", 96), "title_pane.height 96 is taller than its safe"),
+        (edited("title_pane", "font", "display"), r"\[title_pane\] has unknown \['font'\]"),
         (edited("version_pane", "min_contrast", 3), "below WCAG 2's 4.5:1 for normal text"),
         (edited("logo", "formats", ["PNG"]), "lowercase file suffixes"),
     ],
@@ -161,8 +163,8 @@ def test_the_spec_quotes_the_sizes_and_safe_areas_they_give() -> None:
         f"**{tokens.art.max_px} px**",
     ]
     areas = (
-        (tokens.logo_region, "Logo box"),
-        (tokens.safe_area(tokens.name_pane), "Name pane"),
+        (tokens.logo_region, "Organization logo"),
+        (tokens.safe_area(tokens.title_pane), "Title"),
         (tokens.safe_area(tokens.version_pane), "Version pane"),
     )
     for area, name in areas:
@@ -430,7 +432,7 @@ def test_saturated_art_is_held_to_the_contrast_where_two_percentiles_were_not() 
 
 
 def test_the_title_needs_less_fill_than_the_version() -> None:
-    """Large text needs 3:1, other text 4.5:1 (WCAG 2), so mid-tone art lifts it less."""
+    """Graphics need 3:1, small text 4.5:1 (WCAG 2), so mid-tone art lifts the title less."""
     panes, art = style().panes, mixed(((115, 115, 115), 0.5), ((140, 140, 140), 0.5))
     _pair, title = pane_fill(art, PAIRS, panes, 3)
     _pair, version = pane_fill(art, PAIRS, panes, 4.5)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 import pytest
@@ -77,8 +78,10 @@ def test_about_shows_over_the_active_window(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(QApplication, "activeWindow", lambda: window)
     shown: list[tuple[Any, str]] = []
     monkeypatch.setattr(
-        QMessageBox, "about", lambda parent, title, _text: shown.append((parent, title))
+        QMessageBox, "exec", lambda box: shown.append((box.parentWidget(), box.windowTitle())) or 0
     )
     window.app_actions.about.trigger()
-    assert shown == [(window, "About CADD Calculator")]
+    # macOS ignores a message box's title, as its guidelines ask, so Qt reports none there.
+    title = "" if sys.platform == "darwin" else "About CADD Calculator"
+    assert shown == [(window, title)]
     window.close()

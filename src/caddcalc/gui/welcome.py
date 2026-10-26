@@ -1,10 +1,11 @@
 """The welcome screen, composed from a branding pack's parts (ADR-0015, ADR-0016).
 
 A frameless card with a thin border and rounded outer corners: a top bar with an About
-button (ⓘ) and an X, over the art. The logo sits in a box floating over the art's left
-edge, and the name and version sit over the art in quiet panes. The app's menus live in
-the main window (ADR-0015, amendments). The art and the logo come from the pack, or are
-generated (``welcome_art``). Every size, colour role, and font comes from the design
+button (ⓘ) and an X, over the art. The title, the project's logo, and the version sit
+over the art in quiet panes. A pack's organization logo sits in a box floating over the
+art's left edge; without one, there's no box, and the art shows there. The app's menus
+live in the main window (ADR-0015, amendments). The art comes from the pack, or is the
+built-in art (``GENERIC_ART``). Every size, colour role, and font comes from the design
 tokens (``welcome_style``), placed by ``welcome_layout``; a test keeps literals out of
 here.
 
@@ -44,11 +45,16 @@ from PySide6.QtWidgets import QApplication, QHBoxLayout, QToolButton, QVBoxLayou
 from caddcalc import __version__
 from caddcalc.core.i18n import _, pgettext
 from caddcalc.gui.actions import AppActions
-from caddcalc.gui.branding import GENERIC_ICON, PRODUCT_NAME, Branding
+from caddcalc.gui.branding import (
+    GENERIC_ART,
+    PRODUCT_NAME,
+    TITLE_LOGO,
+    TITLE_LOGO_REVERSED,
+    Branding,
+)
 from caddcalc.gui.fonts import FALLBACK, display_family
 from caddcalc.gui.icons import Scheme, current_scheme, icon, role_color
 from caddcalc.gui.painting import on_device_pixels, stroke
-from caddcalc.gui.welcome_art import generic_art
 from caddcalc.gui.welcome_layout import (
     Rect,
     Size,
@@ -65,6 +71,7 @@ from caddcalc.gui.welcome_layout import (
 from caddcalc.gui.welcome_style import (
     RGB,
     PaneTokens,
+    TitleTokens,
     TypographyTokens,
     WelcomeStyle,
     every_pixel,
@@ -84,7 +91,7 @@ def read_image(path: Path | None, what: str) -> QImage | None:
 
     Its pixel size is read from the file's header and checked before the image is decoded,
     so an oversized file costs nothing (ADR-0015, amendments). Startup never fails because
-    of art: the caller falls back to generated art.
+    of art: the caller falls back to the built-in art.
     """
     if path is None:
         return None
@@ -193,47 +200,84 @@ class _TopBar(QWidget):
         super().mousePressEvent(event)
 
 
-class _LogoBox(QWidget):
-    """The logo's box, floating over the art's left edge: a fill, the logo, and a border.
+class _PackLogo:
+    """A pack's logo file, SVG or PNG, read once; ``drawn`` is false if it can't be read."""
 
-    The box takes the logo's shape, as large as the logo area allows, centred, with a
-    least short side and a greatest long side (ADR-0016 §3). The logo is contained in
-    its padding. Without a logo, the box holds the app icon alone, so it's square.
+    def __init__(self, path: Path | None, what: str, parent: QWidget) -> None:
+        self.svg: QSvgRenderer | None = None
+        self.image: QImage | None = None
+        if path is not None and path.suffix.lower() == ".svg":
+            renderer = QSvgRenderer(str(path), parent)
+            if renderer.isValid():
+                self.svg = renderer
+            else:
+                warnings.warn(f"Ignoring the {what} {path.name}: invalid SVG", stacklevel=2)
+        elif path is not None:
+            self.image = read_image(path, what)
+
+    @property
+    def drawn(self) -> bool:
+        """Whether there's a logo to draw."""
+        return self.svg is not None or self.image is not None
+
+    @property
+    def size(self) -> Size:
+        """The logo's own size; a square when there's nothing to draw."""
+        if self.svg is not None:
+            size = self.svg.defaultSize()
+            return Size(size.width(), size.height())
+        if self.image is not None:
+            ratio = self.image.devicePixelRatio()
+            return Size(self.image.width() / ratio, self.image.height() / ratio)
+        return Size(1, 1)
+
+
+def _paint_logo_box(widget: QWidget, logo: _PackLogo, tokens: WelcomeStyle, scale: float) -> None:
+    """Paint a logo box: its white fill, the logo contained in its padding, and its border."""
+    box, scheme = tokens.logo, current_scheme()
+    p = QPainter(widget)
+    p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    p.fillRect(widget.rect(), QColor(role_color(box.fill_role, scheme)))
+    inner = box.padding * scale
+    area = Rect(inner, inner, widget.width() - 2 * inner, widget.height() - 2 * inner)
+    target = _qrect(contain_fit(logo.size, area))
+    if logo.svg is not None:
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)  # the logo's own shapes
+        logo.svg.render(p, target)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+    elif logo.image is not None:
+        p.drawImage(target, logo.image)
+    border = QColor(role_color(box.border_role, scheme))
+    stroke(p, QRectF(widget.rect()), border, box.border_width * scale)
+    p.end()
+
+
+class _LogoBox(QWidget):
+    """The organization logo's box, floating over the art's left edge (ADR-0015, amendments).
+
+    A pack may name an organization's logo, as a branded edition does. The box takes the
+    logo's shape, as large as the logo area allows, centred, with a least short side and
+    a greatest long side (ADR-0016 §3). The logo is contained in its padding. Without a
+    logo, or with one that can't be read, the box is hidden, and the art shows there.
     """
 
     def __init__(self, branding: Branding, parent: QWidget) -> None:
         super().__init__(parent)
-        self._svg: QSvgRenderer | None = None
-        self._image: QImage | None = None
-        logo = branding.welcome_logo
-        if logo is not None and logo.suffix.lower() == ".svg":
-            renderer = QSvgRenderer(str(logo), self)
-            if renderer.isValid():
-                self._svg = renderer
-            else:
-                warnings.warn(f"Ignoring the welcome logo {logo.name}: invalid SVG", stacklevel=2)
-        elif logo is not None:
-            self._image = read_image(logo, "welcome logo")
-        self.source = "pack" if self._svg is not None or self._image is not None else "generic"
-        """Where the logo came from: ``"pack"``, or ``"generic"``."""
-        if self.source == "generic":
-            # The generic mark is the app icon alone; the name is in the title pane.
-            self._image = read_image(GENERIC_ICON, "app icon")
+        self.logo = _PackLogo(branding.organization_logo, "organization logo", self)
+        self.source = "pack" if self.logo.drawn else "none"
+        """Where the logo came from: ``"pack"``, or ``"none"``."""
         self.scale = 1.0
         """The card's scale, set by the screen, so the padding and border shrink with it."""
         self.tokens = branding.welcome_tokens
-        self.setAccessibleName(f"{PRODUCT_NAME} logo")
+        # Translators: the welcome card's box for a branded edition's own logo, such as
+        # a school's or a company's. Screen readers read it.
+        self.setAccessibleName(_("Organization logo"))
+        self.setVisible(self.logo.drawn)
 
     @property
     def logo_size(self) -> Size:
         """The logo's own size; a square when there's nothing to draw."""
-        if self._svg is not None:
-            size = self._svg.defaultSize()
-            return Size(size.width(), size.height())
-        if self._image is not None:
-            ratio = self._image.devicePixelRatio()
-            return Size(self._image.width() / ratio, self._image.height() / ratio)
-        return Size(1, 1)
+        return self.logo.size
 
     def place(self, scale: float) -> None:
         """Size the box around the logo, inside the logo area, at the card's ``scale``."""
@@ -246,22 +290,7 @@ class _LogoBox(QWidget):
 
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
-        tokens, scheme = self.tokens.logo, current_scheme()
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        p.fillRect(self.rect(), QColor(role_color(tokens.fill_role, scheme)))
-        inner = tokens.padding * self.scale
-        area = Rect(inner, inner, self.width() - 2 * inner, self.height() - 2 * inner)
-        target = _qrect(contain_fit(self.logo_size, area))
-        if self._svg is not None:
-            p.setRenderHint(QPainter.RenderHint.Antialiasing)  # the logo's own shapes
-            self._svg.render(p, target)
-            p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        elif self._image is not None:
-            p.drawImage(target, self._image)
-        border = QColor(role_color(tokens.border_role, scheme))
-        stroke(p, QRectF(self.rect()), border, tokens.border_width * self.scale)
-        p.end()
+        _paint_logo_box(self, self.logo, self.tokens, self.scale)
 
 
 def _pixels(art: QImage, logical: Rect) -> list[RGB]:
@@ -274,43 +303,31 @@ def _pixels(art: QImage, logical: Rect) -> list[RGB]:
     return every_pixel(pixels, under.width(), under.height())
 
 
-class _Pane(QWidget):
-    """A quiet pane over the art: text in a translucent fill and a thin border (ADR-0016 §5).
+class _OverArt(QWidget):
+    """A quiet pane over the art: a translucent fill and a thin border (ADR-0016 §5).
 
-    It hugs its text and sits at its anchor corner. Each text role has its own fill, dark
-    text on a light fill and light text on a dark one; the fill starts at the minimum
-    opacity and rises only as far as its text needs to reach the pane's contrast over all
-    but a small share of the art beneath, every pixel under it, at the display's
-    resolution, blended as the screen blends it, and the background to be calm enough
-    not to break the letters up. The pair that needs the least wins.
-
-    The display face is drawn at a whole multiple of its pixel grid, and centred on its
-    capitals: the padding is the space around the caps (ADR-0016, amendments). The text
-    is drawn in device pixels, so its size and baseline land on the display's grid, and
-    as its outline in both panes; the text stays the pane's accessible name.
+    Each text role has its own fill, dark text on a light fill and light text on a dark
+    one; the fill starts at the minimum opacity and rises only as far as its text needs
+    to reach the pane's contrast over all but a small share of the art beneath, every
+    pixel under it, at the display's resolution, blended as the screen blends it, and the
+    background to be calm enough not to break the letters up. The pair that needs the
+    least wins. The title's "text" is its logo's white or black parts.
     """
 
-    def __init__(self, text: str, tokens: WelcomeStyle, pane: PaneTokens, parent: QWidget) -> None:
+    def __init__(
+        self, tokens: WelcomeStyle, pane: PaneTokens | TitleTokens, parent: QWidget
+    ) -> None:
         super().__init__(parent)
         self.panes = tokens.panes
         """The style the panes share."""
-        self.typography = tokens.typography
-        self.tokens = pane
-        """Where this pane sits, its text, and its contrast."""
-        self.text = text
+        self.contrast_needed = pane.min_contrast
         self.scale = 1.0
         self.art: list[RGB] | None = None
         """The art's colours under the pane, every device pixel, once measured."""
         self.region: list[RGB] | None = None
         """The art's colours over the pane's safe area and the pane, every device pixel:
         what its pair is chosen over, the same whatever its text (ADR-0016, amendments)."""
-        self.text_font = QFont()
-        """The font its text is drawn in, at its size in device pixels."""
-        self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
-        self._outline = QPainterPath()  # the text, drawn as its outline
-        self._ratio = 1.0
         self._fills: dict[Scheme, tuple[str, str, int]] = {}
-        self.setAccessibleName(text)
 
     def fill(self, scheme: Scheme) -> tuple[str, str, int]:
         """Return the text's role, its fill's role, and the fill's alpha, 0 to 255.
@@ -323,10 +340,62 @@ class _Pane(QWidget):
             if self.art is None or self.region is None:
                 index, alpha = opaque_fill(pairs)
             else:
-                needed = self.tokens.min_contrast
+                needed = self.contrast_needed
                 index, alpha = settled_fill(self.region, self.art, pairs, self.panes, needed)
             self._fills[scheme] = self.panes.text_roles[index], self.panes.fill_roles[index], alpha
         return self._fills[scheme]
+
+    def measure(self, art: QImage, safe_area: Rect) -> None:
+        """Measure every pixel of the art under the pane and over its ``safe_area``.
+
+        ``art`` is the art as the slot shows it, drawn at the display's device pixel
+        ratio, so detail finer than a logical pixel is measured as the screen shows it,
+        not averaged away. ``safe_area`` is in the slot's logical pixels; it's measured
+        with the pane's own box, in case a long text outgrows it.
+        """
+        box = self.geometry()
+        logical = Rect(box.x(), box.y(), box.width(), box.height())
+        left, top = min(logical.x, safe_area.x), min(logical.y, safe_area.y)
+        right = max(logical.x + logical.width, safe_area.x + safe_area.width)
+        bottom = max(logical.y + logical.height, safe_area.y + safe_area.height)
+        self.art = _pixels(art, logical)
+        self.region = _pixels(art, Rect(left, top, right - left, bottom - top))
+        self._fills.clear()
+        self.fill(current_scheme())  # now, so the card's first paint doesn't wait on it
+        self.update()
+
+    def paint_pane(self, p: QPainter, scheme: Scheme) -> QColor:
+        """Paint the pane's fill and its border; return its text's colour."""
+        text_role, fill_role, alpha = self.fill(scheme)
+        text = QColor(role_color(text_role, scheme))
+        fill = QColor(role_color(fill_role, scheme))
+        fill.setAlpha(alpha)
+        p.fillRect(self.rect(), fill)
+        stroke(p, QRectF(self.rect()), text, self.panes.border_width * self.scale)  # follows text
+        return text
+
+
+class _Pane(_OverArt):
+    """A pane of text: it hugs its text and sits at its anchor corner.
+
+    The display face is drawn at a whole multiple of its pixel grid, and centred on its
+    capitals: the padding is the space around the caps (ADR-0016, amendments). The text
+    is drawn in device pixels, so its size and baseline land on the display's grid, and
+    as its outline; the text stays the pane's accessible name.
+    """
+
+    def __init__(self, text: str, tokens: WelcomeStyle, pane: PaneTokens, parent: QWidget) -> None:
+        super().__init__(tokens, pane, parent)
+        self.typography = tokens.typography
+        self.tokens = pane
+        """Where this pane sits, its text, and its contrast."""
+        self.text = text
+        self.text_font = QFont()
+        """The font its text is drawn in, at its size in device pixels."""
+        self._run = (0.0, 0.0, 0.0)  # the text's width, band height, and baseline, in device px
+        self._outline = QPainterPath()  # the text, drawn as its outline
+        self._ratio = 1.0
+        self.setAccessibleName(text)
 
     def font_at(self, scale: float, ratio: float) -> QFont:
         """Return the pane's font, sized in device pixels, at the card's ``scale``."""
@@ -359,35 +428,10 @@ class _Pane(QWidget):
         self.setGeometry(round(rect.x), round(rect.y), int(size.width), int(size.height))
         self.scale, self._ratio, self._run, self.text_font = scale, ratio, run, font
 
-    def measure(self, art: QImage, safe_area: Rect) -> None:
-        """Measure every pixel of the art under the pane and over its ``safe_area``.
-
-        ``art`` is the art as the slot shows it, drawn at the display's device pixel
-        ratio, so detail finer than a logical pixel is measured as the screen shows it,
-        not averaged away. ``safe_area`` is in the slot's logical pixels; it's measured
-        with the pane's own box, in case a long text outgrows it.
-        """
-        box = self.geometry()
-        logical = Rect(box.x(), box.y(), box.width(), box.height())
-        left, top = min(logical.x, safe_area.x), min(logical.y, safe_area.y)
-        right = max(logical.x + logical.width, safe_area.x + safe_area.width)
-        bottom = max(logical.y + logical.height, safe_area.y + safe_area.height)
-        self.art = _pixels(art, logical)
-        self.region = _pixels(art, Rect(left, top, right - left, bottom - top))
-        self._fills.clear()
-        self.fill(current_scheme())  # now, so the card's first paint doesn't wait on it
-        self.update()
-
     @override
     def paintEvent(self, event: QPaintEvent) -> None:
-        scheme = current_scheme()
-        text_role, fill_role, alpha = self.fill(scheme)
-        text = QColor(role_color(text_role, scheme))
-        fill = QColor(role_color(fill_role, scheme))
-        fill.setAlpha(alpha)
         p = QPainter(self)
-        p.fillRect(self.rect(), fill)
-        stroke(p, QRectF(self.rect()), text, self.panes.border_width * self.scale)  # follows text
+        text = self.paint_pane(p, current_scheme())
         width, band, baseline = self._run
         p.scale(1 / self._ratio, 1 / self._ratio)  # device pixels from here on
         origin = p.deviceTransform()
@@ -401,20 +445,106 @@ class _Pane(QWidget):
         p.end()
 
 
+class _Title(_OverArt):
+    """The title: the project's logo, the symbol and the wordmark, upright, in a quiet pane.
+
+    The logo's file holds its clear space, so the pane is the logo, ``title_pane.height``
+    tall. Over dark art the pane takes the dark fill and the reversed logo, its C and
+    "Calculator" in white; over light art, the light fill and the logo in black: whichever
+    reads with less fill (ADR-0015, amendments). The brand's crimson stays crimson on
+    both (docs/dev/design/brand.md).
+
+    A modified build's pack names its own title logo (``product_logo``, TRADEMARKS.md).
+    That one is shown in a logo box, as an organization's is, ``title_pane.height`` tall
+    and at most the safe area's width. If it can't be read, the title is left out rather
+    than show the project's logo on a modified build.
+    """
+
+    def __init__(self, branding: Branding, tokens: WelcomeStyle, parent: QWidget) -> None:
+        super().__init__(tokens, tokens.title_pane, parent)
+        self.tokens = tokens.title_pane
+        """Where the title sits, its height, and its contrast."""
+        self.style_tokens = tokens
+        self.pack = _PackLogo(branding.product_logo, "product logo", self)
+        self.source = (
+            "brand" if branding.product_logo is None else "pack" if self.pack.drawn else "none"
+        )
+        """Where the title came from: ``"brand"``, ``"pack"``, or ``"none"``."""
+        self._logos = (
+            QSvgRenderer(str(TITLE_LOGO), self),
+            QSvgRenderer(str(TITLE_LOGO_REVERSED), self),
+        )
+        """The project's logo for the panes' two text roles: dark, then light."""
+        self.setAccessibleName(PRODUCT_NAME)
+        self.setVisible(self.source != "none")
+
+    @property
+    def logo_size(self) -> Size:
+        """The title logo's own size: the project's, clear space included, or the pack's."""
+        if self.source == "pack":
+            return self.pack.size
+        box = self._logos[0].viewBoxF()
+        return Size(box.width(), box.height())
+
+    def place(self, slot: Size, scale: float) -> None:
+        """Size the title at the card's ``scale`` and put it at its anchor corner of ``slot``."""
+        self.scale = scale
+        logo, height = self.logo_size, round(self.tokens.height * scale)
+        if self.source == "pack":  # boxed, at most the safe area's width
+            padding = self.style_tokens.logo.padding * scale
+            limit = self.tokens.safe_area.width * scale
+            inner = Rect(padding, padding, limit - 2 * padding, height - 2 * padding)
+            width = math.ceil(contain_fit(logo, inner).width + 2 * padding)
+        else:
+            width = math.ceil(height * logo.width / logo.height)
+        size = Size(width, height)
+        rect = pane_rect(self.tokens.anchor, self.tokens.inset * scale, size, slot)
+        self.setGeometry(round(rect.x), round(rect.y), width, height)
+
+    def shown_logo(self, scheme: Scheme) -> str:
+        """Which logo the title shows in ``scheme``: normal, reversed, or the pack's.
+
+        One of ``"normal"``, ``"reversed"``, ``"pack"``, or ``"none"``.
+        """
+        if self.source != "brand":
+            return self.source
+        text_role, _fill, _alpha = self.fill(scheme)
+        return "normal" if text_role == self.panes.text_roles[0] else "reversed"
+
+    @override
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if self.source == "none":  # never the project's logo on a modified build
+            return
+        if self.source == "pack":
+            _paint_logo_box(self, self.pack, self.style_tokens, self.scale)
+            return
+        scheme = current_scheme()
+        p = QPainter(self)
+        self.paint_pane(p, scheme)
+        renderer = self._logos[self.shown_logo(scheme) == "reversed"]
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)  # the logo's own shapes
+        renderer.render(p, QRectF(self.rect()))
+        p.end()
+
+
 class _ArtSlot(QWidget):
     """The art, covering the card's width around its focal point, with what floats over it.
 
-    The logo box sits over its left edge, and the name and version panes at their corners.
+    The organization logo's box sits over its left edge, when there is one, and the title
+    and the version pane at their corners.
     """
 
     def __init__(self, branding: Branding, parent: QWidget) -> None:
         super().__init__(parent)
         self._art = read_image(branding.welcome_art, "welcome art")
         self._focus = branding.welcome_focus
-        self._generic: QImage | None = None
-        self.source = "generic" if self._art is None else "pack"
-        """Where the art came from: ``"pack"``, or ``"generic"`` when there was none or it
-        couldn't be used."""
+        self.source = "pack"
+        """Where the art came from: ``"pack"``; ``"generic"``, the built-in art, when the
+        pack had none or it couldn't be used; or ``"none"`` if even that couldn't be read,
+        when the card's background shows, and a build's smoke test fails."""
+        if self._art is None:
+            self._art = read_image(GENERIC_ART, "built-in welcome art")
+            self.source = "generic" if self._art is not None else "none"
         tokens = branding.welcome_tokens
         self.tokens = tokens
         self.slot = tokens.art.slot
@@ -425,7 +555,7 @@ class _ArtSlot(QWidget):
         self.placed = False
         """Whether the logo box and the panes have been placed, once the slot has its size."""
         self.logo = _LogoBox(branding, self)
-        self.name_pane = _Pane(PRODUCT_NAME, tokens, tokens.name_pane, self)
+        self.title = _Title(branding, tokens, self)
         # Translators: the welcome card's version line. It sits in a small corner of the
         # art, so keep it short.
         version = _("Version {version}").format(version=__version__)
@@ -447,14 +577,10 @@ class _ArtSlot(QWidget):
         return image
 
     def _draw(self, p: QPainter) -> None:
+        image = self._art
+        if image is None:  # the card's background shows
+            return
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        ratio = self.devicePixelRatioF()
-        if self._art is not None:
-            image = self._art
-        else:
-            if self._generic is None or self._generic.devicePixelRatio() != ratio:
-                self._generic = generic_art(self.size(), ratio)
-            image = self._generic
         target = QRectF(self.rect())
         r = image.devicePixelRatio()
         width, height = image.width() / r, image.height() / r
@@ -465,10 +591,9 @@ class _ArtSlot(QWidget):
         """Place the logo box and the panes, and measure the art under the panes."""
         scale = self.width() / self.slot.width
         slot = Size(self.width(), self.height())
-        self._generic = None
         self.logo.place(scale)
-        for pane in (self.name_pane, self.version_pane):
-            pane.place(slot, scale)
+        self.title.place(slot, scale)
+        self.version_pane.place(slot, scale)
         self.placed = True
         self.measure()
 
@@ -476,8 +601,11 @@ class _ArtSlot(QWidget):
         """Measure the art under each pane and over its safe area, as the slot shows it."""
         art = self.shown_art()
         scale = self.width() / self.slot.width
-        for pane in (self.name_pane, self.version_pane):
-            pane.measure(art, scaled(self.tokens.safe_area(pane.tokens), scale))
+        self.version_pane.measure(
+            art, scaled(self.tokens.safe_area(self.tokens.version_pane), scale)
+        )
+        if self.title.source == "brand":  # a pack's title logo is boxed, opaque
+            self.title.measure(art, scaled(self.tokens.safe_area(self.tokens.title_pane), scale))
 
     @override
     def resizeEvent(self, event: QResizeEvent) -> None:
@@ -545,7 +673,7 @@ class _Border(QWidget):
 
 
 class WelcomeScreen(QWidget):
-    """The welcome screen: art, logo, name, and version, with an About button and an X.
+    """The welcome screen: the art, the title, the version, and an organization's logo.
 
     It is application-modal, so it blocks the main window until it's closed (ADR-0015 W5,
     amendments). Esc or the X closes it, and it's deleted when closed. Connections use
@@ -611,6 +739,7 @@ class WelcomeScreen(QWidget):
         slot = tokens.art.slot
         self.art.setFixedSize(round(slot.width * scale), round(slot.height * scale))
         self.logo = self.art.logo
+        self.title = self.art.title
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(0)
@@ -633,12 +762,17 @@ class WelcomeScreen(QWidget):
 
     @property
     def art_source(self) -> str:
-        """Where the art came from: ``"pack"``, or ``"generic"``."""
+        """Where the art came from: ``"pack"``, ``"generic"`` (built in), or ``"none"``."""
         return self.art.source
 
     @property
-    def logo_source(self) -> str:
-        """Where the logo came from: ``"pack"``, or ``"generic"``."""
+    def title_source(self) -> str:
+        """Where the title came from: ``"brand"``, ``"pack"``, or ``"none"``."""
+        return self.title.source
+
+    @property
+    def organization_source(self) -> str:
+        """Where the organization logo came from: ``"pack"``, or ``"none"``."""
         return self.logo.source
 
     def _fit_scale(self) -> float:

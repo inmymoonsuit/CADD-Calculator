@@ -324,3 +324,101 @@ window the user couldn't use, blocked by a modal card they couldn't see.
 * **The hold's timer is tied to the card** (`QTimer.singleShot` with the card as its
   context), so a card deleted first takes its pending hold with it, and the reveal does
   nothing once the main window is gone (Support & Review's L1).
+
+### 2026-10-26: the generic logo strip, from the brand's symbol (UI/UX)
+
+*Superseded the same day by "the title logo and the organization slot", below: the lockup
+is retired, and the strip holds only an organization's logo.*
+
+The maintainer drew the project's logo and handed its placement to the lanes (relayed
+by PM). §2's logo strip, "the app icon and the name, set vertically", is now built from
+it (`src/caddcalc/gui/assets/brand/welcome-lockup.svg`, docs/dev/design/brand.md).
+
+* **The lockup:** the symbol at the top, then the outlined wordmark "CADD Calculator",
+  turned to read from the bottom up, as a drawing's vertical text reads from its right
+  side. A gap of one C arm sits between them, the brand's clear space.
+  * It's drawn from the logo's own paths, with no font.
+  * Its 248 × 1178 shape fills the box's inside at the box's cap: 64 × 304 px inside a
+    box 80 × 320 px at full size.
+* **Colours:** the brand's, for white: a black C and "Calculator", and a crimson square
+  and "CADD". The box's fill is white in both themes, so crimson is 7.56:1 and black
+  21:1 on it, whatever the theme.
+* **What it replaces:** ADR-0016's slice h made the generic mark the app icon alone, because a
+  white upright name vanished on the white box in the dark theme. Fixed brand colours
+  for white can't vanish. The name also stays in the title pane.
+* **A pack's logo is unchanged.** A branded edition's pack that supplies its own logo
+  still shows it.
+* **Test:** in both themes, the generic box is the cap's height and a vertical strip,
+  and draws crimson and black at least 3:1 on its white fill, with only the fill around
+  the lockup.
+
+### 2026-10-26: the title logo and the organization slot (UI/UX)
+
+The maintainer proposed this layout: retire the text title, use its place for the
+project's logo and wordmark upright, and keep the strip, where a branded edition's logo
+sits, for a secondary organization's logo: empty in the official build, an organization's
+in a branded edition, and a fork's to use as it sees fit. They approved PM's refined plan
+for it (both relayed by PM). The details are UI/UX's, under the maintainer's delegation.
+
+* **The title** is the project's logo, the symbol and the wordmark, upright, at the top
+  right: 312 × 72 px at full size, 24 px in from the art's edges, inside §2's 376 × 88
+  safe area. It's read as "CADD Calculator". The maintainer chose 72 px from renders at
+  56, 64, 72 and 80 px, over the generic art and their mockup of the primary edition's
+  art (relayed by PM).
+  * The logo's file holds its clear space, 48 of its 344 units on every side, so the pane
+    is the logo itself (`brand/logo-outlined.svg` and `-reversed.svg`, moved from
+    `docs/dev/design/brand/` to ship with the app).
+  * It sits in a quiet pane, as the version does (ADR-0016 §5), held to 3:1 for its
+    white or black parts, as for graphics. The pane picks its pair as before; the dark
+    fill shows the reversed logo, white C and "Calculator", and the light fill the logo
+    in black. PM's brief named the reversed logo, since it sits on the art; over light
+    art that would fail, so the pane chooses, and over the generic art it's the reversed
+    one, at the 15% floor. The crimson stays crimson on both (brand.md).
+* **The strip** holds an organization's logo, from the pack's renamed
+  `organization_logo`, in its box as before (ADR-0016 §3). Without one there's no box,
+  and the art shows there: the official build has none.
+* **Forks:** a pack's `product_logo` replaces the title. It's boxed as the organization
+  logo is, white with a border and padding, 72 px tall and at most the safe area's width,
+  since a pack's logo may be drawn for white. If it can't be read, the title is left
+  out, rather than show the project's logo on a modified build.
+* **The smoke report** says which were shown: `welcome_title` (`brand`, `pack`, or
+  `none`) and `welcome_organization_logo` (`pack` or `none`), in place of `welcome_logo`.
+  The build checks both against the pack.
+* **Tests:**
+  * The title is the logo, upright, with its name, sized and placed as above, in both
+    themes; over the generic art, the C's upper arm is white and the set-square crimson.
+  * The title and the version read over light, dark, busy and saturated art; over light
+    art the title shows the normal logo, and over dark art the reversed one.
+  * Without an organization logo, the strip's pixels are the art's.
+  * A pack's organization logo shows in the strip; a pack's product logo replaces the
+    title, with nothing of the project's logo, and one that can't be read leaves no
+    title.
+  * The old `logo` key is refused, naming `organization_logo`.
+
+### 2026-10-26: the generic art is the maintainer's (UI/UX)
+
+§3's generated stand-in, drawn from the palette, is replaced by the maintainer's own art
+for the official build (relayed by PM, as are the decisions below).
+
+* **The file:** `src/caddcalc/gui/assets/welcome/welcome-art.jpg`, 1920 × 1080, 16:9, as
+  §3 asks. It's beside the brand's files, not among them: it's art, not a mark, so
+  TRADEMARKS.md doesn't cover it.
+  * **JPEG at quality 95,** 305 KB, from the 2.0 MB PNG the maintainer delivered,
+    unchanged. The smooth wall carries its grain, so it doesn't band, even stretched 12
+    times in contrast; the largest channel error is 17 levels, and 4 on the wall.
+  * **No metadata:** the delivered file's editing history isn't carried over; a test
+    allows only the image's own segments.
+* **Rights:** © inmymoonsuit, the maintainer, who holds them. The maintainer left the
+  licence to PM, who chose Apache-2.0 with the project. THIRD_PARTY_NOTICES.md and
+  brand.md say so. No provenance is recorded, by the maintainer's decision.
+* **The fallback:** a pack's art that can't be used falls back to this art, as §3's
+  fallbacks did to the generated art. If even this can't be read, the card's background
+  shows, and the art's source is `none`, which the build's smoke test refuses. The
+  generated art, `gui/welcome_art.py`, is removed.
+* **Over it:** the art is light and calm, so the title picks the logo in black, and both
+  panes stay at the 15% floor, ink on white, in both themes and in en_XA. `art_focus`
+  stays at its default: the art is 16:9, so it's never cropped.
+* **Tests:** the art is 1920 × 1080, in budget, outside the brand's folder, and carries
+  no metadata; the panes stay quiet over it, the title shows the logo in black, and the
+  reversed logo still shows over dark art; with no readable art, the background shows;
+  and the build's smoke test refuses `none` for the official build.

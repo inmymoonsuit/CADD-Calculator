@@ -8,6 +8,7 @@
 # Binary assets
 *.png binary
 *.jpg binary
+*.ai binary
 *.jpeg binary
 *.ico binary
 *.icns binary

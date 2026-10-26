@@ -1,4 +1,9 @@
-# CADD Calculator
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/caddcalc/gui/assets/brand/logo-outlined-reversed.svg">
+    <img alt="CADD Calculator" src="src/caddcalc/gui/assets/brand/logo-outlined.svg" width="360">
+  </picture>
+</h1>
 
 Open-source calculators for computer-aided drafting and design. It runs as a desktop app
 on Windows, macOS, and Linux, and as a command-line tool.
@@ -94,6 +99,9 @@ practice before manufacturing. The software comes with no warranty.
 
 ## License
 
-Code: [Apache License 2.0](LICENSE.md). Third-party names and marks are not covered by
-the code license. See
+[Apache License 2.0](LICENSE.md), the brand files included. The name "CADD Calculator"
+and its logo are also trademarks: see [TRADEMARKS.md](TRADEMARKS.md). In short, you can
+refer to the project and share unmodified builds, and a modified version needs its own
+name and icon.
+Third-party names and marks aren't covered by the code licence either. See
 [ADR-0008](docs/dev/decisions/0008-licensing-and-third-party-assets.md).

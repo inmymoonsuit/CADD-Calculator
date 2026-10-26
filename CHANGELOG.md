@@ -6,6 +6,39 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The project's logo and app icon, drawn by the maintainer, in place of the interim icon
+  drawn in code. The window, taskbar, About, `.exe`, installer, macOS `.icns` and Linux
+  icons all use it. At 16, 24 and 32 px it's redrawn on each size's pixel grid, so its
+  gap stays open.
+- The welcome screen's art is the maintainer's: a light, calm scene, © inmymoonsuit,
+  under Apache-2.0 with the project. It replaces the art drawn from the palette, and a
+  pack without art of its own, or with art that can't be read, shows it too.
+- The welcome screen's title is the project's logo, upright, in place of the "CADD
+  Calculator" text in VT323. Its pane shows the reversed logo over dark art and the
+  logo in black over light art, whichever reads.
+- The welcome screen's left strip is now an organization's logo, from a branding pack's
+  `[welcome]` `organization_logo`. Without one the strip is gone, and the art shows
+  there, as in the official build.
+- A branding pack's `[welcome]` `product_logo` replaces the title, for a modified build
+  that must show its own logo (TRADEMARKS.md).
+- The installer's wizard shows the brand's images in place of Inno Setup's own.
+- The README's header is the logo, in light and dark versions for GitHub's themes.
+- A brand guide, docs/dev/design/brand.md: the palette, clear space, sizes, and which
+  version of the logo goes where.
+- TRADEMARKS.md: the name and logo are the maintainer's trademarks. Their files are under
+  Apache-2.0 like the rest of the repo; the policy governs using them to identify a
+  product. Anyone may refer to the project and share unmodified builds; a modified
+  version needs its own name, icon and logo.
+- TRADEMARKS.md ships beside LICENSE.md: in the app folder, the wheel and the sdist. The
+  installer's license page and About say the name and logo are trademarks, governed by
+  it, and the build fails without it.
+
+### Removed
+- The interim app icon (`app-icon.png`) and its generator in `packaging/icons.py`.
+- A branding pack's `[welcome]` `logo` key: it's `organization_logo` now, and a pack
+  that still sets `logo` is refused, with a message naming the new key.
+
 ## [0.1.0a1] - 2026-10-25
 
 The first pre-release, for testing: unsigned, with Windows and Linux downloads.

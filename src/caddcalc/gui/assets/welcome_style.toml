@@ -27,7 +27,7 @@ button_size = 24
 separator_width = 1
 separator_role = "welcome_line"
 
-[logo]
+[logo]                             # the logo boxes: the organization's, and a pack's title
 formats = [".svg", ".png"]
 region_width = 96
 margin_left = 16                   # minimums
@@ -40,7 +40,7 @@ border_width = 1
 border_role = "welcome_line"
 fill_role = "welcome_paper"        # white in both themes: logos are drawn for white
 
-[panes]                            # the name and version panes' shared style
+[panes]                            # the title and version panes' shared style
 text_roles = ["welcome_ink", "welcome_paper"]
 fill_roles = ["welcome_paper", "welcome_ink"]   # each text's own fill: light, then dark
 fill_opacity_min = 0.15
@@ -48,14 +48,13 @@ border_width = 1                   # in the text's role
 percentile = 5                     # of the art under a pane that may fall short
 max_background_spread = 1.5        # how much the blended background may vary
 
-[name_pane]
+[title_pane]                       # the project's logo, holding its own clear space
 anchor = "top_right"
 inset = 24
-padding = [8, 16]                  # around the capitals: vertical, horizontal
-font = "display"
-font_size = 50                     # snaps to the face's pixel grid
-min_contrast = 3                   # large text (WCAG 2)
-safe_area = [376, 88]              # what the art keeps clear of detail
+height = 72                        # the logo's, clear space included
+min_contrast = 3                   # its white or black parts: graphics (WCAG 2, 1.4.11)
+safe_area = [376, 88]              # what the art keeps clear of detail; a pack's title
+                                   #   logo is at most its width
 
 [version_pane]
 anchor = "bottom_right"

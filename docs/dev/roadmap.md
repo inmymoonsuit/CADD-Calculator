@@ -85,16 +85,19 @@ has been checked. The suite starts with sheet metal and grows by domain.
       [design/palette.md](design/palette.md)), replacing the ad-hoc HTML colors in `gui/window.py`
 - [x] Welcome screen at startup, replacing the splash screen (ADR-0015): composed from a
       pack's parts (art, focal point, vertical logo) with live name and version text,
-      shared File and Help commands, and generated generic art until the item below lands.
-- [ ] Generic art for the public build: logo/app icon (Windows `.ico`, macOS `.icns`,
-      Linux PNG sizes) and welcome-screen art to the art specification
-      ([ADR-0015 §3](decisions/0015-welcome-screen.md); 16:9, supplied at 1920 × 1080, in
-      [design/welcome-screen.md](design/welcome-screen.md)). Use original work, released
-      permissively (see ADR-0008, item 4), with the source files (SVG or `.blend`)
-      committed so others can edit them. Build it only from assets whose licenses allow that: your own models,
-      CC0 assets, or OFL fonts. Not purchased stock assets whose licenses forbid relicensing.
-      Until then, an interim icon drawn in code (`packaging/icons.py`) is in
-      `src/caddcalc/gui/assets/`.
+      shared File and Help commands, and the public build's art, the item below.
+- [x] Generic art for the public build. **The logo and app icon are done** (2026-10-26,
+      [design/brand.md](design/brand.md)): the maintainer's artwork, in the `.ico`,
+      `.icns`, Linux icons, About, the welcome screen's title and the installer. **The
+      welcome art is done** (2026-10-26): the maintainer's, © inmymoonsuit, under
+      Apache-2.0 with the project, to the art specification
+      ([ADR-0015, amendments](decisions/0015-welcome-screen.md);
+      [design/welcome-screen.md](design/welcome-screen.md)). It replaces the art generated
+      from the palette. Its source files aren't in the repo; whether to add them is the
+      maintainer's call.
+- [ ] One crimson: the UI palette's `#A3122F` (`palette.toml`) and the brand's `#A31D31`
+      are two near values. Make them one, as a deliberate palette change with its own
+      contrast tests ([design/brand.md](design/brand.md), "Palette").
 - [x] Branding hook: load name, icon, splash, and About text from an optional branding pack
       at build or run time, with a `--branding <pack>` build option (ADR-0008 item 4,
       ADR-0011, `docs/dev/packaging.md`)

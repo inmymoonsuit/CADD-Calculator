@@ -31,7 +31,7 @@ about = "about.html"
 [welcome]
 art = "welcome-art.png"
 art_focus = [0.4, 0.5]
-logo = "logo-vertical.svg"
+organization_logo = "logo-vertical.svg"
 """
 
 LOGO_SVG = """\

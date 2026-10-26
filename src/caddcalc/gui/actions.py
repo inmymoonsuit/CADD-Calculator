@@ -10,9 +10,9 @@ from __future__ import annotations
 from html import escape
 
 import PySide6
-from PySide6.QtCore import QObject, qVersion
+from PySide6.QtCore import QObject, QSize, qVersion
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import QApplication, QMenuBar, QMessageBox
+from PySide6.QtWidgets import QApplication, QMenuBar, QMessageBox, QWidget
 
 from caddcalc import __version__
 from caddcalc.core.formatting import DISCLAIMER
@@ -21,6 +21,8 @@ from caddcalc.gui.branding import GENERIC, PRODUCT_NAME, Branding
 
 GENERIC_ABOUT = "<p>Open-source calculators for computer-aided drafting and design.</p>"
 """The public build's description in About; a branding pack may replace it."""
+ABOUT_ICON = 64
+"""The app icon's size in About, in logical pixels: a dialog icon's usual size."""
 
 
 def about_html(branding: Branding) -> str:
@@ -32,7 +34,8 @@ def about_html(branding: Branding) -> str:
     return (
         f"<h3>{escape(PRODUCT_NAME)} {escape(__version__)}</h3>"
         + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
-        + "<p>Licensed under the Apache License, Version 2.0. See LICENSE.md.</p>"
+        + "<p>Licensed under the Apache License, Version 2.0. See LICENSE.md. The name "
+        "and logo are trademarks: see TRADEMARKS.md.</p>"
         f"<p>{escape(_(DISCLAIMER))}</p>"
         '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
         "github.com/inmymoonsuit/CADD-Calculator</a></p>"
@@ -95,8 +98,17 @@ class AppActions(QObject):
             for action in actions:
                 menu.addAction(action)
 
+    def about_box(self, parent: QWidget | None) -> QMessageBox:
+        """Return About: the version, the license, and the terms, beside the app icon."""
+        box = QMessageBox(parent)
+        box.setWindowTitle(f"About {PRODUCT_NAME}")
+        box.setText(about_html(self.branding))
+        icon = QApplication.windowIcon()
+        ratio = parent.devicePixelRatioF() if parent is not None else 1.0
+        box.setIconPixmap(icon.pixmap(QSize(ABOUT_ICON, ABOUT_ICON), ratio))
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        return box
+
     def show_about(self) -> None:
-        """Show About over the active window: the version, the license, and the terms."""
-        QMessageBox.about(
-            QApplication.activeWindow(), f"About {PRODUCT_NAME}", about_html(self.branding)
-        )
+        """Show About over the active window."""
+        self.about_box(QApplication.activeWindow()).exec()

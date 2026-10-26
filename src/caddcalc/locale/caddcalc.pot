@@ -144,6 +144,12 @@ msgstr ""
 msgid "One value in every unit of its kind at once: lengths, angles, areas, and stresses."
 msgstr ""
 
+#. the welcome card's box for a branded edition's own logo, such as
+#. a school's or a company's. Screen readers read it.
+#: src/caddcalc/gui/welcome.py
+msgid "Organization logo"
+msgstr ""
+
 #: src/caddcalc/calculators/geometry/shapes.py
 msgid "Perimeter, area, and diagonal of a rectangle."
 msgstr ""

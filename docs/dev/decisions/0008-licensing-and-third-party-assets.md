@@ -65,3 +65,37 @@ outside the project.
 
 * Add `NOTICE` and `THIRD_PARTY_NOTICES.md` when the first bundled third-party asset or
   library notice requires them. Installers that bundle Qt will need the LGPL notices.
+
+## Amendments
+
+### 2026-10-26: the project's logo and app icon (item 4)
+
+* **The artwork:** the maintainer drew the logo and the app icon, working with ChatGPT,
+  and finalised them in Adobe Illustrator (as the maintainer told PM, relayed). So their
+  provenance includes AI assistance, and docs/dev/design/brand.md says so.
+  * The wordmark is Montserrat ExtraBold (SIL OFL 1.1), outlined into paths. The OFL
+    doesn't cover documents made with the font, so no font ships and no notice is due.
+  * The files hold vector paths only.
+* **Its licence: Apache-2.0, with a trademark policy.** PM first chose Apache-2.0 under
+  the maintainer's delegation. The maintainer then decided, on 2026-10-26 (relayed by
+  PM), that the name and logo be protected differently from the code, as a short,
+  friendly trademark policy. How is PM's choice, under the maintainer's delegation:
+  * The files' copyright licence stays Apache-2.0, like the rest of the repo, so the
+    repo has one licence and anyone may copy and change the files.
+  * The name "CADD Calculator", the symbol, the logo and the app icon are also the
+    maintainer's trademarks. Apache-2.0 grants no right to use them to identify a
+    product (§6); [TRADEMARKS.md](../../../TRADEMARKS.md) says what's allowed.
+  * Use by name, and unmodified redistribution, are allowed without asking. A modified
+    version needs its own name, icon and logo, and mustn't suggest endorsement. A fork
+    may keep the files in its history and repo, but its builds mustn't present
+    themselves with them. That refines item 4's "forks must remove them": removing them
+    from history isn't asked.
+  * That replaces item 4's recommended CC BY 4.0 or CC0 for the public build's logo. No
+    `ASSETS-LICENSE` notice is needed.
+* **Where it lives:** `src/caddcalc/gui/assets/brand/` (shipped) and
+  `docs/dev/design/brand/` (the logos, the Illustrator masters and the social preview),
+  with the brand guide at docs/dev/design/brand.md.
+* **`TRADEMARKS.md` is added,** as item 4 asks once marks are in the public repo. That
+  closes item 4's open question.
+* **Branded editions are unchanged:** a pack's own icon and logo still apply. A pack
+  that names no icon shows the project's icon.
