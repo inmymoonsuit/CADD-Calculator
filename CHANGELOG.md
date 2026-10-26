@@ -6,6 +6,11 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0a2] - 2026-10-26
+
+The project's own identity: its logo, app icon, welcome screen and art, and trademark
+policy.
+
 ### Added
 - The project's logo and app icon, drawn by the maintainer, in place of the interim icon
   drawn in code. The window, taskbar, About, `.exe`, installer, macOS `.icns` and Linux

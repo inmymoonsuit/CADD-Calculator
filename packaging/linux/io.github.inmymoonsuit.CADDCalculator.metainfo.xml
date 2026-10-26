@@ -34,6 +34,11 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0a2" date="2026-10-26" type="development">
+      <description>
+        <p>The project's own logo, app icon, welcome screen and art.</p>
+      </description>
+    </release>
     <release version="0.1.0a1" date="2026-10-25" type="development">
       <description>
         <p>The first pre-release, for testing.</p>

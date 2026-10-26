@@ -12,7 +12,7 @@ It started as the Excel spreadsheets used to teach sheet-metal bend calculations
 CADD degree program. The goal is a principled, tested, extensible home for those
 calculations and for future ones: structural drafting, tolerancing, threads, and more.
 
-> **Status: pre-alpha (0.1.0a1, the first pre-release).** Sixteen calculators in three families work from
+> **Status: pre-alpha (0.1.0a2, the second pre-release).** Sixteen calculators in three families work from
 > the desktop app and the CLI, in US and British English, each field and result with a
 > picker for its unit ([ADR-0024](docs/dev/decisions/0024-units-on-fields.md)). Nothing
 > is packaged yet. Next: the layout contract
