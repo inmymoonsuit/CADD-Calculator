@@ -12,10 +12,11 @@ It started as the Excel spreadsheets used to teach sheet-metal bend calculations
 CADD program at Ridgewater College. The goal is a principled, tested, extensible home for those
 calculations and for future ones: structural drafting, tolerancing, threads, and more.
 
-> **Status: pre-alpha (0.1.0a2, the second pre-release).** Sixteen calculators in three families work from
+> **Status: pre-alpha (0.1.0a3, the third pre-release).** Sixteen calculators in three families work from
 > the desktop app and the CLI, in US and British English, each field and result with a
-> picker for its unit ([ADR-0024](docs/dev/decisions/0024-units-on-fields.md)). Nothing
-> is packaged yet. Next: the layout contract
+> picker for its unit ([ADR-0024](docs/dev/decisions/0024-units-on-fields.md)). Windows and
+> Linux downloads, still unsigned, are on the
+> [Releases](https://github.com/inmymoonsuit/CADD-Calculator/releases) page. Next: the layout contract
 > ([ADR-0023](docs/dev/decisions/0023-layout-contract.md)), then installers for every
 > platform ([ADR-0022](docs/dev/decisions/0022-distribution-and-signing.md)).
 

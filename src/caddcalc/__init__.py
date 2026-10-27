@@ -8,4 +8,4 @@ The package is layered (see docs/dev/architecture.md):
 * ``caddcalc.cli`` and ``caddcalc.gui``: thin front ends over the core.
 """
 
-__version__ = "0.1.0a2"
+__version__ = "0.1.0a3"

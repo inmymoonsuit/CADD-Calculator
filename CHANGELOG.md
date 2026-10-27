@@ -6,6 +6,11 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0a3] - 2026-10-27
+
+The Viking with the abacus as every build's welcome art, under its own licence, and a
+fix for a settings page that could fail to build.
+
 ### Changed
 - The welcome screen's art is the maintainer's Viking with the abacus, the art the
   Ridgewater edition shows, in every build. It's © inmymoonsuit and, unlike the rest of
