@@ -14,6 +14,11 @@ All notable changes are recorded here. The format follows
   installer's license page, the notices and the wheel's metadata say so.
 - The README names where the project started: the CADD program at Ridgewater College.
 
+### Fixed
+- **A family settings page could fail to build, at random,** showing "The settings
+  couldn't be shown" and an error about a `QWidgetItem`, with only some of its rows
+  (KI-033). The page's form now keeps no reference to a layout item Qt deletes.
+
 ## [0.1.0a2] - 2026-10-26
 
 The project's own identity: its logo, app icon, welcome screen and art, and trademark

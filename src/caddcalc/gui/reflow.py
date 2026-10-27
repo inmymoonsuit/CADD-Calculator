@@ -12,7 +12,8 @@ from __future__ import annotations
 from typing import override
 
 from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtWidgets import QFormLayout, QLayout, QLayoutItem, QWidget, QWidgetItem
+from PySide6.QtWidgets import QFormLayout, QLabel, QLayout, QLayoutItem, QWidget, QWidgetItem
+from shiboken6 import isValid
 
 
 class ReflowLayout(QLayout):
@@ -157,6 +158,12 @@ class WrappingForm(QFormLayout):
     its field, then lays it out with the gap, so a row within the gap of fitting gets its
     field squeezed (KI-031). The gap goes in each label's right margin instead, which Qt
     counts, and the form's own horizontal spacing is none.
+
+    Its rows are added with ``add_row``, and it never asks Qt for its layout items. PySide
+    keeps the wrapper of each item Python gets from ``itemAt`` for as long as the form
+    lives, and doesn't learn when ``removeRow`` deletes the item; a widget Qt makes later
+    at the same address then comes back to Python as that item (KI-033). So it makes each
+    row's label itself, and keeps each row's label and field.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -167,6 +174,8 @@ class WrappingForm(QFormLayout):
         self.setHorizontalSpacing(0)
         self._repaired_at: QRect | None = None
         """The geometry this form was last laid out again at, so it's done once there."""
+        self._parts: list[QWidget | QLayout] = []
+        """Each row's label and field; a removed row's are deleted, and dropped when seen."""
 
     @override
     def setGeometry(self, rect: QRect) -> None:
@@ -188,10 +197,15 @@ class WrappingForm(QFormLayout):
         super().setGeometry(rect)
 
     def _short_rows(self) -> bool:
-        """Whether a shown item that wraps is given less height than it needs at its width."""
-        for index in range(self.count()):
-            item = self.itemAt(index)
-            if item is None or item.isEmpty() or not item.hasHeightForWidth():
+        """Whether a shown label or field that wraps is given less height than it needs.
+
+        A widget is measured through an item of its own, which measures it as the form's
+        item for it does; a layout is its own item.
+        """
+        self._parts = [part for part in self._parts if isValid(part)]
+        for part in self._parts:
+            item = QWidgetItem(part) if isinstance(part, QWidget) else part
+            if item.isEmpty() or not item.hasHeightForWidth():
                 continue
             box = item.geometry()
             if box.height() < item.heightForWidth(box.width()):
@@ -200,8 +214,9 @@ class WrappingForm(QFormLayout):
 
     def add_row(self, text: str, field: QWidget | QLayout) -> None:
         """Add a row of ``field`` after a label of ``text``."""
-        self.addRow(text, field)
-        item = self.itemAt(self.rowCount() - 1, QFormLayout.ItemRole.LabelRole)
-        label = item.widget() if item is not None else None
-        if label is not None:
-            label.setContentsMargins(0, 0, self.gap, 0)
+        label = QLabel(text)
+        label.setContentsMargins(0, 0, self.gap, 0)
+        if isinstance(field, QWidget):
+            label.setBuddy(field)  # as the label Qt makes for a widget's row
+        self.addRow(label, field)
+        self._parts += [label, field]

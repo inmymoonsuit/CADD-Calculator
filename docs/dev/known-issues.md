@@ -278,6 +278,29 @@ PR #2, in the code before it too).
 
 ## Resolved
 
+### KI-033: A family settings page could fail to build, at random (resolved 2026-10-27)
+
+* **Symptom.** Now and then the Sheet Metal settings page showed "The settings couldn't
+  be shown" with an `AttributeError` on a `QWidgetItem`, and kept only the rows built
+  before it. In CI, a test then found no `inside_radius` field (a `KeyError`), and the
+  `qt` fixture's teardown called `close` on a `QWidgetItem` that `topLevelWidgets()`
+  returned. Both came and went with the heap's layout: in a Linux container (offscreen,
+  PySide6 6.12.0), the material and domain page tests failed on the 5th run of a loop,
+  the calculator page tests on the 7th, and the whole suite on the 1st of 2.
+* **Cause.** `WrappingForm` asked Qt for its layout items: `itemAt` in `add_row`, for
+  each row's label, and in `_short_rows`, for every item at each layout pass. Those items
+  are Qt's, not Python's. PySide keeps the wrapper of each one Python gets from `itemAt`
+  for as long as the form lives, and doesn't learn when `removeRow` deletes the item, so
+  the wrapper stays registered at the freed address and claims to be valid. When Qt then
+  made a widget at that address (a row's label, or a top-level popup), PySide gave
+  Python the old `QWidgetItem` wrapper for it. The settings page's isolation boundary
+  (ADR-0006) caught the `AttributeError` and showed it in place of the form.
+* **Fix.** `WrappingForm` never asks Qt for an item. `add_row` makes each row's label
+  itself, and the form keeps each row's label and field and measures those for KI-032's
+  repair, a widget through an item of its own. A test checks that building, laying out
+  and rebuilding the settings page leaves Python no wrapper of a Qt-made layout item.
+  On the same container, 40 runs of those test files and 6 of the whole suite passed.
+
 ### KI-016: Packaged builds lacked third-party license notices (resolved 2026-10-25)
 
 The app folder bundled Qt, PySide6/Shiboken, CPython, OpenSSL's libcrypto, libffi,

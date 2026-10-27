@@ -96,6 +96,34 @@ def test_the_settings_page_builds_its_form_as_a_wrapping_form() -> None:
     window.close()
 
 
+def test_the_settings_form_leaves_python_no_layout_item_qt_made() -> None:
+    """Built, laid out and built again, the page holds no wrapper of a Qt-made item.
+
+    PySide keeps such a wrapper while the form lives, and once ``removeRow`` deletes its
+    item, a widget Qt makes at the same address comes back as that stale item: a settings
+    page half-built, or a ``QWidgetItem`` asked to ``close`` (KI-033).
+    """
+    import gc
+
+    from PySide6.QtWidgets import QLayout, QLayoutItem
+    from shiboken6 import createdByPython
+
+    from tests.qt_helpers import settle
+
+    def qt_made() -> int:
+        return sum(
+            isinstance(o, QLayoutItem) and not isinstance(o, QLayout) and not createdByPython(o)
+            for o in gc.get_objects()
+        )
+
+    before = qt_made()
+    window = _settings_with_facts()
+    window.select_domain("sheet_metal")
+    settle(window)
+    assert qt_made() == before
+    window.close()
+
+
 def _squeezed(window: Any) -> list[Any]:
     """Every clipped widget narrower than its least width, or past the window's right edge.
 
