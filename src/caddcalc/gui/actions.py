@@ -35,7 +35,8 @@ def about_html(branding: Branding) -> str:
         f"<h3>{escape(PRODUCT_NAME)} {escape(__version__)}</h3>"
         + (branding.about_html if branding.about_html is not None else GENERIC_ABOUT)
         + "<p>Licensed under the Apache License, Version 2.0. See LICENSE.md. The name "
-        "and logo are trademarks: see TRADEMARKS.md.</p>"
+        "and logo are trademarks: see TRADEMARKS.md. Welcome art © inmymoonsuit, not "
+        "under that license: see ART-LICENSE.md.</p>"
         f"<p>{escape(_(DISCLAIMER))}</p>"
         '<p><a href="https://github.com/inmymoonsuit/CADD-Calculator">'
         "github.com/inmymoonsuit/CADD-Calculator</a></p>"

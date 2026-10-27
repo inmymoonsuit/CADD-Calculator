@@ -297,9 +297,9 @@ def bundle_host_libraries(output: Path) -> list[str]:
     return copied
 
 
-PROJECT_NOTICES = ("LICENSE.md", "TRADEMARKS.md", "THIRD_PARTY_NOTICES.md")
+PROJECT_NOTICES = ("LICENSE.md", "TRADEMARKS.md", "ART-LICENSE.md", "THIRD_PARTY_NOTICES.md")
 """The project's own notices, beside the executable: its license, its trademark policy,
-and the third-party index."""
+the welcome art's licence, and the third-party index."""
 
 
 def copy_notices(output: Path) -> None:
@@ -852,6 +852,13 @@ Trademarks
 
 The "CADD Calculator" name and logo are trademarks of the project's maintainer. Their use
 is governed by TRADEMARKS.md, in the install folder.
+
+----------------------------------------------------------------------
+Welcome art
+
+The welcome screen's art is (c) inmymoonsuit, the project's maintainer, and isn't under
+the Apache License. It may be used only as part of CADD Calculator, with credit; see
+ART-LICENSE.md, in the install folder.
 
 ----------------------------------------------------------------------
 Third-party components

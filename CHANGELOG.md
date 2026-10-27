@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- The welcome screen's art is the maintainer's Viking with the abacus, the art the
+  Ridgewater edition shows, in every build. It's © inmymoonsuit and, unlike the rest of
+  the project, isn't under Apache-2.0: it may be used only as part of CADD Calculator,
+  with credit, and a modified build must show its own art (ART-LICENSE.md). About, the
+  installer's license page, the notices and the wheel's metadata say so.
+- The README names where the project started: the CADD program at Ridgewater College.
+
 ## [0.1.0a2] - 2026-10-26
 
 The project's own identity: its logo, app icon, welcome screen and art, and trademark

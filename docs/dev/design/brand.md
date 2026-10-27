@@ -122,11 +122,14 @@ The master is used from 48 px up.
 
 ## The welcome art
 
-Welcome art © inmymoonsuit (the maintainer), licensed under Apache-2.0 with the project.
-It's art, not a mark, so it isn't covered by TRADEMARKS.md, and it lives beside the
-brand's files, not among them (`gui/assets/welcome/`). It's a light, calm scene, so the
-title shows the logo in black and both panes stay at their least fill. It ships as the
-maintainer delivered it.
+Welcome art © inmymoonsuit (the maintainer), not under Apache-2.0: it may be used only
+as part of CADD Calculator, with credit ([ART-LICENSE.md](../../../ART-LICENSE.md)). It's
+art, not a mark, so it isn't covered by TRADEMARKS.md, and it lives beside the brand's
+files, not among them (`gui/assets/welcome/`). It's the Viking with the abacus, the
+maintainer's own character, which the Ridgewater edition shows too. It's a light scene,
+so the title shows the logo in black at its least fill; the version, over the shield's
+rim, fills more to read. It ships
+as the maintainer delivered it, less its metadata.
 
 ## Editing
 

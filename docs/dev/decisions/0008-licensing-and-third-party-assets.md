@@ -99,3 +99,23 @@ outside the project.
   closes item 4's open question.
 * **Branded editions are unchanged:** a pack's own icon and logo still apply. A pack
   that names no icon shows the project's icon.
+
+### 2026-10-27: the welcome art has its own licence
+
+The maintainer decided (2026-10-27) that the welcome art, the Viking with the abacus,
+is the maintainer's illustration for this project only, shown in every build, and that
+the maintainer must be credited where it's used.
+
+* **It's excluded from Apache-2.0,** so the repo no longer has one licence for every
+  file. [ART-LICENSE.md](../../../ART-LICENSE.md) gives the terms: © inmymoonsuit, all
+  rights reserved, except redistribution as part of CADD Calculator (official builds,
+  and unmodified copies and forks of the repo) and showing it to talk about the project,
+  with the credit "Welcome art © inmymoonsuit". No other project, no modified build, no
+  derivative works.
+* **A modified build must show its own art,** as it must its own name and logo; a fork
+  may keep the file in its repo. A branding pack's `[welcome]` `art` supplies it.
+* **Where it's said:** About, the installer's license page, THIRD_PARTY_NOTICES.md,
+  the README, and the wheel's metadata: `license = "Apache-2.0 AND
+  LicenseRef-CADD-Calculator-Welcome-Art"`, with ART-LICENSE.md among its PEP 639
+  license files. The build copies it beside the executable, with the other notices.
+* It's still art, not a mark: TRADEMARKS.md doesn't cover it.

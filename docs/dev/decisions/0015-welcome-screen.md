@@ -422,3 +422,19 @@ for the official build (relayed by PM, as are the decisions below).
   no metadata; the panes stay quiet over it, the title shows the logo in black, and the
   reversed logo still shows over dark art; with no readable art, the background shows;
   and the build's smoke test refuses `none` for the official build.
+
+### 2026-10-27: the Viking with the abacus, in every build (PM)
+
+The maintainer chose (2026-10-27) to show one art in every build: the Viking with the
+abacus, until now the Ridgewater edition's. It's the maintainer's own character, not
+the college's iconography, so the official build may show it too.
+
+* **The file:** the same `gui/assets/welcome/welcome-art.jpg`, 1920 × 1080, 979 KB: the
+  edition's JPEG with its EXIF, XMP, Photoshop and Adobe segments dropped, losslessly.
+  Its pixels are the delivered file's, and the Adobe segment only said YCbCr, the
+  default.
+* **Its licence is its own** ([ART-LICENSE.md](../../../ART-LICENSE.md); ADR-0008,
+  amendments): for this project only, credited, not under Apache-2.0.
+* **Over it:** the scene is light, as before, so the title keeps the logo in black at
+  the 15% floor. The version sits over the shield's rim, so its fill rises (to 178 of
+  255 at 100%) to read; both stay ink on white.

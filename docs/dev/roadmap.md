@@ -89,8 +89,9 @@ has been checked. The suite starts with sheet metal and grows by domain.
 - [x] Generic art for the public build. **The logo and app icon are done** (2026-10-26,
       [design/brand.md](design/brand.md)): the maintainer's artwork, in the `.ico`,
       `.icns`, Linux icons, About, the welcome screen's title and the installer. **The
-      welcome art is done** (2026-10-26): the maintainer's, © inmymoonsuit, under
-      Apache-2.0 with the project, to the art specification
+      welcome art is done** (2026-10-26; the Viking with the abacus since 2026-10-27):
+      the maintainer's, © inmymoonsuit, for this project only (ART-LICENSE.md), to the
+      art specification
       ([ADR-0015, amendments](decisions/0015-welcome-screen.md);
       [design/welcome-screen.md](design/welcome-screen.md)). It replaces the art generated
       from the palette. Its source files aren't in the repo; whether to add them is the

@@ -68,8 +68,8 @@ BRAND = ASSETS / "brand"
 GENERIC_ICON = BRAND / "app-icon.svg"
 """The app icon's master; ``app_icon`` draws every size from it and its small drawings."""
 GENERIC_ART = ASSETS / "welcome" / "welcome-art.jpg"
-"""The official build's welcome art, by the maintainer, under Apache-2.0 with the project
-(docs/dev/design/brand.md). It's art, not a mark, so it isn't in ``BRAND``."""
+"""The official build's welcome art, © the maintainer, for this project only
+(ART-LICENSE.md). It's art, not a mark, so it isn't in ``BRAND``."""
 TITLE_LOGO = BRAND / "logo-outlined.svg"
 """The welcome screen's title: the symbol and the wordmark, for a light fill (ADR-0015)."""
 TITLE_LOGO_REVERSED = BRAND / "logo-outlined-reversed.svg"

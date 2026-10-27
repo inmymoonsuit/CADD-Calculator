@@ -492,22 +492,24 @@ def test_the_fills_are_chosen_before_the_cards_first_paint() -> None:
     welcome.close()
 
 
-def test_the_built_in_art_keeps_both_panes_quiet() -> None:
-    """The built-in art is light and calm: both panes stay at the floor, ink on white.
+def test_the_built_in_art_keeps_the_title_quiet() -> None:
+    """The built-in art is light: both panes are ink on white, the title's at the floor.
 
-    So the title shows the logo in black, the normal one.
+    So the title shows the logo in black, the normal one. The version sits over the
+    shield's rim, so its fill rises to read.
     """
     import math
 
     from caddcalc.gui.icons import current_scheme
 
-    panes = style().panes
+    floor = math.ceil(style().panes.fill_opacity_min * 255)
     welcome = screen()
     welcome.show()
     for pane in (welcome.title, welcome.art.version_pane):
         text_role, fill_role, alpha = pane.fill(current_scheme())
         assert (text_role, fill_role) == ("welcome_ink", "welcome_paper")
-        assert alpha == math.ceil(panes.fill_opacity_min * 255), pane.accessibleName()
+        assert alpha >= floor, pane.accessibleName()
+    assert welcome.title.fill(current_scheme())[2] == floor
     assert welcome.title.shown_logo(current_scheme()) == "normal"
     welcome.close()
 
@@ -522,21 +524,24 @@ def test_the_version_panes_look_doesnt_change_with_the_version(
     monkeypatch: pytest.MonkeyPatch, version: str
 ) -> None:
     """Its pair is chosen over its safe area, so every version looks alike, and reads."""
-    import math
-
     from caddcalc.gui import welcome as module
     from caddcalc.gui.welcome_style import pane_pairs, pane_reads
 
-    monkeypatch.setattr(module, "__version__", version)
     panes = style().panes
-    floor = math.ceil(panes.fill_opacity_min * 255)
+    monkeypatch.setattr(module, "__version__", VERSIONS[0])
+    reference = screen()
+    reference.show()
+    expected = {s: reference.art.version_pane.fill(s) for s in ("light", "dark")}
+    reference.close()
+    monkeypatch.setattr(module, "__version__", version)
     welcome = screen()
     welcome.show()
     pane = welcome.art.version_pane
     assert pane.text == f"Version {version}"
     for scheme in ("light", "dark"):
         text_role, fill_role, alpha = pane.fill(scheme)
-        assert (text_role, fill_role, alpha) == ("welcome_ink", "welcome_paper", floor), scheme
+        assert (text_role, fill_role, alpha) == expected[scheme], scheme
+        assert (text_role, fill_role) == ("welcome_ink", "welcome_paper"), scheme
         text, fill = pane_pairs(panes, scheme)[panes.text_roles.index(text_role)]
         needed = pane.tokens.min_contrast
         assert pane_reads(pane.art, text, fill, alpha, panes, needed), "the contrast rule holds"

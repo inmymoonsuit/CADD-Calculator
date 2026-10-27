@@ -171,9 +171,15 @@ def test_the_trademark_policy_names_the_marks_and_is_linked() -> None:
 
 
 def test_the_welcome_art_names_its_rights_holder_and_licence() -> None:
-    """The maintainer's art, under Apache-2.0 with the project; art, not a mark."""
-    rights = "Welcome art © inmymoonsuit (the maintainer), licensed under Apache-2.0 with the"
+    """The maintainer's art, for this project only and credited; art, not a mark."""
+    rights = "Welcome art © inmymoonsuit (the maintainer), not under Apache-2.0"
     for doc in ("THIRD_PARTY_NOTICES.md", "docs/dev/design/brand.md"):
         text = " ".join((ROOT / doc).read_text(encoding="utf-8").split())
         assert rights in text, doc
+        assert "ART-LICENSE.md" in text, doc
+    terms = (ROOT / "ART-LICENSE.md").read_text(encoding="utf-8")
+    assert "`src/caddcalc/gui/assets/welcome/welcome-art.jpg`" in terms
+    assert "> Welcome art © inmymoonsuit" in terms, "the credit"
+    assert "**Use it in any other project,**" in terms
+    assert "(ART-LICENSE.md)" in (ROOT / "README.md").read_text(encoding="utf-8")
     assert "welcome art" not in (ROOT / "TRADEMARKS.md").read_text(encoding="utf-8").lower()

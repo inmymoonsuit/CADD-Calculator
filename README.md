@@ -8,8 +8,8 @@
 Open-source calculators for computer-aided drafting and design. It runs as a desktop app
 on Windows, macOS, and Linux, and as a command-line tool.
 
-It started as the Excel spreadsheets used to teach sheet-metal bend calculations in a
-CADD degree program. The goal is a principled, tested, extensible home for those
+It started as the Excel spreadsheets used to teach sheet-metal bend calculations in the
+CADD program at Ridgewater College. The goal is a principled, tested, extensible home for those
 calculations and for future ones: structural drafting, tolerancing, threads, and more.
 
 > **Status: pre-alpha (0.1.0a2, the second pre-release).** Sixteen calculators in three families work from
@@ -103,5 +103,7 @@ practice before manufacturing. The software comes with no warranty.
 and its logo are also trademarks: see [TRADEMARKS.md](TRADEMARKS.md). In short, you can
 refer to the project and share unmodified builds, and a modified version needs its own
 name and icon.
+The welcome screen's art is the exception: © inmymoonsuit, for this project only, and
+credited when shown. See [ART-LICENSE.md](ART-LICENSE.md).
 Third-party names and marks aren't covered by the code licence either. See
 [ADR-0008](docs/dev/decisions/0008-licensing-and-third-party-assets.md).

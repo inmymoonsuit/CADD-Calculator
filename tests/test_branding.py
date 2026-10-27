@@ -412,6 +412,7 @@ def test_window_shows_the_brand_and_keeps_the_disclaimer(qt: Any, tmp_path: Path
     assert GENERIC_ABOUT in about_html(GENERIC)
     assert "Licensed under the Apache License, Version 2.0" in html, "always shown"
     assert "The name and logo are trademarks: see TRADEMARKS.md." in html, "always shown"
+    assert "Welcome art © inmymoonsuit" in html and "ART-LICENSE.md" in html, "always shown"
     window.close()
     app.processEvents()
 
@@ -695,6 +696,7 @@ def test_the_build_copies_and_checks_every_notice(build_script: ModuleType, tmp_
     missing = build_script.missing_notices(tmp_path)
     assert "LICENSE.md" in missing
     assert "TRADEMARKS.md" in missing
+    assert "ART-LICENSE.md" in missing
     assert "THIRD_PARTY_NOTICES.md" in missing
     assert "licenses/LGPL-3.0.txt" in missing
     build_script.copy_notices(tmp_path)
@@ -708,14 +710,15 @@ def test_the_build_copies_and_checks_every_notice(build_script: ModuleType, tmp_
     ]
 
 
-def test_the_wheel_and_sdist_carry_the_trademark_policy() -> None:
+def test_the_wheel_and_sdist_carry_the_trademark_policy_and_the_art_licence() -> None:
     """PEP 639's license files go in the wheel's metadata and the sdist, beside LICENSE.md."""
     import tomllib
 
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    assert {"LICENSE.md", "TRADEMARKS.md", "THIRD_PARTY_NOTICES.md"} <= set(
+    assert {"LICENSE.md", "TRADEMARKS.md", "ART-LICENSE.md", "THIRD_PARTY_NOTICES.md"} <= set(
         project["license-files"]
     )
+    assert project["license"] == "Apache-2.0 AND LicenseRef-CADD-Calculator-Welcome-Art"
 
 
 def test_the_notices_give_qt_and_pyside6_their_copyright_and_source() -> None:

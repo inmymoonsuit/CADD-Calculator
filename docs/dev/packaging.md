@@ -120,7 +120,8 @@ fill_opacity_min = 0.25                       # also fill_roles
 * **A modified build (a fork, or changed code or formulas) must look like itself,**
   not like CADD Calculator ([TRADEMARKS.md](../../TRADEMARKS.md)):
   * Its pack supplies its own `icon` and `[welcome]` `product_logo`, which replaces the
-    welcome screen's title. The generic build has no neutral fallback: without them, it
+    welcome screen's title, and its own `[welcome]` `art`: the built-in art is for this
+    project only ([ART-LICENSE.md](../../ART-LICENSE.md)). The generic build has no neutral fallback: without them, it
     shows the CADD Calculator icon and logo. Official builds and branded editions don't
     set `product_logo`.
   * Its name is changed in the code (`PRODUCT_NAME` in `gui/branding.py`), since a pack
@@ -154,7 +155,8 @@ The loader is `caddcalc.gui.branding`. It doesn't import Qt.
 
 ## Notices
 
-The build copies `LICENSE.md`, `TRADEMARKS.md`, and `THIRD_PARTY_NOTICES.md` into the app
+The build copies `LICENSE.md`, `TRADEMARKS.md`, `ART-LICENSE.md`, and
+`THIRD_PARTY_NOTICES.md` into the app
 folder, and the runtime's license texts into its `licenses/` folder. Third-party assets
 inside the package ride along with the package data: the Tabler icons and their `LICENSE.txt`, and
 the welcome screen's display face, VT323, with its `OFL.txt` (`gui/assets/fonts/vt323/`,
@@ -215,7 +217,7 @@ and art.
 4. Runs `pyside6-deploy -c pysidedeploy.spec --no-install`, which runs Nuitka in standalone
    mode. Nuitka must already be installed by uv (the `build` dependency group).
 5. Renames the `.dist` folder, copies the project's notices into it (`LICENSE.md`,
-   `TRADEMARKS.md`, `THIRD_PARTY_NOTICES.md`), and checks that a generic build
+   `TRADEMARKS.md`, `ART-LICENSE.md`, `THIRD_PARTY_NOTICES.md`), and checks that a generic build
    has no `branding/` folder and a branded build has one, and that every reference table
    in `caddcalc.calculators.REFERENCE_TABLES`, such as `sheet_metal/data/gauges.toml`, is
    bundled (`--include-package-data=caddcalc` carries them), as is every file the display

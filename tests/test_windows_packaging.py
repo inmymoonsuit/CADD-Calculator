@@ -99,6 +99,7 @@ def test_the_build_passes_the_version_and_folder_to_the_installer(tmp_path: Path
     assert "GNU LGPL v3" in text
     assert 'The "CADD Calculator" name and logo are trademarks' in text
     assert "governed by TRADEMARKS.md, in the install folder" in " ".join(text.split())
+    assert "with credit; see ART-LICENSE.md, in the install folder" in " ".join(text.split())
     wizard = {"WizardImage": "a.bmp,b.bmp", "WizardSmallImage": "c.bmp,d.bmp"}
     defines = build.installer_defines(output, tmp_path / "app.ico", page, wizard)
     assert defines["WizardImage"] == "a.bmp,b.bmp"
