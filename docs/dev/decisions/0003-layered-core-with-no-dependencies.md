@@ -60,3 +60,22 @@ caddcalc.cli  ─┼──▶  caddcalc.calculators.<domain>  ──▶  caddcal
   which calculators do.
 * `core`, `calculators`, and `gui.branding` never import Qt, which an import-linter
   contract enforces alongside the layer order.
+
+### 2026-10-28: a preferences layer (ADR-0025)
+
+Once ADR-0025 is accepted, the layers become:
+
+```
+caddcalc.cli ──▶ caddcalc.gui ──▶ caddcalc.preferences ──▶ caddcalc.calculators ──▶ caddcalc.core
+```
+
+* `caddcalc.preferences` holds the saved preferences' model, the folder resolver, and
+  the store (ADR-0025 §2). It's **standard library only**, and may import `core`.
+* It never imports Qt, nor does the GUI's Qt-free `gui.preference_keys`: both join the
+  no-Qt contract.
+* `core` and `calculators` never import it: nothing below the front ends reads a
+  preference (ADR-0025 §1). That's why it isn't in `core` (ADR-0025 C1).
+* `caddcalc.cli` never imports it directly (ADR-0025 M1), by a forbidden contract that
+  allows the indirect import through `caddcalc gui`, which starts the GUI.
+* The import-linter contracts, `docs/dev/architecture.md`, and guidelines §1 change in
+  the commit that adds the package (ADR-0025's E1), since they describe the code.

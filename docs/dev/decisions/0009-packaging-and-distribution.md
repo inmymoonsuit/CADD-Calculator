@@ -140,3 +140,19 @@ The file checks skip macOS, whose `.app` layout is still unchecked.
   environment (`testpypi`, `pypi`) whose required reviewer is the maintainer. No token is
   stored. The maintainer's one-time setup is in [packaging.md](../packaging.md#pypi).
 * Every action is pinned by commit SHA, and Dependabot proposes updates weekly.
+
+### 2026-10-28: the smoke test and saved preferences (ADR-0025)
+
+Once ADR-0025 is accepted, a packaged app can write one user file, so the smoke test
+must never write the real one:
+
+* **`--smoke-test=DIR`** keeps preferences in `DIR/preferences/`; without a DIR,
+  everything stays in memory and nothing is written (ADR-0025 §6).
+* **The build's smoke runs** check a save and a reload. `build.py` empties
+  `DIR/preferences`; run 1 reads `system` and saves `dark`, and the later runs load
+  `dark`. The report gains `preferences` (`file`, `loaded`, `saved`, `color_scheme`), and
+  the build fails if the file is outside DIR (ADR-0025 §10).
+* **Uninstalling leaves the file,** Inno Setup's default; `test_installer.py` checks it
+  with a seeded file.
+* `docs/dev/packaging.md` changes with that work, in the same release as UI/UX's S5,
+  since it describes what `build.py` does.

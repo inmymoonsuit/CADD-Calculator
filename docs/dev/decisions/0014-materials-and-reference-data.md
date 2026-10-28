@@ -1171,3 +1171,10 @@ short title) and `subjects`; its `text` and `detail` are filled as shown, in the
 output set, as the window shows them, and each of its `quantities` gives its value in
 base units and as shown. "Existing references and `to_dict` keep working" above means
 `Reference.to_dict`.
+
+### 2026-10-28: "No user files" and saved preferences (ADR-0025)
+
+§1's "No user files" stands for reference data. Once ADR-0025 is accepted the app saves
+one file, its preferences: how the app looks and behaves, never a family setting, a
+material, a gauge or a table (ADR-0025 M3). User or shop tables, even read-only, remain
+a separate decision, as §1 says.

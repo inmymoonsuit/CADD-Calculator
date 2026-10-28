@@ -37,3 +37,4 @@ Start from [template.md](template.md). Number sequentially and never reuse numbe
 | [0022](0022-distribution-and-signing.md) | Distribution and signing, starting free | Accepted; not yet built |
 | [0023](0023-layout-contract.md) | The layout contract | Accepted; not yet built (after 0024) |
 | [0024](0024-units-on-fields.md) | Units on fields | Accepted; built (stops 1–3) |
+| [0025](0025-saved-preferences.md) | Saved preferences, starting with light and dark | Accepted; not yet built |

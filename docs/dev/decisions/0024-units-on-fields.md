@@ -1608,3 +1608,17 @@ the branch.
   typed, and "in millimeters" for an empty field. It said "in millimeters" for all four.
 * **Probes, 4 of 4 killed:** the fix row never shown; the fix without its pick; a pick
   that always says "in"; one that never says "shown in".
+
+### 2026-10-28: saved preferences exist (ADR-0025)
+
+D4's condition, "no global preference until there are saved preferences", is met once
+ADR-0025 is accepted. Nothing in this ADR changes with it:
+
+* **D4 and §3:** there's still no global unit preference. An Imperial or Metric choice
+  would be a later key in ADR-0025's store (§11), decided with the maintainer, and the
+  GUI would turn it into the `ShownUnits` and defaults it already passes down; `core`
+  and the calculators never read it (ADR-0025 §1).
+* **§6:** remembering a picker's choice across sessions waits for such a key too. Until
+  then each picker is the user's for the session, as §6 says.
+* **The command line** never follows a saved preference (ADR-0025 M1): `--unit`,
+  `--output-set` and `--output-unit` stay the way to choose.

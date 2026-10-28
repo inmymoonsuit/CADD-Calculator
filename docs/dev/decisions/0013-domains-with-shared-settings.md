@@ -5,7 +5,9 @@
   **Superseded in part by [ADR-0014](0014-materials-and-reference-data.md)**, which plans
   phase 2: at decision A (P), decision E (K and P), and §11's phase-2 list; and **in
   part by [ADR-0018](0018-geometry-and-conversions.md)** §1 and its amendments, at §2's
-  family order (see the amendment below).
+  family order (see the amendment below); and **in part by
+  [ADR-0025](0025-saved-preferences.md)**, which saves the app's preferences while
+  family settings stay session-only (see the amendment below).
 * **Date:** 2026-10-17
 * **Reviewed by:** the Support & Review session (prior art, critique) and the Calculator
   Engine session (implementation), 2026-10-17
@@ -394,3 +396,25 @@ entered. §5's promise holds: every input's source is in the JSON.
 * **§9, rule 5:** "if an input ever accepts expressions, each term carries its own unit"
   is superseded by ADR-0024 D7: no term carries a unit; all are in the picker's unit.
 * What stands: the three tiers, and that display text is never read back as intent.
+
+### 2026-10-28: saved preferences (ADR-0025)
+
+The maintainer decided that only how the app looks and behaves is saved; family settings
+and inputs stay session-only (ADR-0025 M3, relayed by PM). With ADR-0025 accepted (2026-10-28):
+
+* **Context,** "The app creates no user files": superseded. The app saves its preferences
+  in one file, `preferences.json`, written only when the user changes one (ADR-0025 §4,
+  §5). It still writes no file for family settings or inputs.
+* **Decision B** stands for family settings: for the session only, not saved. Its
+  alternative not taken, "a per-user settings file", is taken for preferences only.
+* **§7,** "There is **no settings file**, no store, and no new dependency": for family
+  settings, still none. The app's one store is ADR-0025's, in its own layer
+  (`caddcalc.preferences`), and adds no dependency. The CLI reads no preferences either
+  (ADR-0025 M1), so its runs stay their own sessions.
+* **Consequences,** "There is no persistence and no new dependency, and the architecture
+  layers stay as they are": persistence is preferences only, still with no new
+  dependency; the layers gain `caddcalc.preferences` (ADR-0003, amendments).
+* **Alternatives considered,** the dropped settings file: what returns is narrower and
+  different. It holds preferences, not settings; it's JSON through the standard library,
+  with no `tomli-w` or `platformdirs`; and it lives in a preferences layer, not a
+  services layer (ADR-0025 C1 to C3).

@@ -99,3 +99,20 @@ approved PM's plan for it (relayed by PM).
   both when a key is renamed. Before the first release, the project makes no
   compatibility promise (pre-alpha), so the rename is outright, as `splash` and `name`
   were removed under schema 1. The one pack outside the repository is updated by PM.
+
+### 2026-10-28: pack defaults and a portable folder, reserved (ADR-0025)
+
+The maintainer reserved two things in ADR-0025's design without building them (ADR-0025
+M4, relayed by PM):
+
+* **Pack defaults:** a pack may later supply defaults for saved preferences, layered
+  built-in, then the pack, then the user. It would be a new optional `branding.toml`
+  table, added by an amendment here.
+* **A portable folder:** a marker folder beside the executable, checked to be writable,
+  like this ADR's `branding/` lookup there (item 3). Until then `CADDCALC_CONFIG_DIR`
+  is the portable mode, as `CADDCALC_BRANDING` names a pack.
+* **Item 6's reason is superseded:** the Qt application name no longer decides where
+  settings are stored. ADR-0025's own resolver decides the folder (ADR-0025 §4), from
+  folder names the GUI passes in from `gui.branding`'s product name, which is the same
+  in every edition (ADR-0016 S4). So a branded and a generic build share one file. The
+  Qt application name still stays "CADD Calculator" in every edition, as item 6 says.

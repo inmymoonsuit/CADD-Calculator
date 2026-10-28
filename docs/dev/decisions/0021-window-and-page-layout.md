@@ -353,3 +353,13 @@ without scrolling, whatever the font, as 1100 × 736 does on Windows at 9 pt.
   squeezed. On the Windows jobs, that was the settings page's unit pickers.
 * **The gap is each label's right margin,** and the form's own horizontal spacing is
   none, so Qt's test counts it. A wrapped label is unchanged to see.
+
+### 2026-10-28: the window's geometry as a later preference (ADR-0025)
+
+The Context's "The app saves no settings file (ADR-0013), so it can't remember a window
+size, position or list width", and §3 item 6, "Nothing is remembered between runs", hold
+for the pilot: ADR-0025 saves only the colour scheme. With it accepted, a settings file
+exists, so item 6's condition is met. Remembering the window becomes a later key in
+ADR-0025's store (§11), with this ADR amended when it's built. As item 6 says, it would
+store `saveGeometry()` and check it against the current screens before use, and §3's
+launch size stays the rule whenever there's nothing saved or it doesn't fit.

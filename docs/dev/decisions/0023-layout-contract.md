@@ -774,3 +774,9 @@ The original text stays, as earlier amendments do.
   is still the tightest fit.
 * **The matrix (slice 5)** adds the pickers' accessible names, the Tab order field →
   picker, the echo's description, and no clipping of the picker column in en_XA.
+
+### 2026-10-28: a settings store for C8 (ADR-0025)
+
+C8's "It needs a settings store, which ADR-0013 doesn't have" is met once ADR-0025 is
+accepted. C8 stands for the pilot: a text size would be a later Appearance key in its
+store (ADR-0025 §11), with an amendment here when it's built.

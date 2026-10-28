@@ -493,3 +493,12 @@ fields, and their form follows the whole value as a decimal, 1.5 or 4.1875, thro
 `npgettext_shown` (§5), as a unit's name does. English's two forms are the same, since a
 decimal takes its plural; a language whose rule counts 1.5 as one can give its own. The
 README's disclaimer is the line of this ADR's amendment above.
+
+### 2026-10-28: the language as a saved preference (ADR-0025)
+
+§3's "later Preferences setting" for the language has a home once ADR-0025 is accepted:
+a key in its store, declared `next_start` (ADR-0025 §3), so the dialog can say the change
+applies at the next start, and the GUI reads it once, before `core.i18n.use()`. It isn't
+in the pilot. The CLI never reads it (ADR-0025 M1): `--lang` and the environment
+variables stay the CLI's way. The preferences layer's own messages are translatable, as
+everything shown is.

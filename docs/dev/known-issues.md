@@ -86,8 +86,9 @@ the app doesn't reuse the labels.
 
 ### KI-010: GUI is a skeleton (Low)
 
-No saved sessions, printing or export, fraction display toggle, dark-mode polish,
-accessibility review, or translations yet. See the roadmap. **When adding the fraction
+No saved sessions, printing or export, fraction display toggle, dark-mode polish
+(ADR-0025 plans a Light and Dark choice), accessibility review, or translations yet.
+See the roadmap. **When adding the fraction
 toggle:** `expr.render_numeric` substitutes text as given, so fractions in the work lines
 must be parenthesized ("1/8/1/16" is ambiguous), or the work lines should stay decimal.
 

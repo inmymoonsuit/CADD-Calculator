@@ -6,6 +6,12 @@ All notable changes are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+- ADR-0025 (saved preferences, starting with light and dark), accepted by the maintainer
+  on 2026-10-28, is in `docs/dev/decisions/`, with the amendments it makes to ADR-0003,
+  ADR-0009, ADR-0011, ADR-0013, ADR-0014, ADR-0015, ADR-0020, ADR-0021, ADR-0023 and
+  ADR-0024. Nothing is built yet.
+
 ## [0.1.0a3] - 2026-10-27
 
 The Viking with the abacus as every build's welcome art, under its own licence, and a

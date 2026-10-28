@@ -438,3 +438,17 @@ the college's iconography, so the official build may show it too.
 * **Over it:** the scene is light, as before, so the title keeps the logo in black at
   the 15% floor. The version sits over the shield's rim, so its fill rises (to 178 of
   255 at 100%) to read; both stay ink on white.
+
+### 2026-10-28: Preferences, and W1's saved setting (ADR-0025)
+
+ADR-0025 brings the preferences store that W1 and W3 waited for. With it accepted (2026-10-28):
+
+* **W1 stands:** the card shows at every start. Its alternative, a "Don't show again"
+  box, no longer needs an ADR of its own: it becomes a later Appearance or Startup key
+  in ADR-0025's store (ADR-0025 §11), with an amendment here when it's built.
+* **W3 and §5:** "Preferences…, once it exists" and "Preferences appears when there are
+  preferences" are met by ADR-0025 §9. From UI/UX's slice S4, `AppActions` owns a
+  Preferences command, with `PreferencesRole` and `StandardKey.Preferences`, in the
+  main window's File menu; Qt moves it to the application menu on macOS.
+* **The welcome screen has no menus** (the amendment of 2026-10-17 above), so how
+  Preferences is reached while the card is up is left to UI/UX before S4 (ADR-0025 §9).
